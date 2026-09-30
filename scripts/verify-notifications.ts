@@ -1,9 +1,12 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import { createEmptyWorkspace } from '../src/data/schema';
 import {
   MAX_REMINDERS_PER_DAY,
+  MAX_SCHEDULED_REMINDERS,
+  REVIEW_HORIZON_DAYS,
   buildReminderPlan,
   defaultReminderSettings,
   examReminderCopy,
@@ -60,8 +63,13 @@ function makeDueWorkspace(now: number) {
 
 function main() {
   const now = local(2026, 9, 30, 12, 0);
+  const defaults = defaultReminderSettings();
+  assert.equal(defaults.enabled, false);
+  assert.equal(defaults.sound, false);
+  assert.equal(REVIEW_HORIZON_DAYS, 7);
+
   const settings = {
-    ...defaultReminderSettings(),
+    ...defaults,
     enabled: true,
     reviewTimeMinutes: 19 * 60 + 15,
     examTimeMinutes: 18 * 60 + 30,
@@ -203,6 +211,33 @@ function main() {
   for (const count of perDay.values()) {
     assert.ok(count <= MAX_REMINDERS_PER_DAY);
   }
+  assert.ok(crowdedPlan.length <= MAX_SCHEDULED_REMINDERS);
+
+  const quietExam = createEmptyWorkspace(now);
+  quietExam.exams.push({
+    id: 'exam_quiet',
+    name: 'Quiet-hour exam',
+    date: local(2026, 10, 2, 12, 0),
+    subjects: ['Physics'],
+    scope: 'subjects',
+    topicIds: [],
+  });
+  const quietExamPlan = buildReminderPlan(
+    quietExam,
+    {
+      ...settings,
+      reviewEnabled: false,
+      examOffsets: [1],
+      examTimeMinutes: 22 * 60,
+    },
+    now,
+  ).filter((item) => item.kind === 'exam');
+
+  assert.equal(
+    quietExamPlan.length,
+    0,
+    'A quiet-hour shift must not turn a 1-day reminder into a wrong-label exam-day reminder.',
+  );
 
   const forbidden = /streak|falling behind|behind|urgent|failure|guilt|lose your|missed your/i;
   for (const voice of ['calm', 'signal', 'spark'] as const) {
@@ -249,10 +284,32 @@ function main() {
   assert.equal(formatTimeMinutes(0), '12:00 AM');
   assert.equal(formatTimeMinutes(19 * 60 + 15), '7:15 PM');
 
+  const appConfig = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+  const blockedPermissions: string[] =
+    appConfig.expo?.android?.blockedPermissions ?? [];
+  assert.ok(
+    blockedPermissions.includes('android.permission.SCHEDULE_EXACT_ALARM'),
+  );
+  assert.ok(
+    blockedPermissions.includes('android.permission.USE_EXACT_ALARM'),
+  );
+
+  const runtimeSource = fs.readFileSync(
+    'src/features/notifications/notification-runtime.ts',
+    'utf8',
+  );
+  assert.equal(runtimeSource.includes('getExpoPushTokenAsync'), false);
+  assert.equal(runtimeSource.includes('getDevicePushTokenAsync'), false);
+
+  console.log('✓ reminders default off and silent');
+  console.log('✓ review reminder horizon is intentionally limited to seven days');
+  console.log('✓ exact-alarm Android permissions are explicitly blocked');
+  console.log('✓ Feature 13 does not register device or Expo push tokens');
   console.log('✓ no due study data means no fake review reminder');
   console.log('✓ due reviews create one daily digest at the chosen window');
   console.log('✓ overnight quiet hours shift reminders to the quiet-end boundary');
   console.log('✓ exam reminders use only configured lead times before the exam');
+  console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');
   console.log('✓ Calm, Signal and Spark copy avoid guilt/streak/urgency language');
   console.log('✓ reminder settings are normalized and plan signatures detect copy changes');

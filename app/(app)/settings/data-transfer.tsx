@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -15,30 +15,63 @@ import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import {
-  ImportPreview,
-  buildImportPreview,
-  importRelationMessage,
+  ImportCandidate,
+  isImportOlderThanCurrent,
+  mergeWorkspaces,
+  parseImportJson,
+  workspaceImportCounts,
 } from '@/src/features/transfer/backup-engine';
 import {
-  pickBackupText,
-  shareNativeBackup,
-} from '@/src/features/transfer/transfer-files';
+  exportWorkspaceBackup,
+  readBackupDocument,
+} from '@/src/features/transfer/backup-io';
 import { colors, radius, spacing } from '@/src/theme/tokens';
+
+type Preview = {
+  fileName: string;
+  candidate: ImportCandidate;
+  revision: number;
+};
+
+function formatDate(timestamp: number | null) {
+  if (!timestamp) return 'Unknown';
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(timestamp));
+}
 
 export default function DataTransferScreen() {
   const {
     workspace,
     replaceWorkspace,
-    waitForSaves,
+    restoreImportRecovery,
+    hasImportRecovery,
   } = useWorkspace();
   const { session: focusSession, discard: discardFocus } = useFocus();
   const { session: reviewSession, discardReview } = useReview();
 
-  const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [fileName, setFileName] = useState('');
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const counts = useMemo(
+    () => (preview ? workspaceImportCounts(preview.candidate.workspace) : null),
+    [preview],
+  );
+
+  const mergePreview = useMemo(() => {
+    if (!workspace || !preview) return null;
+    try {
+      return mergeWorkspaces(workspace, preview.candidate.workspace).report;
+    } catch {
+      return null;
+    }
+  }, [preview, workspace]);
 
   if (!workspace) {
     return (
@@ -50,91 +83,194 @@ export default function DataTransferScreen() {
     );
   }
 
-  async function exportBackup() {
-    const currentWorkspace = workspace;
-    if (!currentWorkspace) return;
+  const currentWorkspace = workspace;
 
-    setError('');
-    setMessage('');
-    setBusy(true);
-    try {
-      const name = await shareNativeBackup(currentWorkspace);
-      setMessage(`Backup ready: ${name}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not export the backup.');
-    } finally {
-      setBusy(false);
-    }
-  }
+  const previewStale = Boolean(
+    preview && preview.revision !== currentWorkspace.revision,
+  );
+  const older = preview
+    ? isImportOlderThanCurrent(preview.candidate, currentWorkspace)
+    : false;
 
-  async function selectBackup() {
-    const currentWorkspace = workspace;
-    if (!currentWorkspace) return;
-
-    setError('');
-    setMessage('');
-    setBusy(true);
-    try {
-      const picked = await pickBackupText();
-      if (!picked) return;
-
-      const next = buildImportPreview(picked.text, currentWorkspace);
-      setPreview(next);
-      setFileName(picked.name);
-    } catch (err) {
-      setPreview(null);
-      setFileName('');
-      setError(err instanceof Error ? err.message : 'Could not read this backup.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function confirmImport() {
-    if (!preview) return;
-
-    const older = preview.relation === 'source-older';
-    const title = older ? 'Replace newer local data?' : 'Replace this workspace?';
-    const body = [
-      importRelationMessage(preview),
-      '',
-      'This replaces the current workspace only. It does not merge records and it does not affect other account/local workspace keys.',
-      '',
-      'Export the current workspace first if you may want to restore it.',
-    ].join('\n');
-
-    Alert.alert(title, body, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: older ? 'Replace newer data' : 'Import backup',
-        style: older ? 'destructive' : 'default',
-        onPress: () => void applyImport(),
-      },
+  async function stopTransientSessions() {
+    await Promise.all([
+      focusSession ? discardFocus() : Promise.resolve(),
+      reviewSession ? discardReview() : Promise.resolve(),
     ]);
   }
 
-  async function applyImport() {
-    if (!preview || busy) return;
+  async function exportBackup() {
+    setError('');
+    setMessage('');
+    setBusy(true);
+    try {
+      const result = await exportWorkspaceBackup(currentWorkspace);
+      setMessage(
+        result.method === 'download'
+          ? `${result.name} downloaded.`
+          : result.method === 'file-share'
+            ? 'Backup file opened in the system share sheet.'
+            : 'File sharing was unavailable, so the JSON backup was offered as text.',
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Could not export the backup.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
+  async function chooseBackup() {
+    setError('');
+    setMessage('');
+    setBusy(true);
+    try {
+      const selected = await readBackupDocument();
+      if (!selected) return;
+      const candidate = parseImportJson(selected.text);
+      setPreview({
+        fileName: selected.name,
+        candidate,
+        revision: currentWorkspace.revision,
+      });
+    } catch (cause) {
+      setPreview(null);
+      setError(
+        cause instanceof Error ? cause.message : 'Could not read this backup.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmMerge() {
+    if (!preview || !mergePreview) return;
+    if (previewStale) {
+      setError('This workspace changed after the preview. Choose the file again before importing.');
+      return;
+    }
+
+    const added = mergePreview.added;
+    const transient =
+      focusSession || reviewSession
+        ? '\n\nThe current Focus/Review session will be discarded first.'
+        : '';
+
+    Alert.alert(
+      'Merge this backup?',
+      `Current records are never overwritten. MYELIN will add ${added.topics} topics, ${added.exams} exams, ${added.mistakes} mistakes and ${added.sessions} sessions. Current study settings stay unchanged. A pre-import recovery snapshot will be saved automatically.${transient}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Merge',
+          onPress: () => void applyMerge(),
+        },
+      ],
+    );
+  }
+
+  async function applyMerge() {
+    if (!preview) return;
     setBusy(true);
     setError('');
     setMessage('');
-
     try {
-      await Promise.all([
-        focusSession ? discardFocus() : Promise.resolve(),
-        reviewSession ? discardReview() : Promise.resolve(),
-      ]);
-      await waitForSaves();
-
-      const imported = await replaceWorkspace(preview.workspace);
-      if (!imported) throw new Error('MYELIN could not replace the current workspace.');
-
+      await stopTransientSessions();
+      const merged = mergeWorkspaces(currentWorkspace, preview.candidate.workspace);
+      await replaceWorkspace(merged.workspace, preview.revision);
       setPreview(null);
-      setFileName('');
-      router.replace('/(app)/today');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not import this backup.');
+      setMessage(
+        `Merge complete. Added ${merged.report.added.topics} topics, ${merged.report.added.exams} exams, ${merged.report.added.mistakes} mistakes and ${merged.report.added.sessions} sessions. ${merged.report.remappedIds} conflicting IDs were safely remapped.`,
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'The merge was not applied.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmReplace() {
+    if (!preview || !counts) return;
+    if (previewStale) {
+      setError('This workspace changed after the preview. Choose the file again before importing.');
+      return;
+    }
+
+    const ageWarning = older
+      ? '\n\nWarning: this backup is older than the current workspace.'
+      : '';
+    const transient =
+      focusSession || reviewSession
+        ? '\n\nThe current Focus/Review session will be discarded first.'
+        : '';
+
+    Alert.alert(
+      'Replace the current workspace?',
+      `This will replace the current workspace with ${counts.topics} topics, ${counts.exams} exams, ${counts.mistakes} mistakes and ${counts.sessions} sessions. A pre-import recovery snapshot will be saved on this device first.${ageWarning}${transient}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Replace workspace',
+          style: 'destructive',
+          onPress: () => void applyReplace(),
+        },
+      ],
+    );
+  }
+
+  async function applyReplace() {
+    if (!preview) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await stopTransientSessions();
+      await replaceWorkspace(preview.candidate.workspace, preview.revision);
+      setPreview(null);
+      setMessage('Workspace replaced. The previous workspace is available as the pre-import recovery snapshot.');
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'The replacement was not applied.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmRecovery() {
+    Alert.alert(
+      'Restore the pre-import workspace?',
+      'This swaps the current workspace with the recovery snapshot. The workspace you have now becomes the new recovery snapshot, so the action can be reversed again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore recovery',
+          onPress: () => void restoreRecovery(),
+        },
+      ],
+    );
+  }
+
+  async function restoreRecovery() {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await stopTransientSessions();
+      const restored = await restoreImportRecovery(currentWorkspace.revision);
+      if (!restored) {
+        setError('No valid pre-import recovery snapshot is available.');
+        return;
+      }
+      setPreview(null);
+      setMessage('Pre-import workspace restored. The replaced workspace is now the recovery snapshot.');
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Could not restore recovery.',
+      );
     } finally {
       setBusy(false);
     }
@@ -145,153 +281,162 @@ export default function DataTransferScreen() {
       <ScreenHeader
         eyebrow="PORTABLE DATA"
         title="Backup & migration"
-        subtitle="Export a native backup, or inspect a MYELIN native/web JSON backup before replacing this workspace."
+        subtitle="Export a portable native backup, or preview a native/web MYELIN JSON file before merging or replacing anything."
         onBack={() => router.back()}
       />
 
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
-          <Text style={styles.cardEyebrow}>EXPORT</Text>
-          <Text style={styles.cardTitle}>Keep a portable native backup.</Text>
-          <Text style={styles.cardText}>
-            The JSON contains this workspace’s topics, recall questions, exams, mistakes,
-            study history, breaks and settings. Account passwords and Firebase credentials are
-            not included.
+        <View style={styles.primaryPanel}>
+          <Text style={styles.panelEyebrow}>EXPORT</Text>
+          <Text style={styles.panelTitle}>Keep a copy you control.</Text>
+          <Text style={styles.panelText}>
+            The exported JSON contains this workspace’s topics, questions, exams, mistakes, study history, breaks and settings. It does not contain your Firebase password or authentication tokens.
           </Text>
-
-          {focusSession || reviewSession ? (
-            <View style={styles.activeSessionNote}>
-              <Text style={styles.activeSessionTitle}>Active session not included</Text>
-              <Text style={styles.activeSessionText}>
-                Finish or discard the current Focus/Review session first if you want the backup to reflect all completed work. In-progress timer/draft state is stored separately from the workspace backup.
-              </Text>
-            </View>
-          ) : null}
-
           <Pressable
             accessibilityRole="button"
             disabled={busy}
             onPress={() => void exportBackup()}
             style={({ pressed }) => [
-              styles.primary,
+              styles.primaryButton,
               busy && styles.disabled,
               pressed && !busy && styles.pressed,
             ]}>
-            <Text style={styles.primaryText}>Export / share backup</Text>
+            <Text style={styles.primaryButtonText}>Export native backup</Text>
             <Text style={styles.primaryArrow}>→</Text>
           </Pressable>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardEyebrow}>IMPORT</Text>
-          <Text style={styles.cardTitle}>Inspect before replacing anything.</Text>
-          <Text style={styles.cardText}>
-            Supported files include MYELIN native backups and the existing web-app JSON
-            backups. Import never silently merges or overwrites the current workspace.
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Import or migrate</Text>
+          <Text style={styles.sectionText}>
+            Supported: native MYELIN backups/workspaces and web v1, v2 and v3 JSON backups. On the existing web app, use Settings → Export backup, then choose that JSON here.
           </Text>
 
           <Pressable
             accessibilityRole="button"
             disabled={busy}
-            onPress={() => void selectBackup()}
+            onPress={() => void chooseBackup()}
             style={({ pressed }) => [
-              styles.secondary,
+              styles.chooseButton,
               busy && styles.disabled,
               pressed && !busy && styles.pressed,
             ]}>
-            <Text style={styles.secondaryText}>
-              {busy ? 'Reading…' : 'Choose JSON backup'}
-            </Text>
+            <View>
+              <Text style={styles.chooseTitle}>
+                {busy ? 'Working…' : 'Choose JSON backup'}
+              </Text>
+              <Text style={styles.chooseText}>Nothing changes until you confirm an action</Text>
+            </View>
+            <Text style={styles.chooseArrow}>＋</Text>
           </Pressable>
         </View>
 
-        {preview ? (
-          <View style={[
-            styles.preview,
-            preview.relation === 'source-older' && styles.previewWarning,
-          ]}>
-            <Text style={styles.previewEyebrow}>IMPORT PREVIEW</Text>
-            <Text style={styles.previewName}>{fileName}</Text>
-            <Text style={styles.previewSource}>{preview.sourceLabel}</Text>
-
-            <View style={styles.relationBox}>
-              <Text style={[
-                styles.relationText,
-                preview.relation === 'source-older' && styles.warningText,
-              ]}>
-                {importRelationMessage(preview)}
+        {preview && counts ? (
+          <View style={styles.preview}>
+            <View style={styles.previewHeader}>
+              <View style={styles.previewCopy}>
+                <Text style={styles.previewEyebrow}>IMPORT PREVIEW</Text>
+                <Text style={styles.previewTitle} numberOfLines={2}>{preview.fileName}</Text>
+                <Text style={styles.previewSource}>{preview.candidate.sourceLabel}</Text>
+              </View>
+              <Text style={older ? styles.olderBadge : styles.readyBadge}>
+                {older ? 'OLDER' : 'READY'}
               </Text>
+            </View>
+
+            <View style={styles.metaRows}>
+              <MetaRow label="Source updated" value={formatDate(preview.candidate.sourceUpdatedAt)} />
+              <MetaRow label="Current updated" value={formatDate(currentWorkspace.updatedAt)} />
+              <MetaRow label="Preview revision" value={String(preview.revision)} />
             </View>
 
             <View style={styles.countGrid}>
-              <Count label="TOPICS" value={preview.counts.topics} />
-              <Count label="QUESTIONS" value={preview.counts.questions} />
-              <Count label="EXAMS" value={preview.counts.exams} />
-              <Count label="MISTAKES" value={preview.counts.mistakes} />
-              <Count label="SESSIONS" value={preview.counts.sessions} />
-              <Count label="BREAKS" value={preview.counts.breaks} />
+              <Count label="TOPICS" value={counts.topics} />
+              <Count label="QUESTIONS" value={counts.questions} />
+              <Count label="EXAMS" value={counts.exams} />
+              <Count label="MISTAKES" value={counts.mistakes} />
+              <Count label="SESSIONS" value={counts.sessions} />
+              <Count label="BREAKS" value={counts.breaks} />
             </View>
 
-            {preview.sourceUpdatedAt ? (
-              <Text style={styles.meta}>
-                Source updated: {new Date(preview.sourceUpdatedAt).toLocaleString()}
-                {preview.sourceRevision != null
-                  ? ` · revision ${preview.sourceRevision}`
-                  : ''}
-              </Text>
+            {previewStale ? (
+              <Notice tone="danger">
+                This workspace changed after the file was previewed. Choose the file again before importing so newer work cannot be overwritten.
+              </Notice>
             ) : null}
 
-            {preview.warnings.length ? (
-              <View style={styles.warningList}>
-                <Text style={styles.warningTitle}>Migration notes</Text>
-                {preview.warnings.map((warning) => (
-                  <Text key={warning} style={styles.warningItem}>• {warning}</Text>
-                ))}
+            {older ? (
+              <Notice tone="danger">
+                This source is older than the current workspace. Merge is non-destructive; Replace requires an explicit destructive confirmation.
+              </Notice>
+            ) : null}
+
+            {preview.candidate.warnings.map((warning) => (
+              <Notice key={warning}>{warning}</Notice>
+            ))}
+
+            {mergePreview ? (
+              <View style={styles.mergeInfo}>
+                <Text style={styles.mergeTitle}>Merge preview</Text>
+                <Text style={styles.mergeText}>
+                  Adds {mergePreview.added.topics} topics · {mergePreview.added.exams} exams · {mergePreview.added.mistakes} mistakes · {mergePreview.added.sessions} sessions. {mergePreview.skippedIdentical} identical records would be skipped and {mergePreview.remappedIds} conflicting IDs remapped. Current settings stay unchanged.
+                </Text>
               </View>
             ) : null}
 
-            <View style={styles.noMerge}>
-              <Text style={styles.noMergeTitle}>No silent merge</Text>
-              <Text style={styles.noMergeText}>
-                Import replaces only the current workspace after another confirmation. The
-                selected file is validated before this button becomes available.
-              </Text>
+            <View style={styles.actions}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy || previewStale || !mergePreview}
+                onPress={confirmMerge}
+                style={({ pressed }) => [
+                  styles.mergeButton,
+                  (busy || previewStale || !mergePreview) && styles.disabled,
+                  pressed && !busy && !previewStale && styles.pressed,
+                ]}>
+                <Text style={styles.mergeButtonText}>Merge safely</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy || previewStale}
+                onPress={confirmReplace}
+                style={({ pressed }) => [
+                  styles.replaceButton,
+                  (busy || previewStale) && styles.disabled,
+                  pressed && !busy && !previewStale && styles.pressed,
+                ]}>
+                <Text style={styles.replaceButtonText}>Replace</Text>
+              </Pressable>
             </View>
 
             <Pressable
               accessibilityRole="button"
+              onPress={() => setPreview(null)}
+              style={({ pressed }) => [styles.cancelPreview, pressed && styles.pressed]}>
+              <Text style={styles.cancelPreviewText}>Clear preview</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {hasImportRecovery ? (
+          <View style={styles.recoveryPanel}>
+            <Text style={styles.recoveryEyebrow}>RECOVERY</Text>
+            <Text style={styles.recoveryTitle}>Pre-import workspace available</Text>
+            <Text style={styles.recoveryText}>
+              MYELIN saved the workspace that existed immediately before the latest import. Restoring swaps the two snapshots instead of destroying the current one.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
               disabled={busy}
-              onPress={confirmImport}
+              onPress={confirmRecovery}
               style={({ pressed }) => [
-                styles.importButton,
-                preview.relation === 'source-older' && styles.importButtonWarning,
+                styles.recoveryButton,
                 busy && styles.disabled,
                 pressed && !busy && styles.pressed,
               ]}>
-              <Text style={[
-                styles.importButtonText,
-                preview.relation === 'source-older' && styles.importButtonWarningText,
-              ]}>
-                {preview.relation === 'source-older'
-                  ? 'Review warning & replace'
-                  : 'Confirm import'}
-              </Text>
-              <Text style={[
-                styles.importArrow,
-                preview.relation === 'source-older' && styles.importButtonWarningText,
-              ]}>→</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setPreview(null);
-                setFileName('');
-              }}
-              style={({ pressed }) => [styles.cancelPreview, pressed && styles.pressed]}>
-              <Text style={styles.cancelPreviewText}>Discard this preview</Text>
+              <Text style={styles.recoveryButtonText}>Restore pre-import workspace</Text>
             </Pressable>
           </View>
         ) : null}
@@ -299,17 +444,25 @@ export default function DataTransferScreen() {
         {message ? <Text style={styles.success}>{message}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <View style={styles.guide}>
-          <Text style={styles.guideTitle}>Moving from the old MYELIN web app</Text>
-          <Text style={styles.guideText}>
-            Export a JSON backup from the web app’s Settings, transfer that .json file to
-            this device, then choose it here. Current v3 web data is converted to the native
-            schema; older supported web backups keep the study/history information that
-            actually exists in those formats.
-          </Text>
+        <View style={styles.rules}>
+          <Text style={styles.rulesTitle}>Import rules</Text>
+          <Rule text="Picking a file never modifies the workspace." />
+          <Rule text="Merge adds data without overwriting conflicting current records; conflicting IDs are remapped." />
+          <Rule text="Replace is explicit, warns when the source is older, and creates a pre-import recovery snapshot first." />
+          <Rule text="If the workspace revision changes after preview, the import is blocked until you preview again." />
+          <Rule text="In-progress web timers/review drafts are not converted; completed history and scheduling data are preserved." />
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metaRow}>
+      <Text style={styles.metaLabel}>{label}</Text>
+      <Text style={styles.metaValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -322,109 +475,93 @@ function Count({ label, value }: { label: string; value: number }) {
   );
 }
 
+function Notice({
+  children,
+  tone,
+}: {
+  children: string;
+  tone?: 'danger';
+}) {
+  return (
+    <View style={[styles.notice, tone === 'danger' && styles.noticeDanger]}>
+      <Text style={[styles.noticeText, tone === 'danger' && styles.noticeDangerText]}>
+        {children}
+      </Text>
+    </View>
+  );
+}
+
+function Rule({ text }: { text: string }) {
+  return (
+    <View style={styles.rule}>
+      <Text style={styles.ruleMark}>✓</Text>
+      <Text style={styles.ruleText}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 12 },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 52 },
-  card: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: spacing.md,
-    marginBottom: 10,
-  },
-  cardEyebrow: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  cardTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: 5 },
-  cardText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 5 },
-  activeSessionNote: {
-    marginTop: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,161,145,0.22)',
-    backgroundColor: 'rgba(255,161,145,0.035)',
-    padding: 10,
-  },
-  activeSessionTitle: { color: colors.danger, fontSize: 9.5, fontWeight: '700' },
-  activeSessionText: { color: colors.muted, fontSize: 9, lineHeight: 14, marginTop: 3 },
-  primary: {
-    minHeight: 48,
-    marginTop: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  primaryText: { color: '#25140e', fontSize: 11.5, fontWeight: '800' },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: 56 },
+  primaryPanel: { borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,128,91,0.25)', backgroundColor: colors.accentSoft, padding: spacing.lg },
+  panelEyebrow: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.3 },
+  panelTitle: { color: colors.text, fontSize: 18, fontWeight: '700', marginTop: 6 },
+  panelText: { color: colors.muted, fontSize: 10.5, lineHeight: 17, marginTop: 6 },
+  primaryButton: { minHeight: 50, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  primaryButtonText: { color: '#25140e', fontSize: 11.5, fontWeight: '800' },
   primaryArrow: { color: '#25140e', fontSize: 18 },
-  secondary: {
-    minHeight: 46,
-    marginTop: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryText: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  preview: {
-    marginTop: 8,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(180,216,174,0.24)',
-    backgroundColor: 'rgba(180,216,174,0.035)',
-    padding: spacing.md,
-  },
-  previewWarning: {
-    borderColor: 'rgba(255,161,145,0.3)',
-    backgroundColor: 'rgba(255,161,145,0.035)',
-  },
-  previewEyebrow: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  previewName: { color: colors.text, fontSize: 13.5, fontWeight: '700', marginTop: 5 },
+  section: { marginTop: spacing.xl },
+  sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  sectionText: { color: colors.subtle, fontSize: 9.8, lineHeight: 15, marginTop: 4 },
+  chooseButton: { minHeight: 64, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  chooseTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  chooseText: { color: colors.subtle, fontSize: 8.8, marginTop: 4 },
+  chooseArrow: { color: colors.accent, fontSize: 20 },
+  preview: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: spacing.md },
+  previewHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  previewCopy: { flex: 1 },
+  previewEyebrow: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  previewTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: 5 },
   previewSource: { color: colors.muted, fontSize: 9.5, marginTop: 3 },
-  relationBox: { marginTop: 11, borderLeftWidth: 2, borderLeftColor: colors.accent, paddingLeft: 10 },
-  relationText: { color: colors.text, fontSize: 10, lineHeight: 16 },
-  warningText: { color: colors.danger },
-  countGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: spacing.md },
-  count: { width: '31.7%', minHeight: 54, borderRadius: radius.md, backgroundColor: colors.panel, padding: 9, justifyContent: 'space-between' },
-  countLabel: { color: colors.subtle, fontSize: 7, fontWeight: '800', letterSpacing: 0.9 },
-  countValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
-  meta: { color: colors.subtle, fontSize: 8.8, marginTop: 10 },
-  warningList: { marginTop: 12, borderRadius: radius.md, backgroundColor: colors.panel, padding: 11 },
-  warningTitle: { color: colors.text, fontSize: 10, fontWeight: '700' },
-  warningItem: { color: colors.muted, fontSize: 9.3, lineHeight: 15, marginTop: 5 },
-  noMerge: { marginTop: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 11 },
-  noMergeTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  noMergeText: { color: colors.subtle, fontSize: 9.5, lineHeight: 15, marginTop: 4 },
-  importButton: {
-    minHeight: 50,
-    marginTop: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  importButtonWarning: {
-    backgroundColor: 'rgba(255,161,145,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,161,145,0.3)',
-  },
-  importButtonText: { color: '#25140e', fontSize: 11.5, fontWeight: '800' },
-  importButtonWarningText: { color: colors.danger },
-  importArrow: { color: '#25140e', fontSize: 18 },
-  cancelPreview: { minHeight: 40, marginTop: 6, alignItems: 'center', justifyContent: 'center' },
-  cancelPreviewText: { color: colors.muted, fontSize: 10, fontWeight: '600' },
-  success: { color: colors.success, fontSize: 10, lineHeight: 15, marginTop: 10 },
-  error: { color: colors.danger, fontSize: 10, lineHeight: 15, marginTop: 10 },
-  guide: { marginTop: 28, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: spacing.md },
-  guideTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  guideText: { color: colors.subtle, fontSize: 9.5, lineHeight: 15, marginTop: 4 },
-  disabled: { opacity: 0.45 },
+  readyBadge: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1 },
+  olderBadge: { color: colors.danger, fontSize: 8, fontWeight: '800', letterSpacing: 1 },
+  metaRows: { marginTop: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 7 },
+  metaRow: { minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  metaLabel: { color: colors.subtle, fontSize: 8.5 },
+  metaValue: { color: colors.muted, fontSize: 8.8, textAlign: 'right' },
+  countGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },
+  count: { width: '31.7%', minHeight: 54, borderRadius: radius.md, backgroundColor: colors.bg, padding: 9, justifyContent: 'space-between' },
+  countLabel: { color: colors.subtle, fontSize: 6.8, fontWeight: '800', letterSpacing: 0.9 },
+  countValue: { color: colors.text, fontSize: 13.5, fontWeight: '700' },
+  notice: { marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: 10 },
+  noticeDanger: { borderColor: 'rgba(255,161,145,0.24)', backgroundColor: 'rgba(255,161,145,0.045)' },
+  noticeText: { color: colors.muted, fontSize: 9.5, lineHeight: 15 },
+  noticeDangerText: { color: colors.danger },
+  mergeInfo: { marginTop: 10, borderLeftWidth: 2, borderLeftColor: colors.success, paddingLeft: 10 },
+  mergeTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
+  mergeText: { color: colors.muted, fontSize: 9.3, lineHeight: 15, marginTop: 4 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
+  mergeButton: { flex: 1, minHeight: 47, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  mergeButtonText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
+  replaceButton: { flex: 1, minHeight: 47, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.28)', alignItems: 'center', justifyContent: 'center' },
+  replaceButtonText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
+  cancelPreview: { minHeight: 38, marginTop: 5, alignItems: 'center', justifyContent: 'center' },
+  cancelPreviewText: { color: colors.subtle, fontSize: 9.5, fontWeight: '600' },
+  recoveryPanel: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(180,216,174,0.2)', backgroundColor: 'rgba(180,216,174,0.045)', padding: spacing.md },
+  recoveryEyebrow: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  recoveryTitle: { color: colors.text, fontSize: 13, fontWeight: '700', marginTop: 5 },
+  recoveryText: { color: colors.muted, fontSize: 9.5, lineHeight: 15, marginTop: 5 },
+  recoveryButton: { minHeight: 43, marginTop: 11, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(180,216,174,0.28)', alignItems: 'center', justifyContent: 'center' },
+  recoveryButtonText: { color: colors.success, fontSize: 10.5, fontWeight: '700' },
+  success: { color: colors.success, fontSize: 10, lineHeight: 15, marginTop: spacing.md },
+  error: { color: colors.danger, fontSize: 10, lineHeight: 15, marginTop: spacing.md },
+  rules: { marginTop: 34, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: spacing.md },
+  rulesTitle: { color: colors.text, fontSize: 11, fontWeight: '700', marginBottom: 7 },
+  rule: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 7 },
+  ruleMark: { color: colors.success, fontSize: 10.5 },
+  ruleText: { flex: 1, color: colors.subtle, fontSize: 9.4, lineHeight: 14 },
+  disabled: { opacity: 0.4 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

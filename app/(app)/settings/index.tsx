@@ -367,7 +367,7 @@ export default function SettingsScreen() {
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
               <View>
                 <Text style={styles.transferTitle}>Backup & migration</Text>
-                <Text style={styles.transferText}>Export, inspect and import MYELIN JSON backups</Text>
+                <Text style={styles.transferText}>Export, import or move data from the web app</Text>
               </View>
               <Text style={styles.transferArrow}>→</Text>
             </Pressable>

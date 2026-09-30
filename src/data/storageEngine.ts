@@ -27,6 +27,7 @@ export function getWorkspaceStorageKeys(ownerKey: string) {
     pending: `${base}/pending`,
     backup: `${base}/backup`,
     quarantine: `${base}/quarantine`,
+    importRecovery: `${base}/import-recovery`,
   };
 }
 
@@ -151,6 +152,7 @@ export function createWorkspaceStorageEngine(store: KeyValueStore) {
         store.removeItem(keys.pending),
         store.removeItem(keys.backup),
         store.removeItem(keys.quarantine),
+        store.removeItem(keys.importRecovery),
       ]);
       const workspace = createEmptyWorkspace();
       await store.setItem(keys.primary, JSON.stringify(workspace));
@@ -159,6 +161,30 @@ export function createWorkspaceStorageEngine(store: KeyValueStore) {
 
     async readQuarantine(ownerKey: string): Promise<string | null> {
       return store.getItem(getWorkspaceStorageKeys(ownerKey).quarantine);
+    },
+
+    async saveImportRecovery(ownerKey: string, workspace: WorkspaceState) {
+      const validated = migrateAndValidateWorkspace(workspace);
+      await store.setItem(
+        getWorkspaceStorageKeys(ownerKey).importRecovery,
+        JSON.stringify(validated),
+      );
+      return validated;
+    },
+
+    async loadImportRecovery(ownerKey: string): Promise<WorkspaceState | null> {
+      const raw = await store.getItem(getWorkspaceStorageKeys(ownerKey).importRecovery);
+      if (!raw) return null;
+      try {
+        return parseWorkspaceJson(raw);
+      } catch {
+        await store.removeItem(getWorkspaceStorageKeys(ownerKey).importRecovery);
+        return null;
+      }
+    },
+
+    async clearImportRecovery(ownerKey: string) {
+      await store.removeItem(getWorkspaceStorageKeys(ownerKey).importRecovery);
     },
   };
 }

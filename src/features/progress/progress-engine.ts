@@ -1,7 +1,5 @@
 import { Confidence, StudySession, WorkspaceState } from '@/src/data/schema';
 
-const DAY = 24 * 60 * 60 * 1000;
-
 export type DailyStudyPoint = {
   day: string;
   label: string;
@@ -84,6 +82,19 @@ function startOfLocalDay(timestamp: number) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
+function addLocalDays(timestamp: number, days: number) {
+  const date = new Date(timestamp);
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + days,
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    date.getMilliseconds(),
+  ).getTime();
+}
+
 function dayKey(timestamp: number) {
   const date = new Date(timestamp);
   return [
@@ -162,8 +173,8 @@ export function buildDailyStudyHistory(
   const result: DailyStudyPoint[] = [];
 
   for (let offset = days - 1; offset >= 0; offset -= 1) {
-    const start = today - offset * DAY;
-    const end = start + DAY;
+    const start = addLocalDays(today, -offset);
+    const end = addLocalDays(start, 1);
     result.push({
       day: dayKey(start),
       label: dayLabel(start),
@@ -280,9 +291,9 @@ export function buildTopicTrends(
   now = Date.now(),
 ): TopicTrend[] {
   const today = startOfLocalDay(now);
-  const recentStart = today - 6 * DAY;
-  const recentEnd = today + DAY;
-  const previousStart = recentStart - 7 * DAY;
+  const recentStart = addLocalDays(today, -6);
+  const recentEnd = addLocalDays(today, 1);
+  const previousStart = addLocalDays(recentStart, -7);
   const previousEnd = recentStart;
 
   return workspace.topics
@@ -337,10 +348,10 @@ export function buildProgressSnapshot(
   now = Date.now(),
 ): ProgressSnapshot {
   const today = startOfLocalDay(now);
-  const tomorrow = today + DAY;
-  const last7Start = today - 6 * DAY;
-  const previous7Start = last7Start - 7 * DAY;
-  const last30Start = today - 29 * DAY;
+  const tomorrow = addLocalDays(today, 1);
+  const last7Start = addLocalDays(today, -6);
+  const previous7Start = addLocalDays(last7Start, -7);
+  const last30Start = addLocalDays(today, -29);
 
   const todaySessions = sessionsInRange(workspace.history, today, tomorrow);
   const last7Sessions = sessionsInRange(workspace.history, last7Start, tomorrow);

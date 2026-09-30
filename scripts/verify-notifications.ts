@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 
 import { createEmptyWorkspace } from '../src/data/schema';
 import {
@@ -302,6 +303,16 @@ function main() {
   assert.equal(runtimeSource.includes('getDevicePushTokenAsync'), false);
 
   console.log('✓ reminders default off and silent');
+  const reminderEngineSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/features/notifications/reminder-engine.ts'),
+    'utf8',
+  );
+  assert.equal(
+    reminderEngineSource.includes('today + offset * DAY'),
+    false,
+    'Calendar-day reminder planning must not use fixed 24-hour offsets.',
+  );
+
   console.log('✓ review reminder horizon is intentionally limited to seven days');
   console.log('✓ exact-alarm Android permissions are explicitly blocked');
   console.log('✓ Feature 13 does not register device or Expo push tokens');

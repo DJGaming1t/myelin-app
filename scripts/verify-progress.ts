@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { createEmptyWorkspace, StudySession, Topic } from '../src/data/schema';
 import {
@@ -260,6 +262,20 @@ function main() {
   assert.equal(formatMinutesCompact(59), '59m');
   assert.equal(formatMinutesCompact(60), '1h');
   assert.equal(formatMinutesCompact(125), '2h 5m');
+
+  const progressSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/features/progress/progress-engine.ts'),
+    'utf8',
+  );
+  assert.equal(
+    progressSource.includes('today - offset * DAY'),
+    false,
+    'Progress day buckets must use local calendar arithmetic rather than fixed 24-hour days.',
+  );
+  assert.ok(
+    progressSource.includes('addLocalDays'),
+    'Progress engine is missing DST-safe local-day arithmetic.',
+  );
 
   console.log('✓ seven-day study history uses recorded session minutes');
   console.log('✓ current and previous week totals stay separate');

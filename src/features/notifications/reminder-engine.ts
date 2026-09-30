@@ -29,7 +29,6 @@ export type PlannedReminder = {
   data: Record<string, string | number>;
 };
 
-const DAY = 86_400_000;
 export const MAX_SCHEDULED_REMINDERS = 28;
 export const MAX_REMINDERS_PER_DAY = 2;
 export const REVIEW_HORIZON_DAYS = 7;
@@ -103,6 +102,19 @@ function startOfLocalDay(timestamp: number) {
     0,
     0,
     0,
+  ).getTime();
+}
+
+function addLocalDays(timestamp: number, days: number) {
+  const date = new Date(timestamp);
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + days,
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    date.getMilliseconds(),
   ).getTime();
 }
 
@@ -307,7 +319,7 @@ function buildReviewReminders(
   const today = startOfLocalDay(now);
 
   for (let offset = 0; offset < REVIEW_HORIZON_DAYS; offset += 1) {
-    const day = today + offset * DAY;
+    const day = addLocalDays(today, offset);
     let at = atLocalMinutes(day, settings.reviewTimeMinutes);
     at = moveOutOfQuietHours(
       at,

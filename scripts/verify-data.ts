@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import assert from 'node:assert/strict';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';

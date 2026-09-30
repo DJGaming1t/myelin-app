@@ -1,83 +1,140 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 
-import { createEmptyWorkspace } from '../src/data/schema';
+import { migrateAndValidateWorkspace } from '../src/data/migrations';
+import { createEmptyWorkspace, WorkspaceState } from '../src/data/schema';
 import {
-  NATIVE_BACKUP_FORMAT,
-  NATIVE_BACKUP_VERSION,
-  buildImportPreview,
+  createWorkspaceStorageEngine,
+  KeyValueStore,
+} from '../src/data/storageEngine';
+import {
   createNativeBackup,
-  importRelationMessage,
+  isImportOlderThanCurrent,
+  mergeWorkspaces,
+  parseImportJson,
   serializeNativeBackup,
+  workspaceImportCounts,
 } from '../src/features/transfer/backup-engine';
 
-const DAY = 86_400_000;
 const now = 1_800_000_000_000;
 
-function currentWorkspace() {
+class MemoryStore implements KeyValueStore {
+  values = new Map<string, string>();
+
+  async getItem(key: string) {
+    return this.values.get(key) ?? null;
+  }
+
+  async setItem(key: string, value: string) {
+    this.values.set(key, value);
+  }
+
+  async removeItem(key: string) {
+    this.values.delete(key);
+  }
+}
+
+function nativeWorkspace(): WorkspaceState {
   const workspace = createEmptyWorkspace(now);
-  workspace.revision = 8;
+  workspace.revision = 7;
   workspace.updatedAt = now;
+  workspace.settings.reduceMotion = true;
   workspace.topics.push({
-    id: 'native_topic',
-    name: 'Current native topic',
+    id: 'topic_native',
+    name: 'Quadratic Equations',
     subject: 'Mathematics',
-    createdAt: now - DAY,
-    status: 'learning',
-    priority: 2,
+    createdAt: now - 10_000,
+    status: 'review',
+    priority: 3,
     estimate: 45,
-    notes: '',
-    dueAt: 0,
-    intervalDays: 0,
-    lastGrade: 0,
-    lastReviewed: 0,
+    notes: 'Native notes',
+    dueAt: now + 1000,
+    intervalDays: 2,
+    lastGrade: 3,
+    lastReviewed: now - 1000,
     snoozeUntil: 0,
-    cards: [],
+    cards: [
+      {
+        id: 'card_native',
+        prompt: 'State the quadratic formula.',
+        answer: 'Formula',
+        hint: 'Think ±',
+        dueAt: now + 1000,
+        intervalDays: 2,
+        lastGrade: 3,
+        lastReviewed: now - 1000,
+        reps: 2,
+      },
+    ],
+  });
+  workspace.exams.push({
+    id: 'exam_native',
+    name: 'Math test',
+    date: now + 86_400_000,
+    subjects: ['Mathematics'],
+    scope: 'subjects',
+    topicIds: [],
   });
   return workspace;
 }
 
-function webV3Backup(updatedAt = now + DAY) {
+function webV3Backup() {
   return {
     version: 3,
-    revision: 12,
-    updatedAt,
+    revision: 999999999999,
+    updatedAt: now - 5000,
     topics: [
       {
-        id: 'web_math',
-        name: 'Quadratics',
-        subject: 'Mathematics',
-        createdAt: now - 10 * DAY,
+        id: 'web_topic',
+        name: 'Metals & non-metals',
+        subject: 'Chemistry',
+        createdAt: now - 100_000,
         status: 'review',
         priority: 3,
-        estimate: 50,
-        notes: 'Web notes',
-        dueAt: now + DAY,
+        estimate: 45,
+        notes: 'web notes',
+        dueAt: now + 5000,
         intervalDays: 2,
         lastGrade: 2,
-        lastReviewed: now - DAY,
+        lastReviewed: now - 5000,
         snoozeUntil: 0,
         cards: [
           {
             id: 'web_card',
-            prompt: 'What is the discriminant?',
-            answer: 'b² − 4ac',
-            hint: 'Think D',
-            dueAt: now,
+            prompt: 'Why does molten MgCl2 conduct?',
+            answer: 'Mobile ions.',
+            hint: 'Charged particles',
+            dueAt: now + 5000,
             intervalDays: 2,
             lastGrade: 2,
-            lastReviewed: now - DAY,
+            lastReviewed: now - 5000,
             reps: 3,
           },
         ],
       },
+      {
+        id: 'web_topic_2',
+        name: 'Life Processes',
+        subject: 'Biology',
+        createdAt: now - 90_000,
+        status: 'learning',
+        priority: 2,
+        estimate: 40,
+        notes: '',
+        dueAt: 0,
+        intervalDays: 0,
+        lastGrade: 0,
+        lastReviewed: 0,
+        snoozeUntil: 0,
+        cards: [],
+      },
     ],
     exams: [
       {
-        id: 'web_exam',
-        name: 'Maths exam',
-        date: now + 5 * DAY,
-        subjects: ['Mathematics'],
+        id: 'web_exam_all',
+        name: 'Full syllabus',
+        date: now + 10_000,
+        subjects: [],
         scope: 'subjects',
         topicIds: [],
       },
@@ -85,13 +142,13 @@ function webV3Backup(updatedAt = now + DAY) {
     mistakes: [
       {
         id: 'web_mistake',
-        topicId: 'web_math',
-        cardId: 'web_card',
-        prompt: 'Mixed up D',
-        detail: 'Wrong sign',
-        correction: 'b² − 4ac',
+        topicId: 'web_topic',
+        cardId: 'deleted_card',
+        prompt: 'I forgot why molten salt conducts.',
+        detail: 'Wrong',
+        correction: 'Ions move when molten.',
         reason: 'recall',
-        createdAt: now - 2 * DAY,
+        createdAt: now - 4000,
         dueAt: now,
         resolvedAt: 0,
         wins: 0,
@@ -102,21 +159,20 @@ function webV3Backup(updatedAt = now + DAY) {
     history: [
       {
         id: 'web_session',
-        topicId: 'web_math',
+        topicId: 'web_topic',
         cardId: 'web_card',
-        mistakeId: 'web_mistake',
-        at: now - DAY,
+        at: now - 3000,
         kind: 'review',
-        minutes: 3,
-        plannedMinutes: 0,
+        minutes: 4,
+        plannedMinutes: 300,
         grade: 2,
         effort: 3,
-        prompt: 'What is the discriminant?',
-        response: 'Something about roots',
+        prompt: 'Why does molten MgCl2 conduct?',
+        response: 'ions move',
         confidence: 'partial',
       },
     ],
-    breaks: [{ at: now - DAY, minutes: 7 }],
+    breaks: [{ at: now - 2000, minutes: 10 }],
     settings: {
       dailyMinutes: 120,
       focusMinutes: 45,
@@ -125,52 +181,52 @@ function webV3Backup(updatedAt = now + DAY) {
     },
     focus: {
       mode: 'study',
-      topicId: 'web_math',
+      topicId: 'web_topic',
       total: 2700,
       remaining: 1200,
       endAt: now + 1000,
       running: true,
       startedAt: now - 1000,
-      firstStep: 'Start Q1',
-      parking: 'Later',
+      firstStep: 'read',
+      parking: '',
     },
     reviewDraft: {
-      queue: [{ topicId: 'web_math', cardId: 'web_card', mistakeId: null }],
+      queue: [{ topicId: 'web_topic', cardId: 'web_card', mistakeId: null }],
       index: 0,
       stage: 'prompt',
       response: 'draft',
-      confidence: 'unsure',
+      confidence: 'partial',
       onPaper: false,
       hintUsed: false,
-      elapsedMs: 2000,
+      elapsedMs: 1000,
       completed: 0,
     },
   };
 }
 
-function legacyWebV2() {
+function legacyBackup(ver: 1 | 2) {
   return {
-    ver: 2,
+    ver,
     topics: [
       {
-        id: 'legacy_math',
-        name: 'Real Numbers',
-        subject: 'Mathematics',
-        createdAt: now - 30 * DAY,
-        lastAction: now - 5 * DAY,
+        id: `legacy_topic_${ver}`,
+        name: 'Legacy topic',
+        subject: 'Science',
+        createdAt: now - 200_000,
+        lastAction: now - 100_000,
         S: 4,
         snooze: 0,
         history: [
           {
             kind: 'log',
-            t: now - 9 * DAY,
-            minutes: 35,
+            t: now - 90_000,
+            minutes: 25,
             effort: 4,
           },
           {
             kind: 'review',
-            t: now - 5 * DAY,
-            elapsed: 4,
+            t: now - 80_000,
+            elapsed: 3,
             grade: 3,
           },
         ],
@@ -178,118 +234,299 @@ function legacyWebV2() {
     ],
     exams: [
       {
-        id: 'legacy_exam',
-        name: 'Legacy test',
-        subject: 'Mathematics',
-        date: now + 10 * DAY,
+        id: `legacy_exam_${ver}`,
+        name: 'Legacy exam',
+        subject: 'Science',
+        date: now + 500_000,
       },
     ],
   };
 }
 
-function main() {
-  const current = currentWorkspace();
+async function main() {
+  const native = nativeWorkspace();
+  const envelope = createNativeBackup(native, now + 123);
+  assert.equal(envelope.format, 'myelin.native.backup');
+  assert.equal(envelope.version, 1);
+  assert.equal(envelope.exportedAt, now + 123);
 
-  const serialized = serializeNativeBackup(current, now + 1000);
-  const nativeEnvelope = JSON.parse(serialized);
-  assert.equal(nativeEnvelope.format, NATIVE_BACKUP_FORMAT);
-  assert.equal(nativeEnvelope.version, NATIVE_BACKUP_VERSION);
-  assert.equal(nativeEnvelope.workspace.topics[0]?.id, 'native_topic');
-
-  const nativePreview = buildImportPreview(serialized, createEmptyWorkspace(now));
-  assert.equal(nativePreview.source, 'native-backup');
-  assert.equal(nativePreview.relation, 'current-empty');
-  assert.equal(nativePreview.counts.topics, 1);
-
-  const rawNative = JSON.stringify(createNativeBackup(current, now).workspace);
-  const rawPreview = buildImportPreview(rawNative, createEmptyWorkspace(now));
-  assert.equal(rawPreview.source, 'native-workspace');
-  assert.equal(rawPreview.counts.topics, 1);
-  assert.ok(rawPreview.warnings.length >= 1);
-
-  const webPreview = buildImportPreview(JSON.stringify(webV3Backup()), current);
-  assert.equal(webPreview.source, 'web-v3');
-  assert.equal(webPreview.relation, 'source-newer');
-  assert.deepEqual(webPreview.counts, {
+  const serialized = serializeNativeBackup(native, now + 123);
+  const nativeCandidate = parseImportJson(serialized, now + 123);
+  assert.equal(nativeCandidate.source, 'native-backup');
+  assert.deepEqual(nativeCandidate.workspace, migrateAndValidateWorkspace(native));
+  assert.deepEqual(workspaceImportCounts(nativeCandidate.workspace), {
     topics: 1,
     questions: 1,
     exams: 1,
-    mistakes: 1,
-    sessions: 1,
-    breaks: 1,
+    mistakes: 0,
+    sessions: 0,
+    breaks: 0,
   });
-  assert.equal(webPreview.workspace.topics[0]?.cards[0]?.id, 'web_card');
-  assert.equal(webPreview.workspace.settings.dailyMinutes, 120);
-  assert.equal(webPreview.workspace.settings.energy, 'low');
-  assert.equal(webPreview.workspace.settings.reduceMotion, false);
-  assert.equal(webPreview.workspace.history[0]?.mistakeId, 'web_mistake');
-  assert.ok(
-    webPreview.warnings.some((warning) => warning.includes('focus')),
-    'Unfinished web timer must be disclosed rather than silently migrated.',
-  );
-  assert.ok(
-    webPreview.warnings.some((warning) => warning.includes('review draft')),
-    'Unfinished web review draft must be disclosed.',
-  );
 
-  const olderPreview = buildImportPreview(
-    JSON.stringify(webV3Backup(now - 20 * DAY)),
-    current,
-  );
-  assert.equal(olderPreview.relation, 'source-older');
-  assert.match(importRelationMessage(olderPreview), /older than this workspace/);
+  const rawWorkspaceCandidate = parseImportJson(JSON.stringify(native), now);
+  assert.equal(rawWorkspaceCandidate.source, 'native-workspace');
 
-  const legacyPreview = buildImportPreview(JSON.stringify(legacyWebV2()), current);
-  assert.equal(legacyPreview.source, 'web-legacy-v2');
-  assert.equal(legacyPreview.counts.topics, 1);
-  assert.equal(legacyPreview.counts.questions, 0);
-  assert.equal(legacyPreview.counts.sessions, 2);
-  assert.equal(legacyPreview.workspace.history[0]?.kind, 'study');
-  assert.equal(legacyPreview.workspace.history[1]?.kind, 'review');
-  assert.equal(legacyPreview.workspace.history[1]?.grade, 3);
-  assert.ok(
-    legacyPreview.warnings.some((warning) => warning.includes('predates per-question')),
-  );
+  const webCandidate = parseImportJson(JSON.stringify(webV3Backup()), now);
+  assert.equal(webCandidate.source, 'web-v3');
+  assert.equal(webCandidate.workspace.topics.length, 2);
+  assert.equal(webCandidate.workspace.settings.energy, 'low');
+  assert.equal(webCandidate.workspace.settings.reduceMotion, false);
+  assert.equal(webCandidate.workspace.revision, 0);
+  assert.equal(webCandidate.workspace.mistakes[0]?.cardId, null);
+  assert.equal(webCandidate.workspace.history[0]?.plannedMinutes, 240);
+  assert.equal(webCandidate.workspace.exams[0]?.scope, 'topics');
+  assert.equal(webCandidate.workspace.exams[0]?.topicIds.length, 2);
+  assert.ok(webCandidate.warnings.some((item) => item.includes('timer')));
+  assert.ok(webCandidate.warnings.some((item) => item.includes('review draft')));
+  assert.ok(webCandidate.warnings.some((item) => item.includes('missing question')));
+  assert.ok(webCandidate.warnings.some((item) => item.includes('240 minutes')));
+  assert.ok(webCandidate.warnings.some((item) => item.includes('every subject')));
 
-  const danglingWeb = webV3Backup();
-  danglingWeb.mistakes[0]!.cardId = 'missing_card';
-  danglingWeb.history[0]!.cardId = 'missing_card';
-  danglingWeb.history[0]!.mistakeId = 'missing_mistake';
-  const sanitized = buildImportPreview(JSON.stringify(danglingWeb), current);
-  assert.equal(sanitized.workspace.mistakes[0]?.cardId, null);
-  assert.equal(sanitized.workspace.history[0]?.cardId, undefined);
-  assert.equal(sanitized.workspace.history[0]?.mistakeId, undefined);
+  for (const version of [1, 2] as const) {
+    const candidate = parseImportJson(JSON.stringify(legacyBackup(version)), now);
+    assert.equal(candidate.source, version === 1 ? 'web-v1' : 'web-v2');
+    assert.equal(candidate.workspace.topics.length, 1);
+    assert.equal(candidate.workspace.history.length, 2);
+    assert.equal(candidate.workspace.history[0]?.kind, 'study');
+    assert.equal(candidate.workspace.history[1]?.kind, 'review');
+    assert.equal(candidate.workspace.exams[0]?.scope, 'subjects');
+    assert.equal(candidate.workspace.mistakes.length, 0);
+    assert.ok(candidate.warnings[0]?.includes('Older web backups'));
+  }
 
   assert.throws(
-    () => buildImportPreview('{not json', current),
+    () => parseImportJson('{"hello":"world"}', now),
+    /supported MYELIN web/,
+  );
+  assert.throws(
+    () => parseImportJson('{broken json', now),
     /not valid JSON/,
   );
-  assert.throws(
-    () => buildImportPreview(JSON.stringify({ hello: 'world' }), current),
-    /Choose a MYELIN/,
-  );
-  assert.throws(
-    () =>
-      buildImportPreview(
-        JSON.stringify({
-          format: NATIVE_BACKUP_FORMAT,
-          version: 999,
-          exportedAt: now,
-          workspace: current,
-        }),
-        current,
-      ),
-    /not supported/,
+
+  const current = createEmptyWorkspace(now);
+  current.revision = 4;
+  current.updatedAt = now;
+  current.settings.dailyMinutes = 60;
+  current.settings.focusMinutes = 25;
+  current.settings.breakMinutes = 5;
+  current.settings.reduceMotion = true;
+  current.topics.push({
+    id: 'topic_collision',
+    name: 'Current topic',
+    subject: 'Maths',
+    createdAt: now - 100,
+    status: 'learning',
+    priority: 2,
+    estimate: 30,
+    notes: '',
+    dueAt: 0,
+    intervalDays: 0,
+    lastGrade: 0,
+    lastReviewed: 0,
+    snoozeUntil: 0,
+    cards: [
+      {
+        id: 'card_collision',
+        prompt: 'Current card',
+        answer: 'Current answer',
+        hint: '',
+        dueAt: 0,
+        intervalDays: 0,
+        lastGrade: 0,
+        lastReviewed: 0,
+        reps: 0,
+      },
+    ],
+  });
+  current.mistakes.push({
+    id: 'mistake_collision',
+    topicId: 'topic_collision',
+    cardId: 'card_collision',
+    prompt: 'Current mistake',
+    detail: '',
+    correction: 'Current correction',
+    reason: 'concept',
+    createdAt: now - 50,
+    dueAt: now,
+    resolvedAt: 0,
+    wins: 0,
+    lastWinDay: '',
+    intervalDays: 0,
+  });
+  current.history.push({
+    id: 'session_collision',
+    topicId: 'topic_collision',
+    cardId: 'card_collision',
+    mistakeId: 'mistake_collision',
+    at: now - 25,
+    kind: 'review',
+    minutes: 2,
+    grade: 2,
+    effort: 3,
+    prompt: 'Current prompt',
+    response: 'Current response',
+    confidence: 'partial',
+  });
+  current.breaks.push({ at: now - 10, minutes: 5 });
+
+  const imported = createEmptyWorkspace(now - 1000);
+  imported.settings.dailyMinutes = 300;
+  imported.settings.focusMinutes = 60;
+  imported.topics.push({
+    id: 'topic_collision',
+    name: 'Imported topic',
+    subject: 'Chemistry',
+    createdAt: now - 1000,
+    status: 'review',
+    priority: 3,
+    estimate: 45,
+    notes: 'different',
+    dueAt: now + 1000,
+    intervalDays: 3,
+    lastGrade: 3,
+    lastReviewed: now - 500,
+    snoozeUntil: 0,
+    cards: [
+      {
+        id: 'card_collision',
+        prompt: 'Imported card',
+        answer: 'Imported answer',
+        hint: '',
+        dueAt: now + 1000,
+        intervalDays: 3,
+        lastGrade: 3,
+        lastReviewed: now - 500,
+        reps: 3,
+      },
+    ],
+  });
+  imported.exams.push({
+    id: 'exam_imported',
+    name: 'Imported exam',
+    date: now + 10000,
+    subjects: [],
+    scope: 'topics',
+    topicIds: ['topic_collision'],
+  });
+  imported.mistakes.push({
+    id: 'mistake_collision',
+    topicId: 'topic_collision',
+    cardId: 'card_collision',
+    prompt: 'Imported mistake',
+    detail: '',
+    correction: 'Imported correction',
+    reason: 'recall',
+    createdAt: now - 400,
+    dueAt: now,
+    resolvedAt: 0,
+    wins: 0,
+    lastWinDay: '',
+    intervalDays: 0,
+  });
+  imported.history.push({
+    id: 'session_collision',
+    topicId: 'topic_collision',
+    cardId: 'card_collision',
+    mistakeId: 'mistake_collision',
+    at: now - 300,
+    kind: 'review',
+    minutes: 3,
+    grade: 1,
+    effort: 3,
+    prompt: 'Imported prompt',
+    response: 'Imported response',
+    confidence: 'sure',
+  });
+  imported.breaks.push(
+    { at: now - 10, minutes: 5 },
+    { at: now - 5, minutes: 10 },
   );
 
-  console.log('✓ portable native backup envelope round-trips through strict validation');
-  console.log('✓ raw native workspaces remain importable with a warning');
-  console.log('✓ current web v3 topics/questions/exams/mistakes/history/settings migrate');
-  console.log('✓ unfinished web focus/review state is explicitly disclosed');
-  console.log('✓ older backup comparison is detected before replacement');
-  console.log('✓ legacy web v2 topic-level history migrates without inventing cards');
-  console.log('✓ dangling optional web card/mistake links are safely removed');
-  console.log('✓ malformed and unsupported backup files are rejected');
+  const merged = mergeWorkspaces(current, imported);
+  assert.equal(merged.workspace.topics.length, 2);
+  assert.equal(merged.workspace.mistakes.length, 2);
+  assert.equal(merged.workspace.history.length, 2);
+  assert.equal(merged.workspace.exams.length, 1);
+  assert.equal(merged.workspace.breaks.length, 2);
+  assert.equal(merged.workspace.settings.dailyMinutes, 60);
+  assert.equal(merged.workspace.settings.focusMinutes, 25);
+  assert.equal(merged.workspace.settings.reduceMotion, true);
+  assert.ok(merged.report.remappedIds >= 4);
+  assert.equal(merged.report.added.topics, 1);
+  assert.equal(merged.report.added.mistakes, 1);
+  assert.equal(merged.report.added.sessions, 1);
+  assert.equal(merged.report.added.breaks, 1);
+
+  const importedTopic = merged.workspace.topics.find(
+    (topic) => topic.name === 'Imported topic',
+  );
+  assert.ok(importedTopic);
+  assert.notEqual(importedTopic!.id, 'topic_collision');
+  assert.notEqual(importedTopic!.cards[0]?.id, 'card_collision');
+
+  const importedMistake = merged.workspace.mistakes.find(
+    (mistake) => mistake.prompt === 'Imported mistake',
+  );
+  assert.ok(importedMistake);
+  assert.equal(importedMistake!.topicId, importedTopic!.id);
+  assert.equal(importedMistake!.cardId, importedTopic!.cards[0]!.id);
+  assert.notEqual(importedMistake!.id, 'mistake_collision');
+
+  const importedSession = merged.workspace.history.find(
+    (session) => session.prompt === 'Imported prompt',
+  );
+  assert.ok(importedSession);
+  assert.equal(importedSession!.topicId, importedTopic!.id);
+  assert.equal(importedSession!.cardId, importedTopic!.cards[0]!.id);
+  assert.equal(importedSession!.mistakeId, importedMistake!.id);
+  assert.notEqual(importedSession!.id, 'session_collision');
+
+  const importedExam = merged.workspace.exams[0]!;
+  assert.deepEqual(importedExam.topicIds, [importedTopic!.id]);
+
+  migrateAndValidateWorkspace(merged.workspace);
+
+  const identical = mergeWorkspaces(current, current);
+  assert.equal(identical.workspace.topics.length, current.topics.length);
+  assert.equal(identical.report.added.topics, 0);
+  assert.ok(identical.report.skippedIdentical > 0);
+
+  const olderCandidate = parseImportJson(
+    serializeNativeBackup({ ...native, updatedAt: now - 10_000 }, now),
+    now,
+  );
+  assert.equal(isImportOlderThanCurrent(olderCandidate, native), true);
+
+  const store = new MemoryStore();
+  const storage = createWorkspaceStorageEngine(store);
+  const owner = 'user:transfer-test';
+  await storage.saveImportRecovery(owner, native);
+  const recovery = await storage.loadImportRecovery(owner);
+  assert.deepEqual(recovery, migrateAndValidateWorkspace(native));
+
+  await storage.reset(owner);
+  assert.equal(
+    await storage.loadImportRecovery(owner),
+    null,
+    'Workspace reset must remove import recovery snapshots.',
+  );
+
+  console.log('✓ native backup envelope round-trips through strict validation');
+  console.log('✓ raw native workspace import remains supported');
+  console.log('✓ exact web v3 fields migrate into native records');
+  console.log('✓ web all-subject exams preserve scope semantics');
+  console.log('✓ dangling web links are repaired without dropping durable records');
+  console.log('✓ transient web focus/review state is reported instead of guessed');
+  console.log('✓ legacy web v1/v2 topics, exams and history convert');
+  console.log('✓ invalid non-MYELIN JSON is rejected');
+  console.log('✓ merge preserves current settings and current records');
+  console.log('✓ conflicting IDs are remapped with linked references intact');
+  console.log('✓ identical records are skipped instead of duplicated');
+  console.log('✓ older-backup detection is explicit');
+  console.log('✓ pre-import recovery snapshots validate and reset cleanly');
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

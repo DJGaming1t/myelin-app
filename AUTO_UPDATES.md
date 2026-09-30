@@ -40,3 +40,12 @@ npm run eas:preview
 ```
 
 This gate is conservative on purpose. It may request a new APK for some dependency/config changes that would technically be OTA-safe, but it avoids sending an update that expects native code the installed build does not contain.
+
+
+## Native baseline safety
+
+The file `.eas/preview-native-baseline.txt` records the source commit whose native configuration matches the currently trusted preview APK.
+
+Automatic OTA publishing compares **all changes since that baseline**, not merely the latest commit. This prevents a dangerous sequence where one commit changes a native dependency, a later TypeScript-only commit looks harmless, and the later commit is accidentally published to an older incompatible APK.
+
+When a newly built preview APK has been installed and verified, update the baseline file to the exact source commit used for that APK. Do not advance it merely because a cloud build started.

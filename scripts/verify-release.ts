@@ -16,6 +16,8 @@ const app = json('app.json');
 const pkg = json('package.json');
 const release = read('RELEASE.md');
 const gitignore = read('.gitignore');
+const previewWorkflow = read('.github/workflows/publish-preview.yml');
+const previewBaseline = read('.eas/preview-native-baseline.txt').trim();
 
 assert(eas.build?.development?.developmentClient === true, 'Development client profile is missing.');
 assert(eas.build?.development?.distribution === 'internal', 'Development build is not internal.');
@@ -33,6 +35,15 @@ assert(pkg.scripts?.['eas:update:preview'], 'Preview update script is missing.')
 assert(gitignore.includes('*.jks') && gitignore.includes('*.key'), 'Signing/private key ignore rules are missing.');
 assert(release.includes('Google sign-in verification'), 'Release runbook is missing native auth verification.');
 assert(release.includes('Preview APK installs on a real Android device'), 'Release runbook lacks an on-device preview gate.');
+assert(/^[0-9a-f]{40}$/.test(previewBaseline), 'Preview native baseline must be a full Git commit SHA.');
+assert(
+  previewWorkflow.includes('git diff --name-only "$BASELINE" HEAD'),
+  'Preview updater must compare native changes against the installed-build baseline.',
+);
+assert(
+  previewWorkflow.includes('fetch-depth: 0'),
+  'Preview updater needs full history to validate the native baseline.',
+);
 
 const projectId = app.expo?.extra?.eas?.projectId;
 const updateUrl = app.expo?.updates?.url;

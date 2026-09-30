@@ -20,18 +20,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Detect native-sensitive changes
+      - name: Detect native-sensitive changes since preview baseline
         id: native
         shell: bash
         run: |
-          BEFORE="${{ github.event.before }}"
-          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            BEFORE="HEAD^"
+          BASELINE="$(tr -d '\r\n' < .eas/preview-native-baseline.txt)"
+          if [ -z "$BASELINE" ] || ! git cat-file -e "$BASELINE^{commit}" 2>/dev/null; then
+            echo "Preview native baseline is missing or invalid."
+            exit 1
           fi
 
-          CHANGED="$(git diff --name-only "$BEFORE" HEAD || true)"
+          echo "Preview native baseline: $BASELINE"
+          CHANGED="$(git diff --name-only "$BASELINE" HEAD || true)"
           echo "$CHANGED"
 
           if echo "$CHANGED" | grep -Eq '^(app\.json|eas\.json|package\.json|package-lock\.json|google-services\.json|android/|ios/)'; then
@@ -43,8 +45,9 @@ jobs:
       - name: Explain native-build requirement
         if: steps.native.outputs.requires_build == 'true'
         run: |
-          echo "Native-sensitive files changed, so this commit will not be published as an OTA update."
+          echo "Native-sensitive files changed since the preview APK baseline, so this branch is not OTA-compatible with that installed binary."
           echo "Create a new preview APK with: npm run eas:preview"
+          echo "After verifying that APK, advance .eas/preview-native-baseline.txt to the commit that produced it."
 
       - name: Expo token not configured yet
         if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN == ''

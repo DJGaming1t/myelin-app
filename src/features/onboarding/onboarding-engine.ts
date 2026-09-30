@@ -1,4 +1,4 @@
-import { WorkspaceState } from '@/src/data/schema';
+import { Topic, WorkspaceState } from '@/src/data/schema';
 
 export const ONBOARDING_VERSION = 1 as const;
 export const DAILY_CAPACITY_OPTIONS = [45, 60, 90, 120] as const;
@@ -71,4 +71,21 @@ export function shouldShowOnboarding(
 ) {
   if (record) return false;
   return !hasMeaningfulWorkspaceData(workspace);
+}
+
+export function applyOnboardingSetup(
+  workspace: WorkspaceState,
+  dailyMinutes: number,
+  firstTopic?: Topic,
+) {
+  workspace.settings.dailyMinutes = normalizeDailyCapacity(dailyMinutes);
+
+  if (
+    firstTopic &&
+    !workspace.topics.some((topic) => topic.id === firstTopic.id)
+  ) {
+    workspace.topics.push(firstTopic);
+  }
+
+  return workspace;
 }

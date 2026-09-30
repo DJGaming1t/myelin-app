@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   DAILY_CAPACITY_OPTIONS,
+  applyOnboardingSetup,
   normalizeDailyCapacity,
 } from '@/src/features/onboarding/onboarding-engine';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
@@ -93,28 +94,23 @@ export default function OnboardingScreen() {
     setFinishing(true);
     setError('');
 
-    const next = updateWorkspace((draft) => {
-      draft.settings.dailyMinutes = normalizeDailyCapacity(capacity);
+    const firstTopic = createFirstTopic
+      ? createTopic(
+          {
+            name: cleanName,
+            subject: cleanSubject,
+            status: 'new',
+            priority: 2,
+            estimate: Math.min(45, normalizeDailyCapacity(capacity)),
+            notes: '',
+          },
+          Date.now(),
+          topicId.current,
+        )
+      : undefined;
 
-      if (
-        createFirstTopic &&
-        !draft.topics.some((topic) => topic.id === topicId.current)
-      ) {
-        draft.topics.push(
-          createTopic(
-            {
-              name: cleanName,
-              subject: cleanSubject,
-              status: 'new',
-              priority: 2,
-              estimate: Math.min(45, normalizeDailyCapacity(capacity)),
-              notes: '',
-            },
-            Date.now(),
-            topicId.current,
-          ),
-        );
-      }
+    const next = updateWorkspace((draft) => {
+      applyOnboardingSetup(draft, capacity, firstTopic);
     });
 
     if (!next) {

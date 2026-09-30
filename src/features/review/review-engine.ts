@@ -178,6 +178,10 @@ export function reviewCounts(workspace: WorkspaceState, now = Date.now()) {
   return { due, total };
 }
 
+export function reviewAttemptAlreadyRecorded(workspace: WorkspaceState, attemptId: string) {
+  return workspace.history.some((entry) => entry.reviewAttemptId === attemptId);
+}
+
 export function confidenceLabel(confidence: Confidence) {
   if (confidence === 'sure') return 'Sure';
   if (confidence === 'partial') return 'Partly sure';

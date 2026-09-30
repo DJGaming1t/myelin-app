@@ -175,7 +175,7 @@ function buildCandidate(workspace: WorkspaceState, topic: Topic, now: number): T
 }
 
 function blockDuration(topic: Topic, targetFocus: number, repeat: number, available: number) {
-  const notionalRemaining = Math.max(10, topic.estimate - repeat * targetFocus);
+  const notionalRemaining = Math.max(5, topic.estimate - repeat * targetFocus);
   return Math.min(targetFocus, notionalRemaining, available);
 }
 

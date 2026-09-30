@@ -60,6 +60,34 @@ export default function DayMapScreen() {
     )
     .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
 
+  function startTask(taskId: string) {
+    const task = workspace!.tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    if (!task.topicId) {
+      router.push({
+        pathname: '/(app)/today/task/[taskId]',
+        params: { taskId },
+      });
+      return;
+    }
+
+    const planned =
+      taskRemainingMinutes(task) ||
+      task.estimatedMinutes ||
+      Math.max(5, Math.round((task.scheduledEnd - task.scheduledStart) / 60000)) ||
+      workspace!.settings.focusMinutes;
+
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        topicId: task.topicId,
+        taskId: task.id,
+        minutes: String(Math.max(5, Math.min(240, planned))),
+        breakMinutes: String(workspace!.settings.breakMinutes),
+      },
+    });
+  }
+
   function moveTask(taskId: string) {
     const task = workspace!.tasks.find((item) => item.id === taskId);
     if (!task) return;
@@ -260,6 +288,22 @@ export default function DayMapScreen() {
                       </Text>
                     </Pressable>
 
+                    <View style={styles.blockActions}>
+                      <Mini
+                        label={task.topicId ? 'Start Focus' : 'Open task'}
+                        onPress={() => startTask(task.id)}
+                      />
+                      <Mini
+                        label="Edit"
+                        onPress={() =>
+                          router.push({
+                            pathname: '/(app)/today/task/[taskId]',
+                            params: { taskId: task.id },
+                          })
+                        }
+                      />
+                    </View>
+
                     {entry.missed ? (
                       <View style={styles.missedActions}>
                         <Mini label="Move" onPress={() => moveTask(task.id)} />
@@ -451,7 +495,8 @@ const styles = StyleSheet.create({
   blockTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 4 },
   blockMeta: { color: colors.muted, fontSize: 9, marginTop: 4 },
   passed: { opacity: 0.42 },
-  missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  blockActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   mini: { minHeight: layout.minTouch, minWidth: 68, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
   miniText: { color: colors.muted, fontSize: 9, fontWeight: '700' },
   emptyCard: { marginTop: 8, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.lg },

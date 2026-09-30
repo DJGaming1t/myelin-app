@@ -4,7 +4,10 @@ import {
   examCalendarDaysUntil,
   examStatus,
 } from '@/src/features/exams/exam-engine';
-import { taskPlanningScore } from '@/src/features/planning/day-engine';
+import {
+  freeStudyWindows,
+  taskPlanningScore,
+} from '@/src/features/planning/day-engine';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
 export type PlanMode = 'study' | 'review';
@@ -282,21 +285,27 @@ function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number):
   };
 }
 
-function candidateDuration(candidate: Candidate, targetFocus: number, repeat: number, available: number) {
-  const notionalRemaining = Math.max(5, candidate.remainingMinutes - repeat * targetFocus);
-  return Math.min(targetFocus, notionalRemaining, available);
-}
-
 export function buildTodayPlan(
   workspace: WorkspaceState,
   now = Date.now(),
   budgetOverride?: number,
 ): TodayPlan {
-  const budgetMinutes = Math.max(
+  const configuredBudgetMinutes = Math.max(
     10,
     Math.min(720, Math.round(budgetOverride ?? workspace.settings.dailyMinutes)),
   );
-  const alreadyUsedMinutes = Math.min(budgetMinutes, minutesUsedToday(workspace, now));
+  const rawUsedMinutes = minutesUsedToday(workspace, now);
+  const freeWindows = freeStudyWindows(workspace, now, {
+    includeScheduledTasks: false,
+    from: now,
+    minMinutes: 5,
+  });
+  const futureFreeMinutes = freeWindows.reduce((sum, window) => sum + window.minutes, 0);
+  const budgetMinutes = Math.max(
+    0,
+    Math.min(configuredBudgetMinutes, rawUsedMinutes + futureFreeMinutes),
+  );
+  const alreadyUsedMinutes = Math.min(budgetMinutes, rawUsedMinutes);
   const remainingBudgetMinutes = Math.max(0, budgetMinutes - alreadyUsedMinutes);
 
   const configuredFocus = workspace.settings.focusMinutes;
@@ -334,6 +343,8 @@ export function buildTodayPlan(
 
   const blocks: PlanBlock[] = [];
   const repeats = new Map<string, number>();
+  const allocatedMinutes = new Map<string, number>();
+  const windowRemaining = freeWindows.map((window) => window.minutes);
   let used = 0;
   let lastSubject = '';
   let lastKey = '';
@@ -341,7 +352,9 @@ export function buildTodayPlan(
 
   while (deduped.length && used < remainingBudgetMinutes) {
     const breakCost = blocks.length ? breakMinutes : 0;
-    const availableForStudy = remainingBudgetMinutes - used - breakCost;
+    const budgetAvailable = remainingBudgetMinutes - used - breakCost;
+    const largestWindow = windowRemaining.length ? Math.max(...windowRemaining) : 0;
+    const availableForStudy = Math.min(budgetAvailable, largestWindow);
     if (availableForStudy < minimumUsefulBlock) break;
 
     const ranked = deduped
@@ -365,8 +378,13 @@ export function buildTodayPlan(
     const chosen = ranked[0];
     if (!chosen) break;
 
+    const alreadyAllocated = allocatedMinutes.get(chosen.candidate.key) ?? 0;
+    const candidateRemaining = Math.max(
+      minimumUsefulBlock,
+      chosen.candidate.remainingMinutes - alreadyAllocated,
+    );
     const minutes = Math.floor(
-      candidateDuration(chosen.candidate, targetFocusMinutes, chosen.repeat, availableForStudy),
+      Math.min(targetFocusMinutes, candidateRemaining, availableForStudy),
     );
     if (minutes < minimumUsefulBlock) {
       deduped.splice(deduped.indexOf(chosen.candidate), 1);
@@ -374,6 +392,16 @@ export function buildTodayPlan(
     }
 
     if (breakCost) used += breakCost;
+
+    const windowIndex = windowRemaining.findIndex((minutesLeft) => minutesLeft >= minutes);
+    if (windowIndex < 0) {
+      deduped.splice(deduped.indexOf(chosen.candidate), 1);
+      continue;
+    }
+    windowRemaining[windowIndex] = Math.max(
+      0,
+      windowRemaining[windowIndex]! - minutes - (blocks.length ? breakMinutes : 0),
+    );
 
     blocks.push({
       id: `${chosen.candidate.key}:${chosen.repeat + 1}`,
@@ -393,14 +421,17 @@ export function buildTodayPlan(
 
     used += minutes;
     repeats.set(chosen.candidate.key, chosen.repeat + 1);
+    allocatedMinutes.set(
+      chosen.candidate.key,
+      alreadyAllocated + minutes,
+    );
     lastSubject = chosen.candidate.subject;
     lastKey = chosen.candidate.key;
 
-    const maximumBlocks = Math.max(
-      1,
-      Math.min(3, Math.ceil(chosen.candidate.remainingMinutes / targetFocusMinutes)),
-    );
-    if ((repeats.get(chosen.candidate.key) ?? 0) >= maximumBlocks) {
+    const fullyAllocated =
+      (allocatedMinutes.get(chosen.candidate.key) ?? 0) >=
+      chosen.candidate.remainingMinutes;
+    if (fullyAllocated || (repeats.get(chosen.candidate.key) ?? 0) >= 4) {
       deduped.splice(deduped.indexOf(chosen.candidate), 1);
     }
   }

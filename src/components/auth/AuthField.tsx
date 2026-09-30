@@ -62,7 +62,7 @@ export function AuthField({ label, error, password, style, ...props }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '650', marginBottom: 7 },
+  label: { color: colors.muted, fontSize: 12, fontWeight: '600', marginBottom: 7 },
   inputWrap: {
     minHeight: 52,
     borderWidth: 1,

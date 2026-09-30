@@ -208,6 +208,9 @@ function session(raw: unknown, topicIds: Set<string>, cardIds: Set<string>, mist
     if (typeof s.hintUsed !== 'boolean') throw new Error('Invalid hint-used flag.');
     result.hintUsed = s.hintUsed;
   }
+  if (s.reviewAttemptId != null) {
+    result.reviewAttemptId = id(s.reviewAttemptId);
+  }
 
   return result;
 }

@@ -18,7 +18,7 @@ For a normal TypeScript/UI/logic commit on `expo-migration`:
 
 1. GitHub Actions checks out the commit.
 2. It verifies TypeScript and core preview-safe checks.
-3. It runs `eas update --channel preview`.
+3. It runs `eas update --channel preview --environment preview`.
 4. Compatible installed MYELIN preview builds receive the update through EAS Update.
 
 ## Native-change safety gate
@@ -49,3 +49,8 @@ The file `.eas/preview-native-baseline.txt` records the source commit whose nati
 Automatic OTA publishing compares **all changes since that baseline**, not merely the latest commit. This prevents a dangerous sequence where one commit changes a native dependency, a later TypeScript-only commit looks harmless, and the later commit is accidentally published to an older incompatible APK.
 
 When a newly built preview APK has been installed and verified, update the baseline file to the exact source commit used for that APK. Do not advance it merely because a cloud build started.
+
+
+## Environment parity
+
+SDK 55+ requires an explicit EAS environment when publishing updates. MYELIN publishes preview updates with `--environment preview` and production updates with `--environment production`, matching the environments used by the corresponding EAS Build profiles.

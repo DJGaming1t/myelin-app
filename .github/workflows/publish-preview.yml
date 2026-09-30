@@ -81,4 +81,4 @@ jobs:
 
       - name: Publish to preview channel
         if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
-        run: eas update --channel preview --message "Auto preview ${GITHUB_SHA::7}" --non-interactive
+        run: eas update --channel preview --environment preview --message "Auto preview ${GITHUB_SHA::7}" --non-interactive

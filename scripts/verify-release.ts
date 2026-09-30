@@ -32,6 +32,14 @@ assert(app.expo?.android?.package === 'com.djgaming1t.myelin', 'Android applicat
 assert(pkg.dependencies?.['expo-updates'], 'expo-updates is not installed.');
 assert(pkg.scripts?.['eas:preview'], 'Preview build script is missing.');
 assert(pkg.scripts?.['eas:update:preview'], 'Preview update script is missing.');
+assert(
+  pkg.scripts['eas:update:preview'].includes('--environment preview'),
+  'Preview updates must explicitly use the preview EAS environment on SDK 55+.',
+);
+assert(
+  pkg.scripts['eas:update:production'].includes('--environment production'),
+  'Production updates must explicitly use the production EAS environment on SDK 55+.',
+);
 assert(gitignore.includes('*.jks') && gitignore.includes('*.key'), 'Signing/private key ignore rules are missing.');
 assert(release.includes('Google sign-in verification'), 'Release runbook is missing native auth verification.');
 assert(release.includes('Preview APK installs on a real Android device'), 'Release runbook lacks an on-device preview gate.');
@@ -39,6 +47,10 @@ assert(/^[0-9a-f]{40}$/.test(previewBaseline), 'Preview native baseline must be 
 assert(
   previewWorkflow.includes('git diff --name-only "$BASELINE" HEAD'),
   'Preview updater must compare native changes against the installed-build baseline.',
+);
+assert(
+  previewWorkflow.includes('--environment preview'),
+  'Automatic preview updates must use the preview EAS environment.',
 );
 assert(
   previewWorkflow.includes('fetch-depth: 0'),

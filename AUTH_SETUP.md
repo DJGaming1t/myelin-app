@@ -60,3 +60,9 @@ Firebase Android/Web configuration files contain client identifiers rather than 
 - signing keys
 
 to the repository.
+
+## Current audit finding
+
+The checked-in `google-services.json` currently has a Web OAuth client (`client_type: 3`) but no Android OAuth client (`client_type: 1`). That is expected until the EAS keystore SHA-1 is registered.
+
+The preview APK can still be used to test local mode and email/password auth. Do not mark native Google sign-in as verified until a refreshed Firebase config contains the Android OAuth client and Google sign-in succeeds on the signed APK.

@@ -18,6 +18,7 @@ const release = read('RELEASE.md');
 const gitignore = read('.gitignore');
 const previewWorkflow = read('.github/workflows/publish-preview.yml');
 const previewBaseline = read('.eas/preview-native-baseline.txt').trim();
+const googleServices = json('google-services.json');
 
 assert(eas.build?.development?.developmentClient === true, 'Development client profile is missing.');
 assert(eas.build?.development?.distribution === 'internal', 'Development build is not internal.');
@@ -56,6 +57,21 @@ assert(
   previewWorkflow.includes('fetch-depth: 0'),
   'Preview updater needs full history to validate the native baseline.',
 );
+
+const androidGoogleClient = (googleServices.client ?? []).some((client: any) =>
+  (client.oauth_client ?? []).some((oauth: any) => oauth.client_type === 1),
+);
+if (!androidGoogleClient) {
+  console.warn(
+    'Native Google sign-in is not release-ready: google-services.json has no Android OAuth client (client_type 1). Register the EAS signing SHA-1 and refresh the Firebase config.',
+  );
+}
+
+if (!fs.existsSync(path.join(process.cwd(), 'package-lock.json'))) {
+  console.warn(
+    'Reproducible install warning: package-lock.json is not committed. Generate it with npm install and commit it before production release.',
+  );
+}
 
 const projectId = app.expo?.extra?.eas?.projectId;
 const updateUrl = app.expo?.updates?.url;

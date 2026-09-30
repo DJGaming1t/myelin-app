@@ -10,14 +10,14 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Separate expo-migration branch
 - [x] Expo + TypeScript + Expo Router foundation
 - [x] Shared MYELIN design tokens
-- [ ] Run clean install and Expo Doctor on a development machine
+- [x] Clean install and Expo Doctor completed on Windows development machine (21/21 checks passed)
 - [x] EAS build/update profiles and release runbook
-- [ ] Link the repository to the owning Expo/EAS project and write its generated project ID/update URL
+- [x] Repository config linked to @duckslord/myelin EAS project and generated project ID/update URL committed
 
 ## Feature parity
 - [x] Authentication shell
 - [x] Email/password authentication
-- [ ] Google authentication — web flow and native Android code wired; signing SHA-1 still required for runtime verification
+- [ ] Google authentication — web flow and native Android code wired; EAS signing SHA-1 must still be registered and refreshed google-services.json must contain an Android OAuth client
 - [x] Verification / password recovery
 - [x] Offline per-user data foundation
 - [x] Topics
@@ -40,7 +40,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Product polish — shared responsive shell, polished loading/error states, accessibility touch targets, system/user reduced-motion handling and a lower-frequency focus timer
 - [x] Release engineering scaffold — development/preview/production profiles, APK preview profile, update channels, runtime/version policy, release/privacy/store runbooks and verification
 - [ ] Final app icon and splash assets
-- [ ] Real Android preview build + on-device release verification
+- [ ] Real Android preview build + on-device release verification — first EAS APK build started; install/runtime checks still pending
 
 ## Safety gates before replacing the web app
 - [x] Existing web app stays deployable
@@ -51,3 +51,12 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] No private/admin Firebase keys in the client repository
 - [x] Accessibility / reduced-motion pass
 - [ ] Android production build passes
+
+## Audit blockers still open
+- [ ] Commit the generated `package-lock.json` so CI/EAS can use a reproducible dependency tree
+- [ ] Confirm GitHub Actions actually executes on a normal Git push; connector-created commits have not surfaced workflow runs
+- [ ] Register EAS Android signing SHA-1 in Firebase/Google Cloud and refresh `google-services.json`
+- [ ] Verify local data survives process kill/restart on a physical Android device
+- [ ] Verify notification permission, scheduled delivery and tap routing on Android 13+
+- [ ] Verify email/password and Google sign-in on the signed preview APK
+- [ ] Before any future native-runtime rebuild under the `appVersion` runtime policy, bump `expo.version`

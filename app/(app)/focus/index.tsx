@@ -37,6 +37,7 @@ function intParam(value: string | string[] | undefined, fallback: number) {
 export default function FocusScreen() {
   const params = useLocalSearchParams<{
     topicId?: string | string[];
+    taskId?: string | string[];
     minutes?: string | string[];
     breakMinutes?: string | string[];
   }>();
@@ -59,7 +60,9 @@ export default function FocusScreen() {
   const { session: activeReview } = useReview();
 
   const topicId = param(params.topicId);
+  const taskId = param(params.taskId);
   const topic = workspace ? findTopic(workspace, topicId) : null;
+  const task = workspace && taskId ? workspace.tasks.find((item) => item.id === taskId) ?? null : null;
   const plannedMinutes = Math.max(
     5,
     Math.min(240, intParam(params.minutes, workspace?.settings.focusMinutes ?? 45)),
@@ -96,6 +99,7 @@ export default function FocusScreen() {
 
     const next = await start({
       topicId: topic.id,
+      ...(task ? { taskId: task.id } : {}),
       plannedMinutes,
       breakMinutes,
       launchMode,
@@ -223,7 +227,10 @@ export default function FocusScreen() {
             contentContainerStyle={styles.setupContent}
             showsVerticalScrollIndicator={false}>
             <Text style={styles.eyebrow}>{topic.subject.toUpperCase()}</Text>
-            <Text style={styles.setupTitle}>{topic.name}</Text>
+            <Text style={styles.setupTitle}>{task?.title || topic.name}</Text>
+            {task ? (
+              <Text style={styles.taskContext}>Linked topic · {topic.name}</Text>
+            ) : null}
             <Text style={styles.setupSubtitle}>
               Decide the first tiny action before the timer starts. Make beginning obvious enough
               that you do not need to negotiate with yourself.
@@ -619,6 +626,7 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
   setupTitle: { color: colors.text, fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.2, marginTop: 8 },
   setupSubtitle: { color: colors.muted, fontSize: 12.5, lineHeight: 19, marginTop: 9, maxWidth: 540 },
+  taskContext: { color: colors.accent, fontSize: 10, fontWeight: '700', marginTop: 7 },
   planStrip: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
   metric: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12, justifyContent: 'space-between' },
   metricLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },

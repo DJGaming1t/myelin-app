@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { recordTaskMinutes, taskById } from '@/src/features/planning/task-engine';
 import { findTopic } from '@/src/features/topics/topic-operations';
 
 import {
@@ -28,6 +29,7 @@ import { FocusLaunchMode, FocusSessionState } from './types';
 
 type StartInput = {
   topicId: string;
+  taskId?: string;
   plannedMinutes: number;
   breakMinutes: number;
   launchMode: FocusLaunchMode;
@@ -139,8 +141,17 @@ export function FocusProvider({ children }: PropsWithChildren) {
       const topic = findTopic(workspace, input.topicId);
       if (!topic) return null;
 
+      const task = input.taskId ? taskById(workspace, input.taskId) : null;
+      if (
+        input.taskId &&
+        (!task || task.status !== 'open' || (task.topicId && task.topicId !== topic.id))
+      ) {
+        return null;
+      }
+
       const next = createFocusSession({
         topicId: topic.id,
+        ...(task ? { taskId: task.id } : {}),
         topicName: topic.name,
         subject: topic.subject,
         plannedMinutes: input.plannedMinutes,
@@ -214,6 +225,13 @@ export function FocusProvider({ children }: PropsWithChildren) {
             launchMode: current.launchMode,
             tinyStep: current.tinyStep,
           });
+          if (current.taskId) {
+            const task = taskById(draft, current.taskId);
+            if (task && task.status === 'open') {
+              recordTaskMinutes(task, actualMinutes, now);
+            }
+          }
+
           historyWritten = true;
         });
 

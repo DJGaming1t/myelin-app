@@ -18,6 +18,7 @@ function id(prefix: string, now: number) {
 
 export function createFocusSession(input: {
   topicId: string;
+  taskId?: string;
   topicName: string;
   subject: string;
   plannedMinutes: number;
@@ -36,6 +37,7 @@ export function createFocusSession(input: {
     version: FOCUS_SESSION_VERSION,
     id: input.id ?? id('focus', now),
     topicId: input.topicId,
+    ...(input.taskId ? { taskId: input.taskId } : {}),
     topicName: input.topicName,
     subject: input.subject,
     phase: 'focus',

@@ -81,6 +81,7 @@ export type StudySession = {
   endedAt?: number;
   launchMode?: 'full' | 'five-minute';
   tinyStep?: string;
+  hintUsed?: boolean;
 };
 
 export type BreakLog = {

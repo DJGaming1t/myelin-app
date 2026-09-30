@@ -18,6 +18,7 @@ import {
   ReviewChoice,
   applyReviewGrade,
   buildReviewQueue,
+  scheduleReview,
 } from './review-engine';
 import { reviewStorage } from './review-storage';
 import {
@@ -271,7 +272,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         const card = topic ? findQuestion(topic, item.cardId) : null;
         if (!topic || !card) return null;
 
-        const schedule = applyReviewGrade(topic, card, choice, now);
+        const schedule = scheduleReview(card, choice, now);
         const answerDraft = current.answerDraft;
         const confidence = current.confidence;
         const hintUsed = current.hintUsed;

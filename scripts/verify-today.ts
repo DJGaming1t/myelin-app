@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { createEmptyWorkspace, Topic } from '../src/data/schema';
 import {
@@ -34,6 +36,10 @@ function topic(
     cards: [],
     ...options,
   };
+}
+
+function read(relative: string) {
+  return fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
 }
 
 function main() {
@@ -215,7 +221,19 @@ function main() {
   console.log('✓ already-used time reduces remaining capacity');
   console.log('✓ snoozed topics stay out');
   console.log('✓ exhausted budget adds no fake work');
+  const todayScreen = read('app/(app)/today/index.tsx');
+  const planCard = read('src/features/today/PlanBlockCard.tsx');
+  assert.ok(todayScreen.includes('min left today'), 'Today does not show remaining daily capacity.');
+  assert.ok(todayScreen.includes('capacityTrack'), 'Today capacity progress indicator is missing.');
+  assert.ok(todayScreen.includes('maxWidth: layout.contentMax'), 'Today is not bounded responsively.');
+  assert.ok(todayScreen.includes('minHeight: layout.minTouch'), 'Today choices do not meet the shared touch target.');
+  assert.ok(planCard.includes('useReducedMotion()'), 'Plan cards ignore reduced-motion preference.');
+  assert.ok(planCard.includes('pressed && !reduceMotion && styles.pressedMotion'), 'Plan card press motion is not gated.');
+
   console.log('✓ small real topics remain schedulable');
+  console.log('✓ Today shows used/remaining capacity clearly');
+  console.log('✓ Today choices meet the 44-point touch target');
+  console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
 }
 
 main();

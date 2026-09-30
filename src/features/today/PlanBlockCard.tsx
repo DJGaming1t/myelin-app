@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PlanBlock } from './planner';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
 export function PlanBlockCard({
@@ -12,12 +13,18 @@ export function PlanBlockCard({
   index: number;
   onPress: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${block.topicName}, ${block.minutes} minutes`}
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+      style={({ pressed }) => [
+        styles.card,
+        pressed && styles.pressed,
+        pressed && !reduceMotion && styles.pressedMotion,
+      ]}>
       <View style={styles.indexWrap}>
         <Text style={styles.index}>{String(index + 1).padStart(2, '0')}</Text>
       </View>
@@ -55,7 +62,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     marginBottom: 9,
   },
-  pressed: { opacity: 0.72, transform: [{ scale: 0.995 }] },
+  pressed: { opacity: 0.72 },
+  pressedMotion: { transform: [{ scale: 0.995 }] },
   indexWrap: {
     width: 38,
     height: 38,

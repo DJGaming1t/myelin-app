@@ -22,7 +22,7 @@ import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { PlanBlockCard } from '@/src/features/today/PlanBlockCard';
 import { buildTodayPlan, PlanBlock } from '@/src/features/today/planner';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const BUDGETS = [30, 60, 90, 120, 180];
 
@@ -58,6 +58,8 @@ export default function TodayScreen() {
 
   const next = plan.nextBlock;
   const budgetFinished = plan.remainingBudgetMinutes <= 0;
+  const usedRatio = Math.min(1, plan.alreadyUsedMinutes / Math.max(1, plan.budgetMinutes));
+  const usedPercent = Math.round(usedRatio * 100);
 
   function setBudget(minutes: number) {
     updateWorkspace((draft) => {
@@ -131,6 +133,21 @@ export default function TodayScreen() {
                 <Text style={styles.energyBadgeText}>
                   {workspace.settings.energy === 'low' ? 'Low energy' : 'Normal energy'}
                 </Text>
+              </View>
+            </View>
+
+            <View
+              accessible
+              accessibilityLabel={`${plan.alreadyUsedMinutes} of ${plan.budgetMinutes} minutes used today. ${plan.remainingBudgetMinutes} minutes remaining.`}
+              style={styles.capacityProgress}>
+              <View style={styles.capacityProgressCopy}>
+                <Text style={styles.capacityProgressTitle}>
+                  {budgetFinished ? 'Daily capacity used' : `${plan.remainingBudgetMinutes} min left today`}
+                </Text>
+                <Text style={styles.capacityProgressMeta}>{usedPercent}% used</Text>
+              </View>
+              <View style={styles.capacityTrack}>
+                <View style={[styles.capacityFill, { width: `${usedPercent}%` }]} />
               </View>
             </View>
 
@@ -395,7 +412,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1 },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 42 },
+  content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 42 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { color: colors.muted, fontSize: 12 },
   controlCard: {
@@ -408,6 +425,32 @@ const styles = StyleSheet.create({
   controlHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   controlEyebrow: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.2 },
   controlValue: { color: colors.text, fontSize: 22, fontWeight: '700', marginTop: 3 },
+  capacityProgress: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  capacityProgressCopy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 8,
+  },
+  capacityProgressTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
+  capacityProgressMeta: { color: colors.subtle, fontSize: 9, fontWeight: '700' },
+  capacityTrack: {
+    height: 6,
+    overflow: 'hidden',
+    borderRadius: 999,
+    backgroundColor: colors.lineStrong,
+  },
+  capacityFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+  },
   energyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -424,7 +467,7 @@ const styles = StyleSheet.create({
   budgetRow: { gap: 7, paddingTop: spacing.md, paddingBottom: 4 },
   choice: {
     minWidth: 48,
-    minHeight: 37,
+    minHeight: layout.minTouch,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
@@ -433,7 +476,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  choiceCompact: { minHeight: 34, minWidth: 62 },
+  choiceCompact: { minHeight: layout.minTouch, minWidth: 68 },
   choiceActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
   choiceText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   choiceTextActive: { color: colors.accent },

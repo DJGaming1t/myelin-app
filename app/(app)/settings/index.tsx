@@ -251,6 +251,24 @@ export default function SettingsScreen() {
           </Section>
 
           <Section
+            title="Help & tutorial"
+            subtitle="Revisit how MYELIN works without resetting setup or touching your study data.">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View MYELIN tutorial again"
+              onPress={() => router.push('/(app)/settings/tutorial')}
+              style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.transferTitle}>View tutorial again</Text>
+                <Text style={styles.transferText}>
+                  Active recall, realistic planning, focus and review
+                </Text>
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+            </Pressable>
+          </Section>
+
+          <Section
             title="Account & session"
             subtitle={
               localMode

@@ -165,3 +165,23 @@ function main() {
 }
 
 main();
+
+
+const replayScreen = read('app/(app)/settings/tutorial.tsx');
+const settingsScreen = read('app/(app)/settings/index.tsx');
+
+assert(
+  settingsScreen.includes("router.push('/(app)/settings/tutorial')"),
+  'Settings does not expose tutorial replay.',
+);
+assert(
+  replayScreen.includes('Tutorial replay is read-only'),
+  'Tutorial replay does not clearly state that it is read-only.',
+);
+assert(
+  !replayScreen.includes('updateWorkspace(') &&
+    !replayScreen.includes('finish(') &&
+    !replayScreen.includes('onboardingStorage'),
+  'Tutorial replay must not modify workspace or onboarding state.',
+);
+console.log('Tutorial replay verification passed.');

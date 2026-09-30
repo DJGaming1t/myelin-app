@@ -197,7 +197,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
-    let unsubscribe = () => undefined;
+    let unsubscribe: () => void = () => {};
     let active = true;
 
     subscribeToReminderResponses((kind) => {

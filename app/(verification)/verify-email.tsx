@@ -63,7 +63,7 @@ export default function VerifyEmailScreen() {
     <AuthScaffold
       eyebrow="ONE QUICK CHECK"
       title="Verify your email."
-      description="Verification helps prevent somebody else from creating an account using your email address.">
+      description="Verification helps prevent somebody else from creating an account using your email address. If the first email did not arrive, use Resend below.">
       <View style={styles.mailCard}>
         <Text style={styles.mailIcon}>✉</Text>
         <Text style={styles.mailLabel}>VERIFICATION SENT TO</Text>

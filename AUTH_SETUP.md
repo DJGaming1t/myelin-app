@@ -66,3 +66,21 @@ to the repository.
 The checked-in `google-services.json` currently has a Web OAuth client (`client_type: 3`) but no Android OAuth client (`client_type: 1`). That is expected until the EAS keystore SHA-1 is registered.
 
 The preview APK can still be used to test local mode and email/password auth. Do not mark native Google sign-in as verified until a refreshed Firebase config contains the Android OAuth client and Google sign-in succeeds on the signed APK.
+
+
+## Android Google sign-in release gate
+
+Google's account picker opening is not enough to prove authentication is configured. The installed APK's **package name and signing certificate** must match an Android OAuth client in Firebase/Google Cloud.
+
+For the EAS preview/production keystore:
+
+1. Get the Android signing certificate SHA-1 and SHA-256 from EAS credentials.
+2. In Firebase Console, open project settings for Android app `com.djgaming1t.myelin`.
+3. Add both SHA fingerprints.
+4. Download the refreshed `google-services.json`.
+5. Replace the repository copy and create a **new native APK**.
+6. Run `npm run verify:auth`.
+
+The refreshed file should contain an OAuth client with `client_type: 1` for the Android app in addition to the web OAuth client (`client_type: 3`). Until then, Google sign-in is considered **not runtime-verified**.
+
+Email/password authentication must also be enabled in Firebase Authentication → Sign-in method. MYELIN waits for Firebase's initial auth state before routing, and once Firebase successfully creates an email account, optional profile/verification-email follow-up failures no longer make the UI incorrectly report that account creation itself failed.

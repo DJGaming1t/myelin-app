@@ -137,8 +137,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setKeepSignedInState(keepSignedIn);
         const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const cleanName = name.trim();
-        if (cleanName) await updateProfile(credential.user, { displayName: cleanName });
-        await sendEmailVerification(credential.user);
+
+        // Once createUser succeeds, the account exists. Optional follow-up work
+        // must not make the UI claim account creation failed.
+        if (cleanName) {
+          await updateProfile(credential.user, { displayName: cleanName }).catch(() => undefined);
+        }
+        await sendEmailVerification(credential.user).catch(() => undefined);
         setUser(credential.user);
       },
 
@@ -170,10 +175,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
           await GoogleOneTapSignIn.checkPlayServices();
 
-          let response = await GoogleOneTapSignIn.signIn();
-          if (isNoSavedCredentialFoundResponse(response)) {
-            response = await GoogleOneTapSignIn.createAccount();
-          }
+          // This action comes from an explicit button press, so start with the
+          // interactive account picker rather than a silent restore attempt.
+          // The package's own account-selection example uses this ordering.
+          let response = await GoogleOneTapSignIn.createAccount();
           if (isNoSavedCredentialFoundResponse(response)) {
             response = await GoogleOneTapSignIn.presentExplicitSignIn();
           }

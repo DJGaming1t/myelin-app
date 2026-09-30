@@ -19,6 +19,20 @@ export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | '
     return 'That password does not meet the current password requirements.';
   }
 
+  if (code.includes('operation-not-allowed')) {
+    return action === 'google'
+      ? 'Google sign-in is not enabled correctly in Firebase for this build.'
+      : 'Email/password sign-in is not enabled correctly in Firebase for this build.';
+  }
+
+  if (
+    code.includes('developer-error') ||
+    code.includes('DEVELOPER_ERROR') ||
+    code === '10'
+  ) {
+    return 'Google sign-in is not configured for this Android signing certificate yet. Register this APK’s SHA-1/SHA-256 in Firebase, download the updated google-services.json, and rebuild.';
+  }
+
   if (code === 'auth/native-google-setup-required') {
     return 'Google sign-in needs the Android development-build setup before it can run natively. Email sign-in is already available.';
   }

@@ -37,6 +37,9 @@ jobs:
       - name: TypeScript
         run: npx tsc --noEmit
 
+      - name: Authentication configuration
+        run: npm run verify:auth
+
       - name: Data isolation and recovery
         run: npm run verify:data
 

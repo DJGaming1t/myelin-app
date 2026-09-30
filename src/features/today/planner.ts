@@ -211,7 +211,7 @@ export function buildTodayPlan(
   let used = 0;
   let lastSubject = '';
   let lastTopicId = '';
-  const minimumUsefulBlock = 10;
+  const minimumUsefulBlock = 5;
 
   while (candidates.length && used < remainingBudgetMinutes) {
     const breakCost = blocks.length ? breakMinutes : 0;

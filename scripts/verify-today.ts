@@ -7,6 +7,7 @@ import { createEmptyWorkspace, Topic } from '../src/data/schema';
 import {
   buildTodayPlan,
   minutesUsedToday,
+  nextLocalDayStart,
   startOfLocalDay,
 } from '../src/features/today/planner';
 
@@ -178,6 +179,14 @@ function main() {
   assert.equal(usedPlan.remainingBudgetMinutes, 50);
   assert.ok(usedPlan.plannedTotalMinutes <= 50);
 
+  const nextDay = nextLocalDayStart(now);
+  assert.ok(nextDay > now, 'Next-day snooze boundary must be in the future.');
+  assert.equal(
+    startOfLocalDay(nextDay),
+    nextDay,
+    'Deferred-for-today topics should return exactly at the next local day boundary.',
+  );
+
   const snoozed = createEmptyWorkspace(now - DAY);
   snoozed.settings.dailyMinutes = 60;
   snoozed.topics.push(
@@ -229,11 +238,15 @@ function main() {
   assert.ok(todayScreen.includes('minHeight: layout.minTouch'), 'Today choices do not meet the shared touch target.');
   assert.ok(planCard.includes('useReducedMotion()'), 'Plan cards ignore reduced-motion preference.');
   assert.ok(planCard.includes('pressed && !reduceMotion && styles.pressedMotion'), 'Plan card press motion is not gated.');
+  assert.ok(todayScreen.includes('deferForToday(next)'), 'Today is missing the defer-for-today action.');
+  assert.ok(todayScreen.includes('undoDefer'), 'Today defer action is missing undo.');
+  assert.ok(todayScreen.includes('nextLocalDayStart(Date.now())'), 'Today does not defer until the next local day.');
 
   console.log('✓ small real topics remain schedulable');
   console.log('✓ Today shows used/remaining capacity clearly');
   console.log('✓ Today choices meet the 44-point touch target');
   console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
+  console.log('✓ recommended blocks can be deferred for today and undone');
 }
 
 main();

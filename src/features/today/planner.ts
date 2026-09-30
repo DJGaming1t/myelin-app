@@ -52,6 +52,15 @@ export function startOfLocalDay(now: number) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
+export function nextLocalDayStart(now: number) {
+  const date = new Date(now);
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + 1,
+  ).getTime();
+}
+
 export function minutesUsedToday(workspace: WorkspaceState, now: number) {
   const start = startOfLocalDay(now);
   const study = workspace.history

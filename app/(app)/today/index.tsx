@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -21,7 +21,7 @@ import { useFocus } from '@/src/features/focus/FocusProvider';
 import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { PlanBlockCard } from '@/src/features/today/PlanBlockCard';
-import { buildTodayPlan, PlanBlock } from '@/src/features/today/planner';
+import { buildTodayPlan, nextLocalDayStart, PlanBlock } from '@/src/features/today/planner';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const BUDGETS = [30, 60, 90, 120, 180];
@@ -30,6 +30,11 @@ export default function TodayScreen() {
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
+  const [lastDeferred, setLastDeferred] = useState<{
+    topicId: string;
+    topicName: string;
+    previousSnoozeUntil: number;
+  } | null>(null);
   const now = Date.now();
 
   const plan = useMemo(
@@ -71,6 +76,31 @@ export default function TodayScreen() {
     updateWorkspace((draft) => {
       draft.settings.energy = energy;
     });
+  }
+
+  function deferForToday(block: PlanBlock) {
+    const topic = workspace.topics.find((item) => item.id === block.topicId);
+    if (!topic) return;
+
+    const previousSnoozeUntil = topic.snoozeUntil;
+    updateWorkspace((draft) => {
+      const target = draft.topics.find((item) => item.id === block.topicId);
+      if (target) target.snoozeUntil = nextLocalDayStart(Date.now());
+    });
+    setLastDeferred({
+      topicId: block.topicId,
+      topicName: block.topicName,
+      previousSnoozeUntil,
+    });
+  }
+
+  function undoDefer() {
+    if (!lastDeferred) return;
+    updateWorkspace((draft) => {
+      const target = draft.topics.find((item) => item.id === lastDeferred.topicId);
+      if (target) target.snoozeUntil = lastDeferred.previousSnoozeUntil;
+    });
+    setLastDeferred(null);
   }
 
   function startBlock(block: PlanBlock, selectedBreakMinutes: number) {
@@ -256,6 +286,24 @@ export default function TodayScreen() {
             </Pressable>
           ) : null}
 
+          {lastDeferred ? (
+            <View style={styles.deferUndo}>
+              <View style={styles.deferUndoCopy}>
+                <Text style={styles.deferUndoTitle}>Deferred for today</Text>
+                <Text style={styles.deferUndoText} numberOfLines={1}>
+                  {lastDeferred.topicName}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Undo deferring ${lastDeferred.topicName}`}
+                onPress={undoDefer}
+                style={({ pressed }) => [styles.deferUndoButton, pressed && styles.pressed]}>
+                <Text style={styles.deferUndoButtonText}>Undo</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <Text style={styles.sectionLabel}>NEXT MOVE</Text>
 
           {budgetFinished ? (
@@ -268,10 +316,7 @@ export default function TodayScreen() {
               </Text>
             </View>
           ) : next ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => startBlock(next, plan.breakMinutes)}
-              style={({ pressed }) => [styles.nextCard, pressed && styles.pressed]}>
+            <View style={styles.nextCard}>
               <View style={styles.nextTop}>
                 <View>
                   <Text style={styles.nextSubject}>{next.subject.toUpperCase()}</Text>
@@ -288,19 +333,32 @@ export default function TodayScreen() {
               <Text style={styles.nextTitle}>{next.topicName}</Text>
               <Text style={styles.nextReason}>{next.reasons.join(' · ')}</Text>
 
-              <View style={styles.nextAction}>
-                <Text style={styles.nextActionText}>
-                  {activeReview
-                    ? 'Resume review'
-                    : activeFocus
-                      ? 'Resume focus'
-                      : next.mode === 'review' && next.dueQuestionCount > 0
-                        ? 'Start recall'
-                        : 'Start focus'}
-                </Text>
-                <Text style={styles.nextArrow}>→</Text>
+              <View style={styles.nextActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Defer ${next.topicName} for today`}
+                  onPress={() => deferForToday(next)}
+                  style={({ pressed }) => [styles.deferButton, pressed && styles.pressed]}>
+                  <Text style={styles.deferButtonText}>Not now</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Start ${next.topicName}`}
+                  onPress={() => startBlock(next, plan.breakMinutes)}
+                  style={({ pressed }) => [styles.nextAction, pressed && styles.pressed]}>
+                  <Text style={styles.nextActionText}>
+                    {activeReview
+                      ? 'Resume review'
+                      : activeFocus
+                        ? 'Resume focus'
+                        : next.mode === 'review' && next.dueQuestionCount > 0
+                          ? 'Start recall'
+                          : 'Start focus'}
+                  </Text>
+                  <Text style={styles.nextArrow}>→</Text>
+                </Pressable>
               </View>
-            </Pressable>
+            </View>
           ) : (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>Nothing to plan yet.</Text>
@@ -582,6 +640,30 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: 10,
   },
+  deferUndo: {
+    minHeight: 58,
+    marginTop: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.20)',
+    backgroundColor: colors.panel,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deferUndoCopy: { flex: 1 },
+  deferUndoTitle: { color: colors.text, fontSize: 10.5, fontWeight: '800' },
+  deferUndoText: { color: colors.subtle, fontSize: 9, marginTop: 3 },
+  deferUndoButton: {
+    minHeight: layout.minTouch,
+    minWidth: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
+  },
+  deferUndoButtonText: { color: colors.accent, fontSize: 10, fontWeight: '800' },
   nextCard: {
     borderRadius: radius.lg,
     borderWidth: 1,

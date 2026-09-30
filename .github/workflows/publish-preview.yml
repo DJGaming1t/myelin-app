@@ -1,0 +1,81 @@
+name: Publish MYELIN preview update
+
+on:
+  push:
+    branches:
+      - expo-migration
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Detect native-sensitive changes
+        id: native
+        shell: bash
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="HEAD^"
+          fi
+
+          CHANGED="$(git diff --name-only "$BEFORE" HEAD || true)"
+          echo "$CHANGED"
+
+          if echo "$CHANGED" | grep -Eq '^(app\.json|eas\.json|package\.json|package-lock\.json|google-services\.json|android/|ios/)'; then
+            echo "requires_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "requires_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Explain native-build requirement
+        if: steps.native.outputs.requires_build == 'true'
+        run: |
+          echo "Native-sensitive files changed, so this commit will not be published as an OTA update."
+          echo "Create a new preview APK with: npm run eas:preview"
+
+      - name: Expo token not configured yet
+        if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN == ''
+        run: |
+          echo "EXPO_TOKEN is not configured in GitHub Actions yet."
+          echo "Add it as a repository secret named EXPO_TOKEN to enable automatic preview updates."
+
+      - name: Use Node.js
+        if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup EAS
+        if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
+        run: npm install --no-audit --no-fund
+
+      - name: Verify update-safe source
+        if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
+        run: |
+          npx tsc --noEmit
+          npm run verify:today
+          npm run verify:polish
+
+      - name: Publish to preview channel
+        if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
+        run: eas update --channel preview --message "Auto preview ${GITHUB_SHA::7}" --non-interactive

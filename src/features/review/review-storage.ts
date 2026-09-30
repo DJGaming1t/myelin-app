@@ -87,6 +87,7 @@ export function validateReviewSession(raw: unknown): ReviewSessionState {
     confidence,
     hintUsed: state.hintUsed === true,
     cardStartedAt: number(state.cardStartedAt, 'card start time', 1, Number.MAX_SAFE_INTEGER),
+    attemptId: text(state.attemptId, 'review attempt id', 120),
     completedCards: number(state.completedCards ?? 0, 'completed cards', 0, 100),
   };
 }

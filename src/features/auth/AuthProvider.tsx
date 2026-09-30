@@ -78,19 +78,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let mounted = true;
 
-    Promise.all([
-      AsyncStorage.getItem(LOCAL_MODE_KEY),
-      AsyncStorage.getItem(KEEP_SIGNED_IN_KEY),
-    ])
-      .then(([localValue, keepValue]) => {
-        if (!mounted) return;
-        setLocalMode(localValue === '1');
-        setKeepSignedInState(keepValue === '1');
-      })
-      .finally(() => {
-        if (mounted) setReady(true);
-      });
-
     const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
       if (!mounted) return;
       setUser(nextUser);
@@ -98,8 +85,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setLocalMode(false);
         await AsyncStorage.removeItem(LOCAL_MODE_KEY);
       }
-      setReady(true);
     });
+
+    Promise.all([
+      AsyncStorage.getItem(LOCAL_MODE_KEY),
+      AsyncStorage.getItem(KEEP_SIGNED_IN_KEY),
+      auth.authStateReady(),
+    ])
+      .then(async ([localValue, keepValue]) => {
+        if (!mounted) return;
+
+        const restoredUser = auth.currentUser;
+        setUser(restoredUser);
+        setKeepSignedInState(keepValue === '1');
+        setLocalMode(restoredUser ? false : localValue === '1');
+
+        if (restoredUser && localValue === '1') {
+          await AsyncStorage.removeItem(LOCAL_MODE_KEY);
+        }
+
+        if (mounted) setReady(true);
+      })
+      .catch(() => {
+        if (mounted) setReady(true);
+      });
 
     return () => {
       mounted = false;

@@ -26,11 +26,13 @@ export function PulseHalo({ children, active = true, style }: Props) {
         Animated.timing(pulse, {
           toValue: 1,
           duration: 1900,
+          isInteraction: false,
           useNativeDriver: true,
         }),
         Animated.timing(pulse, {
           toValue: 0,
           duration: 1900,
+          isInteraction: false,
           useNativeDriver: true,
         }),
       ]),
@@ -56,10 +58,6 @@ export function PulseHalo({ children, active = true, style }: Props) {
                   }),
                 },
               ],
-              shadowOpacity: pulse.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.16, 0.34],
-              }),
             }
           : null,
       ]}>
@@ -74,6 +72,7 @@ const styles = StyleSheet.create({
   },
   active: {
     shadowColor: colors.accent,
+    shadowOpacity: 0.24,
     shadowRadius: 30,
     elevation: 8,
   },

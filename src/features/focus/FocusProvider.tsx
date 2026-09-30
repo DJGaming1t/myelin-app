@@ -56,7 +56,7 @@ function historyId(now: number) {
 }
 
 export function FocusProvider({ children }: PropsWithChildren) {
-  const { ownerKey, workspace, updateWorkspace } = useWorkspace();
+  const { ownerKey, workspace, updateWorkspace, waitForSaves } = useWorkspace();
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<FocusSessionState | null>(null);
   const sessionRef = useRef<FocusSessionState | null>(null);
@@ -184,7 +184,8 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
         const actualMinutes = focusActualMinutes(current, now);
 
-        updateWorkspace((draft) => {
+        let historyWritten = false;
+        const updated = updateWorkspace((draft) => {
           const topic = findTopic(draft, current.topicId);
           if (!topic) return;
 
@@ -207,8 +208,18 @@ export function FocusProvider({ children }: PropsWithChildren) {
             launchMode: current.launchMode,
             tinyStep: current.tinyStep,
           });
+          historyWritten = true;
         });
 
+        if (!updated || !historyWritten) {
+          await commitSession(null);
+          return;
+        }
+
+        // The durable history write must win before the recoverable focus
+        // session advances to break. Otherwise a process kill can leave the
+        // session marked logged while the study record never reached storage.
+        await waitForSaves();
         await commitSession(beginBreak(current, actualMinutes, now));
       },
 
@@ -221,6 +232,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
           updateWorkspace((draft) => {
             draft.breaks.push({ at: now, minutes });
           });
+          await waitForSaves();
         }
 
         await commitSession(null);
@@ -234,6 +246,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
             updateWorkspace((draft) => {
               draft.breaks.push({ at: now, minutes });
             });
+            await waitForSaves();
           }
         }
         await commitSession(null);
@@ -243,7 +256,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
         await commitSession(null);
       },
     }),
-    [commitSession, ready, session, start, transform, updateWorkspace],
+    [commitSession, ready, session, start, transform, updateWorkspace, waitForSaves],
   );
 
   return <FocusContext.Provider value={value}>{children}</FocusContext.Provider>;

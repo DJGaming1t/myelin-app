@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { workspaceOwnerKey } from '../src/data/owner';
@@ -158,3 +160,17 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+
+const workspaceProviderSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/data/WorkspaceProvider.tsx'),
+  'utf8',
+);
+assert.ok(
+  workspaceProviderSource.includes('const queuedSave = saveQueue.current'),
+  'Workspace saves should keep a rejectable latest-save promise.',
+);
+assert.ok(
+  workspaceProviderSource.includes('await saveQueue.current.catch(() => undefined)'),
+  'Workspace reset should wait for already-started writes.',
+);

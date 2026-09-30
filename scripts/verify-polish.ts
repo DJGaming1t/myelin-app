@@ -54,6 +54,8 @@ assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are mis
 assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');
 assert(pulseHalo.includes('Animated.loop'), 'Focus breathing halo animation is missing.');
 assert(pulseHalo.includes('reduceMotion'), 'Focus breathing halo ignores reduced-motion.');
+assert(pulseHalo.includes('isInteraction: false'), 'Looping focus motion should not hold an interaction handle.');
+assert(!pulseHalo.includes('shadowOpacity: pulse.interpolate'), 'Native-driven focus motion must not animate shadow opacity.');
 assert(animatedProgress.includes('Animated.timing'), 'Animated progress primitive is missing.');
 assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
 assert(today.includes('nextGlow'), 'Today next-move card lacks focal visual treatment.');

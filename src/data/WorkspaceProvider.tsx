@@ -126,11 +126,15 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     setWorkspace(next);
     setSaveError('');
 
-    saveQueue.current = saveQueue.current
-      .then(() => workspaceStorage.save(currentOwner, next))
-      .catch((error) => {
-        setSaveError(error instanceof Error ? error.message : 'Could not save this workspace.');
-      });
+    const queuedSave = saveQueue.current
+      .catch(() => undefined)
+      .then(() => workspaceStorage.save(currentOwner, next));
+
+    saveQueue.current = queuedSave;
+    void queuedSave.catch((error) => {
+      if (ownerKeyRef.current !== currentOwner) return;
+      setSaveError(error instanceof Error ? error.message : 'Could not save this workspace.');
+    });
 
     return next;
   }, []);
@@ -179,6 +183,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     setSaveError('');
 
     try {
+      // Let an already-started write finish before deleting this workspace so
+      // a late pending save cannot recreate data after a reset.
+      await saveQueue.current.catch(() => undefined);
       const fresh = await workspaceStorage.reset(currentOwner);
       if (ownerKeyRef.current !== currentOwner) return;
       workspaceRef.current = fresh;

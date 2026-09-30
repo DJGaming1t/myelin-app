@@ -227,6 +227,9 @@ export async function subscribeToReminderResponses(
     if (!data || data.myelin !== true) return;
     if (data.kind === 'review' || data.kind === 'exam') {
       onOpen(data.kind);
+      // Consuming the response prevents the same old notification tap from
+      // routing the user again on a later ordinary app launch.
+      void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
     }
   };
 

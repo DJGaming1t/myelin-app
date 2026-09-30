@@ -316,3 +316,13 @@ function main() {
 }
 
 main();
+
+
+const notificationRuntimeSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/notifications/notification-runtime.ts'),
+  'utf8',
+);
+assert.ok(
+  notificationRuntimeSource.includes('clearLastNotificationResponseAsync'),
+  'Handled notification taps should be consumed so they are not replayed on later launches.',
+);

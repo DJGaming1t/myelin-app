@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createEmptyWorkspace } from '../src/data/schema';
@@ -208,3 +210,13 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+
+const focusProviderSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/focus/FocusProvider.tsx'),
+  'utf8',
+);
+assert.ok(
+  focusProviderSource.includes('await waitForSaves();'),
+  'Focus completion must persist workspace history before advancing recovery state.',
+);

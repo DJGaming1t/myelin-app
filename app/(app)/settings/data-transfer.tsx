@@ -155,6 +155,15 @@ export default function DataTransferScreen() {
             not included.
           </Text>
 
+          {focusSession || reviewSession ? (
+            <View style={styles.activeSessionNote}>
+              <Text style={styles.activeSessionTitle}>Active session not included</Text>
+              <Text style={styles.activeSessionText}>
+                Finish or discard the current Focus/Review session first if you want the backup to reflect all completed work. In-progress timer/draft state is stored separately from the workspace backup.
+              </Text>
+            </View>
+          ) : null}
+
           <Pressable
             accessibilityRole="button"
             disabled={busy}
@@ -323,6 +332,16 @@ const styles = StyleSheet.create({
   cardEyebrow: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   cardTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: 5 },
   cardText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 5 },
+  activeSessionNote: {
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,161,145,0.22)',
+    backgroundColor: 'rgba(255,161,145,0.035)',
+    padding: 10,
+  },
+  activeSessionTitle: { color: colors.danger, fontSize: 9.5, fontWeight: '700' },
+  activeSessionText: { color: colors.muted, fontSize: 9, lineHeight: 14, marginTop: 3 },
   primary: {
     minHeight: 48,
     marginTop: spacing.md,

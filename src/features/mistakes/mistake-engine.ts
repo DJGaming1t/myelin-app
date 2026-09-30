@@ -60,13 +60,31 @@ export function createMistake(
   };
 }
 
-export function applyMistakeInput(mistake: Mistake, input: MistakeInput) {
+export function applyMistakeInput(
+  mistake: Mistake,
+  input: MistakeInput,
+  now = Date.now(),
+) {
+  const nextPrompt = input.prompt.trim();
+  const nextCorrection = input.correction.trim();
+  const knowledgeChanged =
+    mistake.cardId !== input.cardId ||
+    mistake.prompt !== nextPrompt ||
+    mistake.correction !== nextCorrection;
+
   mistake.topicId = input.topicId;
   mistake.cardId = input.cardId;
-  mistake.prompt = input.prompt.trim();
+  mistake.prompt = nextPrompt;
   mistake.detail = input.detail.trim();
-  mistake.correction = input.correction.trim();
+  mistake.correction = nextCorrection;
   mistake.reason = input.reason;
+
+  if (knowledgeChanged && mistake.resolvedAt === 0) {
+    mistake.wins = 0;
+    mistake.lastWinDay = '';
+    mistake.intervalDays = 0;
+    mistake.dueAt = now;
+  }
 }
 
 export function findMistake(workspace: WorkspaceState, mistakeId: string) {
@@ -105,7 +123,9 @@ export function captureRecallMistake(
   if (existing) {
     existing.prompt = input.prompt.trim();
     existing.detail = input.response.trim();
-    if (!existing.correction.trim()) existing.correction = input.correction.trim();
+    if (existing.reason === 'recall' || !existing.correction.trim()) {
+      existing.correction = input.correction.trim();
+    }
     existing.wins = 0;
     existing.lastWinDay = '';
     existing.intervalDays = 0;

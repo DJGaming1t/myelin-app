@@ -1,0 +1,647 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import {
+  formatTimer,
+  timerIsComplete,
+  timerRemainingMs,
+} from '@/src/features/focus/focus-engine';
+import { useFocus } from '@/src/features/focus/FocusProvider';
+import { findTopic } from '@/src/features/topics/topic-operations';
+import { colors, radius, spacing } from '@/src/theme/tokens';
+
+function param(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value ?? '';
+}
+
+function intParam(value: string | string[] | undefined, fallback: number) {
+  const parsed = Number(param(value));
+  return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
+}
+
+export default function FocusScreen() {
+  const params = useLocalSearchParams<{
+    topicId?: string | string[];
+    minutes?: string | string[];
+    breakMinutes?: string | string[];
+  }>();
+
+  const { workspace } = useWorkspace();
+  const {
+    ready,
+    session,
+    start,
+    pause,
+    resume,
+    extendLaunch,
+    park,
+    removeParked,
+    completeFocus,
+    completeBreak,
+    skipBreak,
+    discard,
+  } = useFocus();
+
+  const topicId = param(params.topicId);
+  const topic = workspace ? findTopic(workspace, topicId) : null;
+  const plannedMinutes = Math.max(
+    5,
+    Math.min(240, intParam(params.minutes, workspace?.settings.focusMinutes ?? 45)),
+  );
+  const breakMinutes = Math.max(
+    1,
+    Math.min(30, intParam(params.breakMinutes, workspace?.settings.breakMinutes ?? 10)),
+  );
+
+  const [tinyStep, setTinyStep] = useState('');
+  const [distraction, setDistraction] = useState('');
+  const [now, setNow] = useState(Date.now());
+  const [finishing, setFinishing] = useState(false);
+  const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
+
+  useEffect(() => {
+    if (!session?.runningSince) return;
+    const timer = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, [session?.runningSince, session?.phase]);
+
+  useEffect(() => {
+    setNow(Date.now());
+  }, [session?.id, session?.phase, session?.plannedFocusMinutes]);
+
+  const remaining = useMemo(
+    () => (session ? timerRemainingMs(session, now) : 0),
+    [session, now],
+  );
+  const timerDone = session ? timerIsComplete(session, now) : false;
+
+  async function begin(launchMode: 'full' | 'five-minute') {
+    if (!topic) return;
+
+    const next = await start({
+      topicId: topic.id,
+      plannedMinutes,
+      breakMinutes,
+      launchMode,
+      tinyStep,
+    });
+
+    if (next) {
+      setNow(Date.now());
+      setFinishing(false);
+    }
+  }
+
+  async function addDistraction() {
+    const value = distraction.trim();
+    if (!value) return;
+    setDistraction('');
+    await park(value);
+  }
+
+  function requestFinishEarly() {
+    setFinishing(true);
+    void pause();
+  }
+
+  function requestDiscard() {
+    Alert.alert(
+      'Discard this focus session?',
+      'The timer and parked distractions will be removed. No study time will be added to history.',
+      [
+        { text: 'Keep session', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            await discard();
+            router.replace('/(app)/today');
+          },
+        },
+      ],
+    );
+  }
+
+  async function finishFocus() {
+    await completeFocus(effort, Date.now());
+    setFinishing(false);
+    setNow(Date.now());
+  }
+
+  async function finishBreak() {
+    await completeBreak(Date.now());
+    router.replace('/(app)/today');
+  }
+
+  async function leaveBreak() {
+    await skipBreak(Date.now());
+    router.replace('/(app)/today');
+  }
+
+  if (!ready || !workspace) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <Text style={styles.loading}>Restoring focus session…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!session) {
+    if (!topic) {
+      return (
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.setupPage}>
+            <TopBar label="Focus" onBack={() => router.replace('/(app)/today')} />
+            <View style={styles.missing}>
+              <Text style={styles.missingTitle}>Choose a topic first.</Text>
+              <Text style={styles.missingText}>
+                Start Focus from Today or from a topic so MYELIN knows what the block belongs to.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.replace('/(app)/today')}
+                style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+                <Text style={styles.primaryText}>Back to Today</Text>
+              </Pressable>
+            </View>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.setupPage}>
+          <TopBar label="Focus" onBack={() => router.back()} />
+
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.setupContent}
+            showsVerticalScrollIndicator={false}>
+            <Text style={styles.eyebrow}>{topic.subject.toUpperCase()}</Text>
+            <Text style={styles.setupTitle}>{topic.name}</Text>
+            <Text style={styles.setupSubtitle}>
+              Decide the first tiny action before the timer starts. Make beginning obvious enough
+              that you do not need to negotiate with yourself.
+            </Text>
+
+            <View style={styles.planStrip}>
+              <Metric label="FULL BLOCK" value={`${plannedMinutes} min`} />
+              <Metric label="BREAK" value={`${breakMinutes} min`} />
+            </View>
+
+            <Text style={styles.fieldLabel}>First tiny step</Text>
+            <TextInput
+              accessibilityLabel="First tiny step"
+              value={tinyStep}
+              onChangeText={setTinyStep}
+              placeholder="e.g. Solve question 1 without notes"
+              placeholderTextColor={colors.subtle}
+              selectionColor={colors.accent}
+              maxLength={500}
+              multiline
+              textAlignVertical="top"
+              style={styles.tinyInput}
+            />
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => begin('full')}
+              style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.primaryText}>Start {plannedMinutes}-minute focus</Text>
+                <Text style={styles.primarySubtext}>Commit to the full planned block</Text>
+              </View>
+              <Text style={styles.buttonArrow}>→</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => begin('five-minute')}
+              style={({ pressed }) => [styles.launchButton, pressed && styles.pressed]}>
+              <View style={styles.launchMark}>
+                <Text style={styles.launchMarkText}>5</Text>
+              </View>
+              <View style={styles.launchCopy}>
+                <Text style={styles.launchTitle}>Five-minute launch</Text>
+                <Text style={styles.launchText}>
+                  Only promise five minutes. If momentum arrives, continue into the full block.
+                </Text>
+              </View>
+            </Pressable>
+
+            <View style={styles.setupNote}>
+              <Text style={styles.setupNoteTitle}>Timer recovery is automatic</Text>
+              <Text style={styles.setupNoteText}>
+                If you leave MYELIN or the app is closed, the session is restored from timestamps
+                instead of resetting the countdown.
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (session.phase === 'break') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.sessionPage}>
+          <TopBar
+            label="Break"
+            onBack={() => router.replace('/(app)/today')}
+            helper="Timer stays active"
+          />
+
+          <View style={styles.timerArea}>
+            <Text style={styles.eyebrow}>RECOVERY</Text>
+            <Text style={styles.sessionTitle}>Leave the work alone.</Text>
+
+            <TimerDial
+              value={formatTimer(remaining)}
+              label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
+              complete={timerDone}
+            />
+
+            <Text style={styles.breakPrompt}>
+              Stand up, get water, look away from the screen. You do not need to earn the break.
+            </Text>
+
+            {timerDone ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={finishBreak}
+                style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                <Text style={styles.primaryText}>Finish break</Text>
+                <Text style={styles.buttonArrow}>→</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.timerActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={session.runningSince ? pause : resume}
+                  style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                  <Text style={styles.secondaryText}>{session.runningSince ? 'Pause' : 'Resume'}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={leaveBreak}
+                  style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                  <Text style={styles.secondaryText}>End break</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const canExtend =
+    session.launchMode === 'five-minute' &&
+    session.fullTargetMinutes > session.plannedFocusMinutes &&
+    timerDone;
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.sessionPage}>
+        <TopBar
+          label="Focus"
+          onBack={() => router.replace('/(app)/today')}
+          helper="Timer stays active"
+        />
+
+        <ScrollView
+          contentContainerStyle={styles.sessionContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.sessionHeading}>
+            <Text style={styles.eyebrow}>{session.subject.toUpperCase()}</Text>
+            <Text style={styles.sessionTitle}>{session.topicName}</Text>
+            {session.tinyStep ? (
+              <View style={styles.stepCard}>
+                <Text style={styles.stepLabel}>FIRST TINY STEP</Text>
+                <Text style={styles.stepText}>{session.tinyStep}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <TimerDial
+            value={formatTimer(remaining)}
+            label={
+              timerDone
+                ? session.launchMode === 'five-minute'
+                  ? 'FIVE MINUTES DONE'
+                  : 'BLOCK COMPLETE'
+                : session.runningSince
+                  ? 'FOCUSING'
+                  : 'PAUSED'
+            }
+            complete={timerDone}
+          />
+
+          {canExtend ? (
+            <View style={styles.finishPanel}>
+              <Text style={styles.finishTitle}>You started. Keep the momentum?</Text>
+              <Text style={styles.finishText}>
+                Continue this same session toward the original {session.fullTargetMinutes}-minute
+                block, or finish the five-minute launch here.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={extendLaunch}
+                style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                <Text style={styles.primaryText}>
+                  Continue to {session.fullTargetMinutes} minutes
+                </Text>
+                <Text style={styles.buttonArrow}>→</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setFinishing(true)}
+                style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
+                <Text style={styles.textButtonText}>Finish after five minutes</Text>
+              </Pressable>
+            </View>
+          ) : finishing || timerDone ? (
+            <View style={styles.finishPanel}>
+              <Text style={styles.finishTitle}>
+                {timerDone ? 'Block complete.' : 'Finish this block early?'}
+              </Text>
+              <Text style={styles.finishText}>
+                How demanding did this block feel? This is about workload calibration, not judging
+                whether you studied “well.”
+              </Text>
+              <View style={styles.effortRow}>
+                {([1, 2, 3, 4, 5] as const).map((value) => (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: effort === value }}
+                    accessibilityLabel={`Effort ${value} out of 5`}
+                    onPress={() => setEffort(value)}
+                    style={({ pressed }) => [
+                      styles.effort,
+                      effort === value && styles.effortActive,
+                      pressed && styles.pressed,
+                    ]}>
+                    <Text style={[styles.effortText, effort === value && styles.effortTextActive]}>
+                      {value}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={finishFocus}
+                style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                <Text style={styles.primaryText}>Complete focus</Text>
+                <Text style={styles.buttonArrow}>→</Text>
+              </Pressable>
+              {!timerDone ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setFinishing(false);
+                    void resume();
+                  }}
+                  style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
+                  <Text style={styles.textButtonText}>Keep going</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.timerActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={session.runningSince ? pause : resume}
+                style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                <Text style={styles.secondaryText}>{session.runningSince ? 'Pause' : 'Resume'}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={requestFinishEarly}
+                style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                <Text style={styles.secondaryText}>Finish early</Text>
+              </Pressable>
+            </View>
+          )}
+
+          <View style={styles.parking}>
+            <View style={styles.parkingHeader}>
+              <View>
+                <Text style={styles.parkingTitle}>Distraction parking</Text>
+                <Text style={styles.parkingSubtitle}>Capture it. Do not chase it.</Text>
+              </View>
+              <Text style={styles.parkCount}>{session.distractions.length}/30</Text>
+            </View>
+
+            <View style={styles.parkInputRow}>
+              <TextInput
+                accessibilityLabel="Park a distraction"
+                value={distraction}
+                onChangeText={setDistraction}
+                onSubmitEditing={addDistraction}
+                placeholder="Thing I want to check later…"
+                placeholderTextColor={colors.subtle}
+                selectionColor={colors.accent}
+                returnKeyType="done"
+                maxLength={240}
+                style={styles.parkInput}
+              />
+              <Pressable
+                accessibilityRole="button"
+                disabled={!distraction.trim()}
+                onPress={addDistraction}
+                style={({ pressed }) => [
+                  styles.parkAdd,
+                  !distraction.trim() && styles.disabled,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.parkAddText}>+</Text>
+              </Pressable>
+            </View>
+
+            {session.distractions.map((item) => (
+              <View key={item.id} style={styles.parkedItem}>
+                <View style={styles.parkDot} />
+                <Text style={styles.parkedText}>{item.text}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove parked distraction"
+                  hitSlop={8}
+                  onPress={() => removeParked(item.id)}>
+                  <Text style={styles.parkRemove}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={requestDiscard}
+            style={({ pressed }) => [styles.discard, pressed && styles.pressed]}>
+            <Text style={styles.discardText}>Discard session</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function TopBar({
+  label,
+  onBack,
+  helper,
+}: {
+  label: string;
+  onBack: () => void;
+  helper?: string;
+}) {
+  return (
+    <View style={styles.topBar}>
+      <Pressable accessibilityRole="button" onPress={onBack} hitSlop={10}>
+        <Text style={styles.back}>← {label === 'Focus' ? 'Today' : 'Today'}</Text>
+      </Pressable>
+      <View style={styles.topBrand}>
+        <View style={styles.brandDot} />
+        <Text style={styles.brand}>MYELIN</Text>
+      </View>
+      <Text style={styles.topHelper}>{helper ?? ''}</Text>
+    </View>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metric}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+    </View>
+  );
+}
+
+function TimerDial({
+  value,
+  label,
+  complete,
+}: {
+  value: string;
+  label: string;
+  complete?: boolean;
+}) {
+  return (
+    <View style={[styles.dial, complete && styles.dialComplete]}>
+      <View style={styles.dialInner}>
+        <Text style={[styles.timerValue, complete && styles.timerValueComplete]}>{value}</Text>
+        <Text style={styles.timerLabel}>{label}</Text>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bg },
+  setupPage: { flex: 1 },
+  sessionPage: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loading: { color: colors.muted, fontSize: 12 },
+  topBar: {
+    minHeight: 58,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  back: { color: colors.muted, fontSize: 11.5, fontWeight: '600' },
+  topBrand: { position: 'absolute', left: '50%', transform: [{ translateX: -35 }], flexDirection: 'row', alignItems: 'center', gap: 7 },
+  brandDot: { width: 6, height: 6, borderRadius: 6, backgroundColor: colors.accent },
+  brand: { color: colors.text, fontSize: 10.5, fontWeight: '800', letterSpacing: 2.2 },
+  topHelper: { color: colors.subtle, fontSize: 8.5 },
+  setupContent: { padding: spacing.lg, paddingBottom: 48 },
+  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
+  setupTitle: { color: colors.text, fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.2, marginTop: 8 },
+  setupSubtitle: { color: colors.muted, fontSize: 12.5, lineHeight: 19, marginTop: 9, maxWidth: 540 },
+  planStrip: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
+  metric: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12, justifyContent: 'space-between' },
+  metricLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  metricValue: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: spacing.xl, marginBottom: 8 },
+  tinyInput: { minHeight: 92, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: 13, color: colors.text, fontSize: 13, lineHeight: 19 },
+  primary: { minHeight: 56, marginTop: spacing.lg, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wideButton: { width: '100%' },
+  primaryText: { color: '#25140e', fontSize: 13, fontWeight: '800' },
+  primarySubtext: { color: 'rgba(37,20,14,0.72)', fontSize: 9.5, marginTop: 2 },
+  buttonArrow: { color: '#25140e', fontSize: 20 },
+  launchButton: { minHeight: 82, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.22)', backgroundColor: colors.accentSoft, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  launchMark: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
+  launchMarkText: { color: '#25140e', fontSize: 17, fontWeight: '800' },
+  launchCopy: { flex: 1 },
+  launchTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  launchText: { color: colors.muted, fontSize: 10.5, lineHeight: 15, marginTop: 3 },
+  setupNote: { marginTop: spacing.xl, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
+  setupNoteTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
+  setupNoteText: { color: colors.subtle, fontSize: 10, lineHeight: 16, marginTop: 4 },
+  missing: { flex: 1, justifyContent: 'center', padding: spacing.xl },
+  missingTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
+  missingText: { color: colors.muted, fontSize: 12, lineHeight: 19, marginTop: 8 },
+  sessionContent: { padding: spacing.lg, paddingBottom: 56 },
+  sessionHeading: { alignItems: 'center' },
+  sessionTitle: { color: colors.text, fontSize: 22, lineHeight: 27, fontWeight: '700', textAlign: 'center', marginTop: 7 },
+  stepCard: { marginTop: spacing.md, width: '100%', maxWidth: 500, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12 },
+  stepLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  stepText: { color: colors.text, fontSize: 11.5, lineHeight: 17, marginTop: 5, textAlign: 'center' },
+  timerArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  dial: { width: 228, height: 228, borderRadius: 228, marginTop: spacing.xl, borderWidth: 2, borderColor: 'rgba(255,128,91,0.25)', backgroundColor: 'rgba(255,128,91,0.035)', alignItems: 'center', justifyContent: 'center' },
+  dialComplete: { borderColor: 'rgba(180,216,174,0.34)', backgroundColor: 'rgba(180,216,174,0.04)' },
+  dialInner: { width: 188, height: 188, borderRadius: 188, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
+  timerValue: { color: colors.text, fontSize: 44, lineHeight: 50, fontWeight: '500', letterSpacing: -2 },
+  timerValueComplete: { color: colors.success },
+  timerLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.4, marginTop: 4 },
+  timerActions: { flexDirection: 'row', gap: 9, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
+  secondary: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  finishPanel: { width: '100%', maxWidth: 500, marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
+  finishTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  finishText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
+  effortRow: { flexDirection: 'row', gap: 7, marginTop: spacing.md },
+  effort: { flex: 1, height: 42, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
+  effortActive: { borderColor: 'rgba(255,128,91,0.5)', backgroundColor: colors.accentSoft },
+  effortText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
+  effortTextActive: { color: colors.accent },
+  textButton: { minHeight: 40, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  textButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
+  parking: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
+  parkingHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  parkingTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  parkingSubtitle: { color: colors.subtle, fontSize: 9.5, marginTop: 2 },
+  parkCount: { color: colors.subtle, fontSize: 9 },
+  parkInputRow: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
+  parkInput: { flex: 1, minHeight: 44, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, color: colors.text, fontSize: 11.5 },
+  parkAdd: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  parkAddText: { color: '#25140e', fontSize: 21, fontWeight: '600' },
+  disabled: { opacity: 0.35 },
+  parkedItem: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.line, marginTop: 9, paddingTop: 9 },
+  parkDot: { width: 5, height: 5, borderRadius: 5, backgroundColor: colors.accent },
+  parkedText: { flex: 1, color: colors.muted, fontSize: 10.5, lineHeight: 15 },
+  parkRemove: { color: colors.subtle, fontSize: 19 },
+  discard: { alignSelf: 'center', marginTop: spacing.xl, padding: 9 },
+  discardText: { color: colors.danger, fontSize: 10.5, fontWeight: '600' },
+  breakPrompt: { color: colors.muted, fontSize: 11, lineHeight: 18, textAlign: 'center', maxWidth: 380, marginTop: spacing.lg },
+  pressed: { opacity: 0.68, transform: [{ scale: 0.994 }] },
+});

@@ -39,6 +39,9 @@ jobs:
       - name: Today planner priorities and time realism
         run: npm run verify:today
 
+      - name: Focus recovery and timer behavior
+        run: npm run verify:focus
+
       - name: Expo Doctor
         run: npx expo-doctor
 

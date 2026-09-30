@@ -13,14 +13,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
 import { PlanBlockCard } from '@/src/features/today/PlanBlockCard';
-import { buildTodayPlan } from '@/src/features/today/planner';
+import { buildTodayPlan, PlanBlock } from '@/src/features/today/planner';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
 const BUDGETS = [30, 60, 90, 120, 180];
 
 export default function TodayScreen() {
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
+  const { session: activeFocus } = useFocus();
   const now = Date.now();
 
   const plan = useMemo(
@@ -54,10 +56,19 @@ export default function TodayScreen() {
     });
   }
 
-  function openTopic(topicId: string) {
+  function startFocus(block: PlanBlock, selectedBreakMinutes: number) {
+    if (activeFocus) {
+      router.push('/(app)/focus');
+      return;
+    }
+
     router.push({
-      pathname: '/(app)/topics/[topicId]',
-      params: { topicId },
+      pathname: '/(app)/focus',
+      params: {
+        topicId: block.topicId,
+        minutes: String(block.minutes),
+        breakMinutes: String(selectedBreakMinutes),
+      },
     });
   }
 
@@ -137,6 +148,21 @@ export default function TodayScreen() {
 
           {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
+          {activeFocus ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/focus')}
+              style={({ pressed }) => [styles.activeFocusCard, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.activeFocusLabel}>
+                  {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
+                </Text>
+                <Text style={styles.activeFocusTitle}>{activeFocus.topicName}</Text>
+              </View>
+              <Text style={styles.activeFocusArrow}>Resume →</Text>
+            </Pressable>
+          ) : null}
+
           <Text style={styles.sectionLabel}>NEXT MOVE</Text>
 
           {budgetFinished ? (
@@ -151,7 +177,7 @@ export default function TodayScreen() {
           ) : next ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => openTopic(next.topicId)}
+              onPress={() => startFocus(next, plan.breakMinutes)}
               style={({ pressed }) => [styles.nextCard, pressed && styles.pressed]}>
               <View style={styles.nextTop}>
                 <View>
@@ -170,7 +196,7 @@ export default function TodayScreen() {
               <Text style={styles.nextReason}>{next.reasons.join(' · ')}</Text>
 
               <View style={styles.nextAction}>
-                <Text style={styles.nextActionText}>Open this topic</Text>
+                <Text style={styles.nextActionText}>{activeFocus ? 'Resume focus' : 'Start focus'}</Text>
                 <Text style={styles.nextArrow}>→</Text>
               </View>
             </Pressable>
@@ -216,7 +242,7 @@ export default function TodayScreen() {
                       <View style={styles.breakLine} />
                     </View>
                   ) : null}
-                  <PlanBlockCard block={block} index={index} onPress={() => openTopic(block.topicId)} />
+                  <PlanBlockCard block={block} index={index} onPress={() => startFocus(block, plan.breakMinutes)} />
                 </View>
               ))}
 
@@ -353,6 +379,23 @@ const styles = StyleSheet.create({
   summaryLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
   summaryValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
   saveError: { color: colors.danger, fontSize: 10.5, marginTop: 8 },
+  activeFocusCard: {
+    marginTop: 10,
+    minHeight: 66,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.26)',
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  activeFocusLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  activeFocusTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 4 },
+  activeFocusArrow: { color: colors.accent, fontSize: 10.5, fontWeight: '700' },
   sectionLabel: {
     color: colors.subtle,
     fontSize: 9,

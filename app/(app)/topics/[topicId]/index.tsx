@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
 import { deleteQuestionFromWorkspace, deleteTopicFromWorkspace, findTopic } from '@/src/features/topics/topic-operations';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
@@ -15,9 +16,10 @@ export default function TopicDetailScreen() {
   const params = useLocalSearchParams<{ topicId?: string | string[] }>();
   const topicId = param(params.topicId);
   const { workspace, updateWorkspace, saveError } = useWorkspace();
+  const { session: activeFocus } = useFocus();
   const topic = workspace ? findTopic(workspace, topicId) : null;
 
-  if (!topic) {
+  if (!workspace || !topic) {
     return (
       <SafeAreaView style={styles.safe}>
         <ScreenHeader title="Topic not found" onBack={() => router.replace('/(app)/topics')} />
@@ -91,6 +93,39 @@ export default function TopicDetailScreen() {
           <Meta label="ESTIMATE" value={`${topic.estimate} min`} />
           <Meta label="QUESTIONS" value={String(topic.cards.length)} />
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            if (activeFocus) {
+              router.push('/(app)/focus');
+              return;
+            }
+
+            const target = workspace.settings.energy === 'low'
+              ? Math.max(5, Math.min(25, workspace.settings.focusMinutes, topic.estimate))
+              : Math.max(5, Math.min(workspace.settings.focusMinutes, topic.estimate));
+
+            router.push({
+              pathname: '/(app)/focus',
+              params: {
+                topicId,
+                minutes: String(target),
+                breakMinutes: String(workspace.settings.breakMinutes),
+              },
+            });
+          }}
+          style={({ pressed }) => [styles.focusButton, pressed && styles.pressed]}>
+          <View>
+            <Text style={styles.focusButtonLabel}>
+              {activeFocus ? 'SESSION ACTIVE' : 'FOCUS THIS TOPIC'}
+            </Text>
+            <Text style={styles.focusButtonText}>
+              {activeFocus ? `Resume ${activeFocus.topicName}` : 'Choose a tiny first step, then start'}
+            </Text>
+          </View>
+          <Text style={styles.focusButtonArrow}>→</Text>
+        </Pressable>
 
         <SectionHeader title="Notes" action="Edit topic" onAction={() =>
           router.push({
@@ -240,6 +275,23 @@ const styles = StyleSheet.create({
   metaLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.2 },
   metaValue: { color: colors.text, fontSize: 15, fontWeight: '700', marginTop: 9 },
   metaValueAccent: { color: colors.accent },
+  focusButton: {
+    marginTop: 10,
+    minHeight: 64,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.26)',
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  focusButtonLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  focusButtonText: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 4 },
+  focusButtonArrow: { color: colors.accent, fontSize: 19 },
   sectionHeader: {
     marginTop: spacing.xl,
     marginBottom: 10,

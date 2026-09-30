@@ -1,5 +1,5 @@
 export const WORKSPACE_FORMAT = 'myelin.native.workspace' as const;
-export const CURRENT_SCHEMA_VERSION = 1 as const;
+export const CURRENT_SCHEMA_VERSION = 2 as const;
 
 export type TopicStatus = 'new' | 'learning' | 'review';
 export type Priority = 1 | 2 | 3;
@@ -8,6 +8,43 @@ export type Confidence = 'sure' | 'partial' | 'unsure';
 export type SessionKind = 'study' | 'review';
 export type MistakeReason = 'concept' | 'calculation' | 'recall' | 'application';
 export type EnergyLevel = 'low' | 'normal';
+export type StudyTaskType = 'homework' | 'revision' | 'practice' | 'assignment' | 'personal';
+export type StudyTaskStatus = 'open' | 'completed';
+export type StudyTaskPlanState = 'inbox' | 'today' | 'scheduled' | 'postponed';
+export type CommitmentKind = 'school' | 'tuition' | 'coaching' | 'meal' | 'commute' | 'sleep' | 'appointment' | 'other';
+
+export type StudyTask = {
+  id: string;
+  title: string;
+  subject: string;
+  topicId: string | null;
+  examId: string | null;
+  type: StudyTaskType;
+  status: StudyTaskStatus;
+  planState: StudyTaskPlanState;
+  dueAt: number;
+  estimatedMinutes: number;
+  actualMinutes: number;
+  priority: Priority;
+  notes: string;
+  scheduledStart: number;
+  scheduledEnd: number;
+  postponedUntil: number;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number;
+};
+
+export type Commitment = {
+  id: string;
+  title: string;
+  kind: CommitmentKind;
+  startAt: number;
+  endAt: number;
+  recurrenceDays: number[];
+  createdAt: number;
+  updatedAt: number;
+};
 
 export type RecallQuestion = {
   id: string;
@@ -108,6 +145,8 @@ export type WorkspaceState = {
   mistakes: Mistake[];
   history: StudySession[];
   breaks: BreakLog[];
+  tasks: StudyTask[];
+  commitments: Commitment[];
   settings: WorkspaceSettings;
 };
 
@@ -130,6 +169,8 @@ export function createEmptyWorkspace(now = Date.now()): WorkspaceState {
     mistakes: [],
     history: [],
     breaks: [],
+    tasks: [],
+    commitments: [],
     settings: defaultWorkspaceSettings(),
   };
 }

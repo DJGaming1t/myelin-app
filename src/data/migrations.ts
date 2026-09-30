@@ -5,7 +5,7 @@ import {
   createEmptyWorkspace,
   defaultWorkspaceSettings,
 } from './schema';
-import { validateWorkspaceV1 } from './validation';
+import { validateWorkspaceV2 } from './validation';
 
 function asObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -31,6 +31,14 @@ function migrateV0ToV1(raw: Record<string, unknown>): Record<string, unknown> {
         : defaultWorkspaceSettings(),
   };
 }
+function migrateV1ToV2(raw: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...raw,
+    schemaVersion: 2,
+    tasks: Array.isArray(raw.tasks) ? raw.tasks : [],
+    commitments: Array.isArray(raw.commitments) ? raw.commitments : [],
+  };
+}
 
 export function migrateAndValidateWorkspace(raw: unknown): WorkspaceState {
   let current = asObject(raw);
@@ -54,11 +62,16 @@ export function migrateAndValidateWorkspace(raw: unknown): WorkspaceState {
       version = 1;
       continue;
     }
+    if (version === 1) {
+      current = migrateV1ToV2(current);
+      version = 2;
+      continue;
+    }
 
     throw new Error(`No migration is available from workspace schema ${version}.`);
   }
 
-  return validateWorkspaceV1(current);
+  return validateWorkspaceV2(current);
 }
 
 export function parseWorkspaceJson(raw: string): WorkspaceState {

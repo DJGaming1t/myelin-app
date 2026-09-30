@@ -1,5 +1,7 @@
 import {
   BreakLog,
+  Commitment,
+  CommitmentKind,
   Confidence,
   CURRENT_SCHEMA_VERSION,
   Exam,
@@ -9,6 +11,10 @@ import {
   RecallQuestion,
   ReviewGrade,
   StudySession,
+  StudyTask,
+  StudyTaskPlanState,
+  StudyTaskStatus,
+  StudyTaskType,
   Topic,
   TopicStatus,
   WORKSPACE_FORMAT,
@@ -223,6 +229,84 @@ function breakLog(raw: unknown): BreakLog {
   };
 }
 
+function task(raw: unknown, topicIds: Set<string>, examIds: Set<string>): StudyTask {
+  const t = object(raw, 'study task');
+  const rawTopicId = t.topicId == null ? null : id(t.topicId);
+  const rawExamId = t.examId == null ? null : id(t.examId);
+  const scheduledStart = number(t.scheduledStart ?? 0, 'task scheduled start');
+  const scheduledEnd = number(t.scheduledEnd ?? 0, 'task scheduled end');
+  if ((scheduledStart === 0) !== (scheduledEnd === 0)) {
+    throw new Error('Task schedule must include both start and end.');
+  }
+  if (scheduledStart > 0 && scheduledEnd <= scheduledStart) {
+    throw new Error('Task scheduled end must be after its start.');
+  }
+
+  return {
+    id: id(t.id),
+    title: nonEmpty(t.title, 'task title', 500),
+    subject: string(t.subject ?? '', 'task subject', 120),
+    topicId: rawTopicId && topicIds.has(rawTopicId) ? rawTopicId : null,
+    examId: rawExamId && examIds.has(rawExamId) ? rawExamId : null,
+    type: oneOf<StudyTaskType>(
+      t.type ?? 'homework',
+      ['homework', 'revision', 'practice', 'assignment', 'personal'],
+      'task type',
+    ),
+    status: oneOf<StudyTaskStatus>(
+      t.status ?? 'open',
+      ['open', 'completed'],
+      'task status',
+    ),
+    planState: oneOf<StudyTaskPlanState>(
+      t.planState ?? 'inbox',
+      ['inbox', 'today', 'scheduled', 'postponed'],
+      'task plan state',
+    ),
+    dueAt: number(t.dueAt ?? 0, 'task due date'),
+    estimatedMinutes: integer(t.estimatedMinutes ?? 0, 'task estimate', 0, 720),
+    actualMinutes: integer(t.actualMinutes ?? 0, 'task actual minutes', 0, 100000),
+    priority: integer(t.priority ?? 2, 'task priority', 1, 3) as Priority,
+    notes: string(t.notes ?? '', 'task notes', 12000),
+    scheduledStart,
+    scheduledEnd,
+    postponedUntil: number(t.postponedUntil ?? 0, 'task postponed until'),
+    createdAt: number(t.createdAt, 'task creation date', 1),
+    updatedAt: number(t.updatedAt ?? t.createdAt, 'task update date', 1),
+    completedAt: number(t.completedAt ?? 0, 'task completion date'),
+  };
+}
+
+function commitment(raw: unknown): Commitment {
+  const c = object(raw, 'commitment');
+  const startAt = number(c.startAt, 'commitment start', 1);
+  const endAt = number(c.endAt, 'commitment end', 1);
+  if (endAt <= startAt) throw new Error('Commitment end must be after its start.');
+
+  const recurrenceDays = Array.from(
+    new Set(
+      array(c.recurrenceDays ?? [], 'commitment recurrence', 7).map((value) =>
+        integer(value, 'commitment weekday', 0, 6),
+      ),
+    ),
+  ).sort((a, b) => a - b);
+
+  return {
+    id: id(c.id),
+    title: nonEmpty(c.title, 'commitment title', 300),
+    kind: oneOf<CommitmentKind>(
+      c.kind ?? 'other',
+      ['school', 'tuition', 'coaching', 'meal', 'commute', 'sleep', 'appointment', 'other'],
+      'commitment type',
+    ),
+    startAt,
+    endAt,
+    recurrenceDays,
+    createdAt: number(c.createdAt, 'commitment creation date', 1),
+    updatedAt: number(c.updatedAt ?? c.createdAt, 'commitment update date', 1),
+  };
+}
+
 function settings(raw: unknown): WorkspaceSettings {
   if (raw == null) return defaultWorkspaceSettings();
   const s = object(raw, 'settings');
@@ -235,7 +319,7 @@ function settings(raw: unknown): WorkspaceSettings {
   };
 }
 
-export function validateWorkspaceV1(raw: unknown): WorkspaceState {
+export function validateWorkspaceV2(raw: unknown): WorkspaceState {
   const root = object(raw, 'workspace');
 
   if (root.format !== WORKSPACE_FORMAT) throw new Error('Not a MYELIN native workspace.');
@@ -263,6 +347,15 @@ export function validateWorkspaceV1(raw: unknown): WorkspaceState {
 
   const breaks = array(root.breaks ?? [], 'break history', 10000).map(breakLog);
 
+  const examIds = new Set(exams.map((item) => item.id));
+  const tasks = array(root.tasks ?? [], 'study tasks', 10000).map((value) =>
+    task(value, topicIds, examIds),
+  );
+  uniqueIds(tasks, 'task');
+
+  const commitments = array(root.commitments ?? [], 'commitments', 3000).map(commitment);
+  uniqueIds(commitments, 'commitment');
+
   return {
     format: WORKSPACE_FORMAT,
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -273,6 +366,11 @@ export function validateWorkspaceV1(raw: unknown): WorkspaceState {
     mistakes,
     history,
     breaks,
+    tasks,
+    commitments,
     settings: settings(root.settings),
   };
 }
+
+
+export const validateWorkspaceV1 = validateWorkspaceV2;

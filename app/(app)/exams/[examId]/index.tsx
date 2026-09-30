@@ -11,7 +11,7 @@ import {
   findExam,
   formatExamDateLong,
 } from '@/src/features/exams/exam-engine';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   plannerNote: { marginTop: spacing.xl, borderLeftWidth: 2, borderLeftColor: colors.accent, paddingLeft: 11 },
   plannerTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
   plannerText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 4 },
-  deleteButton: { alignSelf: 'flex-start', minHeight: 41, marginTop: 36, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  deleteButton: { alignSelf: 'flex-start', minHeight: layout.minTouch, marginTop: 36, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   deleteText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
   pressed: { opacity: 0.68 },
 });

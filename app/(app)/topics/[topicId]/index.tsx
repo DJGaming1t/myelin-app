@@ -8,7 +8,7 @@ import { useFocus } from '@/src/features/focus/FocusProvider';
 import { buildReviewQueue } from '@/src/features/review/review-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { deleteQuestionFromWorkspace, deleteTopicFromWorkspace, findTopic } from '@/src/features/topics/topic-operations';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, textAlign: 'center', marginTop: 5 },
   addQuestion: {
     marginTop: spacing.md,
-    minHeight: 40,
+    minHeight: layout.minTouch,
     borderRadius: radius.md,
     backgroundColor: colors.accent,
     paddingHorizontal: 16,
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     alignSelf: 'flex-start',
     marginTop: 12,
-    minHeight: 40,
+    minHeight: layout.minTouch,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: 'rgba(255,161,145,0.28)',

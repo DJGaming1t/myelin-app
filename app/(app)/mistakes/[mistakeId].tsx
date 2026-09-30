@@ -11,7 +11,7 @@ import {
   findMistake,
   reopenMistake,
 } from '@/src/features/mistakes/mistake-engine';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1 },
   missing: { color: colors.muted, padding: spacing.lg, lineHeight: 18 },
-  deleteFloating: { position: 'absolute', right: spacing.lg, bottom: 8, minHeight: 38, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
+  deleteFloating: { position: 'absolute', right: spacing.lg, bottom: 8, minHeight: layout.minTouch, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   deleteText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
   resolvedContent: { padding: spacing.lg, paddingBottom: 52 },
   info: { marginBottom: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
@@ -169,6 +169,6 @@ const styles = StyleSheet.create({
   resolutionText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 4 },
   reopen: { minHeight: 48, marginTop: spacing.xl, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   reopenText: { color: '#25140e', fontSize: 12, fontWeight: '800' },
-  deleteButton: { minHeight: 44, marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', alignItems: 'center', justifyContent: 'center' },
+  deleteButton: { minHeight: layout.minTouch, marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.68 },
 });

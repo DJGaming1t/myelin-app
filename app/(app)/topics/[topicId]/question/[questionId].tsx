@@ -11,7 +11,7 @@ import {
   findQuestion,
   findTopic,
 } from '@/src/features/topics/topic-operations';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing.lg,
     bottom: 8,
-    minHeight: 38,
+    minHeight: layout.minTouch,
     justifyContent: 'center',
     paddingHorizontal: 12,
     borderRadius: radius.md,

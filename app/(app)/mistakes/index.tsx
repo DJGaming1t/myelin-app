@@ -18,7 +18,7 @@ import {
   buildMistakeRetestQueue,
   mistakeCounts,
 } from '@/src/features/mistakes/mistake-engine';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Filter = 'due' | 'open' | 'resolved';
 
@@ -267,12 +267,12 @@ const styles = StyleSheet.create({
   retestLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   retestText: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 4 },
   arrow: { color: colors.accent, fontSize: 20 },
-  searchWrap: { marginHorizontal: spacing.lg, marginTop: 10, minHeight: 46, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+  searchWrap: { marginHorizontal: spacing.lg, marginTop: 10, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
   searchGlyph: { color: colors.subtle, fontSize: 17, marginRight: 7 },
-  search: { flex: 1, minHeight: 44, color: colors.text, fontSize: 12.5 },
+  search: { flex: 1, minHeight: layout.minTouch, color: colors.text, fontSize: 12.5 },
   clear: { color: colors.muted, fontSize: 20, paddingLeft: 8 },
   filters: { gap: 7, paddingHorizontal: spacing.lg, paddingVertical: 10 },
-  filter: { minHeight: 34, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, justifyContent: 'center', paddingHorizontal: 12 },
+  filter: { minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, justifyContent: 'center', paddingHorizontal: 12 },
   filterActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
   filterText: { color: colors.muted, fontSize: 10, fontWeight: '700' },
   filterTextActive: { color: colors.accent },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', padding: spacing.xl, paddingBottom: 70 },
   emptyTitle: { color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },
   emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, textAlign: 'center', marginTop: 6, maxWidth: 330 },
-  emptyAction: { minHeight: 41, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  emptyAction: { minHeight: layout.minTouch, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   emptyActionText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

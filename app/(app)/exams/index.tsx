@@ -19,7 +19,7 @@ import {
   nearestUpcomingExam,
   sortExams,
 } from '@/src/features/exams/exam-engine';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Filter = 'upcoming' | 'past';
 
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   heroDate: { color: colors.muted, fontSize: 10.5, marginTop: 10 },
   heroScope: { color: colors.subtle, fontSize: 9.5, marginTop: 5 },
   filters: { flexDirection: 'row', gap: 7, paddingHorizontal: spacing.lg, paddingVertical: 10 },
-  filter: { minHeight: 35, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
+  filter: { minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
   filterActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
   filterText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   filterTextActive: { color: colors.accent },
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', padding: spacing.xl, paddingBottom: 70 },
   emptyTitle: { color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },
   emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 6, textAlign: 'center', maxWidth: 340 },
-  emptyButton: { minHeight: 42, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 15, alignItems: 'center', justifyContent: 'center' },
+  emptyButton: { minHeight: layout.minTouch, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 15, alignItems: 'center', justifyContent: 'center' },
   emptyButtonText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

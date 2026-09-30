@@ -15,7 +15,7 @@ import {
   applyMistakeRetest,
   buildMistakeRetestQueue,
 } from '@/src/features/mistakes/mistake-engine';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function historyId(now: number) {
   return `session_${now.toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   primaryText: { color: '#25140e', fontSize: 12, fontWeight: '800' },
   primaryArrow: { color: '#25140e', fontSize: 19 },
   disabled: { opacity: 0.35 },
-  textButton: { minHeight: 42, marginTop: 6, alignItems: 'center', justifyContent: 'center' },
+  textButton: { minHeight: layout.minTouch, marginTop: 6, alignItems: 'center', justifyContent: 'center' },
   textButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
   compare: { marginTop: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   compareAccent: { borderColor: 'rgba(180,216,174,0.22)', backgroundColor: 'rgba(180,216,174,0.045)' },

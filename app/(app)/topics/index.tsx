@@ -18,7 +18,7 @@ import { TopicStatus } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { TopicCard } from '@/src/features/topics/TopicCard';
 import { filterTopics, topicSubjects } from '@/src/features/topics/topic-operations';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type StatusFilter = TopicStatus | 'all';
 
@@ -236,12 +236,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
   },
   searchIcon: { color: colors.subtle, fontSize: 18, marginRight: 8 },
-  search: { flex: 1, color: colors.text, fontSize: 13.5, minHeight: 46 },
+  search: { flex: 1, color: colors.text, fontSize: 13.5, minHeight: layout.minTouch },
   clear: { color: colors.muted, fontSize: 22, paddingLeft: 8 },
   filterScroll: { gap: 7, paddingHorizontal: spacing.lg, paddingTop: 12, paddingBottom: 8 },
   subjectScroll: { gap: 7, paddingHorizontal: spacing.lg, paddingBottom: 10 },
   filterChip: {
-    minHeight: 35,
+    minHeight: layout.minTouch,
     justifyContent: 'center',
     paddingHorizontal: 13,
     borderRadius: radius.pill,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.panel,
   },
-  filterChipSubtle: { minHeight: 31, backgroundColor: colors.bg },
+  filterChipSubtle: { minHeight: layout.minTouch, backgroundColor: colors.bg },
   filterChipActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
   filterText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
   filterTextActive: { color: colors.accent },
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   emptyButton: {
     marginTop: spacing.lg,
-    minHeight: 44,
+    minHeight: layout.minTouch,
     borderRadius: radius.md,
     backgroundColor: colors.accent,
     paddingHorizontal: 18,
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   emptyButtonText: { color: '#25140e', fontSize: 12, fontWeight: '800' },
   emptyButtonSecondary: {
     marginTop: spacing.lg,
-    minHeight: 44,
+    minHeight: layout.minTouch,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,

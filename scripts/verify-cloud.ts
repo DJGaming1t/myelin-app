@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { createEmptyWorkspace } from '../src/data/schema';
 import {
@@ -185,3 +187,25 @@ function main() {
 }
 
 main();
+
+
+const cloudProviderSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/cloud-sync/CloudSyncProvider.tsx'),
+  'utf8',
+);
+const cloudScreenSource = fs.readFileSync(
+  path.join(process.cwd(), 'app/(app)/settings/cloud-sync.tsx'),
+  'utf8',
+);
+assert.ok(
+  cloudProviderSource.includes('if (!user || localMode) return;'),
+  'Account deletion must remain available when cloud sync release is disabled.',
+);
+assert.ok(
+  cloudProviderSource.includes('if (CLOUD_SYNC_RELEASE_ENABLED) {'),
+  'Released cloud data must be deleted before Auth account deletion.',
+);
+assert.ok(
+  cloudScreenSource.includes('disabled={!signedIn || busy}'),
+  'Account deletion UI must not be disabled merely because cloud sync is locked.',
+);

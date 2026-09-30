@@ -35,5 +35,5 @@ export const spacing = {
 export const layout = {
   contentMax: 820,
   readingMax: 620,
-  minTouch: 44,
+  minTouch: 48,
 } as const;

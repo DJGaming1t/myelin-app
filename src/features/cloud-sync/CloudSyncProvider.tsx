@@ -457,7 +457,7 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
   }, [localMode, savePreference, user]);
 
   const deleteAccountAndCloud = useCallback(async () => {
-    if (!CLOUD_SYNC_RELEASE_ENABLED || !user || localMode) return;
+    if (!user || localMode) return;
     const uid = user.uid;
     const localOwnerKey = ownerKey;
 
@@ -469,7 +469,12 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
         reviewSession ? discardReview() : Promise.resolve(),
       ]);
 
-      await deleteCloudSnapshot(uid);
+      // A build with cloud sync disabled has never been allowed to upload a
+      // cloud workspace, so account deletion must still remain available.
+      // Once cloud sync is released, delete its copy before deleting Auth.
+      if (CLOUD_SYNC_RELEASE_ENABLED) {
+        await deleteCloudSnapshot(uid);
+      }
       await syncPreferenceStorage.save(uid, {
         enabled: false,
         baselineFingerprint: null,

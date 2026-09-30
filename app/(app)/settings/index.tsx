@@ -24,7 +24,7 @@ import {
   providerLabels,
   workspaceDataSummary,
 } from '@/src/features/settings/settings-engine';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const DAILY = [30, 60, 90, 120, 180];
 const FOCUS = [20, 25, 30, 45, 60];
@@ -320,6 +320,11 @@ export default function SettingsScreen() {
                       onPress={() => void sendPasswordLink()}
                     />
                   ) : null}
+                  <SmallAction
+                    label="Account deletion"
+                    disabled={accountBusy}
+                    onPress={() => router.push('/(app)/settings/cloud-sync')}
+                  />
                 </View>
               </>
             ) : null}
@@ -678,7 +683,7 @@ const styles = StyleSheet.create({
   settingLabel: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   settingValue: { color: colors.accent, fontSize: 10.5, fontWeight: '800' },
   choiceRow: { gap: 7, paddingTop: 9 },
-  choice: { minWidth: 48, minHeight: 36, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  choice: { minWidth: 48, minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   choiceActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
   choiceText: { color: colors.muted, fontSize: 10, fontWeight: '700' },
   choiceTextActive: { color: colors.accent },
@@ -695,7 +700,7 @@ const styles = StyleSheet.create({
   infoBox: { marginTop: 11, borderLeftWidth: 2, borderLeftColor: colors.accent, paddingLeft: 10 },
   infoText: { color: colors.muted, fontSize: 9.5, lineHeight: 15 },
   accountActions: { gap: 7, marginTop: 11 },
-  smallAction: { minHeight: 40, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  smallAction: { minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   smallActionText: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
   successMessage: { color: colors.success, fontSize: 9.5, lineHeight: 14, marginTop: 10 },
   errorMessage: { color: colors.danger, fontSize: 9.5, lineHeight: 14, marginTop: 10 },

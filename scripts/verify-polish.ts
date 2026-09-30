@@ -26,7 +26,7 @@ const today = read('app/(app)/today/index.tsx');
 const review = read('app/(app)/review/index.tsx');
 
 assert(tokens.includes('contentMax: 820'), 'Responsive content cap is missing.');
-assert(tokens.includes('minTouch: 44'), '44-point touch target token is missing.');
+assert(tokens.includes('minTouch: 48'), '48-point Android touch target token is missing.');
 assert(motion.includes('AccessibilityInfo.isReduceMotionEnabled'), 'System reduced-motion preference is not read.');
 assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion'), 'User and system motion preferences are not combined.');
 assert(root.includes("animation: reduceMotion ? 'none' : 'fade'"), 'Root navigation ignores reduced motion.');

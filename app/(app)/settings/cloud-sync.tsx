@@ -318,8 +318,12 @@ export default function CloudSyncScreen() {
 
           <ActionButton
             title="Delete account & study data"
-            detail="Delete cloud study data, Firebase account, then this device workspace"
-            disabled={!releaseEnabled || !signedIn || busy}
+            detail={
+              releaseEnabled
+                ? 'Delete cloud study data, Firebase account, then this device workspace'
+                : 'Delete the Firebase account and this device workspace; cloud upload is disabled in this build'
+            }
+            disabled={!signedIn || busy}
             onPress={confirmDeleteAccount}
             danger
           />

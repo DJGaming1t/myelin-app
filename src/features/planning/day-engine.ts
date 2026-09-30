@@ -53,14 +53,52 @@ export function commitmentOccurrencesForDay(
   const day = startOfLocalDay(dayTimestamp);
   const next = addLocalDays(day, 1);
   const weekday = new Date(day).getDay();
+  const previousDay = addLocalDays(day, -1);
+  const previousWeekday = new Date(previousDay).getDay();
 
   return commitments.flatMap((item) => {
     if (item.recurrenceDays.length) {
-      if (!item.recurrenceDays.includes(weekday)) return [];
-      const start = localAt(day, item.startAt);
-      let end = localAt(day, item.endAt);
-      if (end <= start) end = addLocalDays(end, 1);
-      return [{ id: item.id, title: item.title, kind: item.kind, start, end }];
+      const occurrences: Array<{
+        id: string;
+        title: string;
+        kind: Commitment['kind'];
+        start: number;
+        end: number;
+      }> = [];
+
+      if (item.recurrenceDays.includes(weekday)) {
+        const rawStart = localAt(day, item.startAt);
+        let rawEnd = localAt(day, item.endAt);
+        if (rawEnd <= rawStart) rawEnd = addLocalDays(rawEnd, 1);
+        if (overlaps(rawStart, rawEnd, day, next)) {
+          occurrences.push({
+            id: item.id,
+            title: item.title,
+            kind: item.kind,
+            start: Math.max(day, rawStart),
+            end: Math.min(next, rawEnd),
+          });
+        }
+      }
+
+      // Recurring commitments that started yesterday and cross midnight must
+      // still block the early hours of the current day.
+      if (item.recurrenceDays.includes(previousWeekday)) {
+        const previousStart = localAt(previousDay, item.startAt);
+        let previousEnd = localAt(previousDay, item.endAt);
+        if (previousEnd <= previousStart) previousEnd = addLocalDays(previousEnd, 1);
+        if (previousEnd > day) {
+          occurrences.push({
+            id: item.id + ':carry',
+            title: item.title,
+            kind: item.kind,
+            start: day,
+            end: Math.min(next, previousEnd),
+          });
+        }
+      }
+
+      return occurrences;
     }
 
     if (!overlaps(item.startAt, item.endAt, day, next)) return [];
@@ -225,11 +263,12 @@ export function buildDayMap(workspace: WorkspaceState, now = Date.now()) {
     }),
   );
 
+  const nextDay = addLocalDays(day, 1);
   const tasks: DayMapEntry[] = scheduledTasksForDay(workspace.tasks, day).map((task) => ({
     id: `task:${task.id}`,
     kind: 'task',
-    start: task.scheduledStart,
-    end: task.scheduledEnd,
+    start: Math.max(day, task.scheduledStart),
+    end: Math.min(nextDay, task.scheduledEnd),
     title: task.title,
     label: task.subject || task.type,
     taskId: task.id,

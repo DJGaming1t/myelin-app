@@ -113,6 +113,9 @@ function main() {
   reopenTask(homework, now);
   assert.equal(homework.status, 'open');
   assert.equal(homework.planState, 'inbox');
+  assert.equal(homework.actualMinutes, 35);
+  assert.equal(homework.estimatedMinutes, 60);
+  assert.equal(taskRemainingMinutes(homework), 25);
   completeTask(homework, now);
   assert.equal(homework.status, 'completed');
   reopenTask(homework, now);
@@ -159,6 +162,22 @@ function main() {
   assert.ok(occurrences.some((item) => item.id === 'school'));
   assert.ok(occurrences.some((item) => item.id === 'tuition'));
 
+  workspace.commitments.push({
+    id: 'sleep',
+    title: 'Sleep',
+    kind: 'sleep',
+    startAt: local(2026, 9, 30, 22, 30),
+    endAt: local(2026, 9, 30, 6, 30),
+    recurrenceDays: [3],
+    createdAt: now,
+    updatedAt: now,
+  });
+  const overnight = commitmentOccurrencesForDay(workspace.commitments, now);
+  const carry = overnight.find((item) => item.id === 'sleep:carry');
+  assert.ok(carry, 'A recurring block crossing midnight should carry into the next day.');
+  assert.equal(carry!.start, local(2026, 10, 1, 0, 0));
+  assert.equal(carry!.end, local(2026, 10, 1, 6, 30));
+
   const windows = freeStudyWindows(workspace, now, {
     includeScheduledTasks: false,
     from: local(2026, 10, 1, 14, 15),
@@ -190,7 +209,7 @@ function main() {
     subject: 'Biology',
     type: 'revision',
     planState: 'today',
-    estimatedMinutes: 240,
+    estimatedMinutes: 600,
     priority: 3,
     now,
   });
@@ -244,7 +263,7 @@ function main() {
   console.log('✓ v1 workspaces migrate to schema v2 without data loss');
   console.log('✓ task create, schedule, unschedule, partial completion, completion and reopen');
   console.log('✓ postponed tasks stay out of Today');
-  console.log('✓ recurring and overlapping commitments produce deterministic free windows');
+  console.log('✓ recurring, overlapping and overnight commitments produce deterministic free windows');
   console.log('✓ slot suggestions fit the task duration without duplicating the task');
   console.log('✓ Day Map projects one scheduled block per task');
   console.log('✓ overload detection is calm and deterministic');

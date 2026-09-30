@@ -91,6 +91,17 @@ export function reopenTask(task: StudyTask, now = Date.now()) {
   task.status = 'open';
   task.completedAt = 0;
   task.planState = 'inbox';
+  task.scheduledStart = 0;
+  task.scheduledEnd = 0;
+  task.postponedUntil = 0;
+
+  // A task auto-completes when recorded time reaches its estimate. If the
+  // student reopens it, preserve the work already done but give the reopened
+  // task a small remaining estimate instead of producing a zero-work task.
+  if (task.estimatedMinutes > 0 && task.actualMinutes >= task.estimatedMinutes) {
+    task.estimatedMinutes = Math.min(720, task.actualMinutes + 25);
+  }
+
   task.updatedAt = now;
 }
 

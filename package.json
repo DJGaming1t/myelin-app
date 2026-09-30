@@ -23,7 +23,8 @@
     "test:firestore-rules": "tsx scripts/test-firestore-rules.ts",
     "verify:firestore-rules": "firebase emulators:exec --project demo-myelin-sync --only firestore \"npm run test:firestore-rules\"",
     "verify:notifications": "tsx scripts/verify-notifications.ts",
-    "verify:onboarding": "tsx scripts/verify-onboarding.ts"
+    "verify:onboarding": "tsx scripts/verify-onboarding.ts",
+    "verify:polish": "tsx scripts/verify-polish.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

@@ -74,7 +74,7 @@ export default function FocusScreen() {
 
   useEffect(() => {
     if (!session?.runningSince) return;
-    const timer = setInterval(() => setNow(Date.now()), 500);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [session?.runningSince, session?.phase]);
 

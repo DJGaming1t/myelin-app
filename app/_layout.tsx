@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { WorkspaceProvider } from '@/src/data/WorkspaceProvider';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { AuthProvider } from '@/src/features/auth/AuthProvider';
 import { CloudSyncProvider } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { FocusProvider } from '@/src/features/focus/FocusProvider';
@@ -20,25 +21,35 @@ export default function RootLayout() {
           <WorkspaceProvider>
             <OnboardingProvider>
               <FocusProvider>
-              <ReviewProvider>
-                <ReminderProvider>
-                  <CloudSyncProvider>
-                    <StatusBar style="light" />
-                    <Stack
-                      screenOptions={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: colors.bg },
-                        animation: 'fade',
-                      }}
-                    />
-                  </CloudSyncProvider>
-                </ReminderProvider>
-              </ReviewProvider>
+                <ReviewProvider>
+                  <ReminderProvider>
+                    <CloudSyncProvider>
+                      <RootNavigator />
+                    </CloudSyncProvider>
+                  </ReminderProvider>
+                </ReviewProvider>
               </FocusProvider>
             </OnboardingProvider>
           </WorkspaceProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function RootNavigator() {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg },
+          animation: reduceMotion ? 'none' : 'fade',
+        }}
+      />
+    </>
   );
 }

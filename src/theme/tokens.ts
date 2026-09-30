@@ -28,3 +28,9 @@ export const spacing = {
   xl: 32,
   xxl: 48,
 } as const;
+
+export const layout = {
+  contentMax: 820,
+  readingMax: 620,
+  minTouch: 44,
+} as const;

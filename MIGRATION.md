@@ -36,6 +36,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Firestore sync — offline-first client, conflict handling and emulator-tested rules implemented; production upload remains locked until rules deployment + activation flag
 - [x] Notifications — local due-review/exam reminders, quiet hours, permission-on-enable, Calm/Signal/Spark personalities and copy-volume guardrails verified
 - [x] Onboarding
+- [x] Product polish — shared responsive shell, polished loading/error states, accessibility touch targets, system/user reduced-motion handling and a lower-frequency focus timer
 
 ## Safety gates before replacing the web app
 - [x] Existing web app stays deployable
@@ -44,5 +45,5 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Each Firebase user is isolated — verified by automated storage tests
 - [x] Firestore remains fail-closed until per-user security rules are written, emulator-tested and deployed
 - [x] No private/admin Firebase keys in the client repository
-- [ ] Accessibility / reduced-motion pass
+- [x] Accessibility / reduced-motion pass
 - [ ] Android production build passes

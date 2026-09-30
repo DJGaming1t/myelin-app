@@ -130,13 +130,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-        if (!webClientId) {
-          const error = new Error('Native Google setup required') as Error & { code: string };
-          error.code = 'auth/native-google-setup-required';
-          throw error;
-        }
-
         try {
           const {
             GoogleOneTapSignIn,
@@ -146,7 +139,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           } = await import('react-native-nitro-google-signin');
 
           GoogleOneTapSignIn.configure({
-            webClientId,
+            webClientId: 'autoDetect',
             scopes: ['openid', 'email', 'profile'],
             autoSelectOnSignIn: false,
           });

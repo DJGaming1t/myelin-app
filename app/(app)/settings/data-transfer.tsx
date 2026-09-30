@@ -83,9 +83,13 @@ export default function DataTransferScreen() {
     );
   }
 
-  const previewStale = Boolean(preview && preview.revision !== workspace.revision);
+  const currentWorkspace = workspace;
+
+  const previewStale = Boolean(
+    preview && preview.revision !== currentWorkspace.revision,
+  );
   const older = preview
-    ? isImportOlderThanCurrent(preview.candidate, workspace)
+    ? isImportOlderThanCurrent(preview.candidate, currentWorkspace)
     : false;
 
   async function stopTransientSessions() {
@@ -100,7 +104,7 @@ export default function DataTransferScreen() {
     setMessage('');
     setBusy(true);
     try {
-      const result = await exportWorkspaceBackup(workspace);
+      const result = await exportWorkspaceBackup(currentWorkspace);
       setMessage(
         result.method === 'download'
           ? `${result.name} downloaded.`
@@ -128,7 +132,7 @@ export default function DataTransferScreen() {
       setPreview({
         fileName: selected.name,
         candidate,
-        revision: workspace.revision,
+        revision: currentWorkspace.revision,
       });
     } catch (cause) {
       setPreview(null);
@@ -173,7 +177,7 @@ export default function DataTransferScreen() {
     setMessage('');
     try {
       await stopTransientSessions();
-      const merged = mergeWorkspaces(workspace, preview.candidate.workspace);
+      const merged = mergeWorkspaces(currentWorkspace, preview.candidate.workspace);
       await replaceWorkspace(merged.workspace, preview.revision);
       setPreview(null);
       setMessage(
@@ -256,7 +260,7 @@ export default function DataTransferScreen() {
     setMessage('');
     try {
       await stopTransientSessions();
-      const restored = await restoreImportRecovery(workspace.revision);
+      const restored = await restoreImportRecovery(currentWorkspace.revision);
       if (!restored) {
         setError('No valid pre-import recovery snapshot is available.');
         return;
@@ -344,7 +348,7 @@ export default function DataTransferScreen() {
 
             <View style={styles.metaRows}>
               <MetaRow label="Source updated" value={formatDate(preview.candidate.sourceUpdatedAt)} />
-              <MetaRow label="Current updated" value={formatDate(workspace.updatedAt)} />
+              <MetaRow label="Current updated" value={formatDate(currentWorkspace.updatedAt)} />
               <MetaRow label="Preview revision" value={String(preview.revision)} />
             </View>
 

@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { buildReviewQueue } from '@/src/features/review/review-engine';
+import { useReview } from '@/src/features/review/ReviewProvider';
 import { deleteQuestionFromWorkspace, deleteTopicFromWorkspace, findTopic } from '@/src/features/topics/topic-operations';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
@@ -17,6 +19,7 @@ export default function TopicDetailScreen() {
   const topicId = param(params.topicId);
   const { workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
+  const { session: activeReview } = useReview();
   const topic = workspace ? findTopic(workspace, topicId) : null;
 
   if (!workspace || !topic) {
@@ -97,6 +100,11 @@ export default function TopicDetailScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => {
+            if (activeReview) {
+              router.push('/(app)/review');
+              return;
+            }
+
             if (activeFocus) {
               router.push('/(app)/focus');
               return;
@@ -118,14 +126,50 @@ export default function TopicDetailScreen() {
           style={({ pressed }) => [styles.focusButton, pressed && styles.pressed]}>
           <View>
             <Text style={styles.focusButtonLabel}>
-              {activeFocus ? 'SESSION ACTIVE' : 'FOCUS THIS TOPIC'}
+              {activeReview ? 'REVIEW ACTIVE' : activeFocus ? 'SESSION ACTIVE' : 'FOCUS THIS TOPIC'}
             </Text>
             <Text style={styles.focusButtonText}>
-              {activeFocus ? `Resume ${activeFocus.topicName}` : 'Choose a tiny first step, then start'}
+              {activeReview
+                ? 'Resume the active recall queue'
+                : activeFocus
+                  ? `Resume ${activeFocus.topicName}`
+                  : 'Choose a tiny first step, then start'}
             </Text>
           </View>
           <Text style={styles.focusButtonArrow}>→</Text>
         </Pressable>
+
+        {topic.cards.length ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              if (activeFocus) {
+                router.push('/(app)/focus');
+                return;
+              }
+
+              if (activeReview) {
+                router.push('/(app)/review');
+                return;
+              }
+
+              router.push({
+                pathname: '/(app)/review',
+                params: { topicId },
+              });
+            }}
+            style={({ pressed }) => [styles.reviewButton, pressed && styles.pressed]}>
+            <View>
+              <Text style={styles.reviewButtonLabel}>ACTIVE RECALL</Text>
+              <Text style={styles.reviewButtonText}>
+                {buildReviewQueue(workspace, { topicId }).length > 0
+                  ? `${buildReviewQueue(workspace, { topicId }).length} questions ready now`
+                  : `Practise ${topic.cards.length} saved ${topic.cards.length === 1 ? 'question' : 'questions'}`}
+              </Text>
+            </View>
+            <Text style={styles.reviewButtonArrow}>→</Text>
+          </Pressable>
+        ) : null}
 
         <SectionHeader title="Notes" action="Edit topic" onAction={() =>
           router.push({
@@ -292,6 +336,23 @@ const styles = StyleSheet.create({
   focusButtonLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   focusButtonText: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 4 },
   focusButtonArrow: { color: colors.accent, fontSize: 19 },
+  reviewButton: {
+    marginTop: 8,
+    minHeight: 64,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(180,216,174,0.2)',
+    backgroundColor: 'rgba(180,216,174,0.05)',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  reviewButtonLabel: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  reviewButtonText: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 4 },
+  reviewButtonArrow: { color: colors.success, fontSize: 19 },
   sectionHeader: {
     marginTop: spacing.xl,
     marginBottom: 10,

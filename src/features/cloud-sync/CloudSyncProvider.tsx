@@ -114,6 +114,9 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
   const preferenceRef = useRef(preference);
   const workspaceRef = useRef(workspace);
   const syncingRef = useRef(false);
+  const statusRef = useRef<CloudSyncStatus>(
+    CLOUD_SYNC_RELEASE_ENABLED ? 'off' : 'unavailable',
+  );
 
   useEffect(() => {
     preferenceRef.current = preference;
@@ -122,6 +125,10 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     workspaceRef.current = workspace;
   }, [workspace]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -511,8 +518,6 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
       !CLOUD_SYNC_RELEASE_ENABLED ||
       !preferenceReady ||
       !preference.enabled ||
-      status === 'syncing' ||
-      status === 'conflict' ||
       !user ||
       localMode ||
       !workspace
@@ -521,7 +526,12 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
     }
 
     const timer = setTimeout(() => {
-      void syncNow();
+      if (
+        statusRef.current !== 'syncing' &&
+        statusRef.current !== 'conflict'
+      ) {
+        void syncNow();
+      }
     }, 2500);
 
     return () => clearTimeout(timer);
@@ -529,10 +539,38 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
     localMode,
     preference.enabled,
     preferenceReady,
-    status,
     syncNow,
     user?.uid,
     workspace?.revision,
+  ]);
+
+  useEffect(() => {
+    if (
+      !CLOUD_SYNC_RELEASE_ENABLED ||
+      !preferenceReady ||
+      !preference.enabled ||
+      !user ||
+      localMode
+    ) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (
+        statusRef.current !== 'syncing' &&
+        statusRef.current !== 'conflict'
+      ) {
+        void syncNow();
+      }
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, [
+    localMode,
+    preference.enabled,
+    preferenceReady,
+    syncNow,
+    user?.uid,
   ]);
 
   const value = useMemo<CloudSyncContextValue>(

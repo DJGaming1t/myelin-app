@@ -19,7 +19,7 @@ export default function TopicDetailScreen() {
   const { session: activeFocus } = useFocus();
   const topic = workspace ? findTopic(workspace, topicId) : null;
 
-  if (!topic) {
+  if (!workspace || !topic) {
     return (
       <SafeAreaView style={styles.safe}>
         <ScreenHeader title="Topic not found" onBack={() => router.replace('/(app)/topics')} />

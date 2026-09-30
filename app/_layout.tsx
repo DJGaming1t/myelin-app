@@ -17,22 +17,22 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <WorkspaceProvider>
-            <ReminderProvider>
-              <FocusProvider>
+            <FocusProvider>
               <ReviewProvider>
-                <CloudSyncProvider>
-                  <StatusBar style="light" />
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.bg },
-                      animation: 'fade',
-                    }}
-                  />
-                </CloudSyncProvider>
+                <ReminderProvider>
+                  <CloudSyncProvider>
+                    <StatusBar style="light" />
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: colors.bg },
+                        animation: 'fade',
+                      }}
+                    />
+                  </CloudSyncProvider>
+                </ReminderProvider>
               </ReviewProvider>
-              </FocusProvider>
-            </ReminderProvider>
+            </FocusProvider>
           </WorkspaceProvider>
         </AuthProvider>
       </SafeAreaProvider>

@@ -280,10 +280,14 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         if (!topic || !card) return null;
 
         const schedule = scheduleReview(card, choice, now);
+        const recordedAttempt = currentWorkspace.history.find(
+          (entry) => entry.reviewAttemptId === current.attemptId,
+        );
         const alreadyRecorded = reviewAttemptAlreadyRecorded(
           currentWorkspace,
           current.attemptId,
         );
+        const effectiveGrade = recordedAttempt?.grade ?? schedule.grade;
         const answerDraft = current.answerDraft;
         const confidence = current.confidence;
         const hintUsed = current.hintUsed;
@@ -321,11 +325,15 @@ export function ReviewProvider({ children }: PropsWithChildren) {
 
         let queue = [...current.queue];
 
-        if (!alreadyRecorded && choice === 'again' && queue.length < 100) {
+        const shouldRepeatAgain =
+          (!alreadyRecorded && choice === 'again') ||
+          (alreadyRecorded && effectiveGrade === 1);
+
+        if (shouldRepeatAgain && queue.length < 100) {
           const repeat = {
             ...item,
-            dueAt: schedule.dueAt,
-            reps: item.reps + 1,
+            dueAt: alreadyRecorded ? card.dueAt : schedule.dueAt,
+            reps: alreadyRecorded ? card.reps : item.reps + 1,
           };
           const insertAt = Math.min(queue.length, current.currentIndex + 3);
           queue.splice(insertAt, 0, repeat);
@@ -335,7 +343,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
 
         if (nextIndex >= queue.length) {
           await commit(null);
-          return { completed: true, grade: schedule.grade };
+          return { completed: true, grade: effectiveGrade };
         }
 
         await commit({
@@ -351,7 +359,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
           completedCards: current.completedCards + 1,
         });
 
-        return { completed: false, grade: schedule.grade };
+        return { completed: false, grade: effectiveGrade };
       },
 
       async discardReview() {

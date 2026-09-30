@@ -14,7 +14,11 @@ export type ReminderPermission =
 const GENTLE_CHANNEL = 'myelin-gentle';
 const SOUND_CHANNEL = 'myelin-sound';
 
-async function module() {
+type ExpoNotificationsModule = typeof import('expo-notifications');
+type NotificationPermissionsStatus =
+  import('expo-notifications').NotificationPermissionsStatus;
+
+async function module(): Promise<ExpoNotificationsModule> {
   return import('expo-notifications');
 }
 
@@ -68,15 +72,14 @@ export async function configureNotificationRuntime() {
 }
 
 function permissionFrom(
-  status: Awaited<ReturnType<Awaited<ReturnType<typeof module>>['getPermissionsAsync']>>,
+  status: NotificationPermissionsStatus,
+  Notifications: ExpoNotificationsModule,
 ): ReminderPermission {
   if (status.granted) return 'granted';
 
   if (
-    status.ios?.status ===
-      3 /* Notifications.IosAuthorizationStatus.PROVISIONAL */ ||
-    status.ios?.status ===
-      4 /* Notifications.IosAuthorizationStatus.EPHEMERAL */
+    status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL ||
+    status.ios?.status === Notifications.IosAuthorizationStatus.EPHEMERAL
   ) {
     return 'granted';
   }
@@ -91,7 +94,7 @@ function permissionFrom(
 export async function getReminderPermission(): Promise<ReminderPermission> {
   if (Platform.OS === 'web') return 'unsupported';
   const Notifications = await module();
-  return permissionFrom(await Notifications.getPermissionsAsync());
+  return permissionFrom(await Notifications.getPermissionsAsync(), Notifications);
 }
 
 export async function requestReminderPermission(): Promise<ReminderPermission> {
@@ -107,7 +110,7 @@ export async function requestReminderPermission(): Promise<ReminderPermission> {
     },
   });
 
-  return permissionFrom(status);
+  return permissionFrom(status, Notifications);
 }
 
 export async function cancelReminderIds(ids: string[]) {

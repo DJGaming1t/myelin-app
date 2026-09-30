@@ -65,7 +65,7 @@ export default function MistakeDetailScreen() {
         />
         <View style={styles.body}>
           <MistakeForm
-            topics={workspace.topics}
+            topics={[topic]}
             initial={{
               topicId: mistake.topicId,
               cardId: mistake.cardId,

@@ -19,7 +19,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [ ] Google authentication — web flow and native Android code wired; signing SHA-1 still required for runtime verification
 - [x] Verification / password recovery
 - [x] Offline per-user data foundation
-- [ ] Topics
+- [x] Topics
 - [ ] Today planner
 - [ ] Focus timer
 - [ ] Five-minute launch

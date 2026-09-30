@@ -25,6 +25,7 @@ type WorkspaceContextValue = {
   resetBecauseCorrupt: boolean;
   saveError: string;
   updateWorkspace: (change: (draft: WorkspaceState) => void) => WorkspaceState | null;
+  waitForSaves: () => Promise<void>;
   resetWorkspace: () => Promise<void>;
 };
 
@@ -120,6 +121,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     return next;
   }, []);
 
+  const waitForSaves = useCallback(async () => {
+    await saveQueue.current;
+  }, []);
+
   const resetWorkspace = useCallback(async () => {
     const currentOwner = ownerKeyRef.current;
     if (!currentOwner) return;
@@ -151,6 +156,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       resetBecauseCorrupt,
       saveError,
       updateWorkspace,
+      waitForSaves,
       resetWorkspace,
     }),
     [
@@ -161,6 +167,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       saveError,
       status,
       updateWorkspace,
+      waitForSaves,
       workspace,
     ],
   );

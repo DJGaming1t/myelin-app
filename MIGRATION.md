@@ -24,13 +24,13 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Focus timer
 - [x] Five-minute launch
 - [x] Distraction parking lot
-- [ ] Active recall
-- [ ] Review scheduling
+- [x] Active recall
+- [x] Review scheduling
 - [ ] Mistake notebook
 - [ ] Exams
 - [ ] Progress
 - [ ] Time-estimation calibration
-- [ ] Confidence calibration
+- [x] Confidence calibration — confidence is captured with each recall attempt; analysis comes in Progress
 - [ ] Settings
 - [ ] Import/export or migration path from web data
 - [ ] Firestore sync

@@ -18,6 +18,7 @@ import {
   timerRemainingMs,
 } from '@/src/features/focus/focus-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
@@ -52,6 +53,7 @@ export default function FocusScreen() {
     skipBreak,
     discard,
   } = useFocus();
+  const { session: activeReview } = useReview();
 
   const topicId = param(params.topicId);
   const topic = workspace ? findTopic(workspace, topicId) : null;
@@ -154,6 +156,29 @@ export default function FocusScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Text style={styles.loading}>Restoring focus session…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!session && activeReview) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.setupPage}>
+          <TopBar label="Focus" onBack={() => router.replace('/(app)/review')} />
+          <View style={styles.missing}>
+            <Text style={styles.missingTitle}>A review queue is already active.</Text>
+            <Text style={styles.missingText}>
+              Resume or end that recall queue before starting a separate focus timer.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace('/(app)/review')}
+              style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+              <Text style={styles.primaryText}>Resume review</Text>
+              <Text style={styles.buttonArrow}>→</Text>
+            </Pressable>
+          </View>
         </View>
       </SafeAreaView>
     );

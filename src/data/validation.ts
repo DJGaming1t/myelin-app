@@ -204,6 +204,13 @@ function session(raw: unknown, topicIds: Set<string>, cardIds: Set<string>, mist
   if (s.tinyStep != null) {
     result.tinyStep = string(s.tinyStep, 'first tiny step', 500);
   }
+  if (s.hintUsed != null) {
+    if (typeof s.hintUsed !== 'boolean') throw new Error('Invalid hint-used flag.');
+    result.hintUsed = s.hintUsed;
+  }
+  if (s.reviewAttemptId != null) {
+    result.reviewAttemptId = id(s.reviewAttemptId);
+  }
 
   return result;
 }

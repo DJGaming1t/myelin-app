@@ -26,6 +26,7 @@ type WorkspaceContextValue = {
   saveError: string;
   updateWorkspace: (change: (draft: WorkspaceState) => void) => WorkspaceState | null;
   waitForSaves: () => Promise<void>;
+  replaceWorkspace: (workspace: WorkspaceState) => Promise<WorkspaceState | null>;
   resetWorkspace: () => Promise<void>;
 };
 
@@ -125,6 +126,35 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     await saveQueue.current;
   }, []);
 
+  const replaceWorkspace = useCallback(async (candidate: WorkspaceState) => {
+    const currentOwner = ownerKeyRef.current;
+    const current = workspaceRef.current;
+    if (!currentOwner || !current) return null;
+
+    setSaveError('');
+    await saveQueue.current;
+
+    const next = cloneWorkspace(candidate);
+    next.revision = current.revision + 1;
+    next.updatedAt = Date.now();
+
+    try {
+      const saved = await workspaceStorage.save(currentOwner, next);
+      if (ownerKeyRef.current !== currentOwner) return null;
+      workspaceRef.current = saved;
+      setWorkspace(saved);
+      setRecovered(false);
+      setResetBecauseCorrupt(false);
+      setStatus('ready');
+      return saved;
+    } catch (error) {
+      if (ownerKeyRef.current === currentOwner) {
+        setSaveError(error instanceof Error ? error.message : 'Could not import this workspace.');
+      }
+      return null;
+    }
+  }, []);
+
   const resetWorkspace = useCallback(async () => {
     const currentOwner = ownerKeyRef.current;
     if (!currentOwner) return;
@@ -157,12 +187,14 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       saveError,
       updateWorkspace,
       waitForSaves,
+      replaceWorkspace,
       resetWorkspace,
     }),
     [
       ownerKey,
       recovered,
       resetBecauseCorrupt,
+      replaceWorkspace,
       resetWorkspace,
       saveError,
       status,

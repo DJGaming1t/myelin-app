@@ -51,11 +51,14 @@ export default function DataTransferScreen() {
   }
 
   async function exportBackup() {
+    const currentWorkspace = workspace;
+    if (!currentWorkspace) return;
+
     setError('');
     setMessage('');
     setBusy(true);
     try {
-      const name = await shareNativeBackup(workspace);
+      const name = await shareNativeBackup(currentWorkspace);
       setMessage(`Backup ready: ${name}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not export the backup.');
@@ -65,6 +68,9 @@ export default function DataTransferScreen() {
   }
 
   async function selectBackup() {
+    const currentWorkspace = workspace;
+    if (!currentWorkspace) return;
+
     setError('');
     setMessage('');
     setBusy(true);
@@ -72,7 +78,7 @@ export default function DataTransferScreen() {
       const picked = await pickBackupText();
       if (!picked) return;
 
-      const next = buildImportPreview(picked.text, workspace);
+      const next = buildImportPreview(picked.text, currentWorkspace);
       setPreview(next);
       setFileName(picked.name);
     } catch (err) {

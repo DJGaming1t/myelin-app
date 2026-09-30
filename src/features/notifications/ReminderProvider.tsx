@@ -202,7 +202,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
     subscribeToReminderResponses((kind) => {
       if (kind === 'review') router.push('/(app)/review');
-      else router.push('/(app)/exams');
+      else if (kind === 'exam') router.push('/(app)/exams');
+      else router.push('/(app)/today/day-map');
     })
       .then((next) => {
         if (!active) {

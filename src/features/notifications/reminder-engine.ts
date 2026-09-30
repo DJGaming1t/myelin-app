@@ -3,12 +3,14 @@ import { examCalendarDaysUntil } from '@/src/features/exams/exam-engine';
 import { isCardReady } from '@/src/features/review/review-engine';
 
 export type ReminderVoice = 'calm' | 'signal' | 'spark';
-export type ReminderKind = 'review' | 'exam';
+export type ReminderKind = 'review' | 'exam' | 'study';
 
 export type ReminderSettings = {
   enabled: boolean;
   reviewEnabled: boolean;
   examEnabled: boolean;
+  studyBlockEnabled: boolean;
+  studyLeadMinutes: number;
   voice: ReminderVoice;
   sound: boolean;
   reviewTimeMinutes: number;
@@ -24,7 +26,7 @@ export type PlannedReminder = {
   at: number;
   title: string;
   body: string;
-  href: '/(app)/review' | '/(app)/exams';
+  href: '/(app)/review' | '/(app)/exams' | '/(app)/today/day-map';
   accent: 'warm' | 'signal' | 'spark';
   data: Record<string, string | number>;
 };
@@ -37,6 +39,8 @@ export const defaultReminderSettings = (): ReminderSettings => ({
   enabled: false,
   reviewEnabled: true,
   examEnabled: true,
+  studyBlockEnabled: true,
+  studyLeadMinutes: 10,
   voice: 'calm',
   sound: false,
   reviewTimeMinutes: 19 * 60 + 15,
@@ -74,6 +78,11 @@ export function normalizeReminderSettings(
     enabled: value?.enabled === true,
     reviewEnabled: value?.reviewEnabled !== false,
     examEnabled: value?.examEnabled !== false,
+    studyBlockEnabled: value?.studyBlockEnabled !== false,
+    studyLeadMinutes: Math.max(
+      0,
+      Math.min(60, Math.round(value?.studyLeadMinutes ?? defaults.studyLeadMinutes)),
+    ),
     voice,
     sound: value?.sound === true,
     reviewTimeMinutes: clampTimeMinutes(
@@ -408,6 +417,65 @@ function buildExamReminders(
   return reminders;
 }
 
+function buildStudyBlockReminders(
+  workspace: WorkspaceState,
+  settings: ReminderSettings,
+  now: number,
+) {
+  if (!settings.studyBlockEnabled) return [] as PlannedReminder[];
+
+  const horizonEnd = addLocalDays(now, REVIEW_HORIZON_DAYS);
+  const reminders: PlannedReminder[] = [];
+
+  for (const task of workspace.tasks) {
+    if (
+      task.status !== 'open' ||
+      task.planState !== 'scheduled' ||
+      task.scheduledStart <= now + 60_000 ||
+      task.scheduledStart > horizonEnd
+    ) {
+      continue;
+    }
+
+    let at = task.scheduledStart - settings.studyLeadMinutes * 60_000;
+    if (at <= now + 60_000) continue;
+
+    const shifted = moveOutOfQuietHours(
+      at,
+      settings.quietStartMinutes,
+      settings.quietEndMinutes,
+    );
+
+    // A reminder is useless if quiet hours push it to or past the activity.
+    if (shifted >= task.scheduledStart) continue;
+    at = shifted;
+
+    const duration = Math.max(
+      5,
+      Math.round((task.scheduledEnd - task.scheduledStart) / 60_000) ||
+        task.estimatedMinutes ||
+        25,
+    );
+    const subject = task.subject ? task.subject + ' · ' : '';
+
+    reminders.push({
+      key: `study:${task.id}:${task.scheduledStart}`,
+      kind: 'study',
+      at,
+      title: `Coming up: ${task.title}`,
+      body: `${subject}${duration} min planned. Open Day Map when you're ready.`,
+      href: '/(app)/today/day-map',
+      accent: 'warm',
+      data: {
+        taskId: task.id,
+        scheduledStart: task.scheduledStart,
+      },
+    });
+  }
+
+  return reminders;
+}
+
 function capPlan(plan: PlannedReminder[]) {
   const perDay = new Map<string, number>();
   const accepted: PlannedReminder[] = [];
@@ -437,6 +505,7 @@ export function buildReminderPlan(
   return capPlan([
     ...buildReviewReminders(workspace, settings, now),
     ...buildExamReminders(workspace, settings, now),
+    ...buildStudyBlockReminders(workspace, settings, now),
   ]);
 }
 

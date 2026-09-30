@@ -309,6 +309,46 @@ export default function RemindersScreen() {
         </Section>
 
         <Section
+          title="Planned study blocks"
+          subtitle="One gentle heads-up before scheduled Day Map study. Moving the block automatically replaces the old reminder.">
+          <ToggleRow
+            label="Day Map reminders"
+            helper="Only scheduled study tasks can create these reminders. Flexible Today and Inbox work stay silent."
+            value={settings.studyBlockEnabled}
+            disabled={disabled}
+            onChange={(value) => void updateSettings({ studyBlockEnabled: value })}
+          />
+
+          <Text style={styles.microLabel}>REMIND ME BEFORE</Text>
+          <View style={styles.offsetRow}>
+            {[5, 10, 15].map((minutes) => {
+              const active = settings.studyLeadMinutes === minutes;
+              return (
+                <Pressable
+                  key={minutes}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  disabled={disabled || !settings.studyBlockEnabled}
+                  onPress={() => void updateSettings({ studyLeadMinutes: minutes })}
+                  style={({ pressed }) => [
+                    styles.offsetChip,
+                    active && styles.offsetChipActive,
+                    pressed && !disabled && styles.pressed,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.offsetText,
+                      active && styles.offsetTextActive,
+                    ]}>
+                    {minutes} min
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Section>
+
+        <Section
           title="Quiet hours"
           subtitle="Quiet hours always win. A reminder landing inside this window is moved to the end of quiet hours.">
           <View style={styles.quietGrid}>

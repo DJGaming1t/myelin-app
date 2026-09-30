@@ -67,6 +67,8 @@ function main() {
   const defaults = defaultReminderSettings();
   assert.equal(defaults.enabled, false);
   assert.equal(defaults.sound, false);
+  assert.equal(defaults.studyBlockEnabled, true);
+  assert.equal(defaults.studyLeadMinutes, 10);
   assert.equal(REVIEW_HORIZON_DAYS, 7);
 
   const settings = {
@@ -177,6 +179,52 @@ function main() {
     assert.ok(item.at < examWorkspace.exams[0]!.date);
   });
 
+  const studyWorkspace = createEmptyWorkspace(now);
+  studyWorkspace.tasks.push({
+    id: 'task_math_homework',
+    title: 'Finish Maths Exercise 5.2',
+    subject: 'Mathematics',
+    topicId: null,
+    examId: null,
+    type: 'homework',
+    status: 'open',
+    planState: 'scheduled',
+    dueAt: 0,
+    estimatedMinutes: 35,
+    actualMinutes: 0,
+    priority: 2,
+    notes: '',
+    scheduledStart: local(2026, 9, 30, 16, 0),
+    scheduledEnd: local(2026, 9, 30, 16, 35),
+    postponedUntil: 0,
+    createdAt: now - 1000,
+    updatedAt: now - 1000,
+    completedAt: 0,
+  });
+  const studyPlan = buildReminderPlan(studyWorkspace, settings, now);
+  const studyReminder = studyPlan.find((item) => item.kind === 'study');
+  assert.ok(studyReminder);
+  assert.equal(studyReminder!.at, local(2026, 9, 30, 15, 50));
+  assert.equal(studyReminder!.href, '/(app)/today/day-map');
+  assert.equal(studyReminder!.data.taskId, 'task_math_homework');
+
+  const beforeMove = reminderPlanSignature(studyPlan);
+  studyWorkspace.tasks[0]!.scheduledStart = local(2026, 9, 30, 17, 0);
+  studyWorkspace.tasks[0]!.scheduledEnd = local(2026, 9, 30, 17, 35);
+  const movedStudyPlan = buildReminderPlan(studyWorkspace, settings, now);
+  assert.notEqual(
+    reminderPlanSignature(movedStudyPlan),
+    beforeMove,
+    'Moving a study block must change the reminder plan so the provider cancels/replaces the old notification.',
+  );
+
+  studyWorkspace.tasks[0]!.status = 'completed';
+  assert.equal(
+    buildReminderPlan(studyWorkspace, settings, now).some((item) => item.kind === 'study'),
+    false,
+    'Completed tasks must not keep scheduled study reminders.',
+  );
+
   const crowded = makeDueWorkspace(now);
   for (let index = 0; index < 5; index += 1) {
     crowded.exams.push({
@@ -267,6 +315,7 @@ function main() {
     quietStartMinutes: 2000,
     quietEndMinutes: -1,
     examOffsets: [7, 7, 0, 31, 3],
+    studyLeadMinutes: 999,
     voice: 'spark',
   });
   assert.equal(invalid.reviewTimeMinutes, 1439);
@@ -274,6 +323,7 @@ function main() {
   assert.equal(invalid.quietStartMinutes, 1439);
   assert.equal(invalid.quietEndMinutes, 0);
   assert.deepEqual(invalid.examOffsets, [7, 3]);
+  assert.equal(invalid.studyLeadMinutes, 60);
   assert.equal(invalid.voice, 'spark');
 
   const firstSignature = reminderPlanSignature(duePlan);
@@ -320,6 +370,8 @@ function main() {
   console.log('✓ due reviews create one daily digest at the chosen window');
   console.log('✓ overnight quiet hours shift reminders to the quiet-end boundary');
   console.log('✓ exam reminders use only configured lead times before the exam');
+  console.log('✓ scheduled Day Map tasks create one calm lead-time reminder');
+  console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');
   console.log('✓ Calm, Signal and Spark copy avoid guilt/streak/urgency language');

@@ -140,7 +140,12 @@ export async function scheduleReminderPlan(
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: item.title,
-          subtitle: item.kind === 'review' ? 'REVIEW WINDOW' : 'EXAM CHECK-IN',
+          subtitle:
+            item.kind === 'review'
+              ? 'REVIEW WINDOW'
+              : item.kind === 'exam'
+                ? 'EXAM CHECK-IN'
+                : 'PLANNED STUDY',
           body: item.body,
           sound: settings.sound ? 'default' : undefined,
           color: '#FF805B',
@@ -208,7 +213,7 @@ export async function sendReminderPreview(settings: ReminderSettings) {
 }
 
 export async function subscribeToReminderResponses(
-  onOpen: (kind: 'review' | 'exam') => void,
+  onOpen: (kind: 'review' | 'exam' | 'study') => void,
 ) {
   if (Platform.OS === 'web') return () => undefined;
 
@@ -225,7 +230,7 @@ export async function subscribeToReminderResponses(
   }) => {
     const data = response.notification.request.content.data;
     if (!data || data.myelin !== true) return;
-    if (data.kind === 'review' || data.kind === 'exam') {
+    if (data.kind === 'review' || data.kind === 'exam' || data.kind === 'study') {
       onOpen(data.kind);
       // Consuming the response prevents the same old notification tap from
       // routing the user again on a later ordinary app launch.

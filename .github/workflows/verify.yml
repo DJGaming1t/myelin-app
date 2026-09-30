@@ -45,6 +45,9 @@ jobs:
       - name: Active recall queue and scheduling
         run: npm run verify:review
 
+      - name: Mistake notebook capture and retest loop
+        run: npm run verify:mistakes
+
       - name: Expo Doctor
         run: npx expo-doctor
 

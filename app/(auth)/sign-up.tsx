@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   muted: { color: colors.muted, fontSize: 12 },
-  link: { color: colors.accent, fontSize: 12, fontWeight: '750' },
+  link: { color: colors.accent, fontSize: 12, fontWeight: '700' },
   back: { alignSelf: 'center', marginTop: spacing.lg, padding: 6 },
-  backText: { color: colors.subtle, fontSize: 11, fontWeight: '650' },
+  backText: { color: colors.subtle, fontSize: 11, fontWeight: '600' },
 });

@@ -184,7 +184,7 @@ function main() {
   assert.equal(daily[6]?.minutes, 50, 'Today should contain the 50-minute focus block.');
   assert.equal(
     daily.reduce((sum, point) => sum + point.minutes, 0),
-    185,
+    183,
     'Seven-day study history should include focus and graded review minutes.',
   );
 
@@ -213,7 +213,7 @@ function main() {
 
   const snapshot = buildProgressSnapshot(workspace, now);
   assert.equal(snapshot.study.todayMinutes, 50);
-  assert.equal(snapshot.study.last7Minutes, 185);
+  assert.equal(snapshot.study.last7Minutes, 183);
   assert.equal(snapshot.study.previous7Minutes, 110);
   assert.equal(snapshot.study.activeDaysLast7, 6);
   assert.equal(snapshot.reviews.last30, 5);

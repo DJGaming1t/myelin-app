@@ -21,5 +21,6 @@ export type ReviewSessionState = {
   confidence: Confidence;
   hintUsed: boolean;
   cardStartedAt: number;
+  attemptId: string;
   completedCards: number;
 };

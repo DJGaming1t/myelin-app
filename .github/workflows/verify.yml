@@ -72,6 +72,9 @@ jobs:
       - name: Firestore per-user security rules
         run: npm run verify:firestore-rules
 
+      - name: Notification planning, quiet hours and copy guardrails
+        run: npm run verify:notifications
+
       - name: Expo Doctor
         run: npx expo-doctor
 

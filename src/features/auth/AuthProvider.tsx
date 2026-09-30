@@ -140,7 +140,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
           GoogleOneTapSignIn.configure({
             webClientId: 'autoDetect',
-            scopes: ['openid', 'email', 'profile'],
             autoSelectOnSignIn: false,
           });
 

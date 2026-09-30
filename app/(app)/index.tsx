@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 39,
     lineHeight: 44,
-    fontWeight: '650',
+    fontWeight: '600',
     letterSpacing: -1.5,
   },
   body: {
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14 },
   statusLabel: { color: colors.subtle, fontSize: 9.5, fontWeight: '800', letterSpacing: 1.3 },
-  statusValue: { color: colors.text, fontSize: 12, fontWeight: '650', flexShrink: 1 },
+  statusValue: { color: colors.text, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   verified: { color: colors.success },
   divider: { height: 1, backgroundColor: colors.line, marginVertical: 13 },
 });

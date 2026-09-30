@@ -18,7 +18,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Email/password authentication
 - [ ] Google authentication — web flow and native Android code wired; signing SHA-1 still required for runtime verification
 - [x] Verification / password recovery
-- [ ] Offline per-user data foundation
+- [x] Offline per-user data foundation
 - [ ] Topics
 - [ ] Today planner
 - [ ] Focus timer
@@ -41,7 +41,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Existing web app stays deployable
 - [ ] Auth tested on real Android development build
 - [ ] Local data survives restart
-- [ ] Each Firebase user is isolated
+- [x] Each Firebase user is isolated — verified by automated storage tests
 - [ ] Firestore is not enabled until per-user security rules are written and tested
 - [x] No private/admin Firebase keys in the client repository
 - [ ] Accessibility / reduced-motion pass

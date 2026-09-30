@@ -132,7 +132,9 @@ async function main() {
     settings: { dailyMinutes: 120 },
   });
 
-  assert.equal(migrated.schemaVersion, 1);
+  assert.equal(migrated.schemaVersion, 2);
+  assert.deepEqual(migrated.tasks, []);
+  assert.deepEqual(migrated.commitments, []);
   assert.equal(migrated.revision, 7);
   assert.equal(migrated.settings.dailyMinutes, 120);
   assert.equal(migrated.settings.focusMinutes, 45);

@@ -166,7 +166,7 @@ export default function SettingsScreen() {
   function confirmReset() {
     Alert.alert(
       'Reset this workspace?',
-      'This permanently removes this workspace’s topics, questions, exams, mistakes, study history, breaks, settings, backups and any quarantined recovery copy stored on this device. It does not delete your Firebase account.',
+      'This permanently removes this workspace’s topics, questions, exams, study tasks, fixed commitments, mistakes, study history, breaks, settings, backups and any quarantined recovery copy stored on this device. It does not delete your Firebase account.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -388,7 +388,7 @@ export default function SettingsScreen() {
             <PrivacyRow
               label="Study data"
               value="On-device only"
-              helper="Topics, answers, mistakes, progress, exams and study history are stored locally per workspace."
+              helper="Topics, tasks, Day Map commitments, answers, mistakes, progress, exams and study history are stored locally per workspace."
             />
             <PrivacyRow
               label="Cloud sync"
@@ -436,6 +436,8 @@ export default function SettingsScreen() {
               <DataMetric label="MISTAKES" value={summary.mistakes} />
               <DataMetric label="SESSIONS" value={summary.sessions} />
               <DataMetric label="BREAKS" value={summary.breaks} />
+              <DataMetric label="TASKS" value={summary.tasks} />
+              <DataMetric label="FIXED" value={summary.commitments} />
             </View>
 
             <InfoBox>

@@ -13,6 +13,8 @@ export type WorkspaceDataSummary = {
   mistakes: number;
   sessions: number;
   breaks: number;
+  tasks: number;
+  commitments: number;
 };
 
 function clampInt(value: number, min: number, max: number) {
@@ -42,6 +44,8 @@ export function workspaceDataSummary(
     mistakes: workspace.mistakes.length,
     sessions: workspace.history.length,
     breaks: workspace.breaks.length,
+    tasks: workspace.tasks.length,
+    commitments: workspace.commitments.length,
   };
 }
 

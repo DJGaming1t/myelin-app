@@ -132,6 +132,25 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function utf8ByteLength(input: string) {
+  let bytes = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    const code = input.charCodeAt(index);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff) {
+      const next = input.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        bytes += 4;
+        index += 1;
+      } else {
+        bytes += 3;
+      }
+    } else bytes += 3;
+  }
+  return bytes;
+}
+
 function stableHash(input: string) {
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
@@ -251,13 +270,24 @@ function convertWebV3(raw: Record<string, unknown>, now: number): ImportCandidat
     }
 
     const topicScoped = e.scope === 'topics' || requestedTopicIds.length > 0;
+    const allTopics = !topicScoped && subjects.length === 0;
+    if (allTopics) {
+      warnings.push(
+        'A web exam applied to every subject; it was converted to an explicit all-topic scope.',
+      );
+    }
+
     return {
       id: recordId(e.id),
       name: nonEmpty(e.name, 'exam name', 200),
       date: num(e.date, 'exam date', 1),
-      subjects: topicScoped ? [] : subjects,
-      scope: topicScoped ? 'topics' : 'subjects',
-      topicIds: topicScoped ? topicIdsForExam : [],
+      subjects: topicScoped || allTopics ? [] : subjects,
+      scope: topicScoped || allTopics ? 'topics' : 'subjects',
+      topicIds: topicScoped
+        ? topicIdsForExam
+        : allTopics
+          ? [...topicIds]
+          : [],
     } satisfies Exam;
   });
   uniqueIds(state.exams, 'exam');
@@ -321,12 +351,18 @@ function convertWebV3(raw: Record<string, unknown>, now: number): ImportCandidat
     };
 
     if (h.plannedMinutes != null) {
-      session.plannedMinutes = num(
+      const webPlanned = num(
         h.plannedMinutes,
         'planned session minutes',
         0,
-        240,
+        720,
       );
+      session.plannedMinutes = Math.min(240, webPlanned);
+      if (webPlanned > 240) {
+        warnings.push(
+          'A web planned-time value above the native limit was capped at 240 minutes.',
+        );
+      }
     }
 
     if (h.cardId) {
@@ -362,10 +398,7 @@ function convertWebV3(raw: Record<string, unknown>, now: number): ImportCandidat
     reduceMotion: false,
   };
 
-  state.revision =
-    typeof raw.revision === 'number' && Number.isInteger(raw.revision)
-      ? Math.max(0, raw.revision)
-      : 0;
+  state.revision = 0;
   state.updatedAt = num(raw.updatedAt ?? now, 'web update date', 1);
 
   if (raw.focus) {
@@ -501,7 +534,7 @@ export function parseImportJson(
   rawText: string,
   now = Date.now(),
 ): ImportCandidate {
-  if (new TextEncoder().encode(rawText).length > MAX_BACKUP_BYTES) {
+  if (utf8ByteLength(rawText) > MAX_BACKUP_BYTES) {
     throw new Error('Choose a MYELIN backup smaller than 8 MB.');
   }
 
@@ -613,14 +646,6 @@ export function mergeWorkspaces(
     const topic = clone(sourceTopic);
     topic.id = topicAllocation.id;
     topic.cards = topic.cards.map((card) => {
-      const existingCard = next.topics
-        .flatMap((item) => item.cards)
-        .find((item) => item.id === card.id);
-      if (existingCard && comparable(existingCard) === comparable(card)) {
-        cardMap.set(card.id, existingCard.id);
-        return { ...card, id: existingCard.id };
-      }
-
       const allocation = allocateId(card.id, usedCardIds, 'card_import');
       if (allocation.remapped) report.remappedIds += 1;
       cardMap.set(card.id, allocation.id);

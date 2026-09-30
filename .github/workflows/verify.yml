@@ -30,6 +30,9 @@ jobs:
       - name: TypeScript
         run: npx tsc --noEmit
 
+      - name: Data isolation and recovery
+        run: npm run verify:data
+
       - name: Expo Doctor
         run: npx expo-doctor
 

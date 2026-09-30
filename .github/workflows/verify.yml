@@ -6,6 +6,7 @@ on:
       - expo-migration
   push:
     branches:
+      - expo-migration
       - feature/**
 
 permissions:

@@ -56,7 +56,7 @@ export default function TodayScreen() {
     });
   }
 
-  function startFocus(block: PlanBlock) {
+  function startFocus(block: PlanBlock, selectedBreakMinutes: number) {
     if (activeFocus) {
       router.push('/(app)/focus');
       return;
@@ -67,7 +67,7 @@ export default function TodayScreen() {
       params: {
         topicId: block.topicId,
         minutes: String(block.minutes),
-        breakMinutes: String(plan.breakMinutes),
+        breakMinutes: String(selectedBreakMinutes),
       },
     });
   }
@@ -177,7 +177,7 @@ export default function TodayScreen() {
           ) : next ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => startFocus(next)}
+              onPress={() => startFocus(next, plan.breakMinutes)}
               style={({ pressed }) => [styles.nextCard, pressed && styles.pressed]}>
               <View style={styles.nextTop}>
                 <View>
@@ -242,7 +242,7 @@ export default function TodayScreen() {
                       <View style={styles.breakLine} />
                     </View>
                   ) : null}
-                  <PlanBlockCard block={block} index={index} onPress={() => startFocus(block)} />
+                  <PlanBlockCard block={block} index={index} onPress={() => startFocus(block, plan.breakMinutes)} />
                 </View>
               ))}
 

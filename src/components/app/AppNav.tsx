@@ -7,6 +7,7 @@ const ITEMS = [
   { key: 'today', label: 'Today', glyph: '◉', path: '/(app)/today' as const },
   { key: 'review', label: 'Review', glyph: '↻', path: '/(app)/review' as const },
   { key: 'mistakes', label: 'Mistakes', glyph: '!', path: '/(app)/mistakes' as const },
+  { key: 'exams', label: 'Exams', glyph: '◇', path: '/(app)/exams' as const },
   { key: 'topics', label: 'Topics', glyph: '▦', path: '/(app)/topics' as const },
 ];
 

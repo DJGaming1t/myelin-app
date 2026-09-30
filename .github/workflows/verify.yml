@@ -57,7 +57,7 @@ jobs:
       - name: Settings and privacy guardrails
         run: npm run verify:settings
 
-      - name: Import export and web migration
+      - name: Backup, import and web migration
         run: npm run verify:transfer
 
       - name: Expo Doctor

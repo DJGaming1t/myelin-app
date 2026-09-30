@@ -20,6 +20,8 @@ import {
   nearestUpcomingExam,
 } from '@/src/features/exams/exam-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
+import { postponeTask } from '@/src/features/planning/task-engine';
 import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { PlanBlockCard } from '@/src/features/today/PlanBlockCard';
@@ -32,11 +34,24 @@ export default function TodayScreen() {
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
-  const [lastDeferred, setLastDeferred] = useState<{
-    topicId: string;
-    topicName: string;
-    previousSnoozeUntil: number;
-  } | null>(null);
+  const [lastDeferred, setLastDeferred] = useState<
+    | {
+        source: 'topic';
+        id: string;
+        name: string;
+        previousSnoozeUntil: number;
+      }
+    | {
+        source: 'task';
+        id: string;
+        name: string;
+        previousPlanState: 'inbox' | 'today' | 'scheduled' | 'postponed';
+        previousPostponedUntil: number;
+        previousScheduledStart: number;
+        previousScheduledEnd: number;
+      }
+    | null
+  >(null);
   const now = Date.now();
 
   const plan = useMemo(
@@ -81,6 +96,26 @@ export default function TodayScreen() {
   }
 
   function deferForToday(block: PlanBlock) {
+    if (block.source === 'task' && block.taskId) {
+      const task = workspace.tasks.find((item) => item.id === block.taskId);
+      if (!task) return;
+      setLastDeferred({
+        source: 'task',
+        id: task.id,
+        name: task.title,
+        previousPlanState: task.planState,
+        previousPostponedUntil: task.postponedUntil,
+        previousScheduledStart: task.scheduledStart,
+        previousScheduledEnd: task.scheduledEnd,
+      });
+      updateWorkspace((draft) => {
+        const target = draft.tasks.find((item) => item.id === task.id);
+        if (target) postponeTask(target, nextLocalDayStart(Date.now()));
+      });
+      return;
+    }
+
+    if (!block.topicId) return;
     const topic = workspace.topics.find((item) => item.id === block.topicId);
     if (!topic) return;
 
@@ -90,8 +125,9 @@ export default function TodayScreen() {
       if (target) target.snoozeUntil = nextLocalDayStart(Date.now());
     });
     setLastDeferred({
-      topicId: block.topicId,
-      topicName: block.topicName,
+      source: 'topic',
+      id: topic.id,
+      name: topic.name,
       previousSnoozeUntil,
     });
   }
@@ -99,8 +135,19 @@ export default function TodayScreen() {
   function undoDefer() {
     if (!lastDeferred) return;
     updateWorkspace((draft) => {
-      const target = draft.topics.find((item) => item.id === lastDeferred.topicId);
-      if (target) target.snoozeUntil = lastDeferred.previousSnoozeUntil;
+      if (lastDeferred.source === 'topic') {
+        const target = draft.topics.find((item) => item.id === lastDeferred.id);
+        if (target) target.snoozeUntil = lastDeferred.previousSnoozeUntil;
+        return;
+      }
+
+      const target = draft.tasks.find((item) => item.id === lastDeferred.id);
+      if (!target) return;
+      target.planState = lastDeferred.previousPlanState;
+      target.postponedUntil = lastDeferred.previousPostponedUntil;
+      target.scheduledStart = lastDeferred.previousScheduledStart;
+      target.scheduledEnd = lastDeferred.previousScheduledEnd;
+      target.updatedAt = Date.now();
     });
     setLastDeferred(null);
   }
@@ -116,7 +163,15 @@ export default function TodayScreen() {
       return;
     }
 
-    if (block.mode === 'review' && block.dueQuestionCount > 0) {
+    if (block.source === 'task' && block.taskId && !block.topicId) {
+      router.push({
+        pathname: '/(app)/today/task/[taskId]',
+        params: { taskId: block.taskId },
+      });
+      return;
+    }
+
+    if (block.mode === 'review' && block.dueQuestionCount > 0 && block.topicId) {
       router.push({
         pathname: '/(app)/review',
         params: { topicId: block.topicId },
@@ -124,10 +179,13 @@ export default function TodayScreen() {
       return;
     }
 
+    if (!block.topicId) return;
+
     router.push({
       pathname: '/(app)/focus',
       params: {
         topicId: block.topicId,
+        ...(block.taskId ? { taskId: block.taskId } : {}),
         minutes: String(block.minutes),
         breakMinutes: String(selectedBreakMinutes),
       },
@@ -141,10 +199,23 @@ export default function TodayScreen() {
         <ScreenHeader
           eyebrow="TODAY"
           title={greeting()}
-          subtitle="A realistic plan from what is due, important, already in progress, and closest to an exam."
+          subtitle="One realistic next move from tasks, recall, Topics, exams and the time you actually have."
           actionLabel="Topics"
           onAction={() => router.push('/(app)/topics')}
         />
+
+        <View style={styles.modeToggle}>
+          <View style={[styles.modeButton, styles.modeButtonActive]}>
+            <Text style={[styles.modeButtonText, styles.modeButtonTextActive]}>Flow</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open Day Map"
+            onPress={() => router.push('/(app)/today/day-map')}
+            style={({ pressed }) => [styles.modeButton, pressed && styles.pressed]}>
+            <Text style={styles.modeButtonText}>Day Map</Text>
+          </Pressable>
+        </View>
 
         <ScrollView
           style={styles.scroll}
@@ -291,17 +362,19 @@ export default function TodayScreen() {
             </Pressable>
           ) : null}
 
+          <StudyInboxCard />
+
           {lastDeferred ? (
             <View style={styles.deferUndo}>
               <View style={styles.deferUndoCopy}>
                 <Text style={styles.deferUndoTitle}>Deferred for today</Text>
                 <Text style={styles.deferUndoText} numberOfLines={1}>
-                  {lastDeferred.topicName}
+                  {lastDeferred.name}
                 </Text>
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Undo deferring ${lastDeferred.topicName}`}
+                accessibilityLabel={`Undo deferring ${lastDeferred.name}`}
                 onPress={undoDefer}
                 style={({ pressed }) => [styles.deferUndoButton, pressed && styles.pressed]}>
                 <Text style={styles.deferUndoButtonText}>Undo</Text>
@@ -358,9 +431,11 @@ export default function TodayScreen() {
                       ? 'Resume review'
                       : activeFocus
                         ? 'Resume focus'
-                        : next.mode === 'review' && next.dueQuestionCount > 0
-                          ? 'Start recall'
-                          : 'Start focus'}
+                        : next.source === 'task' && !next.focusable
+                          ? 'Open task'
+                          : next.mode === 'review' && next.dueQuestionCount > 0
+                            ? 'Start recall'
+                            : 'Start focus'}
                   </Text>
                   <Text style={styles.nextArrow}>→</Text>
                 </Pressable>
@@ -371,14 +446,14 @@ export default function TodayScreen() {
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>Nothing to plan yet.</Text>
               <Text style={styles.emptyText}>
-                Add a real topic first. MYELIN needs something concrete before it can choose what
-                deserves your time.
+                Add a study task or Topic first. MYELIN needs something concrete before it can choose
+                what deserves your time.
               </Text>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => router.push('/(app)/topics/new')}
+                onPress={() => router.push('/(app)/today/task/new')}
                 style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}>
-                <Text style={styles.emptyButtonText}>Add a topic</Text>
+                <Text style={styles.emptyButtonText}>Add study task</Text>
               </Pressable>
             </View>
           )}
@@ -478,6 +553,30 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1 },
   scroll: { flex: 1 },
+  modeToggle: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 7,
+    paddingHorizontal: spacing.lg,
+    marginBottom: 4,
+  },
+  modeButton: {
+    flex: 1,
+    minHeight: layout.minTouch,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeButtonActive: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+  },
+  modeButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '800' },
+  modeButtonTextActive: { color: colors.accent },
   content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 42 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { color: colors.muted, fontSize: 12 },

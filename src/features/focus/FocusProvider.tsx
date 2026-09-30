@@ -152,8 +152,8 @@ export function FocusProvider({ children }: PropsWithChildren) {
       const next = createFocusSession({
         topicId: topic.id,
         ...(task ? { taskId: task.id } : {}),
-        topicName: topic.name,
-        subject: topic.subject,
+        topicName: task?.title || topic.name,
+        subject: task?.subject || topic.subject,
         plannedMinutes: input.plannedMinutes,
         breakMinutes: input.breakMinutes,
         launchMode: input.launchMode,

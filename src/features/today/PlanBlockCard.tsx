@@ -35,7 +35,9 @@ export function PlanBlockCard({
         <View style={styles.kickerRow}>
           <Text style={styles.subject}>{block.subject}</Text>
           <View style={styles.dot} />
-          <Text style={styles.mode}>{block.mode === 'review' ? 'REVIEW' : 'STUDY'}</Text>
+          <Text style={styles.mode}>
+            {block.source === 'task' ? 'TASK' : block.mode === 'review' ? 'REVIEW' : 'STUDY'}
+          </Text>
         </View>
         <Text style={styles.title}>{block.topicName}</Text>
         <Text style={styles.reason} numberOfLines={2}>

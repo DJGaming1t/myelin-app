@@ -17,6 +17,8 @@ import { migrateAndValidateWorkspace } from '@/src/data/migrations';
 export const NATIVE_BACKUP_FORMAT = 'myelin.native.backup' as const;
 export const NATIVE_BACKUP_VERSION = 1 as const;
 export const MAX_BACKUP_BYTES = 8 * 1024 * 1024;
+// Compatibility for the first Feature 11 implementation still compiled in the app.
+export const MAX_BACKUP_TEXT_BYTES = MAX_BACKUP_BYTES;
 
 const DAY = 24 * 60 * 60 * 1000;
 const ID = /^[a-zA-Z0-9_-]{1,120}$/;

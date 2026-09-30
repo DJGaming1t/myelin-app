@@ -34,6 +34,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   copy: { flex: 1 },
-  title: { color: colors.text, fontSize: 12, fontWeight: '650' },
+  title: { color: colors.text, fontSize: 12, fontWeight: '600' },
   caption: { color: colors.subtle, fontSize: 10.5, lineHeight: 15, marginTop: 2 },
 });

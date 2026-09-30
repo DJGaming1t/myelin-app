@@ -5,6 +5,7 @@ import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createEmptyWorkspace } from '../src/data/schema';
 import {
   applyMistakeRetest,
+  applyMistakeInput,
   buildMistakeRetestQueue,
   captureRecallMistake,
   createMistake,
@@ -125,7 +126,25 @@ function main() {
   assert.equal(duplicateSameDay.countedWin, false);
   assert.equal(manual.wins, 1, 'Two wins on the same day must not resolve the mistake.');
 
-  const secondWinAt = firstWinAt + 3 * DAY;
+  applyMistakeInput(
+    manual,
+    {
+      topicId: manual.topicId,
+      cardId: manual.cardId,
+      prompt: manual.prompt,
+      detail: manual.detail,
+      correction: 'The numerator starts with −b, then ± the square root term.',
+      reason: manual.reason,
+    },
+    firstWinAt + 2 * 60 * 60 * 1000,
+  );
+  assert.equal(manual.wins, 0, 'Changing the correction must invalidate an old proof win.');
+
+  const newFirstWinAt = firstWinAt + DAY;
+  applyMistakeRetest(manual, 'win', newFirstWinAt);
+  assert.equal(manual.wins, 1);
+
+  const secondWinAt = newFirstWinAt + 3 * DAY;
   const secondWin = applyMistakeRetest(manual, 'win', secondWinAt);
   assert.equal(secondWin.countedWin, true);
   assert.equal(secondWin.resolved, true);
@@ -172,6 +191,7 @@ function main() {
   console.log('✓ due mistake queue excludes resolved/future items');
   console.log('✓ misses reset the streak and schedule a retry');
   console.log('✓ only one successful retest counts per local day');
+  console.log('✓ editing the correction invalidates prior proof wins');
   console.log('✓ two spaced wins resolve a mistake');
   console.log('✓ resolved mistakes can be reopened safely');
   console.log('✓ deleting a mistake cleans historical mistake references');

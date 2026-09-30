@@ -8,6 +8,7 @@ const ITEMS = [
   { key: 'review', label: 'Review', glyph: '↻', path: '/(app)/review' as const },
   { key: 'mistakes', label: 'Mistakes', glyph: '!', path: '/(app)/mistakes' as const },
   { key: 'exams', label: 'Exams', glyph: '◇', path: '/(app)/exams' as const },
+  { key: 'progress', label: 'Progress', glyph: '▥', path: '/(app)/progress' as const },
   { key: 'topics', label: 'Topics', glyph: '▦', path: '/(app)/topics' as const },
 ];
 
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
   },
   itemActive: { backgroundColor: 'rgba(255,128,91,0.035)' },
   glyph: { color: colors.subtle, fontSize: 15 },
-  label: { color: colors.subtle, fontSize: 9.5, fontWeight: '700' },
+  label: { color: colors.subtle, fontSize: 8.5, fontWeight: '700' },
   activeText: { color: colors.accent },
   pressed: { opacity: 0.6 },
 });

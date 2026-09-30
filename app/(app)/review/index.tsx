@@ -27,7 +27,7 @@ import {
 } from '@/src/features/review/review-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findQuestion, findTopic } from '@/src/features/topics/topic-operations';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -582,9 +582,9 @@ const styles = StyleSheet.create({
   emptyCard: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.lg },
   emptyTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
-  emptyAction: { alignSelf: 'flex-start', minHeight: 40, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, justifyContent: 'center' },
+  emptyAction: { alignSelf: 'flex-start', minHeight: layout.minTouch, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, justifyContent: 'center' },
   emptyActionText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
-  textButton: { minHeight: 42, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  textButton: { minHeight: layout.minTouch, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   textButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
   reviewPage: { flex: 1 },
   reviewTop: { minHeight: 58, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.line },
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     maxWidth: 650,
   },
-  hintButton: { alignSelf: 'flex-start', minHeight: 38, marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, paddingHorizontal: 13, justifyContent: 'center' },
+  hintButton: { alignSelf: 'flex-start', minHeight: layout.minTouch, marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, paddingHorizontal: 13, justifyContent: 'center' },
   hintButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   hintCard: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.2)', backgroundColor: colors.accentSoft, padding: 12 },
   hintLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },

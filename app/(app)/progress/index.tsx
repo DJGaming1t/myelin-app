@@ -18,7 +18,7 @@ import {
   buildProgressSnapshot,
   formatMinutesCompact,
 } from '@/src/features/progress/progress-engine';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 export default function ProgressScreen() {
   const { workspace } = useWorkspace();
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
   metricInlineLabel: { color: colors.subtle, fontSize: 7, fontWeight: '800', letterSpacing: 1 },
   metricInlineValue: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
   mistakeGrid: { flexDirection: 'row', gap: 7 },
-  inlineAction: { minHeight: 46, marginTop: 8, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.22)', backgroundColor: 'rgba(255,161,145,0.045)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  inlineAction: { minHeight: layout.minTouch, marginTop: 8, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.22)', backgroundColor: 'rgba(255,161,145,0.045)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   inlineActionText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
   inlineActionArrow: { color: colors.danger, fontSize: 17 },
   topicList: { gap: 8 },

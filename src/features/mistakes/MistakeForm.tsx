@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { MistakeReason, Topic } from '@/src/data/schema';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 import { MistakeInput } from './mistake-engine';
 
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: 52 },
   label: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
   chips: { gap: 7, paddingRight: spacing.lg },
-  chip: { maxWidth: 220, minHeight: 38, justifyContent: 'center', borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13 },
+  chip: { maxWidth: 220, minHeight: layout.minTouch, justifyContent: 'center', borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13 },
   chipActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
   chipText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
   chipTextActive: { color: colors.accent },

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { Priority, TopicStatus } from '@/src/data/schema';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 import { TopicInput } from './topic-operations';
 
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   notes: { minHeight: 150, paddingTop: 14, paddingBottom: 14, lineHeight: 21 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    minHeight: 38,
+    minHeight: layout.minTouch,
     justifyContent: 'center',
     paddingHorizontal: 13,
     borderRadius: radius.pill,

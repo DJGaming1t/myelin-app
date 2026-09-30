@@ -25,7 +25,7 @@ import {
   exportWorkspaceBackup,
   readBackupDocument,
 } from '@/src/features/transfer/backup-io';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Preview = {
   fileName: string;
@@ -543,17 +543,17 @@ const styles = StyleSheet.create({
   mergeTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
   mergeText: { color: colors.muted, fontSize: 9.3, lineHeight: 15, marginTop: 4 },
   actions: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
-  mergeButton: { flex: 1, minHeight: 47, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  mergeButton: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   mergeButtonText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
-  replaceButton: { flex: 1, minHeight: 47, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.28)', alignItems: 'center', justifyContent: 'center' },
+  replaceButton: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.28)', alignItems: 'center', justifyContent: 'center' },
   replaceButtonText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
-  cancelPreview: { minHeight: 38, marginTop: 5, alignItems: 'center', justifyContent: 'center' },
+  cancelPreview: { minHeight: layout.minTouch, marginTop: 5, alignItems: 'center', justifyContent: 'center' },
   cancelPreviewText: { color: colors.subtle, fontSize: 9.5, fontWeight: '600' },
   recoveryPanel: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(180,216,174,0.2)', backgroundColor: 'rgba(180,216,174,0.045)', padding: spacing.md },
   recoveryEyebrow: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   recoveryTitle: { color: colors.text, fontSize: 13, fontWeight: '700', marginTop: 5 },
   recoveryText: { color: colors.muted, fontSize: 9.5, lineHeight: 15, marginTop: 5 },
-  recoveryButton: { minHeight: 43, marginTop: 11, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(180,216,174,0.28)', alignItems: 'center', justifyContent: 'center' },
+  recoveryButton: { minHeight: layout.minTouch, marginTop: 11, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(180,216,174,0.28)', alignItems: 'center', justifyContent: 'center' },
   recoveryButtonText: { color: colors.success, fontSize: 10.5, fontWeight: '700' },
   success: { color: colors.success, fontSize: 10, lineHeight: 15, marginTop: spacing.md },
   error: { color: colors.danger, fontSize: 10, lineHeight: 15, marginTop: spacing.md },

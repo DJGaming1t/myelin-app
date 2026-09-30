@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
   emptyButton: {
     alignSelf: 'flex-start',
-    minHeight: 41,
+    minHeight: layout.minTouch,
     marginTop: spacing.md,
     paddingHorizontal: 14,
     justifyContent: 'center',

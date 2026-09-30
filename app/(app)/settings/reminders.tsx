@@ -21,7 +21,7 @@ import {
   normalizeReminderSettings,
 } from '@/src/features/notifications/reminder-engine';
 import { useReminders } from '@/src/features/notifications/ReminderProvider';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const REVIEW_PRESETS = [
   { label: 'Before school', value: 7 * 60 + 15 },
@@ -910,8 +910,8 @@ const styles = StyleSheet.create({
   timeValue: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 3 },
   stepper: { flexDirection: 'row', gap: 5 },
   stepButton: {
-    minWidth: 42,
-    minHeight: 34,
+    minWidth: layout.minTouch,
+    minHeight: layout.minTouch,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.lineStrong,
@@ -931,7 +931,7 @@ const styles = StyleSheet.create({
   offsetRow: { flexDirection: 'row', gap: 7 },
   offsetChip: {
     flex: 1,
-    minHeight: 37,
+    minHeight: layout.minTouch,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#25140e', fontSize: 10.8, fontWeight: '800' },
   primaryArrow: { color: '#25140e', fontSize: 18 },
   secondaryButton: {
-    minHeight: 45,
+    minHeight: layout.minTouch,
     marginTop: 9,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
   activeActions: { flexDirection: 'row', gap: 8, marginTop: 5 },
   flexButton: { flex: 1 },
   offButton: {
-    minHeight: 45,
+    minHeight: layout.minTouch,
     marginTop: 9,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -1043,7 +1043,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   offButtonText: { color: colors.danger, fontSize: 9.8, fontWeight: '700' },
-  permissionRefresh: { minHeight: 35, alignItems: 'center', justifyContent: 'center', marginTop: 3 },
+  permissionRefresh: { minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center', marginTop: 3 },
   permissionRefreshText: { color: colors.subtle, fontSize: 8.7, fontWeight: '600' },
   ethics: {
     marginTop: 31,

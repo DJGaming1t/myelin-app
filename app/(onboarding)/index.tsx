@@ -23,7 +23,7 @@ import {
   createTopic,
   makeRecordId,
 } from '@/src/features/topics/topic-operations';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Step = 0 | 1 | 2;
 
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2.1,
   },
   skipButton: {
-    minHeight: 36,
+    minHeight: layout.minTouch,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
   },
   subjectRow: { gap: 7, paddingTop: 9, paddingRight: 16 },
   subjectChip: {
-    minHeight: 35,
+    minHeight: layout.minTouch,
     paddingHorizontal: 11,
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -863,14 +863,14 @@ const styles = StyleSheet.create({
   previewArrow: { color: colors.accent, fontSize: 13 },
   error: { color: colors.danger, fontSize: 9.5, lineHeight: 15, marginTop: 12 },
   textButton: {
-    minHeight: 42,
+    minHeight: layout.minTouch,
     marginTop: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textButtonText: { color: colors.muted, fontSize: 9.8, fontWeight: '700' },
   backLink: {
-    minHeight: 38,
+    minHeight: layout.minTouch,
     marginTop: 4,
     alignItems: 'center',
     justifyContent: 'center',

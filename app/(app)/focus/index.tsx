@@ -23,7 +23,7 @@ import {
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
   effortActive: { borderColor: 'rgba(255,128,91,0.5)', backgroundColor: colors.accentSoft },
   effortText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   effortTextActive: { color: colors.accent },
-  textButton: { minHeight: 40, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  textButton: { minHeight: layout.minTouch, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   textButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
   parking: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   parkingHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
@@ -687,8 +687,8 @@ const styles = StyleSheet.create({
   parkingSubtitle: { color: colors.subtle, fontSize: 9.5, marginTop: 2 },
   parkCount: { color: colors.subtle, fontSize: 9 },
   parkInputRow: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
-  parkInput: { flex: 1, minHeight: 44, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, color: colors.text, fontSize: 11.5 },
-  parkAdd: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  parkInput: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, color: colors.text, fontSize: 11.5 },
+  parkAdd: { width: layout.minTouch, height: layout.minTouch, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   parkAddText: { color: '#25140e', fontSize: 21, fontWeight: '600' },
   disabled: { opacity: 0.35 },
   parkedItem: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.line, marginTop: 9, paddingTop: 9 },

@@ -8,7 +8,7 @@ import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 
 export default function AppLayout() {
   const { ready: authReady, user, localMode } = useAuth();
-  const { status, saveError } = useWorkspace();
+  const { status, saveError, retryWorkspace } = useWorkspace();
   const { ready: onboardingReady, shouldShow } = useOnboarding();
   const reduceMotion = useReducedMotion();
 
@@ -27,6 +27,8 @@ export default function AppLayout() {
         kind="error"
         title="Your workspace did not open"
         message={saveError || 'MYELIN could not read the local workspace on this device.'}
+        actionLabel="Try again"
+        onAction={() => void retryWorkspace()}
         fill
       />
     );

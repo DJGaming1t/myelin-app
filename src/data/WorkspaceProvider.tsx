@@ -27,6 +27,7 @@ type WorkspaceContextValue = {
   updateWorkspace: (change: (draft: WorkspaceState) => void) => WorkspaceState | null;
   waitForSaves: () => Promise<void>;
   resetWorkspace: () => Promise<void>;
+  retryWorkspace: () => Promise<void>;
   replaceWorkspace: (next: WorkspaceState, expectedRevision: number) => Promise<WorkspaceState>;
   restoreImportRecovery: (expectedRevision: number) => Promise<WorkspaceState | null>;
   hasImportRecovery: boolean;
@@ -136,6 +137,38 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
 
   const waitForSaves = useCallback(async () => {
     await saveQueue.current;
+  }, []);
+
+  const retryWorkspace = useCallback(async () => {
+    const currentOwner = ownerKeyRef.current;
+    if (!currentOwner) return;
+
+    setStatus('loading');
+    setSaveError('');
+
+    try {
+      const result = await workspaceStorage.load(currentOwner);
+      if (ownerKeyRef.current !== currentOwner) return;
+
+      workspaceRef.current = result.workspace;
+      setWorkspace(result.workspace);
+      setRecovered(result.recovered);
+      setResetBecauseCorrupt(result.resetBecauseCorrupt);
+
+      const recovery = await workspaceStorage
+        .loadImportRecovery(currentOwner)
+        .catch(() => null);
+
+      if (ownerKeyRef.current !== currentOwner) return;
+      setHasImportRecovery(Boolean(recovery));
+      setStatus('ready');
+    } catch (error) {
+      if (ownerKeyRef.current !== currentOwner) return;
+      setStatus('error');
+      setSaveError(
+        error instanceof Error ? error.message : 'Could not load this workspace.',
+      );
+    }
   }, []);
 
   const resetWorkspace = useCallback(async () => {
@@ -248,6 +281,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       updateWorkspace,
       waitForSaves,
       resetWorkspace,
+      retryWorkspace,
       replaceWorkspace,
       restoreImportRecovery,
       hasImportRecovery,
@@ -259,6 +293,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       resetBecauseCorrupt,
       replaceWorkspace,
       resetWorkspace,
+      retryWorkspace,
       restoreImportRecovery,
       saveError,
       status,

@@ -51,6 +51,9 @@ jobs:
       - name: Exam scope and planner pressure
         run: npm run verify:exams
 
+      - name: Progress and calibration evidence
+        run: npm run verify:progress
+
       - name: Expo Doctor
         run: npx expo-doctor
 

@@ -11,8 +11,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { Confidence } from '@/src/data/schema';
+import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { ReviewChoiceButton } from '@/src/features/review/ReviewChoiceButton';
@@ -338,6 +341,7 @@ export default function ReviewScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.reviewPage}>
         <View style={styles.reviewTop}>
           <Pressable accessibilityRole="button" onPress={confirmDiscard} hitSlop={10}>
@@ -349,11 +353,19 @@ export default function ReviewScreen() {
           </View>
           <Text style={styles.subjectTop}>{currentTopic.subject}</Text>
         </View>
+        <View style={styles.reviewProgress}>
+          <AnimatedProgress
+            value={progress / Math.max(1, session.queue.length)}
+            accessibilityLabel={`Review progress: ${progress} of ${session.queue.length}`}
+          />
+        </View>
 
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.reviewContent}
           showsVerticalScrollIndicator={false}>
+          <Reveal key={`${currentCard.id}:${session.stage}`} distance={8}>
+          <View>
           <Text style={styles.topicKicker}>{currentTopic.name.toUpperCase()}</Text>
           <Text style={styles.prompt}>{currentCard.prompt}</Text>
 
@@ -472,6 +484,8 @@ export default function ReviewScreen() {
               {grading ? <Text style={styles.saving}>Saving review…</Text> : null}
             </>
           )}
+          </View>
+          </Reveal>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -579,16 +593,40 @@ const styles = StyleSheet.create({
   progressLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.2 },
   progressValue: { color: colors.text, fontSize: 10.5, fontWeight: '700', marginTop: 2 },
   subjectTop: { color: colors.muted, fontSize: 9.5, maxWidth: 120 },
-  reviewContent: { padding: spacing.lg, paddingBottom: 56 },
+  reviewProgress: { paddingHorizontal: spacing.lg },
+  reviewContent: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: spacing.lg, paddingBottom: 56 },
   topicKicker: { color: colors.accent, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.4 },
-  prompt: { color: colors.text, fontSize: 24, lineHeight: 31, fontWeight: '600', letterSpacing: -0.5, marginTop: 10 },
+  prompt: {
+    color: colors.text,
+    fontSize: 27,
+    lineHeight: 35,
+    fontWeight: '600',
+    letterSpacing: -0.65,
+    marginTop: 12,
+    maxWidth: 650,
+  },
   hintButton: { alignSelf: 'flex-start', minHeight: 38, marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, paddingHorizontal: 13, justifyContent: 'center' },
   hintButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   hintCard: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.2)', backgroundColor: colors.accentSoft, padding: 12 },
   hintLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   hintText: { color: colors.text, fontSize: 11.5, lineHeight: 17, marginTop: 5 },
   answerLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.3, marginTop: spacing.xl, marginBottom: 8 },
-  answerInput: { minHeight: 150, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: 13, color: colors.text, fontSize: 13, lineHeight: 20 },
+  answerInput: {
+    minHeight: 164,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel,
+    padding: 15,
+    color: colors.text,
+    fontSize: 13.5,
+    lineHeight: 21,
+    shadowColor: '#000000',
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
   confidenceLabel: { color: colors.muted, fontSize: 10.5, fontWeight: '600', marginTop: spacing.lg, marginBottom: 8 },
   confidenceRow: { flexDirection: 'row', gap: 7 },
   confidenceCard: { flex: 1, minHeight: 62, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 9, justifyContent: 'center' },

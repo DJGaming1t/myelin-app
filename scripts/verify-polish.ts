@@ -19,6 +19,11 @@ const focus = read('app/(app)/focus/index.tsx');
 const workspaceProvider = read('src/data/WorkspaceProvider.tsx');
 const reveal = read('src/components/motion/Reveal.tsx');
 const planCard = read('src/features/today/PlanBlockCard.tsx');
+const ambient = read('src/components/app/AmbientBackdrop.tsx');
+const pulseHalo = read('src/components/motion/PulseHalo.tsx');
+const animatedProgress = read('src/components/motion/AnimatedProgress.tsx');
+const today = read('app/(app)/today/index.tsx');
+const review = read('app/(app)/review/index.tsx');
 
 assert(tokens.includes('contentMax: 820'), 'Responsive content cap is missing.');
 assert(tokens.includes('minTouch: 44'), '44-point touch target token is missing.');
@@ -46,5 +51,14 @@ assert(nav.includes('glyphWrapActive'), 'Bottom navigation is missing the active
 assert(header.includes('<Reveal'), 'Screen headers are missing entrance motion.');
 assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
 assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');
+assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');
+assert(pulseHalo.includes('Animated.loop'), 'Focus breathing halo animation is missing.');
+assert(pulseHalo.includes('reduceMotion'), 'Focus breathing halo ignores reduced-motion.');
+assert(animatedProgress.includes('Animated.timing'), 'Animated progress primitive is missing.');
+assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
+assert(today.includes('nextGlow'), 'Today next-move card lacks focal visual treatment.');
+assert(focus.includes('<PulseHalo'), 'Focus timer is missing the breathing halo.');
+assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
+assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
 
 console.log('Product polish verification passed.');

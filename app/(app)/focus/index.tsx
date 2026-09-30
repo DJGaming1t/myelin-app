@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { PulseHalo } from '@/src/components/motion/PulseHalo';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   formatTimer,
@@ -164,6 +167,7 @@ export default function FocusScreen() {
   if (!session && activeReview) {
     return (
       <SafeAreaView style={styles.safe}>
+        <AmbientBackdrop />
         <View style={styles.setupPage}>
           <TopBar label="Focus" onBack={() => router.replace('/(app)/review')} />
           <View style={styles.missing}>
@@ -188,6 +192,7 @@ export default function FocusScreen() {
     if (!topic) {
       return (
         <SafeAreaView style={styles.safe}>
+          <AmbientBackdrop />
           <View style={styles.setupPage}>
             <TopBar label="Focus" onBack={() => router.replace('/(app)/today')} />
             <View style={styles.missing}>
@@ -209,6 +214,7 @@ export default function FocusScreen() {
 
     return (
       <SafeAreaView style={styles.safe}>
+        <AmbientBackdrop />
         <View style={styles.setupPage}>
           <TopBar label="Focus" onBack={() => router.back()} />
 
@@ -284,6 +290,7 @@ export default function FocusScreen() {
   if (session.phase === 'break') {
     return (
       <SafeAreaView style={styles.safe}>
+        <AmbientBackdrop />
         <View style={styles.sessionPage}>
           <TopBar
             label="Break"
@@ -299,6 +306,7 @@ export default function FocusScreen() {
               value={formatTimer(remaining)}
               label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
               complete={timerDone}
+              active={Boolean(session.runningSince)}
             />
 
             <Text style={styles.breakPrompt}>
@@ -342,6 +350,7 @@ export default function FocusScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.sessionPage}>
         <TopBar
           label="Focus"
@@ -376,6 +385,7 @@ export default function FocusScreen() {
                   : 'PAUSED'
             }
             complete={timerDone}
+            active={Boolean(session.runningSince)}
           />
 
           {canExtend ? (
@@ -563,18 +573,25 @@ function TimerDial({
   value,
   label,
   complete,
+  active = true,
 }: {
   value: string;
   label: string;
   complete?: boolean;
+  active?: boolean;
 }) {
   return (
-    <View style={[styles.dial, complete && styles.dialComplete]}>
-      <View style={styles.dialInner}>
-        <Text style={[styles.timerValue, complete && styles.timerValueComplete]}>{value}</Text>
-        <Text style={styles.timerLabel}>{label}</Text>
-      </View>
-    </View>
+    <Reveal distance={8}>
+      <PulseHalo active={active && !complete}>
+        <View style={[styles.dial, complete && styles.dialComplete]}>
+          <View style={styles.dialOuterRing} />
+          <View style={styles.dialInner}>
+            <Text style={[styles.timerValue, complete && styles.timerValueComplete]}>{value}</Text>
+            <Text style={styles.timerLabel}>{label}</Text>
+          </View>
+        </View>
+      </PulseHalo>
+    </Reveal>
   );
 }
 
@@ -632,8 +649,21 @@ const styles = StyleSheet.create({
   stepLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   stepText: { color: colors.text, fontSize: 11.5, lineHeight: 17, marginTop: 5, textAlign: 'center' },
   timerArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  dial: { width: 228, height: 228, borderRadius: 228, marginTop: spacing.xl, borderWidth: 2, borderColor: 'rgba(255,128,91,0.25)', backgroundColor: 'rgba(255,128,91,0.035)', alignItems: 'center', justifyContent: 'center' },
+  dial: {
+    position: 'relative',
+    overflow: 'visible', width: 228, height: 228, borderRadius: 228, marginTop: spacing.xl, borderWidth: 2, borderColor: 'rgba(255,128,91,0.25)', backgroundColor: 'rgba(255,128,91,0.035)', alignItems: 'center', justifyContent: 'center' },
   dialComplete: { borderColor: 'rgba(180,216,174,0.34)', backgroundColor: 'rgba(180,216,174,0.04)' },
+  dialOuterRing: {
+    position: 'absolute',
+    top: -9,
+    left: -9,
+    right: -9,
+    bottom: -9,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    opacity: 0.55,
+  },
   dialInner: { width: 188, height: 188, borderRadius: 188, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   timerValue: { color: colors.text, fontSize: 44, lineHeight: 50, fontWeight: '500', letterSpacing: -2 },
   timerValueComplete: { color: colors.success },

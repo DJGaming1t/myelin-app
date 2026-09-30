@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   examStatus,
@@ -134,6 +136,7 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.screen}>
         <ScreenHeader
           eyebrow="TODAY"
@@ -147,7 +150,8 @@ export default function TodayScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <View style={styles.controlCard}>
+          <Reveal delay={20} distance={8}>
+            <View style={styles.controlCard}>
             <View style={styles.controlHeader}>
               <View>
                 <Text style={styles.controlEyebrow}>AVAILABLE TIME</Text>
@@ -212,7 +216,8 @@ export default function TodayScreen() {
                 />
               </View>
             </View>
-          </View>
+            </View>
+          </Reveal>
 
           <View style={styles.summaryRow}>
             <SummaryMetric label="USED" value={`${plan.alreadyUsedMinutes}m`} />
@@ -316,7 +321,9 @@ export default function TodayScreen() {
               </Text>
             </View>
           ) : next ? (
+            <Reveal delay={90} distance={10}>
             <View style={styles.nextCard}>
+              <View style={styles.nextGlow} />
               <View style={styles.nextTop}>
                 <View>
                   <Text style={styles.nextSubject}>{next.subject.toUpperCase()}</Text>
@@ -359,6 +366,7 @@ export default function TodayScreen() {
                 </Pressable>
               </View>
             </View>
+            </Reveal>
           ) : (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>Nothing to plan yet.</Text>
@@ -665,11 +673,28 @@ const styles = StyleSheet.create({
   },
   deferUndoButtonText: { color: colors.accent, fontSize: 10, fontWeight: '800' },
   nextCard: {
+    position: 'relative',
+    overflow: 'hidden',
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.32)',
-    backgroundColor: colors.accentSoft,
+    backgroundColor: 'rgba(255,128,91,0.10)',
     padding: spacing.lg,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  nextGlow: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 180,
+    right: -88,
+    top: -105,
+    backgroundColor: colors.accent,
+    opacity: 0.08,
   },
   nextTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   nextSubject: { color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 1.3 },

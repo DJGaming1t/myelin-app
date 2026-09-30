@@ -57,6 +57,9 @@ jobs:
       - name: Settings and privacy guardrails
         run: npm run verify:settings
 
+      - name: Backup, import and web migration
+        run: npm run verify:transfer
+
       - name: Expo Doctor
         run: npx expo-doctor
 

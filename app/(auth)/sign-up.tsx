@@ -10,7 +10,7 @@ import { PasswordChecklist } from '@/src/components/auth/PasswordChecklist';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { passwordIsReady } from '@/src/features/auth/password';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 export default function SignUpScreen() {
   const { signUpEmail } = useAuth();
@@ -120,7 +120,7 @@ export default function SignUpScreen() {
 
       <View style={styles.bottomRow}>
         <Text style={styles.muted}>Already have an account?</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.replace('/(auth)/sign-in')}>
+        <Pressable accessibilityRole="button" onPress={() => router.replace('/(auth)/sign-in')} style={styles.inlineLink}>
           <Text style={styles.link}>Sign in</Text>
         </Pressable>
       </View>
@@ -151,7 +151,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   muted: { color: colors.muted, fontSize: 12 },
+  inlineLink: { minHeight: layout.minTouch, justifyContent: 'center' },
   link: { color: colors.accent, fontSize: 12, fontWeight: '700' },
-  back: { alignSelf: 'center', marginTop: spacing.lg, padding: 6 },
+  back: { alignSelf: 'center', minHeight: layout.minTouch, marginTop: spacing.lg, paddingHorizontal: 10, justifyContent: 'center' },
   backText: { color: colors.subtle, fontSize: 11, fontWeight: '600' },
 });

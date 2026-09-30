@@ -8,7 +8,7 @@ import { AuthScaffold } from '@/src/components/auth/AuthScaffold';
 import { KeepSignedInRow } from '@/src/components/auth/KeepSignedInRow';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
-import { colors, spacing } from '@/src/theme/tokens';
+import { colors, layout, spacing } from '@/src/theme/tokens';
 
 export default function SignInScreen() {
   const { signInEmail, signInGoogle } = useAuth();
@@ -84,7 +84,8 @@ export default function SignInScreen() {
       <View style={styles.forgotRow}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push('/(auth)/forgot-password')}>
+          onPress={() => router.push('/(auth)/forgot-password')}
+          style={styles.inlineLink}>
           <Text style={styles.link}>Forgot password?</Text>
         </Pressable>
       </View>
@@ -106,7 +107,7 @@ export default function SignInScreen() {
 
       <View style={styles.bottomRow}>
         <Text style={styles.muted}>New to MYELIN?</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.replace('/(auth)/sign-up')}>
+        <Pressable accessibilityRole="button" onPress={() => router.replace('/(auth)/sign-up')} style={styles.inlineLink}>
           <Text style={styles.link}>Create account</Text>
         </Pressable>
       </View>
@@ -120,6 +121,7 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   forgotRow: { alignItems: 'flex-end', marginTop: -8, marginBottom: spacing.md },
+  inlineLink: { minHeight: layout.minTouch, justifyContent: 'center' },
   link: { color: colors.accent, fontSize: 12, fontWeight: '700' },
   error: { color: colors.danger, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
   stack: { gap: 10 },
@@ -130,6 +132,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   muted: { color: colors.muted, fontSize: 12 },
-  back: { alignSelf: 'center', marginTop: spacing.lg, padding: 6 },
+  back: { alignSelf: 'center', minHeight: layout.minTouch, marginTop: spacing.lg, paddingHorizontal: 10, justifyContent: 'center' },
   backText: { color: colors.subtle, fontSize: 11, fontWeight: '600' },
 });

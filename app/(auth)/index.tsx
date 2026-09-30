@@ -6,7 +6,7 @@ import { AuthButton } from '@/src/components/auth/AuthButton';
 import { AuthScaffold } from '@/src/components/auth/AuthScaffold';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
-import { colors, spacing } from '@/src/theme/tokens';
+import { colors, layout, spacing } from '@/src/theme/tokens';
 
 export default function WelcomeScreen() {
   const { signInGoogle, continueLocally } = useAuth();
@@ -101,6 +101,7 @@ const styles = StyleSheet.create({
   line: { height: 1, backgroundColor: colors.line, flex: 1 },
   or: { color: colors.subtle, fontSize: 9, fontWeight: '800', letterSpacing: 1.6 },
   local: {
+    minHeight: layout.minTouch,
     paddingVertical: spacing.sm,
     paddingHorizontal: 4,
     alignItems: 'center',

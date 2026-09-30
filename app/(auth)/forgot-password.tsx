@@ -7,7 +7,7 @@ import { AuthField } from '@/src/components/auth/AuthField';
 import { AuthScaffold } from '@/src/components/auth/AuthScaffold';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 export default function ForgotPasswordScreen() {
   const { requestPasswordReset } = useAuth();
@@ -86,7 +86,7 @@ export default function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   error: { color: colors.danger, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
-  back: { alignSelf: 'center', marginTop: spacing.lg, padding: 6 },
+  back: { alignSelf: 'center', minHeight: layout.minTouch, marginTop: spacing.lg, paddingHorizontal: 10, justifyContent: 'center' },
   backText: { color: colors.subtle, fontSize: 11, fontWeight: '600' },
   success: {
     borderRadius: radius.md,

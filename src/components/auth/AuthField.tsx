@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Props = TextInputProps & {
   label: string;
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   passwordInput: { paddingRight: 62 },
-  reveal: { position: 'absolute', right: 13, paddingVertical: 8, paddingHorizontal: 3 },
+  reveal: { position: 'absolute', right: 7, minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
   revealText: { color: colors.accent, fontWeight: '700', fontSize: 11 },
   error: { color: colors.danger, fontSize: 11, lineHeight: 16, marginTop: 6 },
 });

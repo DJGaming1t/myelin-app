@@ -1,54 +1,64 @@
 import {
-  CURRENT_SCHEMA_VERSION,
-  WORKSPACE_FORMAT,
+  BreakLog,
+  Confidence,
+  Exam,
+  Mistake,
+  MistakeReason,
+  RecallQuestion,
+  ReviewGrade,
+  StudySession,
+  Topic,
   WorkspaceState,
+  cloneWorkspace,
   createEmptyWorkspace,
 } from '@/src/data/schema';
 import { migrateAndValidateWorkspace } from '@/src/data/migrations';
 
 export const NATIVE_BACKUP_FORMAT = 'myelin.native.backup' as const;
 export const NATIVE_BACKUP_VERSION = 1 as const;
-export const MAX_BACKUP_TEXT_BYTES = 25_000_000;
+export const MAX_BACKUP_BYTES = 8 * 1024 * 1024;
 
-const DAY = 86_400_000;
+const DAY = 24 * 60 * 60 * 1000;
+const ID = /^[a-zA-Z0-9_-]{1,120}$/;
 
-export type BackupEnvelope = {
+export type ImportSource =
+  | 'native-backup'
+  | 'native-workspace'
+  | 'web-v3'
+  | 'web-v2'
+  | 'web-v1';
+
+export type ImportCandidate = {
+  source: ImportSource;
+  sourceLabel: string;
+  workspace: WorkspaceState;
+  warnings: string[];
+  sourceUpdatedAt: number | null;
+};
+
+export type NativeBackupEnvelope = {
   format: typeof NATIVE_BACKUP_FORMAT;
   version: typeof NATIVE_BACKUP_VERSION;
   exportedAt: number;
   workspace: WorkspaceState;
 };
 
-export type ImportSource =
-  | 'native-backup'
-  | 'native-workspace'
-  | 'web-v3'
-  | 'web-legacy-v1'
-  | 'web-legacy-v2';
-
-export type ImportRelation =
-  | 'current-empty'
-  | 'source-newer'
-  | 'source-older'
-  | 'same-time'
-  | 'unknown';
-
-export type ImportPreview = {
-  source: ImportSource;
-  sourceLabel: string;
-  workspace: WorkspaceState;
-  sourceUpdatedAt: number | null;
-  sourceRevision: number | null;
-  relation: ImportRelation;
-  warnings: string[];
-  counts: {
+export type MergeReport = {
+  added: {
     topics: number;
-    questions: number;
     exams: number;
     mistakes: number;
     sessions: number;
     breaks: number;
   };
+  skippedIdentical: number;
+  remappedIds: number;
+  keptCurrentSettings: true;
+};
+
+export type MergeResult = {
+  workspace: WorkspaceState;
+  report: MergeReport;
 };
 
 function object(value: unknown, label: string): Record<string, unknown> {
@@ -58,28 +68,14 @@ function object(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function array(value: unknown, label: string, max: number) {
+function array(value: unknown, label: string, max: number): unknown[] {
   if (!Array.isArray(value) || value.length > max) {
     throw new Error(`Invalid ${label}.`);
   }
   return value;
 }
 
-function text(value: unknown, label: string, max: number, allowEmpty = true) {
-  if (typeof value !== 'string' || value.length > max) {
-    throw new Error(`Invalid ${label}.`);
-  }
-  if (!allowEmpty && !value.trim()) throw new Error(`${label} cannot be empty.`);
-  return value;
-}
-
-function recordId(value: unknown) {
-  const id = text(value, 'record ID', 120, false);
-  if (!/^[a-zA-Z0-9_-]{1,120}$/.test(id)) throw new Error('Invalid record ID.');
-  return id;
-}
-
-function finiteNumber(
+function num(
   value: unknown,
   label: string,
   min = 0,
@@ -96,76 +92,104 @@ function finiteNumber(
   return value;
 }
 
-function int(
+function integer(
   value: unknown,
   label: string,
   min = 0,
   max = Number.MAX_SAFE_INTEGER,
 ) {
-  const result = finiteNumber(value, label, min, max);
+  const result = num(value, label, min, max);
   if (!Number.isInteger(result)) throw new Error(`Invalid ${label}.`);
   return result;
 }
 
-function uniqueById(items: { id: string }[], label: string) {
+function str(value: unknown, label: string, max: number) {
+  if (typeof value !== 'string' || value.length > max) {
+    throw new Error(`Invalid ${label}.`);
+  }
+  return value;
+}
+
+function nonEmpty(value: unknown, label: string, max: number) {
+  const result = str(value, label, max);
+  if (!result.trim()) throw new Error(`${label} cannot be empty.`);
+  return result;
+}
+
+function recordId(value: unknown) {
+  const result = str(value, 'record ID', 120);
+  if (!ID.test(result)) throw new Error('Invalid record ID.');
+  return result;
+}
+
+function uniqueIds(items: { id: string }[], label: string) {
   if (new Set(items.map((item) => item.id)).size !== items.length) {
     throw new Error(`Duplicate ${label} IDs.`);
   }
 }
 
-function stableLegacyId(topicId: string, index: number) {
-  return `web_${topicId}_${index}`.slice(0, 120);
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function isWorkspaceEmpty(workspace: WorkspaceState) {
-  return (
-    workspace.topics.length === 0 &&
-    workspace.exams.length === 0 &&
-    workspace.mistakes.length === 0 &&
-    workspace.history.length === 0 &&
-    workspace.breaks.length === 0
-  );
-}
-
-function counts(workspace: WorkspaceState) {
-  return {
-    topics: workspace.topics.length,
-    questions: workspace.topics.reduce((sum, topic) => sum + topic.cards.length, 0),
-    exams: workspace.exams.length,
-    mistakes: workspace.mistakes.length,
-    sessions: workspace.history.length,
-    breaks: workspace.breaks.length,
-  };
-}
-
-function relationToCurrent(
-  sourceUpdatedAt: number | null,
-  sourceRevision: number | null,
-  current: WorkspaceState,
-): ImportRelation {
-  if (isWorkspaceEmpty(current)) return 'current-empty';
-  if (sourceUpdatedAt == null) return 'unknown';
-
-  if (sourceUpdatedAt > current.updatedAt) return 'source-newer';
-  if (sourceUpdatedAt < current.updatedAt) return 'source-older';
-
-  if (sourceRevision != null) {
-    if (sourceRevision > current.revision) return 'source-newer';
-    if (sourceRevision < current.revision) return 'source-older';
+function utf8ByteLength(input: string) {
+  let bytes = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    const code = input.charCodeAt(index);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff) {
+      const next = input.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        bytes += 4;
+        index += 1;
+      } else {
+        bytes += 3;
+      }
+    } else bytes += 3;
   }
+  return bytes;
+}
 
-  return 'same-time';
+function stableHash(input: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function legacySessionId(topicId: string, timestamp: number, index: number) {
+  return `legacy_${stableHash(`${topicId}:${timestamp}:${index}`)}`;
+}
+
+function validConfidence(value: unknown): Confidence {
+  return value === 'sure' || value === 'partial' ? value : 'unsure';
+}
+
+function validReason(value: unknown): MistakeReason {
+  return value === 'calculation' ||
+    value === 'recall' ||
+    value === 'application'
+    ? value
+    : 'concept';
+}
+
+function validGrade(value: unknown, label: string, allowZero = true): ReviewGrade {
+  const min = allowZero ? 0 : 1;
+  return integer(value, label, min, 3) as ReviewGrade;
 }
 
 export function createNativeBackup(
   workspace: WorkspaceState,
   exportedAt = Date.now(),
-): BackupEnvelope {
+): NativeBackupEnvelope {
   return {
     format: NATIVE_BACKUP_FORMAT,
     version: NATIVE_BACKUP_VERSION,
     exportedAt,
-    workspace: migrateAndValidateWorkspace(workspace),
+    workspace: migrateAndValidateWorkspace(cloneWorkspace(workspace)),
   };
 }
 
@@ -176,445 +200,576 @@ export function serializeNativeBackup(
   return JSON.stringify(createNativeBackup(workspace, exportedAt), null, 2);
 }
 
-function convertWebV3(raw: Record<string, unknown>) {
-  const topicsRaw = array(raw.topics, 'web topics', 3000);
-  const examsRaw = array(raw.exams, 'web exams', 500);
-  const historyRaw = array(raw.history ?? [], 'web history', 50_000);
-  const mistakesRaw = array(raw.mistakes ?? [], 'web mistakes', 10_000);
-  const breaksRaw = array(raw.breaks ?? [], 'web breaks', 10_000);
+function convertWebV3(raw: Record<string, unknown>, now: number): ImportCandidate {
+  const warnings: string[] = [];
+  const topicsRaw = array(raw.topics, 'topic list', 3000);
+  const examsRaw = array(raw.exams, 'exam list', 500);
+  const historyRaw = array(raw.history ?? [], 'study history', 50000);
+  const mistakesRaw = array(raw.mistakes ?? [], 'mistake list', 10000);
+  const breaksRaw = array(raw.breaks ?? [], 'break history', 10000);
 
-  const topics = topicsRaw.map((value) => {
-    const t = object(value, 'web topic');
-    const cardsRaw = array(t.cards ?? [], 'web question list', 500);
-    const cards = cardsRaw.map((cardValue) => {
-      const c = object(cardValue, 'web question');
-      return {
-        id: recordId(c.id),
-        prompt: text(c.prompt, 'question', 6000, false),
-        answer: text(c.answer ?? '', 'answer', 16_000),
-        hint: text(c.hint ?? '', 'hint', 4000),
-        dueAt: finiteNumber(c.dueAt ?? 0, 'question due date'),
-        intervalDays: finiteNumber(c.intervalDays ?? 0, 'question interval', 0, 3650),
-        lastGrade: int(c.lastGrade ?? 0, 'question grade', 0, 3),
-        lastReviewed: finiteNumber(c.lastReviewed ?? 0, 'question review date'),
-        reps: int(c.reps ?? 0, 'question review count', 0, 1_000_000),
-      };
-    });
-    uniqueById(cards, 'question');
+  const state = createEmptyWorkspace(now);
 
+  state.topics = topicsRaw.map((rawTopic) => {
+    const t = object(rawTopic, 'topic');
     const status = t.status;
     if (status !== 'new' && status !== 'learning' && status !== 'review') {
-      throw new Error('Invalid web topic status.');
+      throw new Error('Invalid topic status.');
+    }
+
+    const cardsRaw = array(t.cards ?? [], 'question list', 500);
+    const topic: Topic = {
+      id: recordId(t.id),
+      name: nonEmpty(t.name, 'topic name', 300),
+      subject: nonEmpty(t.subject, 'subject', 120),
+      createdAt: num(t.createdAt, 'topic creation date', 1),
+      status,
+      priority: integer(t.priority, 'topic priority', 1, 3) as 1 | 2 | 3,
+      estimate: integer(t.estimate, 'topic estimate', 5, 240),
+      notes: str(t.notes ?? '', 'topic notes', 20000),
+      dueAt: num(t.dueAt ?? 0, 'topic due date'),
+      intervalDays: num(t.intervalDays ?? 0, 'topic interval', 0, 3650),
+      lastGrade: validGrade(t.lastGrade ?? 0, 'topic grade'),
+      lastReviewed: num(t.lastReviewed ?? 0, 'topic review date'),
+      snoozeUntil: num(t.snoozeUntil ?? 0, 'topic snooze date'),
+      cards: cardsRaw.map((rawCard) => {
+        const c = object(rawCard, 'question');
+        return {
+          id: recordId(c.id),
+          prompt: nonEmpty(c.prompt, 'question', 6000),
+          answer: str(c.answer ?? '', 'answer', 16000),
+          hint: str(c.hint ?? '', 'hint', 4000),
+          dueAt: num(c.dueAt ?? 0, 'question due date'),
+          intervalDays: num(c.intervalDays ?? 0, 'question interval', 0, 3650),
+          lastGrade: validGrade(c.lastGrade ?? 0, 'question grade'),
+          lastReviewed: num(c.lastReviewed ?? 0, 'question review date'),
+          reps: integer(c.reps ?? 0, 'question review count', 0, 1_000_000),
+        } satisfies RecallQuestion;
+      }),
+    };
+
+    uniqueIds(topic.cards, 'question');
+    return topic;
+  });
+  uniqueIds(state.topics, 'topic');
+
+  const topicIds = new Set(state.topics.map((topic) => topic.id));
+  const cardIds = new Set(
+    state.topics.flatMap((topic) => topic.cards.map((card) => card.id)),
+  );
+
+  state.exams = examsRaw.map((rawExam) => {
+    const e = object(rawExam, 'exam');
+    const subjects = array(e.subjects ?? [], 'exam subjects', 100).map((value) =>
+      nonEmpty(value, 'exam subject', 120),
+    );
+    const requestedTopicIds = array(e.topicIds ?? [], 'exam topics', 300).map(recordId);
+    const topicIdsForExam = requestedTopicIds.filter((topicId) => topicIds.has(topicId));
+    if (topicIdsForExam.length !== requestedTopicIds.length) {
+      warnings.push('An exam referenced missing web topics; those links were skipped.');
+    }
+
+    const topicScoped = e.scope === 'topics' || requestedTopicIds.length > 0;
+    const allTopics = !topicScoped && subjects.length === 0;
+    if (allTopics) {
+      warnings.push(
+        'A web exam applied to every subject; it was converted to an explicit all-topic scope.',
+      );
     }
 
     return {
-      id: recordId(t.id),
-      name: text(t.name, 'topic name', 300, false),
-      subject: text(t.subject, 'subject', 120, false),
-      createdAt: finiteNumber(t.createdAt, 'topic creation date', 1),
-      status,
-      priority: int(t.priority, 'priority', 1, 3),
-      estimate: int(t.estimate, 'topic estimate', 5, 240),
-      notes: text(t.notes ?? '', 'notes', 20_000),
-      dueAt: finiteNumber(t.dueAt ?? 0, 'topic due date'),
-      intervalDays: finiteNumber(t.intervalDays ?? 0, 'topic interval', 0, 3650),
-      lastGrade: int(t.lastGrade ?? 0, 'topic grade', 0, 3),
-      lastReviewed: finiteNumber(t.lastReviewed ?? 0, 'topic review date'),
-      snoozeUntil: finiteNumber(t.snoozeUntil ?? 0, 'topic snooze date'),
-      cards,
-    };
-  });
-  uniqueById(topics, 'topic');
-
-  const topicIds = new Set(topics.map((topic) => topic.id));
-  const cardIds = new Set(topics.flatMap((topic) => topic.cards.map((card) => card.id)));
-
-  const exams = examsRaw.map((value) => {
-    const e = object(value, 'web exam');
-    const subjects = array(e.subjects ?? [], 'exam subjects', 100).map((subject) =>
-      text(subject, 'exam subject', 120, false),
-    );
-    const selectedTopicIds = array(e.topicIds ?? [], 'exam topics', 300)
-      .map(recordId)
-      .filter((topicId) => topicIds.has(topicId));
-    const scope = e.scope === 'topics' || selectedTopicIds.length > 0 ? 'topics' : 'subjects';
-
-    return {
       id: recordId(e.id),
-      name: text(e.name, 'exam name', 200, false),
-      date: finiteNumber(e.date, 'exam date', 1),
-      subjects: scope === 'subjects' ? subjects : [],
-      scope,
-      topicIds: scope === 'topics' ? selectedTopicIds : [],
-    };
+      name: nonEmpty(e.name, 'exam name', 200),
+      date: num(e.date, 'exam date', 1),
+      subjects: topicScoped || allTopics ? [] : subjects,
+      scope: topicScoped || allTopics ? 'topics' : 'subjects',
+      topicIds: topicScoped
+        ? topicIdsForExam
+        : allTopics
+          ? [...topicIds]
+          : [],
+    } satisfies Exam;
   });
-  uniqueById(exams, 'exam');
+  uniqueIds(state.exams, 'exam');
 
-  const mistakes = mistakesRaw.map((value) => {
-    const m = object(value, 'web mistake');
+  state.mistakes = mistakesRaw.map((rawMistake) => {
+    const m = object(rawMistake, 'mistake');
     const topicId = recordId(m.topicId);
-    if (!topicIds.has(topicId)) throw new Error('A web mistake refers to a missing topic.');
+    if (!topicIds.has(topicId)) {
+      throw new Error('A web mistake refers to a missing topic.');
+    }
 
-    const rawCardId = m.cardId ? recordId(m.cardId) : null;
-    const cardId = rawCardId && cardIds.has(rawCardId) ? rawCardId : null;
-    const reason =
-      m.reason === 'calculation' ||
-      m.reason === 'recall' ||
-      m.reason === 'application'
-        ? m.reason
-        : 'concept';
+    let cardId = m.cardId ? recordId(m.cardId) : null;
+    if (cardId && !cardIds.has(cardId)) {
+      cardId = null;
+      warnings.push('A mistake had a missing question link; the mistake itself was preserved.');
+    }
 
     return {
       id: recordId(m.id),
       topicId,
       cardId,
-      prompt: text(m.prompt, 'mistake prompt', 6000, false),
-      detail: text(m.detail ?? '', 'mistake detail', 16_000),
-      correction: text(m.correction ?? '', 'mistake correction', 16_000),
-      reason,
-      createdAt: finiteNumber(m.createdAt, 'mistake creation date', 1),
-      dueAt: finiteNumber(m.dueAt ?? 0, 'mistake due date'),
-      resolvedAt: finiteNumber(m.resolvedAt ?? 0, 'mistake resolution date'),
-      wins: int(m.wins ?? 0, 'mistake wins', 0, 2),
+      prompt: nonEmpty(m.prompt, 'mistake prompt', 6000),
+      detail: str(m.detail ?? '', 'mistake detail', 16000),
+      correction: str(m.correction ?? '', 'mistake correction', 16000),
+      reason: validReason(m.reason),
+      createdAt: num(m.createdAt, 'mistake creation date', 1),
+      dueAt: num(m.dueAt ?? 0, 'mistake due date'),
+      resolvedAt: num(m.resolvedAt ?? 0, 'mistake resolution date'),
+      wins: integer(m.wins ?? 0, 'mistake wins', 0, 2),
       lastWinDay:
         typeof m.lastWinDay === 'string' ? m.lastWinDay.slice(0, 10) : '',
-      intervalDays: finiteNumber(m.intervalDays ?? 0, 'mistake interval', 0, 3650),
-    };
+      intervalDays: num(m.intervalDays ?? 0, 'mistake interval', 0, 3650),
+    } satisfies Mistake;
   });
-  uniqueById(mistakes, 'mistake');
-  const mistakeIds = new Set(mistakes.map((mistake) => mistake.id));
+  uniqueIds(state.mistakes, 'mistake');
 
-  const history = historyRaw.map((value) => {
-    const h = object(value, 'web session');
-    const topicId = recordId(h.topicId);
-    if (!topicIds.has(topicId)) throw new Error('A web session refers to a missing topic.');
+  const mistakeIds = new Set(state.mistakes.map((mistake) => mistake.id));
+
+  state.history = historyRaw.map((rawSession) => {
+    const h = object(rawSession, 'study session');
     if (h.kind !== 'study' && h.kind !== 'review') {
       throw new Error('Invalid web session type.');
     }
 
-    const event: Record<string, unknown> = {
+    const topicId = recordId(h.topicId);
+    if (!topicIds.has(topicId)) {
+      throw new Error('A web session refers to a missing topic.');
+    }
+
+    const session: StudySession = {
       id: recordId(h.id),
       topicId,
-      at: finiteNumber(h.at, 'session date', 1),
+      at: num(h.at, 'session date', 1),
       kind: h.kind,
-      minutes: finiteNumber(h.minutes, 'session minutes', 0, 1440),
-      grade: int(h.grade ?? 0, 'session grade', 0, 3),
-      effort: int(h.effort ?? 3, 'session effort', 1, 5),
-      prompt: text(h.prompt ?? '', 'session prompt', 6000),
-      response: text(h.response ?? '', 'session response', 16_000),
-      confidence:
-        h.confidence === 'sure' || h.confidence === 'partial'
-          ? h.confidence
-          : 'unsure',
+      minutes: num(h.minutes, 'session minutes', 0, 1440),
+      grade: validGrade(h.grade ?? 0, 'session grade'),
+      effort: integer(h.effort ?? 3, 'session effort', 1, 5) as 1 | 2 | 3 | 4 | 5,
+      prompt: str(h.prompt ?? '', 'session prompt', 6000),
+      response: str(h.response ?? '', 'session response', 16000),
+      confidence: validConfidence(h.confidence),
     };
 
-    const rawCardId = h.cardId ? recordId(h.cardId) : null;
-    if (rawCardId && cardIds.has(rawCardId)) event.cardId = rawCardId;
-
-    const rawMistakeId = h.mistakeId ? recordId(h.mistakeId) : null;
-    if (rawMistakeId && mistakeIds.has(rawMistakeId)) event.mistakeId = rawMistakeId;
-
     if (h.plannedMinutes != null) {
-      event.plannedMinutes = finiteNumber(
+      const webPlanned = num(
         h.plannedMinutes,
         'planned session minutes',
         0,
         720,
       );
+      session.plannedMinutes = Math.min(240, webPlanned);
+      if (webPlanned > 240) {
+        warnings.push(
+          'A web planned-time value above the native limit was capped at 240 minutes.',
+        );
+      }
     }
 
-    return event;
+    if (h.cardId) {
+      const cardId = recordId(h.cardId);
+      if (cardIds.has(cardId)) session.cardId = cardId;
+      else warnings.push('A study-history question link was missing and was skipped.');
+    }
+
+    if (h.mistakeId) {
+      const mistakeId = recordId(h.mistakeId);
+      if (mistakeIds.has(mistakeId)) session.mistakeId = mistakeId;
+      else warnings.push('A study-history mistake link was missing and was skipped.');
+    }
+
+    return session;
   });
-  uniqueById(history as { id: string }[], 'session');
+  uniqueIds(state.history, 'session');
 
-  const settingsRaw =
-    raw.settings && typeof raw.settings === 'object'
-      ? (raw.settings as Record<string, unknown>)
-      : {};
+  state.breaks = breaksRaw.map((rawBreak) => {
+    const b = object(rawBreak, 'break');
+    return {
+      at: num(b.at, 'break date', 1),
+      minutes: num(b.minutes, 'break minutes', 0, 90),
+    } satisfies BreakLog;
+  });
 
-  const settings = {
-    dailyMinutes: int(settingsRaw.dailyMinutes ?? 90, 'daily minutes', 10, 720),
-    focusMinutes: int(settingsRaw.focusMinutes ?? 45, 'focus minutes', 5, 90),
-    breakMinutes: int(settingsRaw.breakMinutes ?? 10, 'break minutes', 1, 30),
-    energy: settingsRaw.energy === 'low' ? 'low' : 'normal',
+  const p = raw.settings == null ? {} : object(raw.settings, 'settings');
+  state.settings = {
+    dailyMinutes: integer(p.dailyMinutes ?? 90, 'daily minutes', 10, 720),
+    focusMinutes: integer(p.focusMinutes ?? 45, 'focus minutes', 5, 90),
+    breakMinutes: integer(p.breakMinutes ?? 10, 'break minutes', 1, 30),
+    energy: p.energy === 'low' ? 'low' : 'normal',
     reduceMotion: false,
   };
 
-  const breaks = breaksRaw.map((value) => {
-    const b = object(value, 'web break');
-    return {
-      at: finiteNumber(b.at, 'break date', 1),
-      minutes: finiteNumber(b.minutes, 'break minutes', 0, 90),
-    };
-  });
+  state.revision = 0;
+  state.updatedAt = num(raw.updatedAt ?? now, 'web update date', 1);
 
-  const sourceRevision =
-    typeof raw.revision === 'number' && Number.isInteger(raw.revision)
-      ? raw.revision
-      : 0;
-  const sourceUpdatedAt =
-    typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) && raw.updatedAt > 0
-      ? raw.updatedAt
-      : Date.now();
-
-  const workspace = migrateAndValidateWorkspace({
-    format: WORKSPACE_FORMAT,
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    revision: sourceRevision,
-    updatedAt: sourceUpdatedAt,
-    topics,
-    exams,
-    mistakes,
-    history,
-    breaks,
-    settings,
-  });
-
-  const warnings: string[] = [];
   if (raw.focus) {
     warnings.push(
-      'An unfinished web focus/break timer is not migrated. Completed study history is preserved.',
+      'An in-progress web timer was not migrated. Completed study history is preserved.',
     );
   }
   if (raw.reviewDraft) {
     warnings.push(
-      'An unfinished web review draft is not migrated. Completed review history is preserved.',
-    );
-  }
-  if (raw.legacySnapshot) {
-    warnings.push(
-      'The web backup contains an older embedded legacy snapshot. The current validated web workspace is imported instead.',
+      'An unfinished web review draft was not migrated. Saved review scheduling is preserved.',
     );
   }
 
-  return { workspace, warnings, sourceUpdatedAt, sourceRevision };
+  return {
+    source: 'web-v3',
+    sourceLabel: 'MYELIN web v3',
+    workspace: migrateAndValidateWorkspace(state),
+    warnings: [...new Set(warnings)],
+    sourceUpdatedAt: state.updatedAt,
+  };
 }
 
-function convertLegacyWeb(raw: Record<string, unknown>, version: 1 | 2) {
-  const topicsRaw = array(raw.topics, 'legacy web topics', 3000);
-  const examsRaw = array(raw.exams, 'legacy web exams', 500);
+function convertLegacyWeb(
+  raw: Record<string, unknown>,
+  version: 1 | 2,
+  now: number,
+): ImportCandidate {
+  const topicsRaw = array(raw.topics, 'legacy topic list', 3000);
+  const examsRaw = array(raw.exams, 'legacy exam list', 500);
+  const state = createEmptyWorkspace(now);
 
-  const history: Record<string, unknown>[] = [];
-  const topics = topicsRaw.map((value) => {
-    const t = object(value, 'legacy web topic');
-    const id = recordId(t.id);
-    const lastAction = finiteNumber(t.lastAction, 'topic date', 1);
-    const stability = finiteNumber(t.S, 'stability', 0.01, 10_000);
-    const topicHistory = array(t.history ?? [], 'legacy topic history', 5000);
+  const allHistory: StudySession[] = [];
 
-    let lastGrade = 0;
-    let lastReviewed = 0;
-    let status: 'learning' | 'review' = 'learning';
+  state.topics = topicsRaw.map((rawTopic) => {
+    const t = object(rawTopic, 'legacy topic');
+    const topicId = recordId(t.id);
+    const lastAction = num(t.lastAction, 'legacy topic date', 1);
+    const stability = num(t.S, 'legacy stability', 0.01, 10000);
+    const historyRaw = array(t.history, 'legacy topic history', 5000);
+    const createdAt = num(t.createdAt ?? lastAction, 'legacy creation date', 1);
 
-    topicHistory.forEach((historyValue, index) => {
-      const h = object(historyValue, 'legacy history');
+    const topic: Topic = {
+      id: topicId,
+      name: nonEmpty(t.name, 'topic name', 300),
+      subject: nonEmpty(t.subject, 'subject', 120),
+      createdAt,
+      status: 'learning',
+      priority: 2,
+      estimate: 45,
+      notes: '',
+      cards: [],
+      dueAt: Math.max(
+        lastAction + stability * Math.log(1 / 0.75) * DAY,
+        typeof t.snooze === 'number' ? t.snooze : 0,
+      ),
+      intervalDays: Math.max(0.01, stability * Math.log(1 / 0.75)),
+      lastGrade: 0,
+      lastReviewed: 0,
+      snoozeUntil: 0,
+    };
+
+    historyRaw.forEach((rawHistory, index) => {
+      const h = object(rawHistory, 'legacy history event');
+      if (h.kind !== 'review' && h.kind !== 'log') {
+        throw new Error('Invalid legacy history kind.');
+      }
+      const at = num(h.t, 'legacy history date', 1);
       const isReview = h.kind === 'review';
-      if (!isReview && h.kind !== 'log') throw new Error('Invalid legacy history kind.');
+      const grade = isReview
+        ? validGrade(h.grade, 'legacy review grade', false)
+        : 0;
 
-      const at = finiteNumber(h.t, 'history date', 1);
-      const event = {
-        id: stableLegacyId(id, index),
-        topicId: id,
+      const event: StudySession = {
+        id: legacySessionId(topicId, at, index),
+        topicId,
         at,
         kind: isReview ? 'review' : 'study',
-        minutes: finiteNumber(
-          isReview ? (h.elapsed ?? 0) : h.minutes,
-          'study minutes',
+        minutes: num(
+          isReview ? h.elapsed ?? 0 : h.minutes,
+          'legacy session minutes',
           0,
           1440,
         ),
-        grade: isReview ? int(h.grade, 'review grade', 1, 3) : 0,
-        effort: isReview ? 3 : int(h.effort ?? 3, 'study effort', 1, 5),
+        grade,
+        effort: isReview
+          ? 3
+          : (integer(h.effort, 'legacy effort', 1, 5) as 1 | 2 | 3 | 4 | 5),
         prompt: isReview ? 'Topic recall' : '',
         response: '',
         confidence: 'unsure',
       };
-      history.push(event);
+      allHistory.push(event);
 
       if (isReview) {
-        lastGrade = event.grade;
-        lastReviewed = at;
-        status = 'review';
+        topic.lastGrade = grade;
+        topic.lastReviewed = at;
+        topic.status = 'review';
       }
     });
 
-    const createdAt =
-      t.createdAt == null
-        ? lastAction
-        : finiteNumber(t.createdAt, 'topic creation date', 1);
-    const snooze =
-      t.snooze == null ? 0 : finiteNumber(t.snooze, 'topic snooze date');
-    const intervalDays = Math.max(0.01, stability * Math.log(1 / 0.75));
-
-    return {
-      id,
-      name: text(t.name, 'topic name', 300, false),
-      subject: text(t.subject, 'subject', 120, false),
-      createdAt,
-      status,
-      priority: 2,
-      estimate: 45,
-      notes: '',
-      dueAt: Math.max(lastAction + intervalDays * DAY, snooze),
-      intervalDays,
-      lastGrade,
-      lastReviewed,
-      snoozeUntil: 0,
-      cards: [],
-    };
+    return topic;
   });
-  uniqueById(topics, 'topic');
-  uniqueById(history as { id: string }[], 'session');
+  uniqueIds(state.topics, 'topic');
 
-  const exams = examsRaw.map((value) => {
-    const e = object(value, 'legacy web exam');
+  state.exams = examsRaw.map((rawExam) => {
+    const e = object(rawExam, 'legacy exam');
     return {
       id: recordId(e.id),
-      name: text(e.name, 'exam name', 200, false),
-      date: finiteNumber(e.date, 'exam date', 1),
-      subjects: [text(e.subject, 'exam subject', 120, false)],
+      name: nonEmpty(e.name, 'exam name', 200),
+      date: num(e.date, 'exam date', 1),
+      subjects: [nonEmpty(e.subject, 'exam subject', 120)],
       scope: 'subjects',
       topicIds: [],
-    };
+    } satisfies Exam;
   });
-  uniqueById(exams, 'exam');
+  uniqueIds(state.exams, 'exam');
 
-  const timestamps = [
-    ...topics.map((topic) => topic.lastReviewed || topic.createdAt),
-    ...history.map((event) => event.at as number),
-    ...exams.map((exam) => exam.date),
-  ];
-  const sourceUpdatedAt = Math.max(...timestamps, 1);
-
-  const workspace = migrateAndValidateWorkspace({
-    format: WORKSPACE_FORMAT,
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    revision: 0,
-    updatedAt: sourceUpdatedAt,
-    topics,
-    exams,
-    mistakes: [],
-    history,
-    breaks: [],
-    settings: {
-      dailyMinutes: 90,
-      focusMinutes: 45,
-      breakMinutes: 10,
-      energy: 'normal',
-      reduceMotion: false,
-    },
-  });
+  state.history = allHistory;
+  uniqueIds(state.history, 'session');
 
   return {
-    workspace,
-    sourceUpdatedAt,
-    sourceRevision: 0,
+    source: version === 2 ? 'web-v2' : 'web-v1',
+    sourceLabel: `MYELIN web v${version}`,
+    workspace: migrateAndValidateWorkspace(state),
     warnings: [
-      'This older web backup predates per-question recall cards, mistake records and newer timing metadata. Available topic, exam and topic-level study/review history is preserved.',
+      'Older web backups did not contain modern questions, mistake records, or detailed settings. Available topics, exams and history were converted.',
     ],
+    sourceUpdatedAt: null,
   };
 }
 
-function parseUnknownBackup(raw: unknown) {
-  const root = object(raw, 'MYELIN backup');
+export function parseImportJson(
+  rawText: string,
+  now = Date.now(),
+): ImportCandidate {
+  if (utf8ByteLength(rawText) > MAX_BACKUP_BYTES) {
+    throw new Error('Choose a MYELIN backup smaller than 8 MB.');
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    throw new Error('This file is not valid JSON.');
+  }
+
+  const root = object(parsed, 'backup');
 
   if (root.format === NATIVE_BACKUP_FORMAT) {
     if (root.version !== NATIVE_BACKUP_VERSION) {
-      throw new Error('This native backup version is not supported by this MYELIN build.');
+      throw new Error('This MYELIN backup version is not supported yet.');
     }
     const workspace = migrateAndValidateWorkspace(root.workspace);
-    const exportedAt = finiteNumber(root.exportedAt, 'backup export date', 1);
     return {
-      source: 'native-backup' as const,
+      source: 'native-backup',
       sourceLabel: 'MYELIN native backup',
       workspace,
+      warnings: [],
       sourceUpdatedAt: workspace.updatedAt,
-      sourceRevision: workspace.revision,
-      warnings:
-        exportedAt < workspace.updatedAt
-          ? ['The backup export timestamp is older than the workspace timestamp. The workspace timestamp is used for comparison.']
-          : [],
     };
   }
 
-  if (root.format === WORKSPACE_FORMAT) {
+  if (root.format === 'myelin.native.workspace') {
     const workspace = migrateAndValidateWorkspace(root);
     return {
-      source: 'native-workspace' as const,
+      source: 'native-workspace',
       sourceLabel: 'MYELIN native workspace',
       workspace,
+      warnings: [],
       sourceUpdatedAt: workspace.updatedAt,
-      sourceRevision: workspace.revision,
-      warnings: [
-        'This file is a raw native workspace rather than the portable backup envelope. It is valid and can still be imported.',
-      ],
     };
   }
 
   if (root.version === 3) {
-    const converted = convertWebV3(root);
-    return {
-      source: 'web-v3' as const,
-      sourceLabel: 'MYELIN web v3 backup',
-      ...converted,
-    };
+    return convertWebV3(root, now);
   }
 
   if (root.ver === 1 || root.ver === 2) {
-    const version = root.ver as 1 | 2;
-    const converted = convertLegacyWeb(root, version);
-    return {
-      source: version === 1 ? ('web-legacy-v1' as const) : ('web-legacy-v2' as const),
-      sourceLabel: `MYELIN legacy web v${version} backup`,
-      ...converted,
-    };
+    return convertLegacyWeb(root, root.ver, now);
   }
 
-  throw new Error('Choose a MYELIN native backup or supported MYELIN web JSON backup.');
+  throw new Error(
+    'Choose a MYELIN native backup or a supported MYELIN web v1/v2/v3 JSON backup.',
+  );
 }
 
-export function buildImportPreview(
-  jsonText: string,
+function comparable(value: unknown) {
+  return JSON.stringify(value);
+}
+
+function allocateId(original: string, used: Set<string>, prefix: string) {
+  if (!used.has(original)) {
+    used.add(original);
+    return { id: original, remapped: false };
+  }
+
+  const base = `${prefix}_${stableHash(original)}`;
+  let candidate = base.slice(0, 110);
+  let suffix = 1;
+  while (used.has(candidate)) {
+    candidate = `${base.slice(0, 105)}_${suffix}`;
+    suffix += 1;
+  }
+  used.add(candidate);
+  return { id: candidate, remapped: true };
+}
+
+export function mergeWorkspaces(
   current: WorkspaceState,
-): ImportPreview {
-  if (typeof jsonText !== 'string' || jsonText.length === 0) {
-    throw new Error('The selected backup is empty.');
-  }
-  if (jsonText.length > MAX_BACKUP_TEXT_BYTES) {
-    throw new Error('This backup is too large to import safely.');
+  imported: WorkspaceState,
+): MergeResult {
+  const next = cloneWorkspace(current);
+  const report: MergeReport = {
+    added: { topics: 0, exams: 0, mistakes: 0, sessions: 0, breaks: 0 },
+    skippedIdentical: 0,
+    remappedIds: 0,
+    keptCurrentSettings: true,
+  };
+
+  const topicMap = new Map<string, string>();
+  const cardMap = new Map<string, string>();
+  const mistakeMap = new Map<string, string>();
+
+  const usedTopicIds = new Set(next.topics.map((topic) => topic.id));
+  const usedCardIds = new Set(
+    next.topics.flatMap((topic) => topic.cards.map((card) => card.id)),
+  );
+  const usedExamIds = new Set(next.exams.map((exam) => exam.id));
+  const usedMistakeIds = new Set(next.mistakes.map((mistake) => mistake.id));
+  const usedSessionIds = new Set(next.history.map((session) => session.id));
+
+  for (const sourceTopic of imported.topics) {
+    const existing = next.topics.find((topic) => topic.id === sourceTopic.id);
+    if (existing && comparable(existing) === comparable(sourceTopic)) {
+      topicMap.set(sourceTopic.id, existing.id);
+      for (const card of sourceTopic.cards) cardMap.set(card.id, card.id);
+      report.skippedIdentical += 1;
+      continue;
+    }
+
+    const topicAllocation = allocateId(sourceTopic.id, usedTopicIds, 'topic_import');
+    if (topicAllocation.remapped) report.remappedIds += 1;
+    topicMap.set(sourceTopic.id, topicAllocation.id);
+
+    const topic = clone(sourceTopic);
+    topic.id = topicAllocation.id;
+    topic.cards = topic.cards.map((card) => {
+      const allocation = allocateId(card.id, usedCardIds, 'card_import');
+      if (allocation.remapped) report.remappedIds += 1;
+      cardMap.set(card.id, allocation.id);
+      return { ...card, id: allocation.id };
+    });
+
+    next.topics.push(topic);
+    report.added.topics += 1;
   }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(jsonText);
-  } catch {
-    throw new Error('The selected file is not valid JSON.');
+  for (const sourceExam of imported.exams) {
+    const exam = clone(sourceExam);
+    exam.topicIds = exam.topicIds
+      .map((topicId) => topicMap.get(topicId) ?? topicId)
+      .filter((topicId) => usedTopicIds.has(topicId));
+
+    const existing = next.exams.find((item) => item.id === exam.id);
+    if (existing && comparable(existing) === comparable(exam)) {
+      report.skippedIdentical += 1;
+      continue;
+    }
+
+    const allocation = allocateId(exam.id, usedExamIds, 'exam_import');
+    if (allocation.remapped) report.remappedIds += 1;
+    exam.id = allocation.id;
+    next.exams.push(exam);
+    report.added.exams += 1;
   }
 
-  const parsed = parseUnknownBackup(raw);
+  for (const sourceMistake of imported.mistakes) {
+    const mistake = clone(sourceMistake);
+    mistake.topicId = topicMap.get(mistake.topicId) ?? mistake.topicId;
+    mistake.cardId = mistake.cardId
+      ? cardMap.get(mistake.cardId) ?? mistake.cardId
+      : null;
+
+    const existing = next.mistakes.find((item) => item.id === mistake.id);
+    if (existing && comparable(existing) === comparable(mistake)) {
+      mistakeMap.set(sourceMistake.id, existing.id);
+      report.skippedIdentical += 1;
+      continue;
+    }
+
+    const allocation = allocateId(
+      mistake.id,
+      usedMistakeIds,
+      'mistake_import',
+    );
+    if (allocation.remapped) report.remappedIds += 1;
+    mistake.id = allocation.id;
+    mistakeMap.set(sourceMistake.id, mistake.id);
+    next.mistakes.push(mistake);
+    report.added.mistakes += 1;
+  }
+
+  for (const sourceSession of imported.history) {
+    const session = clone(sourceSession);
+    session.topicId = topicMap.get(session.topicId) ?? session.topicId;
+    if (session.cardId) {
+      session.cardId = cardMap.get(session.cardId) ?? session.cardId;
+    }
+    if (session.mistakeId) {
+      session.mistakeId =
+        mistakeMap.get(session.mistakeId) ?? session.mistakeId;
+    }
+
+    const existing = next.history.find((item) => item.id === session.id);
+    if (existing && comparable(existing) === comparable(session)) {
+      report.skippedIdentical += 1;
+      continue;
+    }
+
+    const allocation = allocateId(
+      session.id,
+      usedSessionIds,
+      'session_import',
+    );
+    if (allocation.remapped) report.remappedIds += 1;
+    session.id = allocation.id;
+    next.history.push(session);
+    report.added.sessions += 1;
+  }
+
+  const existingBreaks = new Set(
+    next.breaks.map((entry) => `${entry.at}:${entry.minutes}`),
+  );
+  for (const entry of imported.breaks) {
+    const key = `${entry.at}:${entry.minutes}`;
+    if (existingBreaks.has(key)) {
+      report.skippedIdentical += 1;
+      continue;
+    }
+    existingBreaks.add(key);
+    next.breaks.push(clone(entry));
+    report.added.breaks += 1;
+  }
+
+  next.settings = clone(current.settings);
   return {
-    ...parsed,
-    relation: relationToCurrent(
-      parsed.sourceUpdatedAt,
-      parsed.sourceRevision,
-      current,
-    ),
-    counts: counts(parsed.workspace),
+    workspace: migrateAndValidateWorkspace(next),
+    report,
   };
 }
 
-export function importRelationMessage(preview: ImportPreview) {
-  if (preview.relation === 'current-empty') {
-    return 'This workspace is empty, so importing will not replace existing study records.';
-  }
-  if (preview.relation === 'source-newer') {
-    return 'The selected backup appears newer than this workspace. Import still requires confirmation.';
-  }
-  if (preview.relation === 'source-older') {
-    return 'Warning: the selected backup appears older than this workspace. Importing it will replace newer local data.';
-  }
-  if (preview.relation === 'same-time') {
-    return 'The selected backup has the same recorded update time/revision as this workspace. Import still replaces the current local copy.';
-  }
-  return 'The selected backup does not provide a reliable comparable update timestamp. Review its contents before replacing this workspace.';
+export function workspaceImportCounts(workspace: WorkspaceState) {
+  return {
+    topics: workspace.topics.length,
+    questions: workspace.topics.reduce(
+      (sum, topic) => sum + topic.cards.length,
+      0,
+    ),
+    exams: workspace.exams.length,
+    mistakes: workspace.mistakes.length,
+    sessions: workspace.history.length,
+    breaks: workspace.breaks.length,
+  };
+}
+
+export function isImportOlderThanCurrent(
+  candidate: ImportCandidate,
+  current: WorkspaceState,
+) {
+  return (
+    candidate.sourceUpdatedAt !== null &&
+    candidate.sourceUpdatedAt < current.updatedAt
+  );
 }

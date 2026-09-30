@@ -184,6 +184,27 @@ function session(raw: unknown, topicIds: Set<string>, cardIds: Set<string>, mist
 
   if (cardId) result.cardId = cardId;
   if (mistakeId) result.mistakeId = mistakeId;
+
+  if (s.plannedMinutes != null) {
+    result.plannedMinutes = number(s.plannedMinutes, 'planned session minutes', 0, 240);
+  }
+  if (s.startedAt != null) {
+    result.startedAt = number(s.startedAt, 'session start time', 1);
+  }
+  if (s.endedAt != null) {
+    result.endedAt = number(s.endedAt, 'session end time', 1);
+  }
+  if (s.launchMode != null) {
+    result.launchMode = oneOf(
+      s.launchMode,
+      ['full', 'five-minute'] as const,
+      'focus launch mode',
+    );
+  }
+  if (s.tinyStep != null) {
+    result.tinyStep = string(s.tinyStep, 'first tiny step', 500);
+  }
+
   return result;
 }
 

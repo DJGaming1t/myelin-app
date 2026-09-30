@@ -10,6 +10,7 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   setPersistence,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -129,9 +130,71 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        const error = new Error('Native Google setup required') as Error & { code: string };
-        error.code = 'auth/native-google-setup-required';
-        throw error;
+        const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+        if (!webClientId) {
+          const error = new Error('Native Google setup required') as Error & { code: string };
+          error.code = 'auth/native-google-setup-required';
+          throw error;
+        }
+
+        try {
+          const {
+            GoogleOneTapSignIn,
+            isCancelledResponse,
+            isNoSavedCredentialFoundResponse,
+            isSuccessResponse,
+          } = await import('react-native-nitro-google-signin');
+
+          GoogleOneTapSignIn.configure({
+            webClientId,
+            scopes: ['openid', 'email', 'profile'],
+            autoSelectOnSignIn: false,
+          });
+
+          await GoogleOneTapSignIn.checkPlayServices();
+
+          let response = await GoogleOneTapSignIn.signIn();
+          if (isNoSavedCredentialFoundResponse(response)) {
+            response = await GoogleOneTapSignIn.createAccount();
+          }
+          if (isNoSavedCredentialFoundResponse(response)) {
+            response = await GoogleOneTapSignIn.presentExplicitSignIn();
+          }
+
+          if (isCancelledResponse(response)) {
+            const cancelled = new Error('Google sign-in cancelled') as Error & { code: string };
+            cancelled.code = 'auth/google-cancelled';
+            throw cancelled;
+          }
+
+          if (!isSuccessResponse(response) || !response.data.idToken) {
+            const failed = new Error('Google sign-in did not return an ID token') as Error & {
+              code: string;
+            };
+            failed.code = 'auth/google-failed';
+            throw failed;
+          }
+
+          const firebaseCredential = GoogleAuthProvider.credential(response.data.idToken);
+          const credential = await signInWithCredential(auth, firebaseCredential);
+          setUser(credential.user);
+        } catch (error) {
+          const code = (error as { code?: string } | undefined)?.code;
+          if (code === 'auth/google-cancelled' || code === 'auth/google-failed') throw error;
+
+          const message = error instanceof Error ? error.message : '';
+          if (
+            message.includes('native module') ||
+            message.includes('Nitro') ||
+            message.includes('development build')
+          ) {
+            const setup = new Error('Native Google setup required') as Error & { code: string };
+            setup.code = 'auth/native-google-setup-required';
+            throw setup;
+          }
+
+          throw error;
+        }
       },
 
       async requestPasswordReset(email) {

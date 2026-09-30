@@ -61,6 +61,10 @@ function historyId(now: number) {
   return `session_${now.toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function attemptId(now = Date.now()) {
+  return `attempt_${now.toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export function ReviewProvider({ children }: PropsWithChildren) {
   const { ownerKey, workspace, updateWorkspace } = useWorkspace();
   const { session: activeFocus } = useFocus();
@@ -183,7 +187,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         cardStartedAt: Date.now(),
       });
     }
-  }, [commit, session?.currentIndex, workspace?.topics.length]);
+  }, [commit, session?.currentIndex, workspace?.revision]);
 
   const transform = useCallback(
     async (change: (current: ReviewSessionState) => ReviewSessionState) => {
@@ -273,40 +277,46 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         if (!topic || !card) return null;
 
         const schedule = scheduleReview(card, choice, now);
+        const alreadyRecorded = currentWorkspace.history.some(
+          (entry) => entry.reviewAttemptId === current.attemptId,
+        );
         const answerDraft = current.answerDraft;
         const confidence = current.confidence;
         const hintUsed = current.hintUsed;
         const cardStartedAt = current.cardStartedAt;
         const prompt = card.prompt;
 
-        updateWorkspace((draft) => {
-          const targetTopic = findTopic(draft, item.topicId);
-          const targetCard = targetTopic ? findQuestion(targetTopic, item.cardId) : null;
-          if (!targetTopic || !targetCard) return;
+        if (!alreadyRecorded) {
+          updateWorkspace((draft) => {
+            const targetTopic = findTopic(draft, item.topicId);
+            const targetCard = targetTopic ? findQuestion(targetTopic, item.cardId) : null;
+            if (!targetTopic || !targetCard) return;
 
-          applyReviewGrade(targetTopic, targetCard, choice, now);
+            applyReviewGrade(targetTopic, targetCard, choice, now);
 
-          draft.history.push({
-            id: historyId(now),
-            topicId: targetTopic.id,
-            cardId: targetCard.id,
-            at: now,
-            kind: 'review',
-            minutes: Math.max(0, Math.round((now - cardStartedAt) / 60_000)),
-            grade: schedule.grade,
-            effort: 3,
-            prompt,
-            response: answerDraft,
-            confidence,
-            hintUsed,
-            startedAt: cardStartedAt,
-            endedAt: now,
+            draft.history.push({
+              id: historyId(now),
+              topicId: targetTopic.id,
+              cardId: targetCard.id,
+              at: now,
+              kind: 'review',
+              minutes: Math.max(0, Math.round((now - cardStartedAt) / 60_000)),
+              grade: schedule.grade,
+              effort: 3,
+              prompt,
+              response: answerDraft,
+              confidence,
+              hintUsed,
+              reviewAttemptId: current.attemptId,
+              startedAt: cardStartedAt,
+              endedAt: now,
+            });
           });
-        });
+        }
 
         let queue = [...current.queue];
 
-        if (choice === 'again' && queue.length < 100) {
+        if (!alreadyRecorded && choice === 'again' && queue.length < 100) {
           const repeat = {
             ...item,
             dueAt: schedule.dueAt,
@@ -332,6 +342,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
           confidence: 'unsure',
           hintUsed: false,
           cardStartedAt: now,
+          attemptId: attemptId(now),
           completedCards: current.completedCards + 1,
         });
 

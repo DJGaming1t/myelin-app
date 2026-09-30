@@ -47,3 +47,8 @@ Feature 13 does not call:
 - `getDevicePushTokenAsync`
 
 Tapping a MYELIN notification opens either Review or Exams, depending on the reminder kind.
+
+
+## Verification gate
+
+Feature 13 is merged only after the notification planner tests, TypeScript, Expo Doctor, native config generation, and Android prebuild all pass on the current pull-request head.

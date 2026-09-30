@@ -152,6 +152,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       setWorkspace(fresh);
       setRecovered(false);
       setResetBecauseCorrupt(false);
+      setHasImportRecovery(false);
       setStatus('ready');
     } catch (error) {
       if (ownerKeyRef.current !== currentOwner) return;

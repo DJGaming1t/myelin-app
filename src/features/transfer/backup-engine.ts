@@ -319,7 +319,7 @@ function convertWebV3(raw: Record<string, unknown>) {
         h.plannedMinutes,
         'planned session minutes',
         0,
-        240,
+        720,
       );
     }
 

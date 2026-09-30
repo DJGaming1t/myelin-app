@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import * as FirebaseAuth from 'firebase/auth';
 import type { Auth, Persistence } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
 const firebaseConfig = {
@@ -14,6 +15,10 @@ const firebaseConfig = {
 };
 
 export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+// The Firebase JS SDK supports Firestore in React Native, but not persistent
+// Firestore cache there. MYELIN keeps AsyncStorage as the offline source of truth.
+export const firestore = getFirestore(firebaseApp);
 
 /**
  * Firebase exposes getReactNativePersistence from its React Native bundle at runtime,

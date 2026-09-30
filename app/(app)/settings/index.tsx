@@ -326,9 +326,19 @@ export default function SettingsScreen() {
             />
             <PrivacyRow
               label="Cloud sync"
-              value="Off"
-              helper="Firestore sync has not been enabled yet."
+              value="Opt-in"
+              helper="Cloud sync is controlled from a separate screen and never applies to local-only workspaces."
             />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/settings/cloud-sync')}
+              style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.transferTitle}>Cloud sync</Text>
+                <Text style={styles.transferText}>Status, conflicts and cloud-data controls</Text>
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+            </Pressable>
             <PrivacyRow
               label="Analytics"
               value="Off"
@@ -396,7 +406,7 @@ export default function SettingsScreen() {
           <View style={styles.bottomNote}>
             <Text style={styles.bottomNoteTitle}>Account deletion is different from workspace reset.</Text>
             <Text style={styles.bottomNoteText}>
-              This screen does not pretend that resetting local study data deletes a Firebase account. Account/cloud data lifecycle will be handled alongside Cloud Sync, where it can be implemented and tested as one complete path.
+              Resetting local study data does not delete a Firebase account or Firestore copy. Use Cloud sync for cloud deletion and the account deletion path.
             </Text>
           </View>
         </ScrollView>

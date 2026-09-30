@@ -7,7 +7,8 @@
     "userInterfaceStyle": "dark",
     "scheme": "myelin",
     "android": {
-      "package": "com.djgaming1t.myelin"
+      "package": "com.djgaming1t.myelin",
+      "googleServicesFile": "./google-services.json"
     },
     "ios": {
       "bundleIdentifier": "com.djgaming1t.myelin"
@@ -17,7 +18,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-dev-client"
+      "expo-dev-client",
+      "react-native-nitro-google-signin"
     ],
     "experiments": {
       "typedRoutes": true

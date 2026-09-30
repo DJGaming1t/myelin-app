@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { TopicStatus } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -61,6 +62,7 @@ export default function TopicsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <View style={styles.screen}>
       <ScreenHeader
         eyebrow="STUDY LIBRARY"
         title="Topics"
@@ -130,6 +132,7 @@ export default function TopicsScreen() {
       {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
       <FlatList
+        style={styles.listView}
         data={topics}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
@@ -182,6 +185,8 @@ export default function TopicsScreen() {
           </View>
         }
       />
+      <AppNav />
+      </View>
     </SafeAreaView>
   );
 }
@@ -215,6 +220,8 @@ function FilterChip({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1 },
+  listView: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { color: colors.muted, fontSize: 12 },
   searchWrap: {

@@ -36,6 +36,9 @@ jobs:
       - name: Topic CRUD and reference integrity
         run: npm run verify:topics
 
+      - name: Today planner priorities and time realism
+        run: npm run verify:today
+
       - name: Expo Doctor
         run: npx expo-doctor
 

@@ -20,7 +20,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Verification / password recovery
 - [x] Offline per-user data foundation
 - [x] Topics
-- [ ] Today planner
+- [x] Today planner
 - [ ] Focus timer
 - [ ] Five-minute launch
 - [ ] Distraction parking lot

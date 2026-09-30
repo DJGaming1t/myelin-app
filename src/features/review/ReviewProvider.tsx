@@ -12,6 +12,7 @@ import {
 import { Confidence, ReviewGrade } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { captureRecallMistake } from '@/src/features/mistakes/mistake-engine';
 import { findQuestion, findTopic } from '@/src/features/topics/topic-operations';
 
 import {
@@ -301,6 +302,17 @@ export function ReviewProvider({ children }: PropsWithChildren) {
             if (!targetTopic || !targetCard) return;
 
             applyReviewGrade(targetTopic, targetCard, choice, now);
+
+            if (choice === 'again' && targetCard.answer.trim()) {
+              captureRecallMistake(draft, {
+                topicId: targetTopic.id,
+                cardId: targetCard.id,
+                prompt: targetCard.prompt,
+                response: answerDraft,
+                correction: targetCard.answer,
+                now,
+              });
+            }
 
             draft.history.push({
               id: historyId(now),

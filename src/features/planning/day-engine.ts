@@ -34,6 +34,14 @@ function localAt(day: number, source: number) {
   ).getTime();
 }
 
+function calendarDayDistance(from: number, to: number) {
+  const a = new Date(from);
+  const b = new Date(to);
+  const aUtc = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const bUtc = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((bUtc - aUtc) / 86400000);
+}
+
 function overlaps(start: number, end: number, rangeStart: number, rangeEnd: number) {
   return start < rangeEnd && end > rangeStart;
 }
@@ -158,7 +166,7 @@ export function taskPlanningScore(workspace: WorkspaceState, task: StudyTask, no
   if (task.dueAt > 0) {
     const dueDay = startOfLocalDay(task.dueAt);
     const today = startOfLocalDay(now);
-    const days = Math.round((dueDay - today) / 86400000);
+    const days = calendarDayDistance(today, dueDay);
     if (days < 0) score += 70;
     else if (days === 0) score += 58;
     else if (days === 1) score += 46;

@@ -1,15 +1,20 @@
-import { Topic, WorkspaceState } from '@/src/data/schema';
+import { StudyTask, Topic, WorkspaceState } from '@/src/data/schema';
 import {
   examAppliesToTopic,
   examCalendarDaysUntil,
   examStatus,
 } from '@/src/features/exams/exam-engine';
+import { taskPlanningScore } from '@/src/features/planning/day-engine';
+import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
 export type PlanMode = 'study' | 'review';
+export type PlanSource = 'topic' | 'task';
 
 export type PlanBlock = {
   id: string;
-  topicId: string;
+  source: PlanSource;
+  topicId: string | null;
+  taskId: string | null;
   topicName: string;
   subject: string;
   mode: PlanMode;
@@ -18,6 +23,7 @@ export type PlanBlock = {
   reasons: string[];
   dueQuestionCount: number;
   examDays: number | null;
+  focusable: boolean;
 };
 
 export type TodayPlan = {
@@ -33,19 +39,25 @@ export type TodayPlan = {
   blocks: PlanBlock[];
   nextBlock: PlanBlock | null;
   deferredTopicCount: number;
+  inboxTaskCount: number;
+  overdueTaskCount: number;
 };
 
-type TopicCandidate = {
-  topic: Topic;
+type Candidate = {
+  key: string;
+  source: PlanSource;
+  topic: Topic | null;
+  task: StudyTask | null;
+  title: string;
+  subject: string;
+  priority: 1 | 2 | 3;
   baseScore: number;
   reasons: string[];
   dueQuestionCount: number;
   examDays: number | null;
-  studiedToday: number;
   mode: PlanMode;
+  remainingMinutes: number;
 };
-
-const DAY = 24 * 60 * 60 * 1000;
 
 export function startOfLocalDay(now: number) {
   const date = new Date(now);
@@ -61,6 +73,16 @@ export function nextLocalDayStart(now: number) {
   ).getTime();
 }
 
+function calendarDaysBetween(from: number, to: number) {
+  const a = new Date(from);
+  const b = new Date(to);
+  return Math.round(
+    (Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) -
+      Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) /
+      86400000,
+  );
+}
+
 export function minutesUsedToday(workspace: WorkspaceState, now: number) {
   const start = startOfLocalDay(now);
   const study = workspace.history
@@ -73,14 +95,23 @@ export function minutesUsedToday(workspace: WorkspaceState, now: number) {
 }
 
 function nearestExamForTopic(workspace: WorkspaceState, topic: Topic, now: number) {
-  const exams = workspace.exams
+  return workspace.exams
     .filter(
       (exam) =>
         examStatus(exam.date, now).kind !== 'past' &&
         examAppliesToTopic(exam, topic),
     )
-    .sort((a, b) => a.date - b.date);
-  return exams[0] ?? null;
+    .sort((a, b) => a.date - b.date)[0] ?? null;
+}
+
+function nearestExamForTask(workspace: WorkspaceState, task: StudyTask, now: number) {
+  if (task.examId) {
+    const direct = workspace.exams.find((exam) => exam.id === task.examId && exam.date >= now);
+    if (direct) return direct;
+  }
+  if (!task.topicId) return null;
+  const topic = workspace.topics.find((item) => item.id === task.topicId);
+  return topic ? nearestExamForTopic(workspace, topic, now) : null;
 }
 
 function examBoost(days: number) {
@@ -106,7 +137,7 @@ function dueQuestions(topic: Topic, now: number) {
   }).length;
 }
 
-function buildCandidate(workspace: WorkspaceState, topic: Topic, now: number): TopicCandidate | null {
+function topicCandidate(workspace: WorkspaceState, topic: Topic, now: number): Candidate | null {
   if (topic.snoozeUntil > now) return null;
 
   let score = topic.priority * 12;
@@ -139,10 +170,7 @@ function buildCandidate(workspace: WorkspaceState, topic: Topic, now: number): T
   }
 
   const nearestExam = nearestExamForTopic(workspace, topic, now);
-  const examDays = nearestExam
-    ? Math.max(0, examCalendarDaysUntil(nearestExam.date, now))
-    : null;
-
+  const examDays = nearestExam ? Math.max(0, examCalendarDaysUntil(nearestExam.date, now)) : null;
   if (nearestExam && examDays !== null) {
     const boost = examBoost(examDays);
     score += boost;
@@ -158,35 +186,104 @@ function buildCandidate(workspace: WorkspaceState, topic: Topic, now: number): T
   }
 
   const studiedToday = topicStudyMinutesToday(workspace, topic.id, now);
-  if (studiedToday > 0) {
-    score -= Math.min(34, Math.round(studiedToday * 0.7));
-  }
+  if (studiedToday > 0) score -= Math.min(34, Math.round(studiedToday * 0.7));
 
   if (topic.lastReviewed > 0) {
-    const hoursSinceReview = (now - topic.lastReviewed) / (60 * 60 * 1000);
+    const hoursSinceReview = (now - topic.lastReviewed) / 3600000;
     if (hoursSinceReview < 8) score -= 20;
   }
 
   const mode: PlanMode =
     topicDue || questionCount > 0 || topic.status === 'review' ? 'review' : 'study';
 
-  if (reasons.length === 0) {
-    reasons.push(topic.status === 'new' ? 'ready to start' : 'worth continuing');
-  }
+  if (!reasons.length) reasons.push(topic.status === 'new' ? 'ready to start' : 'worth continuing');
 
   return {
+    key: `topic:${topic.id}`,
+    source: 'topic',
     topic,
+    task: null,
+    title: topic.name,
+    subject: topic.subject,
+    priority: topic.priority,
     baseScore: score,
     reasons,
     dueQuestionCount: questionCount,
     examDays,
-    studiedToday,
     mode,
+    remainingMinutes: topic.estimate,
   };
 }
 
-function blockDuration(topic: Topic, targetFocus: number, repeat: number, available: number) {
-  const notionalRemaining = Math.max(5, topic.estimate - repeat * targetFocus);
+function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number): Candidate | null {
+  if (task.status !== 'open' || task.postponedUntil > now) return null;
+  const endToday = nextLocalDayStart(now);
+  if (
+    task.planState === 'scheduled' &&
+    task.scheduledStart >= endToday
+  ) {
+    return null;
+  }
+
+  const linkedTopic = task.topicId
+    ? workspace.topics.find((topic) => topic.id === task.topicId) ?? null
+    : null;
+  const reasons: string[] = [];
+  let score = taskPlanningScore(workspace, task, now);
+
+  if (task.dueAt > 0) {
+    const days = calendarDaysBetween(now, task.dueAt);
+    if (days < 0) reasons.push('overdue');
+    else if (days === 0) reasons.push('due today');
+    else if (days === 1) reasons.push('due tomorrow');
+    else if (days <= 7) reasons.push(`due in ${days} days`);
+  }
+
+  if (task.planState === 'scheduled' && task.scheduledStart > 0) {
+    const minutesAway = Math.round((task.scheduledStart - now) / 60000);
+    if (minutesAway <= 30) {
+      score += 30;
+      reasons.unshift(minutesAway <= 0 ? 'planned time has arrived' : 'planned soon');
+    } else {
+      reasons.push('scheduled today');
+    }
+  } else if (task.planState === 'today') {
+    reasons.push('chosen for today');
+  }
+
+  const exam = nearestExamForTask(workspace, task, now);
+  const examDays = exam ? Math.max(0, examCalendarDaysUntil(exam.date, now)) : null;
+  if (exam && examDays !== null && examDays <= 7) {
+    reasons.push(examDays === 1 ? `${exam.name} tomorrow` : `${exam.name} in ${examDays} days`);
+  }
+
+  const questionCount = linkedTopic ? dueQuestions(linkedTopic, now) : 0;
+  const mode: PlanMode =
+    task.type === 'revision' && linkedTopic && questionCount > 0 ? 'review' : 'study';
+
+  if (!reasons.length) {
+    reasons.push(task.type === 'homework' ? 'homework waiting' : `${task.type} task`);
+  }
+
+  return {
+    key: `task:${task.id}`,
+    source: 'task',
+    topic: linkedTopic,
+    task,
+    title: task.title,
+    subject: task.subject || linkedTopic?.subject || 'Study task',
+    priority: task.priority,
+    baseScore: score,
+    reasons,
+    dueQuestionCount: questionCount,
+    examDays,
+    mode,
+    remainingMinutes: taskRemainingMinutes(task) || task.estimatedMinutes || 25,
+  };
+}
+
+function candidateDuration(candidate: Candidate, targetFocus: number, repeat: number, available: number) {
+  const notionalRemaining = Math.max(5, candidate.remainingMinutes - repeat * targetFocus);
   return Math.min(targetFocus, notionalRemaining, available);
 }
 
@@ -213,83 +310,105 @@ export function buildTodayPlan(
       ? Math.max(configuredBreak, Math.min(12, Math.round(targetFocusMinutes * 0.35)))
       : configuredBreak;
 
-  const candidates = workspace.topics
-    .map((topic) => buildCandidate(workspace, topic, now))
-    .filter((candidate): candidate is TopicCandidate => Boolean(candidate));
+  const candidates: Candidate[] = [
+    ...workspace.tasks
+      .map((task) => taskCandidate(workspace, task, now))
+      .filter((candidate): candidate is Candidate => Boolean(candidate)),
+    ...workspace.topics
+      .map((topic) => topicCandidate(workspace, topic, now))
+      .filter((candidate): candidate is Candidate => Boolean(candidate)),
+  ];
+
+  // A task linked to a topic represents concrete work and should prevent the
+  // generic topic recommendation from duplicating the same immediate intent.
+  const linkedTaskTopicIds = new Set(
+    candidates
+      .filter((candidate) => candidate.source === 'task' && candidate.topic?.id)
+      .map((candidate) => candidate.topic!.id),
+  );
+  const deduped = candidates.filter(
+    (candidate) =>
+      candidate.source === 'task' ||
+      !linkedTaskTopicIds.has(candidate.topic?.id ?? ''),
+  );
 
   const blocks: PlanBlock[] = [];
   const repeats = new Map<string, number>();
   let used = 0;
   let lastSubject = '';
-  let lastTopicId = '';
+  let lastKey = '';
   const minimumUsefulBlock = 5;
 
-  while (candidates.length && used < remainingBudgetMinutes) {
+  while (deduped.length && used < remainingBudgetMinutes) {
     const breakCost = blocks.length ? breakMinutes : 0;
     const availableForStudy = remainingBudgetMinutes - used - breakCost;
     if (availableForStudy < minimumUsefulBlock) break;
 
-    const ranked = candidates
+    const ranked = deduped
       .map((candidate) => {
-        const repeat = repeats.get(candidate.topic.id) ?? 0;
+        const repeat = repeats.get(candidate.key) ?? 0;
         let adjusted = candidate.baseScore - repeat * 15;
 
-        if (lastSubject && candidate.topic.subject === lastSubject) adjusted -= 13;
-        if (candidate.topic.id === lastTopicId) adjusted -= 30;
+        if (lastSubject && candidate.subject === lastSubject) adjusted -= 13;
+        if (candidate.key === lastKey) adjusted -= 30;
 
         return { candidate, repeat, adjusted };
       })
       .sort((a, b) => {
         if (b.adjusted !== a.adjusted) return b.adjusted - a.adjusted;
-        if (b.candidate.topic.priority !== a.candidate.topic.priority) {
-          return b.candidate.topic.priority - a.candidate.topic.priority;
+        if (b.candidate.priority !== a.candidate.priority) {
+          return b.candidate.priority - a.candidate.priority;
         }
-        return a.candidate.topic.name.localeCompare(b.candidate.topic.name);
+        return a.candidate.title.localeCompare(b.candidate.title);
       });
 
     const chosen = ranked[0];
     if (!chosen) break;
 
     const minutes = Math.floor(
-      blockDuration(chosen.candidate.topic, targetFocusMinutes, chosen.repeat, availableForStudy),
+      candidateDuration(chosen.candidate, targetFocusMinutes, chosen.repeat, availableForStudy),
     );
     if (minutes < minimumUsefulBlock) {
-      candidates.splice(candidates.indexOf(chosen.candidate), 1);
+      deduped.splice(deduped.indexOf(chosen.candidate), 1);
       continue;
     }
 
     if (breakCost) used += breakCost;
 
     blocks.push({
-      id: `${chosen.candidate.topic.id}:${chosen.repeat + 1}`,
-      topicId: chosen.candidate.topic.id,
-      topicName: chosen.candidate.topic.name,
-      subject: chosen.candidate.topic.subject,
+      id: `${chosen.candidate.key}:${chosen.repeat + 1}`,
+      source: chosen.candidate.source,
+      topicId: chosen.candidate.topic?.id ?? null,
+      taskId: chosen.candidate.task?.id ?? null,
+      topicName: chosen.candidate.title,
+      subject: chosen.candidate.subject,
       mode: chosen.candidate.mode,
       minutes,
       score: Math.round(chosen.adjusted),
       reasons: chosen.candidate.reasons.slice(0, 3),
       dueQuestionCount: chosen.candidate.dueQuestionCount,
       examDays: chosen.candidate.examDays,
+      focusable: Boolean(chosen.candidate.topic),
     });
 
     used += minutes;
-    repeats.set(chosen.candidate.topic.id, chosen.repeat + 1);
-    lastSubject = chosen.candidate.topic.subject;
-    lastTopicId = chosen.candidate.topic.id;
+    repeats.set(chosen.candidate.key, chosen.repeat + 1);
+    lastSubject = chosen.candidate.subject;
+    lastKey = chosen.candidate.key;
 
     const maximumBlocks = Math.max(
       1,
-      Math.min(3, Math.ceil(chosen.candidate.topic.estimate / targetFocusMinutes)),
+      Math.min(3, Math.ceil(chosen.candidate.remainingMinutes / targetFocusMinutes)),
     );
-    if ((repeats.get(chosen.candidate.topic.id) ?? 0) >= maximumBlocks) {
-      candidates.splice(candidates.indexOf(chosen.candidate), 1);
+    if ((repeats.get(chosen.candidate.key) ?? 0) >= maximumBlocks) {
+      deduped.splice(deduped.indexOf(chosen.candidate), 1);
     }
   }
 
   const plannedStudyMinutes = blocks.reduce((sum, block) => sum + block.minutes, 0);
   const plannedBreakMinutes = Math.max(0, blocks.length - 1) * breakMinutes;
-  const usedTopicIds = new Set(blocks.map((block) => block.topicId));
+  const usedTopicIds = new Set(blocks.flatMap((block) => (block.topicId ? [block.topicId] : [])));
+  const todayStart = startOfLocalDay(now);
 
   return {
     generatedAt: now,
@@ -305,6 +424,15 @@ export function buildTodayPlan(
     nextBlock: blocks[0] ?? null,
     deferredTopicCount: workspace.topics.filter(
       (topic) => topic.snoozeUntil <= now && !usedTopicIds.has(topic.id),
+    ).length,
+    inboxTaskCount: workspace.tasks.filter(
+      (task) => task.status === 'open' && task.planState === 'inbox' && task.postponedUntil <= now,
+    ).length,
+    overdueTaskCount: workspace.tasks.filter(
+      (task) =>
+        task.status === 'open' &&
+        task.dueAt > 0 &&
+        task.dueAt < todayStart,
     ).length,
   };
 }

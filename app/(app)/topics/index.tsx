@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   filterChipSubtle: { minHeight: 31, backgroundColor: colors.bg },
   filterChipActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
-  filterText: { color: colors.muted, fontSize: 10.5, fontWeight: '650' },
+  filterText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
   filterTextActive: { color: colors.accent },
   list: { paddingHorizontal: spacing.lg, paddingTop: 4, paddingBottom: 40 },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },

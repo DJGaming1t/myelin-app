@@ -14,6 +14,7 @@ import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { useReview } from '@/src/features/review/ReviewProvider';
 import { PlanBlockCard } from '@/src/features/today/PlanBlockCard';
 import { buildTodayPlan, PlanBlock } from '@/src/features/today/planner';
 import { colors, radius, spacing } from '@/src/theme/tokens';
@@ -23,6 +24,7 @@ const BUDGETS = [30, 60, 90, 120, 180];
 export default function TodayScreen() {
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
+  const { session: activeReview } = useReview();
   const now = Date.now();
 
   const plan = useMemo(
@@ -56,9 +58,22 @@ export default function TodayScreen() {
     });
   }
 
-  function startFocus(block: PlanBlock, selectedBreakMinutes: number) {
+  function startBlock(block: PlanBlock, selectedBreakMinutes: number) {
+    if (activeReview) {
+      router.push('/(app)/review');
+      return;
+    }
+
     if (activeFocus) {
       router.push('/(app)/focus');
+      return;
+    }
+
+    if (block.mode === 'review' && block.dueQuestionCount > 0) {
+      router.push({
+        pathname: '/(app)/review',
+        params: { topicId: block.topicId },
+      });
       return;
     }
 
@@ -148,6 +163,21 @@ export default function TodayScreen() {
 
           {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
+          {activeReview ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/review')}
+              style={({ pressed }) => [styles.activeReviewCard, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.activeReviewLabel}>REVIEW IN PROGRESS</Text>
+                <Text style={styles.activeReviewTitle}>
+                  {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
+                </Text>
+              </View>
+              <Text style={styles.activeReviewArrow}>Resume →</Text>
+            </Pressable>
+          ) : null}
+
           {activeFocus ? (
             <Pressable
               accessibilityRole="button"
@@ -177,7 +207,7 @@ export default function TodayScreen() {
           ) : next ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => startFocus(next, plan.breakMinutes)}
+              onPress={() => startBlock(next, plan.breakMinutes)}
               style={({ pressed }) => [styles.nextCard, pressed && styles.pressed]}>
               <View style={styles.nextTop}>
                 <View>
@@ -196,7 +226,15 @@ export default function TodayScreen() {
               <Text style={styles.nextReason}>{next.reasons.join(' · ')}</Text>
 
               <View style={styles.nextAction}>
-                <Text style={styles.nextActionText}>{activeFocus ? 'Resume focus' : 'Start focus'}</Text>
+                <Text style={styles.nextActionText}>
+                  {activeReview
+                    ? 'Resume review'
+                    : activeFocus
+                      ? 'Resume focus'
+                      : next.mode === 'review' && next.dueQuestionCount > 0
+                        ? 'Start recall'
+                        : 'Start focus'}
+                </Text>
                 <Text style={styles.nextArrow}>→</Text>
               </View>
             </Pressable>
@@ -242,7 +280,7 @@ export default function TodayScreen() {
                       <View style={styles.breakLine} />
                     </View>
                   ) : null}
-                  <PlanBlockCard block={block} index={index} onPress={() => startFocus(block, plan.breakMinutes)} />
+                  <PlanBlockCard block={block} index={index} onPress={() => startBlock(block, plan.breakMinutes)} />
                 </View>
               ))}
 
@@ -379,6 +417,23 @@ const styles = StyleSheet.create({
   summaryLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
   summaryValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
   saveError: { color: colors.danger, fontSize: 10.5, marginTop: 8 },
+  activeReviewCard: {
+    marginTop: 10,
+    minHeight: 66,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(180,216,174,0.22)',
+    backgroundColor: 'rgba(180,216,174,0.055)',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  activeReviewLabel: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  activeReviewTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 4 },
+  activeReviewArrow: { color: colors.success, fontSize: 10.5, fontWeight: '700' },
   activeFocusCard: {
     marginTop: 10,
     minHeight: 66,

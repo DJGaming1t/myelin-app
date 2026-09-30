@@ -191,11 +191,18 @@ export function suggestTaskSlots(
 ): TaskSlot[] {
   const needed = Math.max(5, taskRemainingMinutes(task) || task.estimatedMinutes || 25);
   const slots: TaskSlot[] = [];
+  const shadow: WorkspaceState = JSON.parse(JSON.stringify(workspace));
+  const current = shadow.tasks.find((item) => item.id === task.id);
+  if (current) {
+    current.planState = 'today';
+    current.scheduledStart = 0;
+    current.scheduledEnd = 0;
+  }
 
   for (let offset = 0; offset < 3 && slots.length < limit; offset += 1) {
     const day = addLocalDays(startOfLocalDay(now), offset);
     const from = offset === 0 ? now : day;
-    const windows = freeStudyWindows(workspace, day, { from, minMinutes: 5 });
+    const windows = freeStudyWindows(shadow, day, { from, minMinutes: 5 });
     for (const window of windows) {
       if (window.minutes < needed) continue;
       slots.push({ start: window.start, end: window.start + needed * 60000, minutes: needed });
@@ -231,10 +238,22 @@ export function buildDayMap(workspace: WorkspaceState, now = Date.now()) {
 
   const entries = [...commitments, ...tasks].sort((a, b) => a.start - b.start || a.end - b.end);
   const free = freeStudyWindows(workspace, day, { minMinutes: 5 });
-  const plannedStudyMinutes = scheduledTasksForDay(workspace.tasks, day).reduce(
-    (sum, task) => sum + Math.max(0, Math.round((task.scheduledEnd - task.scheduledStart) / 60000)),
-    0,
-  );
+  const plannedStudyMinutes = workspace.tasks
+    .filter((task) => {
+      if (task.status !== 'open' || task.postponedUntil > now) return false;
+      if (task.planState === 'today') return true;
+      if (task.planState !== 'scheduled') return false;
+      return task.scheduledStart >= day && task.scheduledStart < addLocalDays(day, 1);
+    })
+    .reduce((sum, task) => {
+      const remaining = taskRemainingMinutes(task);
+      if (remaining > 0) return sum + remaining;
+      if (task.estimatedMinutes > 0) return sum + task.estimatedMinutes;
+      if (task.scheduledEnd > task.scheduledStart) {
+        return sum + Math.round((task.scheduledEnd - task.scheduledStart) / 60000);
+      }
+      return sum + 25;
+    }, 0);
   const fixedBusyMinutes = commitmentOccurrencesForDay(workspace.commitments, day).reduce(
     (sum, item) => sum + Math.max(0, Math.round((item.end - item.start) / 60000)),
     0,

@@ -326,7 +326,7 @@ function OutcomeRow({
             styles.outcomeFill,
             tone === 'danger' && styles.outcomeDanger,
             tone === 'success' && styles.outcomeSuccess,
-            { width: `${width}%` },
+            { width: `${width}%` as `${number}%` },
           ]}
         />
       </View>

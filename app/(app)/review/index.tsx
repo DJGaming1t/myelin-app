@@ -91,6 +91,38 @@ export default function ReviewScreen() {
     );
   }
 
+  if (session && activeFocus) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.page}>
+          <ScrollView contentContainerStyle={styles.dashboard}>
+            <View style={styles.brandRow}>
+              <View style={styles.brandDot} />
+              <Text style={styles.brand}>MYELIN</Text>
+            </View>
+            <Text style={styles.eyebrow}>REVIEW PAUSED</Text>
+            <Text style={styles.dashboardTitle}>Finish the focus block first.</Text>
+            <Text style={styles.dashboardText}>
+              Your exact review card, answer draft, hint state and reference stage are still saved.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/focus')}
+              style={({ pressed }) => [styles.blockedCard, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.blockedLabel}>FOCUS SESSION ACTIVE</Text>
+                <Text style={styles.blockedTitle}>{activeFocus.topicName}</Text>
+                <Text style={styles.blockedText}>Return to the timer. Review will still be here afterwards.</Text>
+              </View>
+              <Text style={styles.arrow}>→</Text>
+            </Pressable>
+          </ScrollView>
+          <AppNav />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!session) {
     const requestedTopic = requestedTopicId ? findTopic(workspace, requestedTopicId) : null;
     const dueForTopic = requestedTopic

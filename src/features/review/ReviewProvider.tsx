@@ -18,6 +18,7 @@ import {
   ReviewChoice,
   applyReviewGrade,
   buildReviewQueue,
+  reviewAttemptAlreadyRecorded,
   scheduleReview,
 } from './review-engine';
 import { reviewStorage } from './review-storage';
@@ -278,8 +279,9 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         if (!topic || !card) return null;
 
         const schedule = scheduleReview(card, choice, now);
-        const alreadyRecorded = currentWorkspace.history.some(
-          (entry) => entry.reviewAttemptId === current.attemptId,
+        const alreadyRecorded = reviewAttemptAlreadyRecorded(
+          currentWorkspace,
+          current.attemptId,
         );
         const answerDraft = current.answerDraft;
         const confidence = current.confidence;

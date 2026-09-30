@@ -455,7 +455,7 @@ export default function ReviewScreen() {
 
               <Text style={styles.gradeHeading}>How well did you actually retrieve it?</Text>
               <Text style={styles.gradeHelp}>
-                Grade the recall, not how familiar the reference answer looks now.
+                Grade the recall, not how familiar the reference answer looks now. “Again” also adds this correction to Mistakes when a reference answer exists.
               </Text>
 
               <View style={styles.gradeStack}>

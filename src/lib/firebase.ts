@@ -1,12 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import {
-  Auth,
-  getAuth,
-  getReactNativePersistence,
-  initializeAuth,
-  Persistence,
-} from 'firebase/auth';
+import * as FirebaseAuth from 'firebase/auth';
+import type { Auth, Persistence } from 'firebase/auth';
 import { Platform } from 'react-native';
 
 const firebaseConfig = {
@@ -20,19 +15,32 @@ const firebaseConfig = {
 
 export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+/**
+ * Firebase exposes getReactNativePersistence from its React Native bundle at runtime,
+ * but some Firebase 12 TypeScript resolution paths omit it from the public declaration.
+ * Keep the workaround isolated here instead of suppressing type checking across the app.
+ */
+type FirebaseAuthWithReactNativePersistence = typeof FirebaseAuth & {
+  getReactNativePersistence: (storage: typeof AsyncStorage) => Persistence;
+};
+
+const getReactNativePersistence = (
+  FirebaseAuth as FirebaseAuthWithReactNativePersistence
+).getReactNativePersistence;
+
 export const reactNativePersistence: Persistence | null =
   Platform.OS === 'web' ? null : getReactNativePersistence(AsyncStorage);
 
 function makeAuth(): Auth {
-  if (Platform.OS === 'web') return getAuth(firebaseApp);
+  if (Platform.OS === 'web') return FirebaseAuth.getAuth(firebaseApp);
 
   try {
-    return initializeAuth(firebaseApp, {
+    return FirebaseAuth.initializeAuth(firebaseApp, {
       persistence: reactNativePersistence!,
     });
-  } catch (error) {
+  } catch {
     // Fast Refresh can initialize Auth more than once in development.
-    return getAuth(firebaseApp);
+    return FirebaseAuth.getAuth(firebaseApp);
   }
 }
 

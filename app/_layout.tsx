@@ -8,6 +8,7 @@ import { AuthProvider } from '@/src/features/auth/AuthProvider';
 import { CloudSyncProvider } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { FocusProvider } from '@/src/features/focus/FocusProvider';
 import { ReminderProvider } from '@/src/features/notifications/ReminderProvider';
+import { OnboardingProvider } from '@/src/features/onboarding/OnboardingProvider';
 import { ReviewProvider } from '@/src/features/review/ReviewProvider';
 import { colors } from '@/src/theme/tokens';
 
@@ -17,7 +18,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <WorkspaceProvider>
-            <FocusProvider>
+            <OnboardingProvider>
+              <FocusProvider>
               <ReviewProvider>
                 <ReminderProvider>
                   <CloudSyncProvider>
@@ -32,7 +34,8 @@ export default function RootLayout() {
                   </CloudSyncProvider>
                 </ReminderProvider>
               </ReviewProvider>
-            </FocusProvider>
+              </FocusProvider>
+            </OnboardingProvider>
           </WorkspaceProvider>
         </AuthProvider>
       </SafeAreaProvider>

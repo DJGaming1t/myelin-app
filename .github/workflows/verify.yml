@@ -81,6 +81,9 @@ jobs:
       - name: Product polish, accessibility and responsive shell
         run: npm run verify:polish
 
+      - name: Release engineering configuration
+        run: npm run verify:release
+
       - name: Expo Doctor
         run: npx expo-doctor
 

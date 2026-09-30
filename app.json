@@ -12,10 +12,13 @@
       "blockedPermissions": [
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM"
-      ]
+      ],
+      "versionCode": 1,
+      "backgroundColor": "#070707"
     },
     "ios": {
-      "bundleIdentifier": "com.djgaming1t.myelin"
+      "bundleIdentifier": "com.djgaming1t.myelin",
+      "buildNumber": "1"
     },
     "web": {
       "bundler": "metro"
@@ -34,6 +37,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

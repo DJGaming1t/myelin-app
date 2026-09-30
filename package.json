@@ -24,7 +24,13 @@
     "verify:firestore-rules": "firebase emulators:exec --project demo-myelin-sync --only firestore \"npm run test:firestore-rules\"",
     "verify:notifications": "tsx scripts/verify-notifications.ts",
     "verify:onboarding": "tsx scripts/verify-onboarding.ts",
-    "verify:polish": "tsx scripts/verify-polish.ts"
+    "verify:polish": "tsx scripts/verify-polish.ts",
+    "verify:release": "tsx scripts/verify-release.ts",
+    "eas:development": "npx eas-cli@latest build --platform android --profile development",
+    "eas:preview": "npx eas-cli@latest build --platform android --profile preview",
+    "eas:production": "npx eas-cli@latest build --platform android --profile production",
+    "eas:update:preview": "npx eas-cli@latest update --channel preview",
+    "eas:update:production": "npx eas-cli@latest update --channel production"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -52,7 +58,8 @@
     "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
     "expo-sharing": "~57.0.19",
-    "expo-notifications": "~57.0.21"
+    "expo-notifications": "~57.0.21",
+    "expo-updates": "~57.0.23"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

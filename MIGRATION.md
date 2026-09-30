@@ -11,7 +11,8 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Expo + TypeScript + Expo Router foundation
 - [x] Shared MYELIN design tokens
 - [ ] Run clean install and Expo Doctor on a development machine
-- [ ] Configure EAS project
+- [x] EAS build/update profiles and release runbook
+- [ ] Link the repository to the owning Expo/EAS project and write its generated project ID/update URL
 
 ## Feature parity
 - [x] Authentication shell
@@ -37,6 +38,9 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Notifications — local due-review/exam reminders, quiet hours, permission-on-enable, Calm/Signal/Spark personalities and copy-volume guardrails verified
 - [x] Onboarding
 - [x] Product polish — shared responsive shell, polished loading/error states, accessibility touch targets, system/user reduced-motion handling and a lower-frequency focus timer
+- [x] Release engineering scaffold — development/preview/production profiles, APK preview profile, update channels, runtime/version policy, release/privacy/store runbooks and verification
+- [ ] Final app icon and splash assets
+- [ ] Real Android preview build + on-device release verification
 
 ## Safety gates before replacing the web app
 - [x] Existing web app stays deployable

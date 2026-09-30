@@ -21,9 +21,9 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Offline per-user data foundation
 - [x] Topics
 - [x] Today planner
-- [ ] Focus timer
-- [ ] Five-minute launch
-- [ ] Distraction parking lot
+- [x] Focus timer
+- [x] Five-minute launch
+- [x] Distraction parking lot
 - [ ] Active recall
 - [ ] Review scheduling
 - [ ] Mistake notebook

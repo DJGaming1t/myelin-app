@@ -17,7 +17,8 @@
     "verify:mistakes": "tsx scripts/verify-mistakes.ts",
     "verify:exams": "tsx scripts/verify-exams.ts",
     "verify:progress": "tsx scripts/verify-progress.ts",
-    "verify:settings": "tsx scripts/verify-settings.ts"
+    "verify:settings": "tsx scripts/verify-settings.ts",
+    "verify:transfer": "tsx scripts/verify-transfer.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

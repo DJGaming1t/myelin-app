@@ -35,7 +35,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Import/export or migration path from web data
 - [x] Firestore sync — offline-first client, conflict handling and emulator-tested rules implemented; production upload remains locked until rules deployment + activation flag
 - [x] Notifications — local due-review/exam reminders, quiet hours, permission-on-enable, Calm/Signal/Spark personalities and copy-volume guardrails verified
-- [ ] Onboarding
+- [x] Onboarding
 
 ## Safety gates before replacing the web app
 - [x] Existing web app stays deployable

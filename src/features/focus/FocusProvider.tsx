@@ -71,7 +71,10 @@ export function FocusProvider({ children }: PropsWithChildren) {
       if (!owner) return;
 
       saveQueue.current = saveQueue.current
-        .then(() => (next ? focusStorage.save(owner, next) : focusStorage.clear(owner)))
+        .then(async () => {
+          if (next) await focusStorage.save(owner, next);
+          else await focusStorage.clear(owner);
+        })
         .catch(() => undefined);
 
       await saveQueue.current;

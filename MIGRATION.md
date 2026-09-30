@@ -27,7 +27,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Active recall
 - [x] Review scheduling
 - [x] Mistake notebook
-- [ ] Exams
+- [x] Exams
 - [ ] Progress
 - [ ] Time-estimation calibration
 - [x] Confidence calibration — confidence is captured with each recall attempt; analysis comes in Progress

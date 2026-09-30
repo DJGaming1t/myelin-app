@@ -1,4 +1,9 @@
-import { Exam, Topic, WorkspaceState } from '@/src/data/schema';
+import { Topic, WorkspaceState } from '@/src/data/schema';
+import {
+  examAppliesToTopic,
+  examCalendarDaysUntil,
+  examStatus,
+} from '@/src/features/exams/exam-engine';
 
 export type PlanMode = 'study' | 'review';
 
@@ -58,18 +63,13 @@ export function minutesUsedToday(workspace: WorkspaceState, now: number) {
   return Math.round(study + breaks);
 }
 
-function daysUntil(timestamp: number, now: number) {
-  return Math.max(0, Math.ceil((timestamp - now) / DAY));
-}
-
-function examApplies(exam: Exam, topic: Topic) {
-  if (exam.scope === 'topics') return exam.topicIds.includes(topic.id);
-  return exam.subjects.includes(topic.subject);
-}
-
 function nearestExamForTopic(workspace: WorkspaceState, topic: Topic, now: number) {
   const exams = workspace.exams
-    .filter((exam) => exam.date >= now && examApplies(exam, topic))
+    .filter(
+      (exam) =>
+        examStatus(exam.date, now).kind !== 'past' &&
+        examAppliesToTopic(exam, topic),
+    )
     .sort((a, b) => a.date - b.date);
   return exams[0] ?? null;
 }
@@ -130,7 +130,9 @@ function buildCandidate(workspace: WorkspaceState, topic: Topic, now: number): T
   }
 
   const nearestExam = nearestExamForTopic(workspace, topic, now);
-  const examDays = nearestExam ? daysUntil(nearestExam.date, now) : null;
+  const examDays = nearestExam
+    ? Math.max(0, examCalendarDaysUntil(nearestExam.date, now))
+    : null;
 
   if (nearestExam && examDays !== null) {
     const boost = examBoost(examDays);

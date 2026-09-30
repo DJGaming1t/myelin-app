@@ -14,7 +14,8 @@
     "verify:today": "tsx scripts/verify-today.ts",
     "verify:focus": "tsx scripts/verify-focus.ts",
     "verify:review": "tsx scripts/verify-review.ts",
-    "verify:mistakes": "tsx scripts/verify-mistakes.ts"
+    "verify:mistakes": "tsx scripts/verify-mistakes.ts",
+    "verify:exams": "tsx scripts/verify-exams.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

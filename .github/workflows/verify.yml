@@ -48,6 +48,9 @@ jobs:
       - name: Mistake notebook capture and retest loop
         run: npm run verify:mistakes
 
+      - name: Exam scope and planner pressure
+        run: npm run verify:exams
+
       - name: Expo Doctor
         run: npx expo-doctor
 

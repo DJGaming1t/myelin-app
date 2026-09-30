@@ -13,6 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import {
+  examStatus,
+  nearestUpcomingExam,
+} from '@/src/features/exams/exam-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
@@ -34,6 +38,10 @@ export default function TodayScreen() {
   );
   const mistakeSummary = useMemo(
     () => (workspace ? mistakeCounts(workspace, now) : { due: 0, open: 0, resolved: 0, total: 0 }),
+    [workspace, now],
+  );
+  const nextExam = useMemo(
+    () => (workspace ? nearestUpcomingExam(workspace, now) : null),
     [workspace, now],
   );
 
@@ -167,6 +175,24 @@ export default function TodayScreen() {
           </View>
 
           {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
+
+          {nextExam ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/exams/[examId]',
+                  params: { examId: nextExam.id },
+                })
+              }
+              style={({ pressed }) => [styles.examCard, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.examLabel}>NEXT EXAM</Text>
+                <Text style={styles.examTitle}>{nextExam.name}</Text>
+              </View>
+              <Text style={styles.examWhen}>{examStatus(nextExam.date, now).label} →</Text>
+            </Pressable>
+          ) : null}
 
           {mistakeSummary.due > 0 ? (
             <Pressable
@@ -437,6 +463,23 @@ const styles = StyleSheet.create({
   summaryLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
   summaryValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
   saveError: { color: colors.danger, fontSize: 10.5, marginTop: 8 },
+  examCard: {
+    marginTop: 10,
+    minHeight: 62,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.18)',
+    backgroundColor: colors.panel,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  examLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  examTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 4 },
+  examWhen: { color: colors.accent, fontSize: 10.5, fontWeight: '700' },
   mistakeDueCard: {
     marginTop: 10,
     minHeight: 62,

@@ -18,7 +18,10 @@
     "verify:exams": "tsx scripts/verify-exams.ts",
     "verify:progress": "tsx scripts/verify-progress.ts",
     "verify:settings": "tsx scripts/verify-settings.ts",
-    "verify:transfer": "tsx scripts/verify-transfer.ts"
+    "verify:transfer": "tsx scripts/verify-transfer.ts",
+    "verify:cloud": "tsx scripts/verify-cloud.ts",
+    "test:firestore-rules": "tsx scripts/test-firestore-rules.ts",
+    "verify:firestore-rules": "firebase emulators:exec --project demo-myelin-sync --only firestore \"npm run test:firestore-rules\""
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -51,6 +54,8 @@
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3",
     "tsx": "^4.20.6",
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase-tools": "^15.32.0"
   }
 }

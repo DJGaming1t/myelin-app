@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "14373433855-t9vhdj3tn2fsh8m4np4bmkh49v1o8gdq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.djgaming1t.myelin",
+            "certificate_hash": "05b6971ab92ea4928f71ed56689dda831e5ee724"
+          }
+        },
+        {
           "client_id": "14373433855-i8ga5shv930h0mrhu66hvuuthf1mvnrd.apps.googleusercontent.com",
           "client_type": 3
         }

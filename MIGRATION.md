@@ -16,7 +16,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 ## Feature parity
 - [x] Authentication shell
 - [x] Email/password authentication
-- [ ] Google authentication — web flow wired; native code prepared; Android OAuth/SHA setup still required
+- [ ] Google authentication — web flow and native Android code wired; signing SHA-1 still required for runtime verification
 - [x] Verification / password recovery
 - [ ] Offline per-user data foundation
 - [ ] Topics

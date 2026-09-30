@@ -61,6 +61,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<FocusSessionState | null>(null);
   const sessionRef = useRef<FocusSessionState | null>(null);
   const ownerRef = useRef<string | null>(null);
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   const commitSession = useCallback(
     async (next: FocusSessionState | null) => {
@@ -68,8 +69,12 @@ export function FocusProvider({ children }: PropsWithChildren) {
       sessionRef.current = next;
       setSession(next);
       if (!owner) return;
-      if (next) await focusStorage.save(owner, next);
-      else await focusStorage.clear(owner);
+
+      saveQueue.current = saveQueue.current
+        .then(() => (next ? focusStorage.save(owner, next) : focusStorage.clear(owner)))
+        .catch(() => undefined);
+
+      await saveQueue.current;
     },
     [],
   );

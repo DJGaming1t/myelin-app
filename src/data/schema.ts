@@ -76,6 +76,11 @@ export type StudySession = {
   prompt: string;
   response: string;
   confidence: Confidence;
+  plannedMinutes?: number;
+  startedAt?: number;
+  endedAt?: number;
+  launchMode?: 'full' | 'five-minute';
+  tinyStep?: string;
 };
 
 export type BreakLog = {

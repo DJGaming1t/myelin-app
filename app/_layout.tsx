@@ -7,6 +7,7 @@ import { WorkspaceProvider } from '@/src/data/WorkspaceProvider';
 import { AuthProvider } from '@/src/features/auth/AuthProvider';
 import { CloudSyncProvider } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { FocusProvider } from '@/src/features/focus/FocusProvider';
+import { ReminderProvider } from '@/src/features/notifications/ReminderProvider';
 import { ReviewProvider } from '@/src/features/review/ReviewProvider';
 import { colors } from '@/src/theme/tokens';
 
@@ -16,7 +17,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <WorkspaceProvider>
-            <FocusProvider>
+            <ReminderProvider>
+              <FocusProvider>
               <ReviewProvider>
                 <CloudSyncProvider>
                   <StatusBar style="light" />
@@ -29,7 +31,8 @@ export default function RootLayout() {
                   />
                 </CloudSyncProvider>
               </ReviewProvider>
-            </FocusProvider>
+              </FocusProvider>
+            </ReminderProvider>
           </WorkspaceProvider>
         </AuthProvider>
       </SafeAreaProvider>

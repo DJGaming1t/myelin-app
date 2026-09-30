@@ -17,6 +17,7 @@ import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { useReminders } from '@/src/features/notifications/ReminderProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import {
   applyStudyDefaults,
@@ -50,6 +51,11 @@ export default function SettingsScreen() {
   } = useAuth();
   const { discard: discardFocus, session: focusSession } = useFocus();
   const { discardReview, session: reviewSession } = useReview();
+  const {
+    settings: reminderSettings,
+    scheduledCount: reminderScheduledCount,
+    permission: reminderPermission,
+  } = useReminders();
 
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountMessage, setAccountMessage] = useState('');
@@ -317,6 +323,43 @@ export default function SettingsScreen() {
           </Section>
 
           <Section
+            title="Reminders"
+            subtitle="Local study nudges with quiet hours and no streak pressure.">
+            <StatusRow
+              label="STATUS"
+              value={
+                reminderSettings.enabled
+                  ? `On · ${reminderScheduledCount} scheduled`
+                  : 'Off'
+              }
+              tone={reminderSettings.enabled ? 'success' : 'accent'}
+            />
+            <StatusRow
+              label="PERSONALITY"
+              value={
+                reminderSettings.voice === 'calm'
+                  ? 'Calm'
+                  : reminderSettings.voice === 'signal'
+                    ? 'Signal'
+                    : 'Spark'
+              }
+            />
+            <InfoBox>
+              Notification permission is requested only when you enable reminders. Current device permission: {reminderPermission === 'granted' ? 'allowed' : reminderPermission === 'denied' ? 'blocked' : reminderPermission === 'unsupported' ? 'unavailable here' : 'not asked yet'}.
+            </InfoBox>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/settings/reminders')}
+              style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.transferTitle}>Reminder studio</Text>
+                <Text style={styles.transferText}>Tone, quiet hours, exam timing and live previews</Text>
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+            </Pressable>
+          </Section>
+
+          <Section
             title="Privacy"
             subtitle="What leaves this device in the current native build.">
             <PrivacyRow
@@ -339,6 +382,11 @@ export default function SettingsScreen() {
               </View>
               <Text style={styles.transferArrow}>→</Text>
             </Pressable>
+            <PrivacyRow
+              label="Notifications"
+              value="Local"
+              helper="Study reminders are scheduled on this device. Feature 13 does not register a push token or send reminder content to a notification server."
+            />
             <PrivacyRow
               label="Analytics"
               value="Off"

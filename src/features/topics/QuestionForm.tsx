@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { ComponentProps, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -104,7 +104,7 @@ function Field({
 }: {
   label: string;
   minHeight: number;
-} & React.ComponentProps<typeof TextInput>) {
+} & ComponentProps<typeof TextInput>) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>

@@ -54,6 +54,9 @@ jobs:
       - name: Progress and calibration evidence
         run: npm run verify:progress
 
+      - name: Settings and privacy guardrails
+        run: npm run verify:settings
+
       - name: Expo Doctor
         run: npx expo-doctor
 

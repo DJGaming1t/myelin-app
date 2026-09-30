@@ -26,8 +26,10 @@ type WorkspaceContextValue = {
   saveError: string;
   updateWorkspace: (change: (draft: WorkspaceState) => void) => WorkspaceState | null;
   waitForSaves: () => Promise<void>;
-  replaceWorkspace: (workspace: WorkspaceState) => Promise<WorkspaceState | null>;
   resetWorkspace: () => Promise<void>;
+  replaceWorkspace: (next: WorkspaceState, expectedRevision: number) => Promise<WorkspaceState>;
+  restoreImportRecovery: (expectedRevision: number) => Promise<WorkspaceState | null>;
+  hasImportRecovery: boolean;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -40,6 +42,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const [recovered, setRecovered] = useState(false);
   const [resetBecauseCorrupt, setResetBecauseCorrupt] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [hasImportRecovery, setHasImportRecovery] = useState(false);
 
   const workspaceRef = useRef<WorkspaceState | null>(null);
   const ownerKeyRef = useRef<string | null>(null);
@@ -68,6 +71,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     setRecovered(false);
     setResetBecauseCorrupt(false);
     setSaveError('');
+    setHasImportRecovery(false);
 
     if (!nextOwnerKey) {
       setStatus('idle');
@@ -86,6 +90,14 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
         setWorkspace(result.workspace);
         setRecovered(result.recovered);
         setResetBecauseCorrupt(result.resetBecauseCorrupt);
+        workspaceStorage
+          .loadImportRecovery(nextOwnerKey)
+          .then((recovery) => {
+            if (!cancelled && ownerKeyRef.current === nextOwnerKey) {
+              setHasImportRecovery(Boolean(recovery));
+            }
+          })
+          .catch(() => undefined);
         setStatus('ready');
       })
       .catch((error) => {
@@ -126,35 +138,6 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     await saveQueue.current;
   }, []);
 
-  const replaceWorkspace = useCallback(async (candidate: WorkspaceState) => {
-    const currentOwner = ownerKeyRef.current;
-    const current = workspaceRef.current;
-    if (!currentOwner || !current) return null;
-
-    setSaveError('');
-    await saveQueue.current;
-
-    const next = cloneWorkspace(candidate);
-    next.revision = current.revision + 1;
-    next.updatedAt = Date.now();
-
-    try {
-      const saved = await workspaceStorage.save(currentOwner, next);
-      if (ownerKeyRef.current !== currentOwner) return null;
-      workspaceRef.current = saved;
-      setWorkspace(saved);
-      setRecovered(false);
-      setResetBecauseCorrupt(false);
-      setStatus('ready');
-      return saved;
-    } catch (error) {
-      if (ownerKeyRef.current === currentOwner) {
-        setSaveError(error instanceof Error ? error.message : 'Could not import this workspace.');
-      }
-      return null;
-    }
-  }, []);
-
   const resetWorkspace = useCallback(async () => {
     const currentOwner = ownerKeyRef.current;
     if (!currentOwner) return;
@@ -169,12 +152,89 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       setWorkspace(fresh);
       setRecovered(false);
       setResetBecauseCorrupt(false);
+      setHasImportRecovery(false);
       setStatus('ready');
     } catch (error) {
       if (ownerKeyRef.current !== currentOwner) return;
       setStatus('error');
       setSaveError(error instanceof Error ? error.message : 'Could not reset this workspace.');
     }
+  }, []);
+
+  const replaceWorkspace = useCallback(
+    async (incoming: WorkspaceState, expectedRevision: number) => {
+      const currentOwner = ownerKeyRef.current;
+      const current = workspaceRef.current;
+      if (!currentOwner || !current) throw new Error('No workspace is open.');
+      if (current.revision !== expectedRevision) {
+        throw new Error(
+          'This workspace changed after the import preview. Preview the file again before importing.',
+        );
+      }
+
+      await saveQueue.current;
+
+      const latest = workspaceRef.current;
+      if (!latest || latest.revision !== expectedRevision) {
+        throw new Error(
+          'This workspace changed while the import was preparing. No imported data was applied.',
+        );
+      }
+
+      await workspaceStorage.saveImportRecovery(currentOwner, latest);
+
+      const replacement = cloneWorkspace(incoming);
+      replacement.revision = latest.revision + 1;
+      replacement.updatedAt = Date.now();
+
+      const saved = await workspaceStorage.save(currentOwner, replacement);
+      if (ownerKeyRef.current !== currentOwner) {
+        throw new Error('The active workspace changed before import completed.');
+      }
+
+      workspaceRef.current = saved;
+      setWorkspace(saved);
+      setRecovered(false);
+      setResetBecauseCorrupt(false);
+      setSaveError('');
+      setHasImportRecovery(true);
+      return saved;
+    },
+    [],
+  );
+
+  const restoreImportRecovery = useCallback(async (expectedRevision: number) => {
+    const currentOwner = ownerKeyRef.current;
+    const current = workspaceRef.current;
+    if (!currentOwner || !current) return null;
+    if (current.revision !== expectedRevision) {
+      throw new Error(
+        'This workspace changed before recovery could be restored. Try again from the latest screen.',
+      );
+    }
+
+    await saveQueue.current;
+    const recovery = await workspaceStorage.loadImportRecovery(currentOwner);
+    if (!recovery) {
+      setHasImportRecovery(false);
+      return null;
+    }
+
+    const currentSnapshot = cloneWorkspace(current);
+    const replacement = cloneWorkspace(recovery);
+    replacement.revision = current.revision + 1;
+    replacement.updatedAt = Date.now();
+
+    const saved = await workspaceStorage.save(currentOwner, replacement);
+    await workspaceStorage.saveImportRecovery(currentOwner, currentSnapshot);
+
+    workspaceRef.current = saved;
+    setWorkspace(saved);
+    setRecovered(false);
+    setResetBecauseCorrupt(false);
+    setSaveError('');
+    setHasImportRecovery(true);
+    return saved;
   }, []);
 
   const value = useMemo<WorkspaceContextValue>(
@@ -187,15 +247,19 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       saveError,
       updateWorkspace,
       waitForSaves,
-      replaceWorkspace,
       resetWorkspace,
+      replaceWorkspace,
+      restoreImportRecovery,
+      hasImportRecovery,
     }),
     [
+      hasImportRecovery,
       ownerKey,
       recovered,
       resetBecauseCorrupt,
       replaceWorkspace,
       resetWorkspace,
+      restoreImportRecovery,
       saveError,
       status,
       updateWorkspace,

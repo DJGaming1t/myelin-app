@@ -74,6 +74,8 @@ export function FocusProvider({ children }: PropsWithChildren) {
     [],
   );
 
+  const workspaceReady = Boolean(workspace);
+
   useEffect(() => {
     let cancelled = false;
     ownerRef.current = ownerKey;
@@ -113,7 +115,15 @@ export function FocusProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [ownerKey, workspace?.revision]);
+  }, [ownerKey, workspaceReady]);
+
+  useEffect(() => {
+    const current = sessionRef.current;
+    if (!current || !workspace) return;
+    if (findTopic(workspace, current.topicId)) return;
+
+    void commitSession(null);
+  }, [commitSession, session?.topicId, workspace?.topics.length]);
 
   const start = useCallback(
     async (input: StartInput) => {

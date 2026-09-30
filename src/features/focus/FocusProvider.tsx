@@ -45,7 +45,7 @@ type FocusContextValue = {
   removeParked: (id: string) => Promise<void>;
   completeFocus: (effort: 1 | 2 | 3 | 4 | 5, now?: number) => Promise<void>;
   completeBreak: (now?: number) => Promise<void>;
-  skipBreak: () => Promise<void>;
+  skipBreak: (now?: number) => Promise<void>;
   discard: () => Promise<void>;
 };
 
@@ -218,7 +218,16 @@ export function FocusProvider({ children }: PropsWithChildren) {
         await commitSession(null);
       },
 
-      async skipBreak() {
+      async skipBreak(now = Date.now()) {
+        const current = sessionRef.current;
+        if (current?.phase === 'break') {
+          const minutes = breakActualMinutes(current, now);
+          if (minutes > 0) {
+            updateWorkspace((draft) => {
+              draft.breaks.push({ at: now, minutes });
+            });
+          }
+        }
         await commitSession(null);
       },
 

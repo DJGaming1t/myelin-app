@@ -361,6 +361,17 @@ export default function SettingsScreen() {
               Signing out leaves this account’s local workspace on this device so it can be restored when the same account signs in again. Different accounts use separate local workspace keys.
             </InfoBox>
 
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/settings/data-transfer')}
+              style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.transferTitle}>Backup & migration</Text>
+                <Text style={styles.transferText}>Export, inspect and import MYELIN JSON backups</Text>
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+            </Pressable>
+
             {saveError ? <Text style={styles.errorMessage}>Save issue: {saveError}</Text> : null}
 
             <Pressable
@@ -624,6 +635,10 @@ const styles = StyleSheet.create({
   dataMetric: { width: '31.7%', minHeight: 56, borderRadius: radius.md, backgroundColor: colors.bg, padding: 9, justifyContent: 'space-between' },
   dataLabel: { color: colors.subtle, fontSize: 7, fontWeight: '800', letterSpacing: 0.9 },
   dataValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  transferButton: { minHeight: 56, marginTop: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  transferTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  transferText: { color: colors.subtle, fontSize: 8.8, marginTop: 3 },
+  transferArrow: { color: colors.accent, fontSize: 18 },
   resetButton: { minHeight: 60, marginTop: 16, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', backgroundColor: 'rgba(255,161,145,0.04)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   resetTitle: { color: colors.danger, fontSize: 11.5, fontWeight: '700' },
   resetText: { color: colors.subtle, fontSize: 8.8, marginTop: 3 },

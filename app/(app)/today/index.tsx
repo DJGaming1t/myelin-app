@@ -14,6 +14,7 @@ import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { PlanBlockCard } from '@/src/features/today/PlanBlockCard';
 import { buildTodayPlan, PlanBlock } from '@/src/features/today/planner';
@@ -29,6 +30,10 @@ export default function TodayScreen() {
 
   const plan = useMemo(
     () => (workspace ? buildTodayPlan(workspace, now) : null),
+    [workspace, now],
+  );
+  const mistakeSummary = useMemo(
+    () => (workspace ? mistakeCounts(workspace, now) : { due: 0, open: 0, resolved: 0, total: 0 }),
     [workspace, now],
   );
 
@@ -162,6 +167,21 @@ export default function TodayScreen() {
           </View>
 
           {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
+
+          {mistakeSummary.due > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/mistakes/retest')}
+              style={({ pressed }) => [styles.mistakeDueCard, pressed && styles.pressed]}>
+              <View>
+                <Text style={styles.mistakeDueLabel}>CORRECTION RETEST</Text>
+                <Text style={styles.mistakeDueTitle}>
+                  {mistakeSummary.due} {mistakeSummary.due === 1 ? 'mistake is' : 'mistakes are'} due
+                </Text>
+              </View>
+              <Text style={styles.mistakeDueArrow}>Retest →</Text>
+            </Pressable>
+          ) : null}
 
           {activeReview ? (
             <Pressable
@@ -417,6 +437,23 @@ const styles = StyleSheet.create({
   summaryLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
   summaryValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
   saveError: { color: colors.danger, fontSize: 10.5, marginTop: 8 },
+  mistakeDueCard: {
+    marginTop: 10,
+    minHeight: 62,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,161,145,0.2)',
+    backgroundColor: 'rgba(255,161,145,0.045)',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  mistakeDueLabel: { color: colors.danger, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  mistakeDueTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 4 },
+  mistakeDueArrow: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
   activeReviewCard: {
     marginTop: 10,
     minHeight: 66,

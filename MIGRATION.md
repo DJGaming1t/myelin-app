@@ -26,7 +26,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Distraction parking lot
 - [x] Active recall
 - [x] Review scheduling
-- [ ] Mistake notebook
+- [x] Mistake notebook
 - [ ] Exams
 - [ ] Progress
 - [ ] Time-estimation calibration

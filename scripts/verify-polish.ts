@@ -48,6 +48,9 @@ assert(reveal.includes('Animated.timing'), 'Shared entrance motion is missing.')
 assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
 assert(nav.includes('activeRail'), 'Bottom navigation is missing a strong active-state indicator.');
 assert(nav.includes('glyphWrapActive'), 'Bottom navigation is missing the active glyph treatment.');
+assert((nav.match(/path: '\/\(app\)\//g) ?? []).length === 5, 'Compact bottom navigation should expose exactly five primary destinations.');
+assert(!nav.includes("key: 'settings'"), 'Settings should be a secondary destination, not a seventh phone tab.');
+assert(!nav.includes("key: 'topics'"), 'Topics should be reached contextually from Today, not a sixth phone tab.');
 assert(header.includes('<Reveal'), 'Screen headers are missing entrance motion.');
 assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
 assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');

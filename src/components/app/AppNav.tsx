@@ -10,6 +10,7 @@ const ITEMS = [
   { key: 'exams', label: 'Exams', glyph: '◇', path: '/(app)/exams' as const },
   { key: 'progress', label: 'Progress', glyph: '▥', path: '/(app)/progress' as const },
   { key: 'topics', label: 'Topics', glyph: '▦', path: '/(app)/topics' as const },
+  { key: 'settings', label: 'Settings', glyph: '⚙', path: '/(app)/settings' as const },
 ];
 
 export function AppNav() {
@@ -46,7 +47,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: 'rgba(7,7,7,0.98)',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.sm,
     paddingTop: 7,
   },
   item: {
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
   },
   itemActive: { backgroundColor: 'rgba(255,128,91,0.035)' },
   glyph: { color: colors.subtle, fontSize: 15 },
-  label: { color: colors.subtle, fontSize: 8.5, fontWeight: '700' },
+  label: { color: colors.subtle, fontSize: 7.8, fontWeight: '700' },
   activeText: { color: colors.accent },
   pressed: { opacity: 0.6 },
 });

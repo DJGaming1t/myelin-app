@@ -150,6 +150,7 @@ export function createWorkspaceStorageEngine(store: KeyValueStore) {
         store.removeItem(keys.primary),
         store.removeItem(keys.pending),
         store.removeItem(keys.backup),
+        store.removeItem(keys.quarantine),
       ]);
       const workspace = createEmptyWorkspace();
       await store.setItem(keys.primary, JSON.stringify(workspace));

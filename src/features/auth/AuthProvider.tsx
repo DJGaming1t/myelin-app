@@ -30,11 +30,13 @@ import { Platform } from 'react-native';
 import { auth, reactNativePersistence } from '@/src/lib/firebase';
 
 const LOCAL_MODE_KEY = 'myelin.auth.local-mode';
+const KEEP_SIGNED_IN_KEY = 'myelin.auth.keep-signed-in';
 
 type AuthContextValue = {
   ready: boolean;
   user: User | null;
   localMode: boolean;
+  keepSignedIn: boolean;
   signInEmail: (email: string, password: string, keepSignedIn: boolean) => Promise<void>;
   signUpEmail: (
     name: string,
@@ -49,6 +51,7 @@ type AuthContextValue = {
   signOutUser: () => Promise<void>;
   continueLocally: () => Promise<void>;
   exitLocalMode: () => Promise<void>;
+  setKeepSignedIn: (value: boolean) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -69,14 +72,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [localMode, setLocalMode] = useState(false);
+  const [keepSignedIn, setKeepSignedInState] = useState(false);
   const [, forceRefresh] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
-    AsyncStorage.getItem(LOCAL_MODE_KEY)
-      .then((value) => {
-        if (mounted) setLocalMode(value === '1');
+    Promise.all([
+      AsyncStorage.getItem(LOCAL_MODE_KEY),
+      AsyncStorage.getItem(KEEP_SIGNED_IN_KEY),
+    ])
+      .then(([localValue, keepValue]) => {
+        if (!mounted) return;
+        setLocalMode(localValue === '1');
+        setKeepSignedInState(keepValue === '1');
       })
       .finally(() => {
         if (mounted) setReady(true);
@@ -103,15 +112,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
       ready,
       user,
       localMode,
+      keepSignedIn,
 
       async signInEmail(email, password, keepSignedIn) {
         await choosePersistence(keepSignedIn);
+        await AsyncStorage.setItem(KEEP_SIGNED_IN_KEY, keepSignedIn ? '1' : '0');
+        setKeepSignedInState(keepSignedIn);
         const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
         setUser(credential.user);
       },
 
       async signUpEmail(name, email, password, keepSignedIn) {
         await choosePersistence(keepSignedIn);
+        await AsyncStorage.setItem(KEEP_SIGNED_IN_KEY, keepSignedIn ? '1' : '0');
+        setKeepSignedInState(keepSignedIn);
         const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const cleanName = name.trim();
         if (cleanName) await updateProfile(credential.user, { displayName: cleanName });
@@ -121,6 +135,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       async signInGoogle(keepSignedIn = false) {
         await choosePersistence(keepSignedIn);
+        await AsyncStorage.setItem(KEEP_SIGNED_IN_KEY, keepSignedIn ? '1' : '0');
+        setKeepSignedInState(keepSignedIn);
 
         if (Platform.OS === 'web') {
           const provider = new GoogleAuthProvider();
@@ -208,12 +224,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       async signOutUser() {
         await signOut(auth);
+        await AsyncStorage.removeItem(KEEP_SIGNED_IN_KEY);
+        setKeepSignedInState(false);
         setUser(null);
       },
 
       async continueLocally() {
         await signOut(auth);
-        await AsyncStorage.setItem(LOCAL_MODE_KEY, '1');
+        await Promise.all([
+          AsyncStorage.setItem(LOCAL_MODE_KEY, '1'),
+          AsyncStorage.removeItem(KEEP_SIGNED_IN_KEY),
+        ]);
+        setKeepSignedInState(false);
         setUser(null);
         setLocalMode(true);
       },
@@ -222,8 +244,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await AsyncStorage.removeItem(LOCAL_MODE_KEY);
         setLocalMode(false);
       },
+
+      async setKeepSignedIn(value) {
+        if (!auth.currentUser) return;
+        await choosePersistence(value);
+        await AsyncStorage.setItem(KEEP_SIGNED_IN_KEY, value ? '1' : '0');
+        setKeepSignedInState(value);
+      },
     }),
-    [localMode, ready, user],
+    [keepSignedIn, localMode, ready, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

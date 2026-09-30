@@ -95,6 +95,7 @@ export type WorkspaceSettings = {
   focusMinutes: number;
   breakMinutes: number;
   energy: EnergyLevel;
+  reduceMotion: boolean;
 };
 
 export type WorkspaceState = {
@@ -115,6 +116,7 @@ export const defaultWorkspaceSettings = (): WorkspaceSettings => ({
   focusMinutes: 45,
   breakMinutes: 10,
   energy: 'normal',
+  reduceMotion: false,
 });
 
 export function createEmptyWorkspace(now = Date.now()): WorkspaceState {

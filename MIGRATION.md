@@ -31,7 +31,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Progress
 - [x] Time-estimation calibration
 - [x] Confidence calibration — confidence is captured during recall and analyzed against recorded grades in Progress
-- [ ] Settings
+- [x] Settings
 - [ ] Import/export or migration path from web data
 - [ ] Firestore sync
 - [ ] Notifications

@@ -186,7 +186,7 @@ function session(raw: unknown, topicIds: Set<string>, cardIds: Set<string>, mist
   if (mistakeId) result.mistakeId = mistakeId;
 
   if (s.plannedMinutes != null) {
-    result.plannedMinutes = number(s.plannedMinutes, 'planned session minutes', 0, 240);
+    result.plannedMinutes = number(s.plannedMinutes, 'planned session minutes', 0, 720);
   }
   if (s.startedAt != null) {
     result.startedAt = number(s.startedAt, 'session start time', 1);

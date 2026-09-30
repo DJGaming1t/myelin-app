@@ -19,7 +19,14 @@
     "plugins": [
       "expo-router",
       "expo-dev-client",
-      "react-native-nitro-google-signin"
+      "react-native-nitro-google-signin",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF805B",
+          "defaultChannel": "myelin-gentle"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -34,14 +34,60 @@ function startOfDay(now: number) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-function dueTimestamp(choice: 'none' | 'today' | 'tomorrow') {
+type DueChoice = 'none' | 'today' | 'tomorrow' | 'custom';
+
+function dateText(timestamp: number) {
+  if (!timestamp) return '';
+  const d = new Date(timestamp);
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function timeText(timestamp: number) {
+  if (!timestamp) return '23:59';
+  const d = new Date(timestamp);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+function customDueTimestamp(dateValue: string, timeValue: string) {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue.trim());
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(timeValue.trim());
+  if (!dateMatch || !timeMatch) return 0;
+  const year = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]);
+  const day = Number(dateMatch[3]);
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return 0;
+  }
+  const result = new Date(year, month - 1, day, hour, minute, 0, 0);
+  if (
+    result.getFullYear() !== year ||
+    result.getMonth() !== month - 1 ||
+    result.getDate() !== day
+  ) {
+    return 0;
+  }
+  return result.getTime();
+}
+
+function dueTimestamp(
+  choice: DueChoice,
+  customDate: string,
+  customTime: string,
+) {
   if (choice === 'none') return 0;
+  if (choice === 'custom') return customDueTimestamp(customDate, customTime);
   const d = new Date();
   const offset = choice === 'tomorrow' ? 1 : 0;
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset, 23, 59, 0, 0).getTime();
 }
 
-function dueChoice(task: StudyTask | null): 'none' | 'today' | 'tomorrow' {
+function dueChoice(task: StudyTask | null): DueChoice {
   if (!task?.dueAt) return 'none';
   const today = startOfDay(Date.now());
   const due = startOfDay(task.dueAt);
@@ -49,7 +95,7 @@ function dueChoice(task: StudyTask | null): 'none' | 'today' | 'tomorrow' {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   if (due === startOfDay(tomorrow.getTime())) return 'tomorrow';
-  return 'none';
+  return 'custom';
 }
 
 export function TaskForm({ taskId }: { taskId?: string }) {
@@ -67,7 +113,9 @@ export function TaskForm({ taskId }: { taskId?: string }) {
   const [planState, setPlanState] = useState<'inbox' | 'today'>(
     existing?.planState === 'today' ? 'today' : 'inbox',
   );
-  const [due, setDue] = useState<'none' | 'today' | 'tomorrow'>(dueChoice(existing));
+  const [due, setDue] = useState<DueChoice>(dueChoice(existing));
+  const [customDate, setCustomDate] = useState(existing?.dueAt ? dateText(existing.dueAt) : '');
+  const [customTime, setCustomTime] = useState(existing?.dueAt ? timeText(existing.dueAt) : '23:59');
   const [estimate, setEstimate] = useState(String(existing?.estimatedMinutes || 35));
   const [actual, setActual] = useState(String(existing?.actualMinutes || 0));
   const [priority, setPriority] = useState<Priority>(existing?.priority ?? 2);
@@ -94,6 +142,11 @@ export function TaskForm({ taskId }: { taskId?: string }) {
       setError('Add a short task title.');
       return;
     }
+    const resolvedDue = dueTimestamp(due, customDate, customTime);
+    if (due === 'custom' && !resolvedDue) {
+      setError('Use a valid due date and time, such as 2026-10-12 and 18:30.');
+      return;
+    }
     const minutes = Math.max(0, Math.min(720, Math.round(Number(estimate) || 0)));
     const actualMinutes = Math.max(0, Math.round(Number(actual) || 0));
     const now = Date.now();
@@ -107,7 +160,7 @@ export function TaskForm({ taskId }: { taskId?: string }) {
         target.topicId = topicId;
         target.examId = examId;
         target.type = type;
-        target.dueAt = dueTimestamp(due);
+        target.dueAt = resolvedDue;
         target.estimatedMinutes = minutes;
         target.actualMinutes = actualMinutes;
         target.priority = priority;
@@ -123,7 +176,7 @@ export function TaskForm({ taskId }: { taskId?: string }) {
             examId,
             type,
             planState,
-            dueAt: dueTimestamp(due),
+            dueAt: resolvedDue,
             estimatedMinutes: minutes,
             priority,
             notes,
@@ -219,7 +272,31 @@ export function TaskForm({ taskId }: { taskId?: string }) {
         <Chip label="No date" active={due === 'none'} onPress={() => setDue('none')} />
         <Chip label="Today" active={due === 'today'} onPress={() => setDue('today')} />
         <Chip label="Tomorrow" active={due === 'tomorrow'} onPress={() => setDue('tomorrow')} />
+        <Chip label="Choose date" active={due === 'custom'} onPress={() => setDue('custom')} />
       </View>
+
+      {due === 'custom' ? (
+        <View style={styles.customDueRow}>
+          <TextInput
+            accessibilityLabel="Due date"
+            value={customDate}
+            onChangeText={setCustomDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.subtle}
+            autoCapitalize="none"
+            style={styles.customDueInput}
+          />
+          <TextInput
+            accessibilityLabel="Due time"
+            value={customTime}
+            onChangeText={setCustomTime}
+            placeholder="18:30"
+            placeholderTextColor={colors.subtle}
+            keyboardType="numbers-and-punctuation"
+            style={styles.customTimeInput}
+          />
+        </View>
+      ) : null}
 
       <Label>Type</Label>
       <View style={styles.rowWrap}>
@@ -348,6 +425,29 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 8 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   horizontal: { gap: 8, paddingRight: spacing.lg },
+  customDueRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  customDueInput: {
+    flex: 1,
+    minHeight: layout.minTouch,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel,
+    color: colors.text,
+    paddingHorizontal: 12,
+    fontSize: 12,
+  },
+  customTimeInput: {
+    width: 94,
+    minHeight: layout.minTouch,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel,
+    color: colors.text,
+    paddingHorizontal: 12,
+    fontSize: 12,
+  },
   chip: { minHeight: layout.minTouch, maxWidth: 220, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
   chipActive: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
   chipText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },

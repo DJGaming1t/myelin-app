@@ -225,7 +225,7 @@ export default function TodayScreen() {
             <View style={styles.controlCard}>
             <View style={styles.controlHeader}>
               <View>
-                <Text style={styles.controlEyebrow}>AVAILABLE TIME</Text>
+                <Text style={styles.controlEyebrow}>DAILY CAPACITY</Text>
                 <Text style={styles.controlValue}>{workspace.settings.dailyMinutes} min</Text>
               </View>
               <View style={styles.energyBadge}>

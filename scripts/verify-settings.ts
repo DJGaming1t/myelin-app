@@ -158,6 +158,8 @@ async function main() {
     mistakes: 1,
     sessions: 1,
     breaks: 1,
+    tasks: 0,
+    commitments: 0,
   });
 
   assert.deepEqual(

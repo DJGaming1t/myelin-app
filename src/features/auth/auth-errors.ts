@@ -23,7 +23,11 @@ export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | '
     return 'Google sign-in needs the Android development-build setup before it can run natively. Email sign-in is already available.';
   }
 
-  if (code.includes('popup-closed-by-user') || code.includes('cancelled-popup-request')) {
+  if (
+    code.includes('popup-closed-by-user') ||
+    code.includes('cancelled-popup-request') ||
+    code === 'auth/google-cancelled'
+  ) {
     return '';
   }
 

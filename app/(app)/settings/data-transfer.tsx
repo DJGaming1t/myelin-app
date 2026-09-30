@@ -292,7 +292,7 @@ export default function DataTransferScreen() {
           <Text style={styles.panelEyebrow}>EXPORT</Text>
           <Text style={styles.panelTitle}>Keep a copy you control.</Text>
           <Text style={styles.panelText}>
-            The exported JSON contains this workspace’s topics, questions, exams, mistakes, study history, breaks and settings. It does not contain your Firebase password or authentication tokens.
+            The exported JSON contains this workspace’s topics, questions, exams, mistakes, study tasks, fixed commitments, study history, breaks and settings. It does not contain your Firebase password or authentication tokens.
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -359,6 +359,8 @@ export default function DataTransferScreen() {
               <Count label="MISTAKES" value={counts.mistakes} />
               <Count label="SESSIONS" value={counts.sessions} />
               <Count label="BREAKS" value={counts.breaks} />
+              <Count label="TASKS" value={counts.tasks} />
+              <Count label="FIXED" value={counts.commitments} />
             </View>
 
             {previewStale ? (
@@ -381,7 +383,7 @@ export default function DataTransferScreen() {
               <View style={styles.mergeInfo}>
                 <Text style={styles.mergeTitle}>Merge preview</Text>
                 <Text style={styles.mergeText}>
-                  Adds {mergePreview.added.topics} topics · {mergePreview.added.exams} exams · {mergePreview.added.mistakes} mistakes · {mergePreview.added.sessions} sessions. {mergePreview.skippedIdentical} identical records would be skipped and {mergePreview.remappedIds} conflicting IDs remapped. Current settings stay unchanged.
+                  Adds {mergePreview.added.topics} topics · {mergePreview.added.exams} exams · {mergePreview.added.tasks} tasks · {mergePreview.added.commitments} fixed blocks · {mergePreview.added.mistakes} mistakes · {mergePreview.added.sessions} sessions. {mergePreview.skippedIdentical} identical records would be skipped and {mergePreview.remappedIds} conflicting IDs remapped. Current settings stay unchanged.
                 </Text>
               </View>
             ) : null}

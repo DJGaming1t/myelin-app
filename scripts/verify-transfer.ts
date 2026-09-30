@@ -261,6 +261,8 @@ async function main() {
     mistakes: 0,
     sessions: 0,
     breaks: 0,
+    tasks: 0,
+    commitments: 0,
   });
 
   const rawWorkspaceCandidate = parseImportJson(JSON.stringify(native), now);
@@ -456,6 +458,50 @@ async function main() {
   assert.equal(merged.report.added.mistakes, 1);
   assert.equal(merged.report.added.sessions, 1);
   assert.equal(merged.report.added.breaks, 1);
+
+  const plannerCurrent = createEmptyWorkspace(now);
+  plannerCurrent.topics.push(native.topics[0]!);
+  plannerCurrent.exams.push(native.exams[0]!);
+  plannerCurrent.tasks.push({
+    id: 'task_collision',
+    title: 'Current homework',
+    subject: 'Mathematics',
+    topicId: 'topic_native',
+    examId: 'exam_native',
+    type: 'homework',
+    status: 'open',
+    planState: 'today',
+    dueAt: now + 1000,
+    estimatedMinutes: 35,
+    actualMinutes: 0,
+    priority: 2,
+    notes: '',
+    scheduledStart: 0,
+    scheduledEnd: 0,
+    postponedUntil: 0,
+    createdAt: now - 100,
+    updatedAt: now - 100,
+    completedAt: 0,
+  });
+  const plannerImported = structuredClone(plannerCurrent);
+  plannerImported.tasks[0]!.title = 'Imported different homework';
+  plannerImported.commitments.push({
+    id: 'commitment_imported',
+    title: 'Tuition',
+    kind: 'tuition',
+    startAt: now + 2000,
+    endAt: now + 5000,
+    recurrenceDays: [1, 3, 5],
+    createdAt: now - 100,
+    updatedAt: now - 100,
+  });
+  const plannerMerged = mergeWorkspaces(plannerCurrent, plannerImported);
+  assert.equal(plannerMerged.workspace.tasks.length, 2);
+  assert.equal(plannerMerged.workspace.commitments.length, 1);
+  assert.equal(plannerMerged.report.added.tasks, 1);
+  assert.equal(plannerMerged.report.added.commitments, 1);
+  assert.ok(plannerMerged.workspace.tasks.every((task) => task.topicId === 'topic_native'));
+  assert.ok(plannerMerged.workspace.tasks.every((task) => task.examId === 'exam_native'));
 
   const importedTopic = merged.workspace.topics.find(
     (topic) => topic.name === 'Imported topic',

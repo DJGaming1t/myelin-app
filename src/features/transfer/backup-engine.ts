@@ -52,6 +52,8 @@ export type MergeReport = {
     mistakes: number;
     sessions: number;
     breaks: number;
+    tasks: number;
+    commitments: number;
   };
   skippedIdentical: number;
   remappedIds: number;
@@ -614,7 +616,15 @@ export function mergeWorkspaces(
 ): MergeResult {
   const next = cloneWorkspace(current);
   const report: MergeReport = {
-    added: { topics: 0, exams: 0, mistakes: 0, sessions: 0, breaks: 0 },
+    added: {
+      topics: 0,
+      exams: 0,
+      mistakes: 0,
+      sessions: 0,
+      breaks: 0,
+      tasks: 0,
+      commitments: 0,
+    },
     skippedIdentical: 0,
     remappedIds: 0,
     keptCurrentSettings: true,
@@ -623,6 +633,7 @@ export function mergeWorkspaces(
   const topicMap = new Map<string, string>();
   const cardMap = new Map<string, string>();
   const mistakeMap = new Map<string, string>();
+  const examMap = new Map<string, string>();
 
   const usedTopicIds = new Set(next.topics.map((topic) => topic.id));
   const usedCardIds = new Set(
@@ -631,6 +642,8 @@ export function mergeWorkspaces(
   const usedExamIds = new Set(next.exams.map((exam) => exam.id));
   const usedMistakeIds = new Set(next.mistakes.map((mistake) => mistake.id));
   const usedSessionIds = new Set(next.history.map((session) => session.id));
+  const usedTaskIds = new Set(next.tasks.map((task) => task.id));
+  const usedCommitmentIds = new Set(next.commitments.map((item) => item.id));
 
   for (const sourceTopic of imported.topics) {
     const existing = next.topics.find((topic) => topic.id === sourceTopic.id);
@@ -666,6 +679,7 @@ export function mergeWorkspaces(
 
     const existing = next.exams.find((item) => item.id === exam.id);
     if (existing && comparable(existing) === comparable(exam)) {
+      examMap.set(sourceExam.id, existing.id);
       report.skippedIdentical += 1;
       continue;
     }
@@ -673,6 +687,7 @@ export function mergeWorkspaces(
     const allocation = allocateId(exam.id, usedExamIds, 'exam_import');
     if (allocation.remapped) report.remappedIds += 1;
     exam.id = allocation.id;
+    examMap.set(sourceExam.id, exam.id);
     next.exams.push(exam);
     report.added.exams += 1;
   }
@@ -731,6 +746,39 @@ export function mergeWorkspaces(
     report.added.sessions += 1;
   }
 
+  for (const sourceTask of imported.tasks) {
+    const task = clone(sourceTask);
+    task.topicId = task.topicId ? topicMap.get(task.topicId) ?? task.topicId : null;
+    task.examId = task.examId ? examMap.get(task.examId) ?? task.examId : null;
+
+    const existing = next.tasks.find((item) => item.id === task.id);
+    if (existing && comparable(existing) === comparable(task)) {
+      report.skippedIdentical += 1;
+      continue;
+    }
+
+    const allocation = allocateId(task.id, usedTaskIds, 'task_import');
+    if (allocation.remapped) report.remappedIds += 1;
+    task.id = allocation.id;
+    next.tasks.push(task);
+    report.added.tasks += 1;
+  }
+
+  for (const sourceCommitment of imported.commitments) {
+    const item = clone(sourceCommitment);
+    const existing = next.commitments.find((currentItem) => currentItem.id === item.id);
+    if (existing && comparable(existing) === comparable(item)) {
+      report.skippedIdentical += 1;
+      continue;
+    }
+
+    const allocation = allocateId(item.id, usedCommitmentIds, 'commitment_import');
+    if (allocation.remapped) report.remappedIds += 1;
+    item.id = allocation.id;
+    next.commitments.push(item);
+    report.added.commitments += 1;
+  }
+
   const existingBreaks = new Set(
     next.breaks.map((entry) => `${entry.at}:${entry.minutes}`),
   );
@@ -763,6 +811,8 @@ export function workspaceImportCounts(workspace: WorkspaceState) {
     mistakes: workspace.mistakes.length,
     sessions: workspace.history.length,
     breaks: workspace.breaks.length,
+    tasks: workspace.tasks.length,
+    commitments: workspace.commitments.length,
   };
 }
 

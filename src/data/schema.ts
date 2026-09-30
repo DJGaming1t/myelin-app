@@ -41,6 +41,8 @@ export type Commitment = {
   kind: CommitmentKind;
   startAt: number;
   endAt: number;
+  startMinutes: number;
+  endMinutes: number;
   recurrenceDays: number[];
   createdAt: number;
   updatedAt: number;

@@ -132,6 +132,8 @@ function main() {
       kind: 'school',
       startAt: local(2026, 9, 28, 7, 30),
       endAt: local(2026, 9, 28, 14, 15),
+      startMinutes: 7 * 60 + 30,
+      endMinutes: 14 * 60 + 15,
       recurrenceDays: [1, 2, 3, 4, 5],
       createdAt: now,
       updatedAt: now,
@@ -142,6 +144,8 @@ function main() {
       kind: 'tuition',
       startAt: local(2026, 9, 30, 16, 0),
       endAt: local(2026, 9, 30, 18, 0),
+      startMinutes: 16 * 60,
+      endMinutes: 18 * 60,
       recurrenceDays: [1, 3, 4],
       createdAt: now,
       updatedAt: now,
@@ -152,6 +156,8 @@ function main() {
       kind: 'commute',
       startAt: local(2026, 9, 30, 15, 45),
       endAt: local(2026, 9, 30, 16, 15),
+      startMinutes: 15 * 60 + 45,
+      endMinutes: 16 * 60 + 15,
       recurrenceDays: [4],
       createdAt: now,
       updatedAt: now,
@@ -161,6 +167,9 @@ function main() {
   const occurrences = commitmentOccurrencesForDay(workspace.commitments, now);
   assert.ok(occurrences.some((item) => item.id === 'school'));
   assert.ok(occurrences.some((item) => item.id === 'tuition'));
+  const tuitionOccurrence = occurrences.find((item) => item.id === 'tuition')!;
+  assert.equal(new Date(tuitionOccurrence.start).getHours(), 16);
+  assert.equal(new Date(tuitionOccurrence.end).getHours(), 18);
 
   workspace.commitments.push({
     id: 'sleep',
@@ -168,6 +177,8 @@ function main() {
     kind: 'sleep',
     startAt: local(2026, 9, 30, 22, 30),
     endAt: local(2026, 9, 30, 6, 30),
+    startMinutes: 22 * 60 + 30,
+    endMinutes: 6 * 60 + 30,
     recurrenceDays: [3],
     createdAt: now,
     updatedAt: now,

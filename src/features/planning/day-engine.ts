@@ -20,6 +20,19 @@ export function addLocalDays(timestamp: number, days: number) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days).getTime();
 }
 
+function localAtMinutes(day: number, minutes: number) {
+  const d = new Date(day);
+  return new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    Math.floor(minutes / 60),
+    minutes % 60,
+    0,
+    0,
+  ).getTime();
+}
+
 function localAt(day: number, source: number) {
   const d = new Date(day);
   const s = new Date(source);
@@ -67,8 +80,8 @@ export function commitmentOccurrencesForDay(
       }> = [];
 
       if (item.recurrenceDays.includes(weekday)) {
-        const rawStart = localAt(day, item.startAt);
-        let rawEnd = localAt(day, item.endAt);
+        const rawStart = localAtMinutes(day, item.startMinutes);
+        let rawEnd = localAtMinutes(day, item.endMinutes);
         if (rawEnd <= rawStart) rawEnd = addLocalDays(rawEnd, 1);
         if (overlaps(rawStart, rawEnd, day, next)) {
           occurrences.push({
@@ -84,8 +97,8 @@ export function commitmentOccurrencesForDay(
       // Recurring commitments that started yesterday and cross midnight must
       // still block the early hours of the current day.
       if (item.recurrenceDays.includes(previousWeekday)) {
-        const previousStart = localAt(previousDay, item.startAt);
-        let previousEnd = localAt(previousDay, item.endAt);
+        const previousStart = localAtMinutes(previousDay, item.startMinutes);
+        let previousEnd = localAtMinutes(previousDay, item.endMinutes);
         if (previousEnd <= previousStart) previousEnd = addLocalDays(previousEnd, 1);
         if (previousEnd > day) {
           occurrences.push({

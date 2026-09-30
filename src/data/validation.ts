@@ -283,6 +283,21 @@ function commitment(raw: unknown): Commitment {
   const endAt = number(c.endAt, 'commitment end', 1);
   if (endAt <= startAt) throw new Error('Commitment end must be after its start.');
 
+  const startDate = new Date(startAt);
+  const endDate = new Date(endAt);
+  const startMinutes = integer(
+    c.startMinutes ?? startDate.getHours() * 60 + startDate.getMinutes(),
+    'commitment start minutes',
+    0,
+    1439,
+  );
+  const endMinutes = integer(
+    c.endMinutes ?? endDate.getHours() * 60 + endDate.getMinutes(),
+    'commitment end minutes',
+    0,
+    1439,
+  );
+
   const recurrenceDays = Array.from(
     new Set(
       array(c.recurrenceDays ?? [], 'commitment recurrence', 7).map((value) =>
@@ -301,6 +316,8 @@ function commitment(raw: unknown): Commitment {
     ),
     startAt,
     endAt,
+    startMinutes,
+    endMinutes,
     recurrenceDays,
     createdAt: number(c.createdAt, 'commitment creation date', 1),
     updatedAt: number(c.updatedAt ?? c.createdAt, 'commitment update date', 1),

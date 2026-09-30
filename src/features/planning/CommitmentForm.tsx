@@ -41,9 +41,22 @@ function makeId(now: number) {
   return 'commit_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 9);
 }
 
+function timeTextFromMinutes(minutes: number) {
+  return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0');
+}
+
 function timeText(timestamp: number) {
   const d = new Date(timestamp);
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+function minutesFromText(text: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(text.trim());
+  if (!match) return -1;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1;
+  return hour * 60 + minute;
 }
 
 function atTime(text: string, fallbackHour: number) {
@@ -63,8 +76,16 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
   );
   const [title, setTitle] = useState(existing?.title ?? '');
   const [kind, setKind] = useState<CommitmentKind>(existing?.kind ?? 'school');
-  const [start, setStart] = useState(existing ? timeText(existing.startAt) : '16:00');
-  const [end, setEnd] = useState(existing ? timeText(existing.endAt) : '18:00');
+  const [start, setStart] = useState(
+    existing
+      ? timeTextFromMinutes(existing.startMinutes ?? new Date(existing.startAt).getHours() * 60 + new Date(existing.startAt).getMinutes())
+      : '16:00',
+  );
+  const [end, setEnd] = useState(
+    existing
+      ? timeTextFromMinutes(existing.endMinutes ?? new Date(existing.endAt).getHours() * 60 + new Date(existing.endAt).getMinutes())
+      : '18:00',
+  );
   const [days, setDays] = useState<number[]>(existing?.recurrenceDays ?? []);
   const [error, setError] = useState('');
 
@@ -80,13 +101,15 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
 
   function save() {
     const clean = title.trim();
+    const startMinutes = minutesFromText(start);
+    const endMinutes = minutesFromText(end);
     const startAt = atTime(start, 16);
     let endAt = atTime(end, 18);
     if (!clean) {
       setError('Add a short name.');
       return;
     }
-    if (!startAt || !endAt) {
+    if (!startAt || !endAt || startMinutes < 0 || endMinutes < 0) {
       setError('Use 24-hour time such as 16:00.');
       return;
     }
@@ -101,6 +124,8 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
         target.kind = kind;
         target.startAt = startAt;
         target.endAt = endAt;
+        target.startMinutes = startMinutes;
+        target.endMinutes = endMinutes;
         target.recurrenceDays = days;
         target.updatedAt = now;
       } else {
@@ -110,6 +135,8 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
           kind,
           startAt,
           endAt,
+          startMinutes,
+          endMinutes,
           recurrenceDays: days,
           createdAt: now,
           updatedAt: now,

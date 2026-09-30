@@ -220,3 +220,21 @@ assert.ok(
   focusProviderSource.includes('await waitForSaves();'),
   'Focus completion must persist workspace history before advancing recovery state.',
 );
+
+
+const focusProviderIdempotencySource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/focus/FocusProvider.tsx'),
+  'utf8',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('historyId(current.id)'),
+  'Focus history should use a stable ID so a save retry cannot duplicate the session.',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('draft.history.some((entry) => entry.id === stableHistoryId)'),
+  'Focus completion should detect an already-applied in-memory history record.',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('const stableBreakAt = current.phaseStartedAt'),
+  'Break logging should use a stable timestamp so retries remain idempotent.',
+);

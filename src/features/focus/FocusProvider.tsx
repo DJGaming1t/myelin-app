@@ -51,8 +51,8 @@ type FocusContextValue = {
 
 const FocusContext = createContext<FocusContextValue | null>(null);
 
-function historyId(now: number) {
-  return `session_${now.toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+function historyId(focusSessionId: string) {
+  return `session_${focusSessionId}`;
 }
 
 export function FocusProvider({ children }: PropsWithChildren) {
@@ -186,13 +186,19 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
         let historyWritten = false;
         const updated = updateWorkspace((draft) => {
+          const stableHistoryId = historyId(current.id);
+          if (draft.history.some((entry) => entry.id === stableHistoryId)) {
+            historyWritten = true;
+            return;
+          }
+
           const topic = findTopic(draft, current.topicId);
           if (!topic) return;
 
           if (topic.status === 'new') topic.status = 'learning';
 
           draft.history.push({
-            id: historyId(now),
+            id: stableHistoryId,
             topicId: current.topicId,
             at: now,
             kind: 'study',
@@ -230,7 +236,13 @@ export function FocusProvider({ children }: PropsWithChildren) {
         const minutes = breakActualMinutes(current, now);
         if (minutes > 0) {
           updateWorkspace((draft) => {
-            draft.breaks.push({ at: now, minutes });
+            const stableBreakAt = current.phaseStartedAt;
+            const existing = draft.breaks.find((item) => item.at === stableBreakAt);
+            if (existing) {
+              existing.minutes = Math.max(existing.minutes, minutes);
+              return;
+            }
+            draft.breaks.push({ at: stableBreakAt, minutes });
           });
           await waitForSaves();
         }
@@ -244,7 +256,13 @@ export function FocusProvider({ children }: PropsWithChildren) {
           const minutes = breakActualMinutes(current, now);
           if (minutes > 0) {
             updateWorkspace((draft) => {
-              draft.breaks.push({ at: now, minutes });
+              const stableBreakAt = current.phaseStartedAt;
+              const existing = draft.breaks.find((item) => item.at === stableBreakAt);
+              if (existing) {
+                existing.minutes = Math.max(existing.minutes, minutes);
+                return;
+              }
+              draft.breaks.push({ at: stableBreakAt, minutes });
             });
             await waitForSaves();
           }

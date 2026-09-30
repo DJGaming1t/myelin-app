@@ -231,6 +231,7 @@ function settings(raw: unknown): WorkspaceSettings {
     focusMinutes: integer(s.focusMinutes ?? 45, 'focus minutes', 5, 90),
     breakMinutes: integer(s.breakMinutes ?? 10, 'break minutes', 1, 30),
     energy: oneOf(s.energy ?? 'normal', ['low', 'normal'] as const, 'energy'),
+    reduceMotion: s.reduceMotion === true,
   };
 }
 

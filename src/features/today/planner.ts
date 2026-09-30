@@ -24,6 +24,7 @@ export type TodayPlan = {
   plannedBreakMinutes: number;
   plannedTotalMinutes: number;
   targetFocusMinutes: number;
+  breakMinutes: number;
   blocks: PlanBlock[];
   nextBlock: PlanBlock | null;
   deferredTopicCount: number;
@@ -288,6 +289,7 @@ export function buildTodayPlan(
     plannedBreakMinutes,
     plannedTotalMinutes: plannedStudyMinutes + plannedBreakMinutes,
     targetFocusMinutes,
+    breakMinutes,
     blocks,
     nextBlock: blocks[0] ?? null,
     deferredTopicCount: workspace.topics.filter(

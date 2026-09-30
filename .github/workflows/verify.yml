@@ -33,6 +33,9 @@ jobs:
       - name: Data isolation and recovery
         run: npm run verify:data
 
+      - name: Topic CRUD and reference integrity
+        run: npm run verify:topics
+
       - name: Expo Doctor
         run: npx expo-doctor
 

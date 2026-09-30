@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.84, transform: [{ scale: 0.992 }] },
   disabled: { opacity: 0.48 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
-  label: { color: colors.text, fontSize: 14, fontWeight: '750' },
+  label: { color: colors.text, fontSize: 14, fontWeight: '700' },
   primaryText: { color: '#25140e' },
   icon: { color: colors.text, fontSize: 15, fontWeight: '800' },
 });

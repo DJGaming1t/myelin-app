@@ -66,7 +66,7 @@ function attemptId(now = Date.now()) {
 }
 
 export function ReviewProvider({ children }: PropsWithChildren) {
-  const { ownerKey, workspace, updateWorkspace } = useWorkspace();
+  const { ownerKey, workspace, updateWorkspace, waitForSaves } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<ReviewSessionState | null>(null);
@@ -185,6 +185,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         confidence: 'unsure',
         hintUsed: false,
         cardStartedAt: Date.now(),
+        attemptId: attemptId(),
       });
     }
   }, [commit, session?.currentIndex, workspace?.revision]);
@@ -312,6 +313,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
               endedAt: now,
             });
           });
+          await waitForSaves();
         }
 
         let queue = [...current.queue];
@@ -353,7 +355,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         await commit(null);
       },
     }),
-    [activeFocus, commit, ready, session, transform, updateWorkspace],
+    [activeFocus, commit, ready, session, transform, updateWorkspace, waitForSaves],
   );
 
   return <ReviewContext.Provider value={value}>{children}</ReviewContext.Provider>;

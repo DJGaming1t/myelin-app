@@ -32,6 +32,7 @@ export type PlannedReminder = {
 const DAY = 86_400_000;
 export const MAX_SCHEDULED_REMINDERS = 28;
 export const MAX_REMINDERS_PER_DAY = 2;
+export const REVIEW_HORIZON_DAYS = 7;
 
 export const defaultReminderSettings = (): ReminderSettings => ({
   enabled: false,
@@ -305,7 +306,7 @@ function buildReviewReminders(
   const reminders: PlannedReminder[] = [];
   const today = startOfLocalDay(now);
 
-  for (let offset = 0; offset < 14; offset += 1) {
+  for (let offset = 0; offset < REVIEW_HORIZON_DAYS; offset += 1) {
     const day = today + offset * DAY;
     let at = atLocalMinutes(day, settings.reviewTimeMinutes);
     at = moveOutOfQuietHours(
@@ -372,11 +373,12 @@ function buildExamReminders(
         settings.quietEndMinutes,
       );
 
-      if (at <= now + 60_000 || at >= exam.date) continue;
+      const actualDays = examCalendarDaysUntil(exam.date, at);
+      if (at <= now + 60_000 || actualDays < 1 || at >= exam.date) continue;
 
-      const copy = examReminderCopy(settings, exam.name, offset);
+      const copy = examReminderCopy(settings, exam.name, actualDays);
       reminders.push({
-        key: `exam:${exam.id}:${offset}`,
+        key: `exam:${exam.id}:${localDateKey(at)}`,
         kind: 'exam',
         at,
         title: copy.title,
@@ -385,7 +387,7 @@ function buildExamReminders(
         accent: copy.accent,
         data: {
           examId: exam.id,
-          days: offset,
+          days: actualDays,
         },
       });
     }

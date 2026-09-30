@@ -36,11 +36,18 @@ jobs:
           CHANGED="$(git diff --name-only "$BASELINE" HEAD || true)"
           echo "$CHANGED"
 
-          if echo "$CHANGED" | grep -Eq '^(app\.json|eas\.json|package\.json|package-lock\.json|google-services\.json|android/|ios/)'; then
-            echo "requires_build=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "requires_build=false" >> "$GITHUB_OUTPUT"
+          REQUIRES_BUILD=false
+
+          if echo "$CHANGED" | grep -Eq '^(app\.json|eas\.json|package-lock\.json|google-services\.json|android/|ios/)'; then
+            REQUIRES_BUILD=true
           fi
+
+          if echo "$CHANGED" | grep -qx 'package.json'; then
+            git show "$BASELINE:package.json" > /tmp/base-package.json
+            node scripts/check-native-package-change.cjs /tmp/base-package.json package.json || REQUIRES_BUILD=true
+          fi
+
+          echo "requires_build=$REQUIRES_BUILD" >> "$GITHUB_OUTPUT"
 
       - name: Explain native-build requirement
         if: steps.native.outputs.requires_build == 'true'

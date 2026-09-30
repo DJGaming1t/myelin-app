@@ -8,7 +8,11 @@
     "scheme": "myelin",
     "android": {
       "package": "com.djgaming1t.myelin",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "blockedPermissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.djgaming1t.myelin"

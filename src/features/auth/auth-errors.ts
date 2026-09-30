@@ -1,0 +1,35 @@
+type FirebaseLikeError = { code?: string };
+
+export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | 'reset' | 'google') {
+  const code = (error as FirebaseLikeError | undefined)?.code ?? '';
+
+  if (code.includes('network-request-failed')) {
+    return 'MYELIN cannot reach the sign-in service right now. Check your connection and try again.';
+  }
+
+  if (code.includes('too-many-requests')) {
+    return 'Too many attempts were made in a short time. Try again later.';
+  }
+
+  if (code.includes('invalid-email')) {
+    return 'Check that the email address is written correctly.';
+  }
+
+  if (code.includes('weak-password') || code.includes('password-does-not-meet-requirements')) {
+    return 'That password does not meet the current password requirements.';
+  }
+
+  if (code === 'auth/native-google-setup-required') {
+    return 'Google sign-in needs the Android development-build setup before it can run natively. Email sign-in is already available.';
+  }
+
+  if (code.includes('popup-closed-by-user') || code.includes('cancelled-popup-request')) {
+    return '';
+  }
+
+  // Deliberately avoid confirming whether an email address has an account.
+  if (action === 'signin') return 'We could not sign you in. Check your details and try again.';
+  if (action === 'signup') return 'We could not create that account. Check the details and try again.';
+  if (action === 'google') return 'Google sign-in did not finish. Try again.';
+  return 'The request could not be completed. Try again.';
+}

@@ -17,6 +17,8 @@ const header = read('src/components/app/ScreenHeader.tsx');
 const states = read('src/components/app/ScreenState.tsx');
 const focus = read('app/(app)/focus/index.tsx');
 const workspaceProvider = read('src/data/WorkspaceProvider.tsx');
+const reveal = read('src/components/motion/Reveal.tsx');
+const planCard = read('src/features/today/PlanBlockCard.tsx');
 
 assert(tokens.includes('contentMax: 820'), 'Responsive content cap is missing.');
 assert(tokens.includes('minTouch: 44'), '44-point touch target token is missing.');
@@ -37,5 +39,12 @@ assert(header.includes('accessibilityRole="header"'), 'Screen titles are not exp
 assert(header.includes('minHeight: layout.minTouch'), 'Header controls are too small.');
 assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tablet/web bounded.');
 assert(focus.includes('setInterval(() => setNow(Date.now()), 1000)'), 'Focus timer redraw frequency was not reduced.');
+assert(reveal.includes('Animated.timing'), 'Shared entrance motion is missing.');
+assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
+assert(nav.includes('activeRail'), 'Bottom navigation is missing a strong active-state indicator.');
+assert(nav.includes('glyphWrapActive'), 'Bottom navigation is missing the active glyph treatment.');
+assert(header.includes('<Reveal'), 'Screen headers are missing entrance motion.');
+assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
+assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');
 
 console.log('Product polish verification passed.');

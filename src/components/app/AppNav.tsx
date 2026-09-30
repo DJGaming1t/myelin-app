@@ -37,7 +37,12 @@ export function AppNav() {
                 pressed && styles.pressed,
                 pressed && !reduceMotion && styles.pressedMotion,
               ]}>
-              <Text accessible={false} style={[styles.glyph, active && styles.activeText]}>{item.glyph}</Text>
+              {active ? <View style={styles.activeRail} /> : null}
+              <View style={[styles.glyphWrap, active && styles.glyphWrapActive]}>
+                <Text accessible={false} style={[styles.glyph, active && styles.activeText]}>
+                  {item.glyph}
+                </Text>
+              </View>
               <Text accessible={false} style={[styles.label, active && styles.activeText]}>{item.label}</Text>
             </Pressable>
           );
@@ -51,7 +56,12 @@ const styles = StyleSheet.create({
   shell: {
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    backgroundColor: 'rgba(7,7,7,0.98)',
+    backgroundColor: 'rgba(11,11,12,0.985)',
+    shadowColor: '#000000',
+    shadowOpacity: 0.42,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: -7 },
+    elevation: 14,
   },
   wrap: {
     width: '100%',
@@ -67,11 +77,32 @@ const styles = StyleSheet.create({
     minHeight: layout.minTouch,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    borderRadius: 12,
+    gap: 2,
+    borderRadius: 14,
+    position: 'relative',
   },
-  itemActive: { backgroundColor: 'rgba(255,128,91,0.035)' },
-  glyph: { color: colors.subtle, fontSize: 15 },
+  itemActive: { backgroundColor: colors.accentFaint },
+  activeRail: {
+    position: 'absolute',
+    top: 0,
+    width: 22,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: colors.accent,
+  },
+  glyphWrap: {
+    width: 28,
+    height: 26,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glyphWrapActive: {
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+  },
+  glyph: { color: colors.subtle, fontSize: 14 },
   label: { color: colors.subtle, fontSize: 7.8, fontWeight: '700' },
   activeText: { color: colors.accent },
   pressed: { opacity: 0.66 },

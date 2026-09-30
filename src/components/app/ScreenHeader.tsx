@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, layout, spacing } from '@/src/theme/tokens';
 
@@ -64,11 +65,18 @@ export function ScreenHeader({
         ) : null}
       </View>
 
-      <View style={styles.copy}>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      </View>
+      <Reveal delay={40} distance={8}>
+        <View style={styles.copy}>
+          {eyebrow ? (
+            <View style={styles.eyebrowRow}>
+              <View style={styles.eyebrowLine} />
+              <Text style={styles.eyebrow}>{eyebrow}</Text>
+            </View>
+          ) : null}
+          <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
+      </Reveal>
     </View>
   );
 }
@@ -89,8 +97,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  brandRow: { minHeight: layout.minTouch, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  dot: { width: 7, height: 7, borderRadius: 7, backgroundColor: colors.accent },
+  brandRow: {
+    minHeight: layout.minTouch,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 7,
+    backgroundColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.55,
+    shadowRadius: 7,
+    elevation: 3,
+  },
   brand: { color: colors.text, fontSize: 13, fontWeight: '800', letterSpacing: 2.8 },
   topButton: {
     minHeight: layout.minTouch,
@@ -101,7 +128,20 @@ const styles = StyleSheet.create({
   },
   backText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   actionText: { color: colors.accent, fontSize: 12, fontWeight: '700' },
-  copy: { marginTop: spacing.md },
+  copy: {
+    marginTop: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  eyebrowLine: {
+    width: 18,
+    height: 1,
+    backgroundColor: colors.accent,
+  },
   eyebrow: {
     color: colors.accent,
     fontSize: 9.5,

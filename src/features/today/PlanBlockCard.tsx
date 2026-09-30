@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Reveal } from '@/src/components/motion/Reveal';
 import { PlanBlock } from './planner';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, radius, spacing } from '@/src/theme/tokens';
@@ -16,7 +17,8 @@ export function PlanBlockCard({
   const reduceMotion = useReducedMotion();
 
   return (
-    <Pressable
+    <Reveal delay={Math.min(index * 55, 220)} distance={8}>
+      <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${block.topicName}, ${block.minutes} minutes`}
       onPress={onPress}
@@ -44,8 +46,10 @@ export function PlanBlockCard({
       <View style={styles.time}>
         <Text style={styles.minutes}>{block.minutes}</Text>
         <Text style={styles.minLabel}>MIN</Text>
+        <Text style={styles.arrow}>→</Text>
       </View>
-    </Pressable>
+      </Pressable>
+    </Reveal>
   );
 }
 
@@ -60,6 +64,11 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.panel,
     borderRadius: radius.lg,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
     marginBottom: 9,
   },
   pressed: { opacity: 0.72 },
@@ -71,6 +80,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
   },
   index: { color: colors.accent, fontSize: 10, fontWeight: '800' },
   copy: { flex: 1 },
@@ -83,4 +94,5 @@ const styles = StyleSheet.create({
   time: { alignItems: 'flex-end', minWidth: 38 },
   minutes: { color: colors.text, fontSize: 20, lineHeight: 22, fontWeight: '700' },
   minLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1, marginTop: 2 },
+  arrow: { color: colors.accent, fontSize: 13, marginTop: 7 },
 });

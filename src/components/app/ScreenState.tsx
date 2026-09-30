@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Reveal } from '@/src/components/motion/Reveal';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Props = {
@@ -28,7 +29,8 @@ export function ScreenState({
       accessibilityRole={error ? 'alert' : undefined}
       accessibilityLiveRegion={loading ? 'polite' : error ? 'assertive' : 'polite'}
       style={[styles.wrap, fill && styles.fill]}>
-      <View style={[styles.card, error && styles.errorCard]}>
+      <Reveal distance={12} style={styles.reveal}>
+        <View style={[styles.card, error && styles.errorCard]}>
         <View style={[styles.mark, error && styles.errorMark]}>
           {loading ? (
             <ActivityIndicator color={colors.accent} />
@@ -49,7 +51,8 @@ export function ScreenState({
             <Text style={styles.actionText}>{actionLabel}</Text>
           </Pressable>
         ) : null}
-      </View>
+        </View>
+      </Reveal>
     </View>
   );
 }
@@ -68,6 +71,7 @@ const styles = StyleSheet.create({
     maxWidth: undefined,
     backgroundColor: colors.bg,
   },
+  reveal: { width: '100%' },
   card: {
     width: '100%',
     maxWidth: 440,
@@ -78,6 +82,11 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.panel,
     padding: spacing.xl,
+    shadowColor: '#000000',
+    shadowOpacity: 0.34,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
   errorCard: { borderColor: 'rgba(255,161,145,0.24)' },
   mark: {

@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { WorkspaceProvider } from '@/src/data/WorkspaceProvider';
 import { AuthProvider } from '@/src/features/auth/AuthProvider';
 import { FocusProvider } from '@/src/features/focus/FocusProvider';
+import { ReviewProvider } from '@/src/features/review/ReviewProvider';
 import { colors } from '@/src/theme/tokens';
 
 export default function RootLayout() {
@@ -15,7 +16,8 @@ export default function RootLayout() {
         <AuthProvider>
           <WorkspaceProvider>
             <FocusProvider>
-            <StatusBar style="light" />
+              <ReviewProvider>
+              <StatusBar style="light" />
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -23,6 +25,7 @@ export default function RootLayout() {
                 animation: 'fade',
               }}
             />
+              </ReviewProvider>
             </FocusProvider>
           </WorkspaceProvider>
         </AuthProvider>

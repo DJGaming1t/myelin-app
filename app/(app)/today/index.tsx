@@ -211,13 +211,7 @@ export default function TodayScreen() {
                     <View style={styles.breakRow}>
                       <View style={styles.breakLine} />
                       <Text style={styles.breakText}>
-                        {workspace.settings.energy === 'low'
-                          ? Math.max(
-                              workspace.settings.breakMinutes,
-                              Math.min(12, Math.round(plan.targetFocusMinutes * 0.35)),
-                            )
-                          : workspace.settings.breakMinutes}{' '}
-                        min break
+                        {plan.breakMinutes} min break
                       </Text>
                       <View style={styles.breakLine} />
                     </View>

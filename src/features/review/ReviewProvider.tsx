@@ -235,6 +235,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
           confidence: 'unsure',
           hintUsed: false,
           cardStartedAt: now,
+          attemptId: attemptId(now),
           completedCards: 0,
         };
 

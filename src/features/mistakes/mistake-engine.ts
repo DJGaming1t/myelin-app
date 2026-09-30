@@ -105,9 +105,11 @@ export function captureRecallMistake(
   if (existing) {
     existing.prompt = input.prompt.trim();
     existing.detail = input.response.trim();
-    existing.correction = input.correction.trim();
-    existing.reason = 'recall';
-    existing.dueAt = Math.min(existing.dueAt || now, now);
+    if (!existing.correction.trim()) existing.correction = input.correction.trim();
+    existing.wins = 0;
+    existing.lastWinDay = '';
+    existing.intervalDays = 0;
+    existing.dueAt = now;
     existing.resolvedAt = 0;
     return existing;
   }

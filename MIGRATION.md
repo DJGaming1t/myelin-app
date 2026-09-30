@@ -33,7 +33,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [x] Confidence calibration — confidence is captured during recall and analyzed against recorded grades in Progress
 - [x] Settings
 - [x] Import/export or migration path from web data
-- [ ] Firestore sync
+- [x] Firestore sync — offline-first client, conflict handling and emulator-tested rules implemented; production upload remains locked until rules deployment + activation flag
 - [ ] Notifications
 - [ ] Onboarding
 
@@ -42,7 +42,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [ ] Auth tested on real Android development build
 - [ ] Local data survives restart
 - [x] Each Firebase user is isolated — verified by automated storage tests
-- [ ] Firestore is not enabled until per-user security rules are written and tested
+- [x] Firestore remains fail-closed until per-user security rules are written, emulator-tested and deployed
 - [x] No private/admin Firebase keys in the client repository
 - [ ] Accessibility / reduced-motion pass
 - [ ] Android production build passes

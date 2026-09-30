@@ -1,0 +1,78 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validManifest() {
+      return request.resource.data.keys().hasOnly([
+          'format',
+          'version',
+          'schemaVersion',
+          'generation',
+          'fingerprint',
+          'chunkCount',
+          'byteLength',
+          'workspaceRevision',
+          'workspaceUpdatedAt',
+          'uploadedAt'
+        ])
+        && request.resource.data.format == 'myelin.cloud.workspace'
+        && request.resource.data.version == 1
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.generation is string
+        && request.resource.data.generation.size() >= 1
+        && request.resource.data.generation.size() <= 80
+        && request.resource.data.generation.matches('^[A-Za-z0-9_-]+$')
+        && request.resource.data.fingerprint is string
+        && request.resource.data.fingerprint.size() >= 1
+        && request.resource.data.fingerprint.size() <= 120
+        && request.resource.data.chunkCount is int
+        && request.resource.data.chunkCount >= 1
+        && request.resource.data.chunkCount <= 64
+        && request.resource.data.byteLength is int
+        && request.resource.data.byteLength >= 1
+        && request.resource.data.byteLength <= 8388608
+        && request.resource.data.workspaceRevision is int
+        && request.resource.data.workspaceRevision >= 0
+        && request.resource.data.workspaceRevision <= 1000000000
+        && request.resource.data.workspaceUpdatedAt is int
+        && request.resource.data.workspaceUpdatedAt > 0
+        && request.resource.data.uploadedAt is int
+        && request.resource.data.uploadedAt > 0;
+    }
+
+    function validChunk() {
+      return request.resource.data.keys().hasOnly([
+          'generation',
+          'index',
+          'payload'
+        ])
+        && request.resource.data.generation is string
+        && request.resource.data.generation.size() >= 1
+        && request.resource.data.generation.size() <= 80
+        && request.resource.data.generation.matches('^[A-Za-z0-9_-]+$')
+        && request.resource.data.index is int
+        && request.resource.data.index >= 0
+        && request.resource.data.index < 64
+        && request.resource.data.payload is string
+        && request.resource.data.payload.size() <= 200000;
+    }
+
+    match /users/{uid}/cloud/current {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validManifest();
+
+      match /chunks/{chunkId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validChunk();
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

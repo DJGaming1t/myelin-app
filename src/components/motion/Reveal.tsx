@@ -18,43 +18,71 @@ type Props = PropsWithChildren<{
 export function Reveal({
   children,
   delay = 0,
-  distance = 10,
-  duration = 360,
+  distance = 12,
+  duration = 280,
   style,
 }: Props) {
   const reduceMotion = useReducedMotion();
-  const progress = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const motion = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
 
   useEffect(() => {
+    opacity.stopAnimation();
+    motion.stopAnimation();
+
     if (reduceMotion) {
-      progress.stopAnimation();
-      progress.setValue(1);
+      opacity.setValue(1);
+      motion.setValue(1);
       return;
     }
 
-    progress.setValue(0);
-    Animated.timing(progress, {
-      toValue: 1,
-      delay,
-      duration,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    opacity.setValue(0);
+    motion.setValue(0);
 
-    return () => progress.stopAnimation();
-  }, [delay, duration, progress, reduceMotion]);
+    const animation = Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        delay,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        isInteraction: false,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.spring(motion, {
+          toValue: 1,
+          damping: 18,
+          stiffness: 155,
+          mass: 0.72,
+          overshootClamping: true,
+          isInteraction: false,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]);
+
+    animation.start();
+    return () => animation.stop();
+  }, [delay, duration, motion, opacity, reduceMotion]);
 
   return (
     <Animated.View
       style={[
         style,
         {
-          opacity: progress,
+          opacity,
           transform: [
             {
-              translateY: progress.interpolate({
+              translateY: motion.interpolate({
                 inputRange: [0, 1],
                 outputRange: [distance, 0],
+              }),
+            },
+            {
+              scale: motion.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.985, 1],
               }),
             },
           ],

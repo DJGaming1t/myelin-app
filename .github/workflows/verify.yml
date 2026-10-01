@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - expo-migration
-      - feature/**
 
 permissions:
   contents: read
@@ -26,6 +25,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: npm
 
       - name: Native runtime boundary
         env:
@@ -36,6 +36,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Use Java for Firebase emulators
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -84,6 +85,7 @@ jobs:
         run: npm run verify:cloud
 
       - name: Firestore per-user security rules
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
         run: npm run verify:firestore-rules
 
       - name: Notification planning, quiet hours and copy guardrails
@@ -101,13 +103,20 @@ jobs:
       - name: Visual system and motion regression
         run: npm run verify:visual
 
+      - name: Fast PR verification complete
+        if: ${{ github.event_name == 'pull_request' }}
+        run: echo "Fast PR gate passed. Firebase security rules and native Android generation run after merge before preview OTA publishing."
+
       - name: Expo Doctor
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
         run: npx expo-doctor
 
       - name: Validate Expo native config
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
         run: npx expo config --type prebuild > /dev/null
 
       - name: Generate Android project
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
         run: npx expo prebuild --platform android --clean --no-install
 
   publish_preview:
@@ -139,6 +148,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: npm
 
       - name: Install dependencies
         if: steps.token.outputs.configured == 'true'

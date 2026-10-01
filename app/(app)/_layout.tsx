@@ -51,7 +51,7 @@ export default function AppLayout() {
         animation: reduceMotion ? 'none' : 'fade_from_bottom',
       }}>
       <Stack.Screen name="today/index" options={{ animation: 'none' }} />
-      <Stack.Screen name="topics/index" options={{ animation: 'none' }} />
+      <Stack.Screen name="topics" options={{ animation: 'none' }} />
       <Stack.Screen name="review/index" options={{ animation: 'none' }} />
       <Stack.Screen name="progress/index" options={{ animation: 'none' }} />
     </Stack>

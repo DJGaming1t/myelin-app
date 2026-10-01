@@ -74,6 +74,7 @@ export default function FocusScreen() {
 
   const [tinyStep, setTinyStep] = useState('');
   const [distraction, setDistraction] = useState('');
+  const [showParking, setShowParking] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [finishing, setFinishing] = useState(false);
   const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -238,8 +239,7 @@ export default function FocusScreen() {
               <Text style={styles.taskContext}>Linked topic · {topic.name}</Text>
             ) : null}
             <Text style={styles.setupSubtitle}>
-              Decide the first tiny action before the timer starts. Make beginning obvious enough
-              that you do not need to negotiate with yourself.
+              Choose the first action, then let the timer disappear into the background.
             </Text>
 
             <View style={styles.planStrip}>
@@ -287,13 +287,9 @@ export default function FocusScreen() {
               </View>
             </Pressable>
 
-            <View style={styles.setupNote}>
-              <Text style={styles.setupNoteTitle}>Timer recovery is automatic</Text>
-              <Text style={styles.setupNoteText}>
-                If you leave MYELIN or the app is closed, the session is restored from timestamps
-                instead of resetting the countdown.
-              </Text>
-            </View>
+            <Text style={styles.recoveryNote}>
+              The timer survives leaving or closing MYELIN.
+            </Text>
           </ScrollView>
         </View>
       </SafeAreaView>
@@ -498,54 +494,67 @@ export default function FocusScreen() {
             </View>
           )}
 
-          <View style={styles.parking}>
-            <View style={styles.parkingHeader}>
+          <View style={styles.parkingShell}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showParking }}
+              accessibilityLabel="Distraction parking"
+              onPress={() => setShowParking((current) => !current)}
+              style={({ pressed }) => [styles.parkingToggle, pressed && styles.pressed]}>
               <View>
-                <Text style={styles.parkingTitle}>Distraction parking</Text>
-                <Text style={styles.parkingSubtitle}>Capture it. Do not chase it.</Text>
+                <Text style={styles.parkingTitle}>Park a distraction</Text>
+                <Text style={styles.parkingSubtitle}>
+                  {session.distractions.length
+                    ? `${session.distractions.length} saved for later`
+                    : 'Capture it without leaving Focus'}
+                </Text>
               </View>
-              <Text style={styles.parkCount}>{session.distractions.length}/30</Text>
-            </View>
+              <Text style={styles.parkingToggleMark}>{showParking ? '−' : '+'}</Text>
+            </Pressable>
 
-            <View style={styles.parkInputRow}>
-              <TextInput
-                accessibilityLabel="Park a distraction"
-                value={distraction}
-                onChangeText={setDistraction}
-                onSubmitEditing={addDistraction}
-                placeholder="Thing I want to check later…"
-                placeholderTextColor={colors.subtle}
-                selectionColor={colors.accent}
-                returnKeyType="done"
-                maxLength={240}
-                style={styles.parkInput}
-              />
-              <Pressable
-                accessibilityRole="button"
-                disabled={!distraction.trim()}
-                onPress={addDistraction}
-                style={({ pressed }) => [
-                  styles.parkAdd,
-                  !distraction.trim() && styles.disabled,
-                  pressed && styles.pressed,
-                ]}>
-                <Text style={styles.parkAddText}>+</Text>
-              </Pressable>
-            </View>
+            {showParking ? (
+              <View style={styles.parking}>
+                <View style={styles.parkInputRow}>
+                  <TextInput
+                    accessibilityLabel="Park a distraction"
+                    value={distraction}
+                    onChangeText={setDistraction}
+                    onSubmitEditing={addDistraction}
+                    placeholder="Thing I want to check later…"
+                    placeholderTextColor={colors.subtle}
+                    selectionColor={colors.accent}
+                    returnKeyType="done"
+                    maxLength={240}
+                    style={styles.parkInput}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!distraction.trim()}
+                    onPress={addDistraction}
+                    style={({ pressed }) => [
+                      styles.parkAdd,
+                      !distraction.trim() && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}>
+                    <Text style={styles.parkAddText}>+</Text>
+                  </Pressable>
+                </View>
 
-            {session.distractions.map((item) => (
-              <View key={item.id} style={styles.parkedItem}>
-                <View style={styles.parkDot} />
-                <Text style={styles.parkedText}>{item.text}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Remove parked distraction"
-                  hitSlop={8}
-                  onPress={() => removeParked(item.id)}>
-                  <Text style={styles.parkRemove}>×</Text>
-                </Pressable>
+                {session.distractions.map((item) => (
+                  <View key={item.id} style={styles.parkedItem}>
+                    <View style={styles.parkDot} />
+                    <Text style={styles.parkedText}>{item.text}</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove parked distraction"
+                      hitSlop={8}
+                      onPress={() => removeParked(item.id)}>
+                      <Text style={styles.parkRemove}>×</Text>
+                    </Pressable>
+                  </View>
+                ))}
               </View>
-            ))}
+            ) : null}
           </View>
 
           <Pressable
@@ -636,35 +645,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  topHelper: { color: colors.subtle, fontSize: 9 },
+  topHelper: { color: colors.subtle, fontSize: 11 },
   setupContent: { padding: spacing.lg, paddingBottom: 48 },
-  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
+  eyebrow: { color: colors.accent, fontSize: 11, lineHeight: 15, fontWeight: '800', letterSpacing: 1.2 },
   setupTitle: { color: colors.text, fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.2, marginTop: 8 },
-  setupSubtitle: { color: colors.muted, fontSize: 12.5, lineHeight: 19, marginTop: 9, maxWidth: 540 },
+  setupSubtitle: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 9, maxWidth: 540 },
   taskContext: { color: colors.accent, fontSize: 10, fontWeight: '700', marginTop: 7 },
   planStrip: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
   metric: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12, justifyContent: 'space-between' },
-  metricLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  metricLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.4 },
   metricValue: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: spacing.xl, marginBottom: 8 },
+  fieldLabel: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: spacing.xl, marginBottom: 8 },
   tinyInput: { minHeight: 92, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: 13, color: colors.text, fontSize: 13, lineHeight: 19 },
   primary: { minHeight: 56, marginTop: spacing.lg, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   wideButton: { width: '100%' },
   primaryText: { color: '#25140e', fontSize: 13, fontWeight: '800' },
-  primarySubtext: { color: 'rgba(37,20,14,0.72)', fontSize: 9.5, marginTop: 2 },
+  primarySubtext: { color: 'rgba(37,20,14,0.72)', fontSize: 11.5, lineHeight: 15, marginTop: 2 },
   buttonArrow: { color: '#25140e', fontSize: 20 },
   launchButton: { minHeight: 82, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.22)', backgroundColor: colors.accentSoft, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
   launchMark: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
   launchMarkText: { color: '#25140e', fontSize: 17, fontWeight: '800' },
   launchCopy: { flex: 1 },
   launchTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
-  launchText: { color: colors.muted, fontSize: 10.5, lineHeight: 15, marginTop: 3 },
-  setupNote: { marginTop: spacing.xl, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
-  setupNoteTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  setupNoteText: { color: colors.subtle, fontSize: 10, lineHeight: 16, marginTop: 4 },
+  launchText: { color: colors.muted, fontSize: 12.5, lineHeight: 18, marginTop: 3 },
+  recoveryNote: { color: colors.subtle, fontSize: 12, lineHeight: 17, marginTop: spacing.lg },
   missing: { flex: 1, justifyContent: 'center', padding: spacing.xl },
   missingTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  missingText: { color: colors.muted, fontSize: 12, lineHeight: 19, marginTop: 8 },
+  missingText: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 8 },
   sessionContent: { padding: spacing.lg, paddingBottom: 56 },
   sessionHeading: { alignItems: 'center' },
   sessionTitle: { color: colors.text, fontSize: 22, lineHeight: 27, fontWeight: '700', textAlign: 'center', marginTop: 7 },
@@ -676,8 +683,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
   },
-  stepLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  stepText: { color: colors.text, fontSize: 11.5, lineHeight: 17, marginTop: 5, textAlign: 'center' },
+  stepLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.5 },
+  stepText: { color: colors.text, fontSize: 14, lineHeight: 20, marginTop: 5, textAlign: 'center' },
   timerArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   dial: {
     position: 'relative',
@@ -712,25 +719,26 @@ const styles = StyleSheet.create({
   dialInner: { width: 188, height: 188, borderRadius: 188, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   timerValue: { color: colors.text, fontSize: 44, lineHeight: 50, fontWeight: '500', letterSpacing: -2 },
   timerValueComplete: { color: colors.success },
-  timerLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.4, marginTop: 4 },
+  timerLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, marginTop: 4 },
   timerActions: { flexDirection: 'row', gap: 9, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
   secondary: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   finishPanel: { width: '100%', maxWidth: 500, marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   finishTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  finishText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
+  finishText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 5 },
   effortRow: { flexDirection: 'row', gap: 7, marginTop: spacing.md },
   effort: { flex: 1, height: 42, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   effortActive: { borderColor: 'rgba(255,128,91,0.5)', backgroundColor: colors.accentSoft },
   effortText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   effortTextActive: { color: colors.accent },
   textButton: { minHeight: layout.minTouch, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
-  textButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
-  parking: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
-  parkingHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
-  parkingTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
-  parkingSubtitle: { color: colors.subtle, fontSize: 9.5, marginTop: 2 },
-  parkCount: { color: colors.subtle, fontSize: 9 },
+  textButtonText: { color: colors.muted, fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
+  parkingShell: { marginTop: spacing.xl, borderTopWidth: 1, borderTopColor: colors.line },
+  parkingToggle: { minHeight: layout.minTouch, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  parkingToggleMark: { color: colors.accent, fontSize: 22, lineHeight: 24, fontWeight: '400' },
+  parking: { paddingBottom: spacing.sm },
+  parkingTitle: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
+  parkingSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 16, marginTop: 2 },
   parkInputRow: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
   parkInput: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, color: colors.text, fontSize: 11.5 },
   parkAdd: { width: layout.minTouch, height: layout.minTouch, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
@@ -738,10 +746,10 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.35 },
   parkedItem: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.line, marginTop: 9, paddingTop: 9 },
   parkDot: { width: 5, height: 5, borderRadius: 5, backgroundColor: colors.accent },
-  parkedText: { flex: 1, color: colors.muted, fontSize: 10.5, lineHeight: 15 },
+  parkedText: { flex: 1, color: colors.muted, fontSize: 12.5, lineHeight: 18 },
   parkRemove: { color: colors.subtle, fontSize: 19 },
   discard: { alignSelf: 'center', marginTop: spacing.xl, padding: 9 },
-  discardText: { color: colors.danger, fontSize: 10.5, fontWeight: '600' },
-  breakPrompt: { color: colors.muted, fontSize: 11, lineHeight: 18, textAlign: 'center', maxWidth: 380, marginTop: spacing.lg },
+  discardText: { color: colors.danger, fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  breakPrompt: { color: colors.muted, fontSize: 13.5, lineHeight: 20, textAlign: 'center', maxWidth: 380, marginTop: spacing.lg },
   pressed: { opacity: 0.68, transform: [{ scale: 0.994 }] },
 });

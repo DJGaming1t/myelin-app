@@ -78,6 +78,7 @@ export default function TodayScreen() {
     );
   }
 
+  const currentWorkspace = workspace;
   const next = plan.nextBlock;
   const budgetFinished = plan.remainingBudgetMinutes <= 0;
   const usedRatio = Math.min(1, plan.alreadyUsedMinutes / Math.max(1, plan.budgetMinutes));
@@ -97,7 +98,7 @@ export default function TodayScreen() {
 
   function deferForToday(block: PlanBlock) {
     if (block.source === 'task' && block.taskId) {
-      const task = workspace.tasks.find((item) => item.id === block.taskId);
+      const task = currentWorkspace.tasks.find((item) => item.id === block.taskId);
       if (!task) return;
       setLastDeferred({
         source: 'task',
@@ -116,7 +117,7 @@ export default function TodayScreen() {
     }
 
     if (!block.topicId) return;
-    const topic = workspace.topics.find((item) => item.id === block.topicId);
+    const topic = currentWorkspace.topics.find((item) => item.id === block.topicId);
     if (!topic) return;
 
     const previousSnoozeUntil = topic.snoozeUntil;
@@ -803,11 +804,32 @@ const styles = StyleSheet.create({
   nextMinLabel: { color: colors.muted, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },
   nextTitle: { color: colors.text, fontSize: 22, lineHeight: 27, fontWeight: '700', marginTop: spacing.lg },
   nextReason: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 7 },
-  nextAction: {
+  nextActions: {
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,128,91,0.17)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  deferButton: {
+    minHeight: layout.minTouch,
+    minWidth: 82,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  deferButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
+  nextAction: {
+    flex: 1,
+    minHeight: layout.minTouch,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

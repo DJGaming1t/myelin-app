@@ -274,6 +274,18 @@ export default function ReviewScreen() {
                     onPress={() => router.push('/(app)/topics')}
                   />
                 )}
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open mistake notebook"
+                  onPress={() => router.push('/(app)/mistakes')}
+                  style={({ pressed }) => [styles.utilityRow, pressed && styles.pressed]}>
+                  <View>
+                    <Text style={styles.utilityLabel}>CORRECTIONS</Text>
+                    <Text style={styles.utilityTitle}>Mistake notebook</Text>
+                  </View>
+                  <Text style={styles.utilityArrow}>Open →</Text>
+                </Pressable>
               </>
             )}
           </ScrollView>
@@ -565,6 +577,20 @@ const styles = StyleSheet.create({
   primaryArrow: { color: '#25140e', fontSize: 20 },
   secondaryLarge: { minHeight: 48, marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   secondaryLargeText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  utilityRow: {
+    minHeight: 62,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  utilityLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.15 },
+  utilityTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 3 },
+  utilityArrow: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   completeNotice: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(180,216,174,0.2)', backgroundColor: 'rgba(180,216,174,0.055)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   completeMark: { color: colors.success, fontSize: 18 },
   completeCopy: { flex: 1 },

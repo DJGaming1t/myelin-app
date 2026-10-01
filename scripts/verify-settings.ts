@@ -204,7 +204,15 @@ async function main() {
   console.log('✓ local-data summary counts current workspace records');
   console.log('✓ account provider labels are deduplicated and readable');
   console.log('✓ corrupt data is quarantined before explicit reset');
+  const settingsSource = await import('node:fs').then(({ readFileSync }) => readFileSync('app/(app)/settings/index.tsx', 'utf8'));
+  assert.ok(settingsSource.includes('FadeInDown.duration(180)'));
+  assert.ok(settingsSource.includes('FadeOutUp.duration(130)'));
+  assert.ok(settingsSource.includes('transferCopy: { flex: 1, minWidth: 0 }'));
+  assert.ok(settingsSource.includes('label="Delete account"'));
+
   console.log('✓ explicit reset clears primary copies, backups and quarantine');
+  console.log('✓ Settings disclosures animate and action rows constrain their arrows');
+  console.log('✓ account deletion is exposed directly from Account & session');
 }
 
 main().catch((error) => {

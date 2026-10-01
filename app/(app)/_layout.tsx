@@ -2,7 +2,6 @@ import { Redirect, Stack } from 'expo-router';
 
 import { ScreenState } from '@/src/components/app/ScreenState';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
-import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 
@@ -10,7 +9,6 @@ export default function AppLayout() {
   const { ready: authReady, user, localMode } = useAuth();
   const { status, saveError, retryWorkspace } = useWorkspace();
   const { ready: onboardingReady, shouldShow } = useOnboarding();
-  const reduceMotion = useReducedMotion();
 
   if (!authReady) {
     return <ScreenState kind="loading" title="Opening MYELIN" message="Checking your session…" fill />;
@@ -48,7 +46,7 @@ export default function AppLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: reduceMotion ? 'none' : 'fade',
+        animation: 'none',
       }}
     />
   );

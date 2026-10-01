@@ -23,6 +23,14 @@ export function AppButton({
   style,
 }: Props) {
   const reduceMotion = useReducedMotion();
+  const textStyle =
+    variant === 'primary'
+      ? styles.primaryText
+      : variant === 'secondary'
+        ? styles.secondaryText
+        : variant === 'danger'
+          ? styles.dangerText
+          : styles.quietText;
 
   return (
     <Pressable
@@ -39,7 +47,7 @@ export function AppButton({
         pressed && styles.pressed,
         pressed && !reduceMotion && styles.pressedMotion,
       ]}>
-      <Text style={[styles.label, styles[`${variant}Text`]]}>{label}</Text>
+      <Text style={[styles.label, textStyle]}>{label}</Text>
     </Pressable>
   );
 }

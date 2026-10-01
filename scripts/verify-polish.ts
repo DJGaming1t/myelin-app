@@ -89,13 +89,17 @@ assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while
 assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
 assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
 
-assert(onboarding.includes('Set a realistic study day.'), 'Onboarding should ask for one useful setup decision.');
+assert(onboarding.includes('How much focus fits in a normal day?'), 'Onboarding should ask for one useful setup decision.');
 assert(!onboarding.includes('AnimatedProgress'), 'One-step onboarding should not show artificial multi-step progress.');
 assert(!onboarding.includes('TopicStep'), 'Onboarding should not require topic creation before entering the app.');
 assert(settings.includes('variant="compact"'), 'Settings should use the compact utility-screen header.');
 assert(settings.includes('sectionSubtitle: { color: colors.muted, fontSize: 12'), 'Settings section descriptions are too small.');
 assert(settings.includes('dataLabel: { color: colors.subtle, fontSize: 10'), 'Settings data labels regressed below the readability floor.');
 assert(settings.includes('accessibilityState={{ expanded: open }}'), 'Settings groups should use progressive disclosure.');
+assert(settings.includes('FadeInDown.duration(180)'), 'Settings disclosures should animate open.');
+assert(settings.includes('FadeOutUp.duration(130)'), 'Settings disclosures should animate closed.');
+assert(settings.includes("label=\"Delete account\""), 'Settings should expose direct account deletion.');
+assert(settings.includes('transferCopy: { flex: 1, minWidth: 0 }'), 'Settings action copy must be constrained so arrows stay inside rows.');
 assert(settings.includes("onBack={() => router.back()}"), 'Settings should behave like a secondary screen.');
 assert(!settings.includes('<AppNav />'), 'Settings should not duplicate top-level navigation.');
 assert(taskForm.includes('variant="compact"'), 'Task form should use the compact form header.');

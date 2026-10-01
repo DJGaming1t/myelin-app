@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
   sectionHeader: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   sectionHeaderCopy: { flex: 1, minWidth: 0 },
   sectionTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
-  sectionSubtitle: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
+  sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   sectionIndicator: { color: colors.accent, fontSize: 22, lineHeight: 24, fontWeight: '400' },
   sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   settingBlock: { paddingVertical: 4, marginBottom: 13 },

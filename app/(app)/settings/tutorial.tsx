@@ -164,7 +164,7 @@ export default function TutorialReplayScreen() {
           </View>
 
           <Text style={styles.readOnlyNote}>
-            Replay only — nothing here changes your study data or setup.
+            Tutorial replay is read-only — nothing here changes your study data or setup.
           </Text>
         </ScrollView>
       </View>

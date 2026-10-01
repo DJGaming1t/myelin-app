@@ -1,4 +1,4 @@
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, useEffect } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,9 +6,18 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Props = PropsWithChildren<{
@@ -66,8 +75,65 @@ export function OnboardingShell({
 }
 
 export function StudyPathVisual() {
+  const reduceMotion = useReducedMotion();
+  const signal = useSharedValue(0);
+  const float = useSharedValue(0);
+  const breathe = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      signal.value = 0.52;
+      float.value = 0;
+      breathe.value = 0.45;
+      return;
+    }
+
+    signal.value = withRepeat(
+      withTiming(1, { duration: 2800, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    float.value = withRepeat(
+      withSequence(
+        withTiming(-5, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    );
+    breathe.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1300, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 1300, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    );
+  }, [breathe, float, reduceMotion, signal]);
+
+  const signalStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: signal.value * 232 }],
+    opacity: 0.55 + Math.sin(signal.value * Math.PI) * 0.45,
+  }));
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: float.value }, { rotate: '-2deg' }],
+  }));
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: 0.18 + breathe.value * 0.34,
+    transform: [{ scale: 0.88 + breathe.value * 0.18 }],
+  }));
+
   return (
     <View style={visualStyles.stage} accessible={false}>
+      <Animated.View style={[visualStyles.backPulse, pulseStyle]} />
+      <View style={visualStyles.neuralLineA} />
+      <View style={visualStyles.neuralLineB} />
+      <View style={visualStyles.neuralNodeA} />
+      <View style={visualStyles.neuralNodeB} />
+      <View style={visualStyles.neuralNodeC} />
+
       <View style={visualStyles.track}>
         <View style={[visualStyles.node, visualStyles.nodeMuted]} />
         <View style={visualStyles.trackLine} />
@@ -75,20 +141,28 @@ export function StudyPathVisual() {
         <View style={visualStyles.trackLine} />
         <View style={[visualStyles.node, visualStyles.nodeMuted]} />
       </View>
+      <Animated.View style={[visualStyles.signal, signalStyle]} />
 
       <View style={visualStyles.orbit} />
 
-      <View style={visualStyles.primaryCard}>
-        <Text style={visualStyles.cardEyebrow}>NEXT</Text>
+      <Animated.View style={[visualStyles.primaryCard, cardStyle]}>
+        <View style={visualStyles.cardTop}>
+          <Text style={visualStyles.cardEyebrow}>NEXT</Text>
+          <View style={visualStyles.livePill}>
+            <View style={visualStyles.liveDot} />
+            <Text style={visualStyles.liveText}>MYELIN</Text>
+          </View>
+        </View>
         <Text style={visualStyles.cardTitle}>Trigonometry</Text>
         <View style={visualStyles.cardMetaRow}>
           <Text style={visualStyles.cardMeta}>45 min</Text>
           <View style={visualStyles.dot} />
           <Text style={visualStyles.cardMeta}>exam soon</Text>
         </View>
-      </View>
+      </Animated.View>
 
       <View style={visualStyles.smallCard}>
+        <Text style={visualStyles.smallLabel}>RECALL</Text>
         <View style={visualStyles.smallBar} />
         <View style={[visualStyles.smallBar, visualStyles.smallBarShort]} />
       </View>
@@ -190,7 +264,7 @@ const styles = StyleSheet.create({
   },
   visual: {
     flex: 1,
-    minHeight: 220,
+    minHeight: 240,
     justifyContent: 'center',
     paddingVertical: spacing.xl,
   },
@@ -213,15 +287,72 @@ const styles = StyleSheet.create({
 
 const visualStyles = StyleSheet.create({
   stage: {
-    height: 220,
+    height: 240,
     position: 'relative',
     justifyContent: 'center',
+  },
+  backPulse: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 110,
+    right: -26,
+    top: 5,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+  },
+  neuralLineA: {
+    position: 'absolute',
+    width: 126,
+    height: 1,
+    right: 18,
+    top: 58,
+    backgroundColor: colors.accentLine,
+    transform: [{ rotate: '-22deg' }],
+    opacity: 0.6,
+  },
+  neuralLineB: {
+    position: 'absolute',
+    width: 104,
+    height: 1,
+    right: 44,
+    top: 138,
+    backgroundColor: colors.lineStrong,
+    transform: [{ rotate: '31deg' }],
+  },
+  neuralNodeA: {
+    position: 'absolute',
+    width: 9,
+    height: 9,
+    borderRadius: 9,
+    right: 30,
+    top: 33,
+    backgroundColor: colors.accent,
+  },
+  neuralNodeB: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    borderRadius: 7,
+    right: 134,
+    top: 77,
+    backgroundColor: colors.textDim,
+  },
+  neuralNodeC: {
+    position: 'absolute',
+    width: 5,
+    height: 5,
+    borderRadius: 5,
+    right: 62,
+    top: 166,
+    backgroundColor: colors.accentBright,
   },
   track: {
     position: 'absolute',
     left: 8,
-    right: 8,
-    bottom: 26,
+    width: 256,
+    bottom: 24,
     height: 18,
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,6 +365,20 @@ const visualStyles = StyleSheet.create({
   node: { width: 8, height: 8, borderRadius: 8 },
   nodeMuted: { backgroundColor: colors.subtle },
   nodeAccent: { backgroundColor: colors.accent },
+  signal: {
+    position: 'absolute',
+    left: 10,
+    bottom: 30,
+    width: 12,
+    height: 12,
+    borderRadius: 12,
+    backgroundColor: colors.accentBright,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
+  },
   orbit: {
     position: 'absolute',
     width: 190,
@@ -243,7 +388,7 @@ const visualStyles = StyleSheet.create({
     borderColor: colors.accentLine,
     right: -48,
     top: 10,
-    opacity: 0.45,
+    opacity: 0.32,
   },
   primaryCard: {
     width: '78%',
@@ -253,7 +398,17 @@ const visualStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.lineStrong,
     padding: 18,
-    transform: [{ rotate: '-2deg' }],
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 7,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   cardEyebrow: {
     color: colors.accent,
@@ -262,12 +417,30 @@ const visualStyles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.1,
   },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  liveDot: { width: 5, height: 5, borderRadius: 5, backgroundColor: colors.success },
+  liveText: {
+    color: colors.textDim,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+  },
   cardTitle: {
     color: colors.text,
     fontSize: 24,
     lineHeight: 29,
-    fontWeight: '650',
-    marginTop: 8,
+    fontWeight: '600',
+    marginTop: 10,
     letterSpacing: -0.55,
   },
   cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
@@ -276,17 +449,24 @@ const visualStyles = StyleSheet.create({
   smallCard: {
     position: 'absolute',
     right: 8,
-    bottom: 50,
-    width: 100,
-    height: 72,
+    bottom: 48,
+    width: 104,
+    height: 78,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.panel,
-    padding: 14,
+    padding: 12,
     justifyContent: 'center',
-    gap: 8,
+    gap: 7,
     transform: [{ rotate: '4deg' }],
+  },
+  smallLabel: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   smallBar: {
     height: 5,

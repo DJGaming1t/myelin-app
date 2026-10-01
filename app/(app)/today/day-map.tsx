@@ -43,6 +43,7 @@ export default function DayMapScreen() {
   const { workspace, updateWorkspace } = useWorkspace();
   const [now, setNow] = useState(Date.now());
   const [proposal, setProposal] = useState<ReturnType<typeof rebuildRemainingDay> | null>(null);
+  const [showPlanning, setShowPlanning] = useState(false);
 
   const map = useMemo(
     () => (workspace ? buildDayMap(workspace, now) : null),
@@ -138,25 +139,12 @@ export default function DayMapScreen() {
       <AmbientBackdrop />
       <View style={styles.page}>
         <ScreenHeader
-          eyebrow="TODAY"
+          variant="compact"
           title="Day Map"
-          subtitle="A calm view of what is fixed, what is planned, and where study can realistically fit."
-          actionLabel="+ Add"
-          onAction={() => router.push('/(app)/today/task/new')}
+          actionLabel="Add"
+          onAction={() => router.push('/(app)/quick-add')}
           onBack={() => router.replace('/(app)/today')}
         />
-
-        <View style={styles.toggle}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace('/(app)/today')}
-            style={styles.toggleButton}>
-            <Text style={styles.toggleText}>Flow</Text>
-          </Pressable>
-          <View style={[styles.toggleButton, styles.toggleActive]}>
-            <Text style={[styles.toggleText, styles.toggleTextActive]}>Day Map</Text>
-          </View>
-        </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.daySummary}>
@@ -326,6 +314,22 @@ export default function DayMapScreen() {
             </View>
           )}
 
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showPlanning }}
+            onPress={() => setShowPlanning((current) => !current)}
+            style={({ pressed }) => [styles.planningToggle, pressed && styles.pressed]}>
+            <View>
+              <Text style={styles.planningToggleTitle}>Planning options</Text>
+              <Text style={styles.planningToggleMeta}>
+                Free windows · flexible tasks · rebuild evening
+              </Text>
+            </View>
+            <Text style={styles.planningToggleMark}>{showPlanning ? '−' : '+'}</Text>
+          </Pressable>
+
+          {showPlanning ? (
+            <>
           <View style={styles.freeStrip}>
             <View style={styles.fitHeader}>
               <Text style={styles.sectionLabel}>WHERE STUDY CAN FIT</Text>
@@ -393,6 +397,8 @@ export default function DayMapScreen() {
             </View>
             <Text style={styles.rebuildArrow}>→</Text>
           </Pressable>
+            </>
+          ) : null}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -482,10 +488,14 @@ const styles = StyleSheet.create({
   overloadLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   overloadTitle: { color: colors.text, fontSize: 12, lineHeight: 18, fontWeight: '700', marginTop: 5 },
   overloadActions: { flexDirection: 'row', gap: 8, marginTop: 11 },
-  freeStrip: { marginTop: spacing.xl, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
+  planningToggle: { minHeight: 66, marginTop: spacing.xl, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  planningToggleTitle: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
+  planningToggleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
+  planningToggleMark: { color: colors.accent, fontSize: 22, lineHeight: 24 },
+  freeStrip: { marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
   fitHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  fitHint: { color: colors.subtle, fontSize: 9.5, lineHeight: 14 },
-  sectionLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.25 },
+  fitHint: { color: colors.muted, fontSize: 11.5, lineHeight: 16 },
+  sectionLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.55 },
   freeRow: { gap: 8, paddingTop: 10 },
   freePill: {
     minHeight: 52,
@@ -498,7 +508,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   freeTime: { color: colors.text, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
-  freeMinutes: { color: colors.muted, fontSize: 9.5, lineHeight: 14, marginTop: 2 },
+  freeMinutes: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
   proposal: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: colors.panel, padding: spacing.md },
   proposalText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5, marginBottom: 8 },
   proposalRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: colors.line },
@@ -539,31 +549,31 @@ const styles = StyleSheet.create({
   },
   missedBlock: { borderStyle: 'dashed' },
   blockCopy: { minHeight: 48 },
-  blockKicker: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
+  blockKicker: { color: colors.subtle, fontSize: 10.5, lineHeight: 14, fontWeight: '700', letterSpacing: 0.45 },
   blockTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: 4 },
-  blockMeta: { color: colors.muted, fontSize: 9.5, lineHeight: 14, marginTop: 4 },
+  blockMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 4 },
   passed: { opacity: 0.42 },
   blockActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
   missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   mini: { minHeight: layout.minTouch, minWidth: 68, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
-  miniText: { color: colors.muted, fontSize: 9, fontWeight: '700' },
+  miniText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
   emptyCard: { marginTop: 8, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.lg },
   emptyTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
   emptyText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
   flexible: { marginTop: spacing.xl },
-  flexibleIntro: { color: colors.muted, fontSize: 9.5, lineHeight: 15, marginTop: 5, marginBottom: 8 },
+  flexibleIntro: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 5, marginBottom: 8 },
   flexibleTask: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8 },
   flexibleCopy: { flex: 1, minHeight: layout.minTouch, justifyContent: 'center' },
   flexibleTitle: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  flexibleMeta: { color: colors.subtle, fontSize: 8.8, marginTop: 3 },
+  flexibleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   addRow: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
   action: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   actionAccent: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
-  actionText: { color: colors.muted, fontSize: 9.5, fontWeight: '800' },
+  actionText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
   actionTextAccent: { color: colors.accent },
   rebuild: { minHeight: 68, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   rebuildTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
-  rebuildText: { color: colors.subtle, fontSize: 9, marginTop: 3 },
+  rebuildText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   rebuildArrow: { color: colors.accent, fontSize: 18 },
   pressed: { opacity: 0.66 },
 });

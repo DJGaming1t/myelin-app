@@ -45,7 +45,8 @@ assert(header.includes('accessibilityRole="header"'), 'Screen titles are not exp
 assert(header.includes('minHeight: layout.minTouch'), 'Header controls are too small.');
 assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tablet/web bounded.');
 assert(focus.includes('setInterval(() => setNow(Date.now()), 1000)'), 'Focus timer redraw frequency was not reduced.');
-assert(reveal.includes('Animated.timing'), 'Shared entrance motion is missing.');
+assert(reveal.includes("from 'react-native-reanimated'"), 'Shared entrance motion is not running through Reanimated.');
+assert(reveal.includes('withTiming') && reveal.includes('withSpring'), 'Shared entrance motion is missing timing/spring transitions.');
 assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
 assert(nav.includes('activeIndicator'), 'Bottom navigation is missing the active indicator treatment.');
 
@@ -60,9 +61,12 @@ assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are mis
 assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');
 assert(pulseHalo.includes('reduceMotion'), 'Legacy halo primitive must remain accessibility-safe while it exists.');
 
-assert(animatedProgress.includes('Animated.spring'), 'Animated progress spring primitive is missing.');
+assert(animatedProgress.includes("from 'react-native-reanimated'"), 'Progress animation is not running through Reanimated.');
+assert(animatedProgress.includes('withSpring'), 'Animated progress spring primitive is missing.');
+assert(animatedProgress.includes('scaleX'), 'Progress should animate a transform instead of layout width.');
 assert(animatedProgress.includes('if (reduceMotion)'), 'Animated progress ignores reduced motion.');
-assert(springPressable.includes('Animated.spring'), 'Shared spring press primitive is missing.');
+assert(springPressable.includes("from 'react-native-reanimated'"), 'Shared press feedback is not running through Reanimated.');
+assert(springPressable.includes('withSpring'), 'Shared spring press primitive is missing.');
 assert(springPressable.includes('useReducedMotion()'), 'Shared press motion ignores reduced motion.');
 assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
 assert(today.includes('nextGlow'), 'Today next-move card lacks focal visual treatment.');

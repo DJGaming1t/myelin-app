@@ -171,9 +171,13 @@ assert.ok(
     entryTransitionSource.includes('await commit()'),
   'Auth entry must hold routing invisibly, wait for authentication, then animate before committing navigation.',
 );
+const entryTransitionStart = entryTransitionSource.indexOf(
+  'const runEntryTransition = useCallback',
+);
+assert.ok(entryTransitionStart >= 0, 'Entry transition implementation is missing.');
 assert.ok(
-  entryTransitionSource.indexOf('await task()') <
-    entryTransitionSource.indexOf('setActive(true)', entryTransitionSource.indexOf('runEntryTransition')),
+  entryTransitionSource.indexOf('await task()', entryTransitionStart) <
+    entryTransitionSource.indexOf('setActive(true)', entryTransitionStart),
   'The branded overlay must not appear while the Google account picker is still active.',
 );
 

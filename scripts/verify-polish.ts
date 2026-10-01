@@ -50,7 +50,7 @@ assert(reveal.includes('withTiming') && reveal.includes('withSpring'), 'Shared e
 assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
 assert(nav.includes('<AppIcon'), 'Bottom navigation is missing the shared icon treatment.');
 
-assert((nav.match(/path: '\/\(app\)\//g) ?? []).length === 4, 'Bottom navigation should expose exactly four primary destinations.');
+assert((nav.match(/\{ key: '(today|topics|review|progress)'/g) ?? []).length === 4, 'Bottom navigation should expose exactly four primary destinations.');
 assert(!nav.includes("key: 'settings'"), 'Settings should remain secondary.');
 assert(nav.includes("label: 'Library'"), 'Topics should be presented as the Library destination.');
 assert(!nav.includes("key: 'mistakes'"), 'Mistakes should be contextual to Review/Today rather than permanent navigation.');

@@ -23,6 +23,7 @@ type OnboardingContextValue = {
   shouldShow: boolean;
   record: OnboardingRecord | null;
   finish: (outcome?: Exclude<OnboardingOutcome, 'existing-data'>) => Promise<void>;
+  restart: () => Promise<void>;
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -103,6 +104,13 @@ export function OnboardingProvider({ children }: PropsWithChildren) {
     [ownerKey],
   );
 
+  const restart = useCallback(async () => {
+    if (!ownerKey) return;
+    await onboardingStorage.clear(ownerKey);
+    setRecord(null);
+    setReady(true);
+  }, [ownerKey]);
+
   const value = useMemo<OnboardingContextValue>(
     () => ({
       ready,
@@ -114,8 +122,9 @@ export function OnboardingProvider({ children }: PropsWithChildren) {
         !record,
       record,
       finish,
+      restart,
     }),
-    [finish, ownerKey, ready, record, status, workspace],
+    [finish, ownerKey, ready, record, restart, status, workspace],
   );
 
   return (

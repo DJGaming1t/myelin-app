@@ -138,6 +138,8 @@ function main() {
     'utf8',
   );
   assert.ok(providerSource.includes("createOnboardingRecord('existing-data')"));
+  assert.ok(providerSource.includes('restart: () => Promise<void>'));
+  assert.ok(providerSource.includes('onboardingStorage.clear(ownerKey)'));
   assert.equal(
     providerSource.includes('workspace?.revision'),
     false,
@@ -200,6 +202,11 @@ main();
 const replayScreen = read('app/(app)/settings/tutorial.tsx');
 const settingsScreen = read('app/(app)/settings/index.tsx');
 
+assert(
+  settingsScreen.includes('restartOnboarding()') &&
+    settingsScreen.includes("router.replace('/(onboarding)')"),
+  'A full workspace reset should restart onboarding so the fresh-start flow is reproducible.',
+);
 assert(
   settingsScreen.includes("router.push('/(app)/settings/tutorial')"),
   'Settings does not expose tutorial replay.',

@@ -31,6 +31,7 @@ import { auth, reactNativePersistence } from '@/src/lib/firebase';
 
 const LOCAL_MODE_KEY = 'myelin.auth.local-mode';
 const KEEP_SIGNED_IN_KEY = 'myelin.auth.keep-signed-in';
+const DEFAULT_KEEP_SIGNED_IN = Platform.OS !== 'web';
 
 type AuthContextValue = {
   ready: boolean;
@@ -72,7 +73,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [localMode, setLocalMode] = useState(false);
-  const [keepSignedIn, setKeepSignedInState] = useState(false);
+  const [keepSignedIn, setKeepSignedInState] = useState(DEFAULT_KEEP_SIGNED_IN);
   const [, forceRefresh] = useState(0);
 
   useEffect(() => {
@@ -97,7 +98,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
         const restoredUser = auth.currentUser;
         setUser(restoredUser);
-        setKeepSignedInState(keepValue === '1');
+        setKeepSignedInState(
+          keepValue === null ? DEFAULT_KEEP_SIGNED_IN : keepValue === '1',
+        );
         setLocalMode(restoredUser ? false : localValue === '1');
 
         if (restoredUser && localValue === '1') {
@@ -147,7 +150,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setUser(credential.user);
       },
 
-      async signInGoogle(keepSignedIn = false) {
+      async signInGoogle(keepSignedIn = DEFAULT_KEEP_SIGNED_IN) {
         await choosePersistence(keepSignedIn);
         await AsyncStorage.setItem(KEEP_SIGNED_IN_KEY, keepSignedIn ? '1' : '0');
         setKeepSignedInState(keepSignedIn);
@@ -238,8 +241,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       async signOutUser() {
         await signOut(auth);
-        await AsyncStorage.removeItem(KEEP_SIGNED_IN_KEY);
-        setKeepSignedInState(false);
         setUser(null);
       },
 
@@ -247,9 +248,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await signOut(auth);
         await Promise.all([
           AsyncStorage.setItem(LOCAL_MODE_KEY, '1'),
-          AsyncStorage.removeItem(KEEP_SIGNED_IN_KEY),
         ]);
-        setKeepSignedInState(false);
         setUser(null);
         setLocalMode(true);
       },

@@ -511,6 +511,7 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
     } catch (error) {
       setStatus('error');
       setMessage(friendlySyncError(error));
+      throw error;
     }
   }, [
     discardFocus,

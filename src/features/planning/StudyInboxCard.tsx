@@ -21,8 +21,9 @@ function dueLabel(dueAt: number) {
 export function StudyInboxCard() {
   const { workspace, updateWorkspace } = useWorkspace();
   if (!workspace) return null;
+  const currentWorkspace = workspace;
 
-  const tasks = workspace.tasks
+  const tasks = currentWorkspace.tasks
     .filter((task) => task.status === 'open' && task.planState === 'inbox' && task.postponedUntil <= Date.now())
     .sort((a, b) => {
       if (a.dueAt && b.dueAt && a.dueAt !== b.dueAt) return a.dueAt - b.dueAt;
@@ -44,9 +45,9 @@ export function StudyInboxCard() {
   }
 
   function scheduleNext(taskId: string) {
-    const task = workspace.tasks.find((item) => item.id === taskId);
+    const task = currentWorkspace.tasks.find((item) => item.id === taskId);
     if (!task) return;
-    const slot = suggestTaskSlots(workspace, task, Date.now(), 1)[0];
+    const slot = suggestTaskSlots(currentWorkspace, task, Date.now(), 1)[0];
     if (!slot) {
       moveToday(taskId);
       return;

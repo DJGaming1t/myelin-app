@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     lineHeight: 21,
-    fontWeight: '750',
+    fontWeight: '700',
   },
   minutesActive: { color: colors.accentBright },
   label: {

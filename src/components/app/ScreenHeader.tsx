@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 36,
     lineHeight: 40,
-    fontWeight: '650',
+    fontWeight: '600',
     letterSpacing: -1.3,
   },
   subtitle: {

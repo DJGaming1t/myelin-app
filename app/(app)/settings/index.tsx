@@ -196,7 +196,7 @@ export default function SettingsScreen() {
             try {
               const result = await deleteAccountAndCloud();
               if (result === 'deleted') {
-                router.replace('/');
+                router.replace('/(auth)');
                 return;
               }
               if (result === 'reauth-required') {

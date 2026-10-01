@@ -37,7 +37,7 @@ assert(tokens.includes('minTouch: 48'), '48-point Android touch target token is 
 assert(motion.includes('AccessibilityInfo.isReduceMotionEnabled'), 'System reduced-motion preference is not read.');
 assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion'), 'User and system motion preferences are not combined.');
 assert(root.includes("animation: reduceMotion ? 'none' : 'fade'"), 'Root navigation ignores reduced motion.');
-assert(app.includes("animation: reduceMotion ? 'none' : 'fade'"), 'Protected navigation ignores reduced motion.');
+assert(app.includes("animation: 'none'"), 'Protected app navigation should not replay route fades between frequent study screens.');
 assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
 assert(app.includes('actionLabel="Try again"'), 'Workspace error state is missing a retry action.');
 assert(app.includes('retryWorkspace()'), 'Workspace retry action is not wired to the provider.');
@@ -65,7 +65,7 @@ assert(!nav.includes("key: 'mistakes'"), 'Mistakes should be contextual to Revie
 assert(!nav.includes("key: 'exams'"), 'Exams should be contextual rather than permanent navigation.');
 assert(nav.includes("router.push('/(app)/quick-add')"), 'Global Quick Add is missing from the navigation shell.');
 
-assert(header.includes('<Reveal'), 'Screen headers are missing entrance motion.');
+assert(!header.includes('<Reveal'), 'Shared screen headers should not replay entrance motion on every navigation.');
 assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
 assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');
 assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');

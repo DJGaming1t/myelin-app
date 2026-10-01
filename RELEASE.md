@@ -19,7 +19,7 @@ This repository is prepared for EAS development, preview and production builds. 
 From a clean checkout on a laptop:
 
 ```bash
-npm install
+npm ci
 npx expo-doctor
 npx eas-cli@latest login
 npx eas-cli@latest init
@@ -45,17 +45,17 @@ For the very first Android build, EAS can create/manage the signing keystore. Ke
 
 ## Google sign-in verification
 
-The native Google sign-in code is already wired, but Firebase must know the SHA-1/SHA-256 certificate fingerprints of the Android signing certificate used by the build.
+The native Google sign-in code is wired and the committed Firebase Android config now contains the Android OAuth client for the EAS preview signing certificate, plus the web OAuth client used for Firebase credential exchange.
 
-Before treating authentication as verified:
+Configuration is not the same as runtime verification. Before treating authentication as fully verified:
 
-1. Create the EAS Android credentials/build.
-2. Read the signing certificate fingerprints from the EAS/Firebase credential workflow.
-3. Add the required fingerprints to the Android app in Firebase.
-4. Download an updated `google-services.json` if Firebase changes it.
-5. Build again and test Google sign-in on a real Android device.
+1. Build the current native runtime.
+2. Install it on a real Android device.
+3. Test email/password sign-in, persistence and sign-out.
+4. Test Google account selection and Firebase sign-in end to end.
+5. Add the Play App Signing SHA-1/SHA-256 to Firebase as well before Play-distributed production testing.
 
-Do not mark the auth safety gate complete until this is tested on-device.
+Do not mark the auth safety gate complete until these flows are tested on-device.
 
 ## Publish code-only preview updates
 
@@ -83,12 +83,12 @@ Production Android builds are store-oriented AABs by default. Do not submit one 
 
 ### Required before the first preview is trusted
 
-- [ ] EAS project linked to the intended Expo account
-- [ ] EAS Update configured with the generated project ID/update URL
-- [ ] Clean `npm install` succeeds
-- [ ] `npx tsc --noEmit` succeeds
-- [ ] All repository verification scripts succeed
-- [ ] `npx expo-doctor` succeeds
+- [x] EAS project linked to the intended Expo account
+- [x] EAS Update configured with the generated project ID/update URL
+- [x] Locked `npm ci` succeeds in GitHub verification
+- [x] `npx tsc --noEmit` succeeds
+- [x] All repository verification scripts succeed
+- [x] `npx expo-doctor` succeeds
 - [ ] Preview APK installs on a real Android device
 - [ ] Local workspace survives force-close/restart
 - [ ] Email/password auth tested on-device

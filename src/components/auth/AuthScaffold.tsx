@@ -1,6 +1,5 @@
-import { PropsWithChildren, useEffect, useRef } from 'react';
+import { PropsWithChildren } from 'react';
 import {
-  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,7 +9,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { Reveal } from '@/src/components/motion/Reveal';
+import { colors, layout, spacing } from '@/src/theme/tokens';
 
 type Props = PropsWithChildren<{
   eyebrow?: string;
@@ -20,62 +21,43 @@ type Props = PropsWithChildren<{
 }>;
 
 export function AuthScaffold({ eyebrow, title, description, compact, children }: Props) {
-  const entrance = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(entrance, {
-      toValue: 1,
-      duration: 420,
-      useNativeDriver: true,
-    }).start();
-  }, [entrance]);
-
   return (
     <SafeAreaView style={styles.safe}>
-      <View pointerEvents="none" style={styles.orbOne} />
-      <View pointerEvents="none" style={styles.orbTwo} />
+      <AmbientBackdrop />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}>
-          <Animated.View
-            style={[
-              styles.content,
-              {
-                opacity: entrance,
-                transform: [
-                  {
-                    translateY: entrance.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [16, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}>
-            <View style={styles.brandRow}>
-              <View style={styles.mark}>
-                <View style={styles.markLineLeft} />
-                <View style={styles.markDot} />
-                <View style={styles.markLineRight} />
+          <View style={styles.content}>
+            <Reveal distance={8}>
+              <View style={styles.brandRow}>
+                <View style={styles.brandMark}>
+                  <View style={styles.brandCore} />
+                </View>
+                <Text style={styles.brand}>MYELIN</Text>
+                <Text style={styles.brandDescriptor}>STUDY SYSTEM</Text>
               </View>
-              <Text style={styles.brand}>MYELIN</Text>
-            </View>
+            </Reveal>
 
-            <View style={styles.heading}>
-              {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-              <Text style={styles.title}>{title}</Text>
-              {description ? <Text style={styles.description}>{description}</Text> : null}
-            </View>
+            <Reveal delay={35} distance={8}>
+              <View style={styles.heading}>
+                {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+                <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+                {description ? <Text style={styles.description}>{description}</Text> : null}
+              </View>
+            </Reveal>
 
-            <View style={styles.panel}>{children}</View>
+            <Reveal delay={70} distance={7}>
+              <View style={styles.body}>{children}</View>
+            </Reveal>
 
             <Text style={styles.footer}>
-              Your study data stays local unless a future sync feature clearly says otherwise.
+              Your study data stays local unless you explicitly enable a sync feature.
             </Text>
-          </Animated.View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -84,86 +66,91 @@ export function AuthScaffold({ eyebrow, title, description, compact, children }:
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  safe: { flex: 1, backgroundColor: colors.bg, overflow: 'hidden' },
+  safe: { flex: 1, backgroundColor: colors.bg },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl,
   },
-  scrollCompact: { justifyContent: 'flex-start' },
-  content: { width: '100%', maxWidth: 520, alignSelf: 'center' },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: spacing.xxl },
-  mark: {
-    width: 31,
-    height: 31,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
+  scrollCompact: {
+    justifyContent: 'flex-start',
+    paddingTop: spacing.lg,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+  },
+  brandRow: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    gap: 9,
+    marginBottom: spacing.xl,
   },
-  markLineLeft: { width: 5, height: 1, backgroundColor: colors.muted, transform: [{ rotate: '35deg' }] },
-  markDot: { width: 7, height: 7, borderRadius: 7, backgroundColor: colors.accent },
-  markLineRight: { width: 5, height: 1, backgroundColor: colors.muted, transform: [{ rotate: '-35deg' }] },
-  brand: { color: colors.text, fontWeight: '800', letterSpacing: 3.2, fontSize: 15 },
-  heading: { marginBottom: spacing.lg },
+  brandMark: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentFaint,
+  },
+  brandCore: {
+    width: 6,
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: colors.accent,
+  },
+  brand: {
+    color: colors.text,
+    fontWeight: '900',
+    letterSpacing: 2.3,
+    fontSize: 11,
+  },
+  brandDescriptor: {
+    color: colors.subtle,
+    fontWeight: '800',
+    letterSpacing: 1.3,
+    fontSize: 7.5,
+    marginLeft: 2,
+  },
+  heading: { marginBottom: spacing.xl },
   eyebrow: {
     color: colors.accent,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.8,
-    marginBottom: spacing.sm,
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: '900',
+    letterSpacing: 1.45,
+    marginBottom: 9,
   },
   title: {
     color: colors.text,
-    fontSize: 38,
-    lineHeight: 42,
+    fontSize: 35,
+    lineHeight: 40,
     fontWeight: '600',
-    letterSpacing: -1.5,
+    letterSpacing: -1.1,
+    maxWidth: layout.readingMax,
   },
   description: {
     color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: spacing.sm,
-    maxWidth: 450,
+    fontSize: 13.5,
+    lineHeight: 20,
+    marginTop: 9,
+    maxWidth: layout.readingMax,
   },
-  panel: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(15,15,16,0.96)',
-    padding: spacing.lg,
+  body: {
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: spacing.lg,
   },
   footer: {
     color: colors.subtle,
     textAlign: 'center',
-    fontSize: 11,
-    lineHeight: 17,
-    marginTop: spacing.md,
+    fontSize: 10.5,
+    lineHeight: 16,
+    marginTop: spacing.xl,
     paddingHorizontal: spacing.md,
-  },
-  orbOne: {
-    position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 260,
-    backgroundColor: 'rgba(255,128,91,0.055)',
-    right: -115,
-    top: -95,
-  },
-  orbTwo: {
-    position: 'absolute',
-    width: 190,
-    height: 190,
-    borderRadius: 190,
-    borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.09)',
-    left: -105,
-    bottom: 90,
   },
 });

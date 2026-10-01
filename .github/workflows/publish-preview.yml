@@ -68,6 +68,13 @@ jobs:
         with:
           node-version: 24
 
+      - name: Use Java for verification
+        if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - name: Setup EAS
         if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
         uses: expo/expo-github-action@v8
@@ -75,16 +82,33 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Verify update-safe source
         if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''
         run: |
           npx tsc --noEmit
+          npm run verify:auth
+          npm run verify:data
+          npm run verify:topics
           npm run verify:today
+          npm run verify:planning
+          npm run verify:focus
+          npm run verify:review
+          npm run verify:mistakes
+          npm run verify:exams
+          npm run verify:progress
+          npm run verify:settings
+          npm run verify:transfer
+          npm run verify:cloud
+          npm run verify:firestore-rules
+          npm run verify:notifications
+          npm run verify:onboarding
           npm run verify:polish
+          npm run verify:release
+          npx expo-doctor
 
       - name: Publish to preview channel
         if: steps.native.outputs.requires_build != 'true' && env.EXPO_TOKEN != ''

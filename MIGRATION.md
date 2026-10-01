@@ -17,7 +17,7 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 ## Feature parity
 - [x] Authentication shell
 - [x] Email/password authentication
-- [ ] Google authentication — web flow and native Android code wired; EAS signing SHA-1 must still be registered and refreshed google-services.json must contain an Android OAuth client
+- [ ] Google authentication — web/native flow wired and Android OAuth client for the EAS preview signing certificate is committed; real-device Google sign-in is still required
 - [x] Verification / password recovery
 - [x] Offline per-user data foundation
 - [x] Topics
@@ -53,10 +53,10 @@ See `ROADMAP.md` for the fixed one-feature-at-a-time build order.
 - [ ] Android production build passes
 
 ## Audit blockers still open
-- [ ] Commit the generated `package-lock.json` so CI/EAS can use a reproducible dependency tree
-- [ ] Confirm GitHub Actions actually executes on a normal Git push; connector-created commits have not surfaced workflow runs
-- [ ] Register EAS Android signing SHA-1 in Firebase/Google Cloud and refresh `google-services.json`
+- [x] Commit the generated `package-lock.json` and use `npm ci` for reproducible verification
+- [x] Confirm GitHub Actions executes on normal branch pushes — verification runs are now observed and enforced
+- [x] Register the EAS preview signing certificate in Firebase and commit refreshed Android OAuth configuration
 - [ ] Verify local data survives process kill/restart on a physical Android device
 - [ ] Verify notification permission, scheduled delivery and tap routing on Android 13+
 - [ ] Verify email/password and Google sign-in on the signed preview APK
-- [ ] Before any future native-runtime rebuild under the `appVersion` runtime policy, bump `expo.version`
+- [x] Bump `expo.version` to 0.2.0 for the next native-runtime rebuild; advance the preview baseline only after that APK is verified

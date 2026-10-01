@@ -10,6 +10,7 @@ import { CloudSyncProvider } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { FocusProvider } from '@/src/features/focus/FocusProvider';
 import { ReminderProvider } from '@/src/features/notifications/ReminderProvider';
 import { OnboardingProvider } from '@/src/features/onboarding/OnboardingProvider';
+import { OnboardingTransitionProvider } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { ReviewProvider } from '@/src/features/review/ReviewProvider';
 import { StartupUpdateGate } from '@/src/features/updates/StartupUpdateGate';
 import { colors } from '@/src/theme/tokens';
@@ -22,6 +23,7 @@ export default function RootLayout() {
         <AuthProvider>
           <WorkspaceProvider>
             <OnboardingProvider>
+              <OnboardingTransitionProvider>
               <FocusProvider>
                 <ReviewProvider>
                   <ReminderProvider>
@@ -31,6 +33,7 @@ export default function RootLayout() {
                   </ReminderProvider>
                 </ReviewProvider>
               </FocusProvider>
+              </OnboardingTransitionProvider>
             </OnboardingProvider>
           </WorkspaceProvider>
         </AuthProvider>

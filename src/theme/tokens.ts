@@ -21,6 +21,18 @@ export const colors = {
   success: '#B8DDB1',
   danger: '#FFA596',
   shadow: '#000000',
+
+  // Semantic aliases for the redesigned system. Keep the legacy names above
+  // while screens migrate so there is still one source of truth.
+  background: '#060607',
+  surface: '#101013',
+  surfaceRaised: '#17171B',
+  surfaceStrong: '#202026',
+  textPrimary: '#F7F5F2',
+  textSecondary: '#C6C2BC',
+  textTertiary: '#9F9A94',
+  divider: 'rgba(255,255,255,0.075)',
+  dividerStrong: 'rgba(255,255,255,0.15)',
 } as const;
 
 export const radius = {
@@ -31,6 +43,7 @@ export const radius = {
   pill: 999,
 } as const;
 
+// Legacy spacing aliases remain while older screens migrate.
 export const spacing = {
   xs: 6,
   sm: 10,
@@ -40,8 +53,56 @@ export const spacing = {
   xxl: 48,
 } as const;
 
+// New work uses the 4/8-point rhythm below.
+export const space = {
+  xxs: 4,
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+  xxxl: 64,
+} as const;
+
+export const type = {
+  display: { fontSize: 40, lineHeight: 44, fontWeight: '600' as const, letterSpacing: -1.2 },
+  pageTitle: { fontSize: 30, lineHeight: 36, fontWeight: '650' as const, letterSpacing: -0.8 },
+  hero: { fontSize: 24, lineHeight: 30, fontWeight: '700' as const, letterSpacing: -0.45 },
+  section: { fontSize: 19, lineHeight: 25, fontWeight: '650' as const, letterSpacing: -0.2 },
+  body: { fontSize: 15, lineHeight: 21, fontWeight: '400' as const },
+  bodyStrong: { fontSize: 15, lineHeight: 21, fontWeight: '600' as const },
+  meta: { fontSize: 13, lineHeight: 18, fontWeight: '500' as const },
+  label: { fontSize: 12, lineHeight: 16, fontWeight: '700' as const, letterSpacing: 0.25 },
+} as const;
+
+export const motion = {
+  pressMs: 110,
+  stateMs: 190,
+  hierarchyMs: 260,
+  pressScale: 0.98,
+} as const;
+
+export const shadow = {
+  floating: {
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
+  quiet: {
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+} as const;
+
 export const layout = {
   contentMax: 820,
   readingMax: 620,
   minTouch: 48,
+  pageInset: 24,
 } as const;

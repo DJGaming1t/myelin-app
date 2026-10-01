@@ -10,7 +10,7 @@ import { PasswordChecklist } from '@/src/components/auth/PasswordChecklist';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { passwordIsReady } from '@/src/features/auth/password';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, spacing } from '@/src/theme/tokens';
 
 export default function SignUpScreen() {
   const { signUpEmail } = useAuth();
@@ -54,9 +54,16 @@ export default function SignUpScreen() {
   return (
     <AuthScaffold
       compact
-      eyebrow="CREATE YOUR SPACE"
-      title="One account. Your pace."
-      description="We only ask for what authentication needs. A display name is optional.">
+      eyebrow="GIVE IT AN IDENTITY"
+      title="Your study system, under one account."
+      description="Create an account for identity and future sync options. MYELIN still works around your study decisions—not your profile.">
+      <View style={styles.identityCue}>
+        <Text style={styles.identityLabel}>THE ACCOUNT IS SECONDARY</Text>
+        <Text style={styles.identityText}>
+          Topics, exams, Today, Focus, Recall and corrections remain the core of MYELIN.
+        </Text>
+      </View>
+
       <AuthField
         label="Display name (optional)"
         value={name}
@@ -107,10 +114,9 @@ export default function SignUpScreen() {
       <KeepSignedInRow value={keepSignedIn} onChange={setKeepSignedIn} />
 
       <View style={styles.privacyNote}>
-        <Text style={styles.privacyTitle}>Less data by default</Text>
+        <Text style={styles.privacyTitle}>Local by default</Text>
         <Text style={styles.privacyText}>
-          Creating an account does not automatically turn on cloud storage for study answers or
-          progress. Sync will be a separate, explicit feature.
+          Creating an account does not automatically upload study answers, corrections or progress.
         </Text>
       </View>
 
@@ -133,13 +139,26 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
+  identityCue: {
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  identityLabel: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 1.15,
+  },
+  identityText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
   privacyNote: {
-    borderRadius: radius.md,
-    padding: 12,
-    backgroundColor: 'rgba(180,216,174,0.055)',
-    borderWidth: 1,
-    borderColor: 'rgba(180,216,174,0.14)',
+    paddingVertical: 10,
     marginBottom: spacing.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
   },
   privacyTitle: { color: colors.success, fontSize: 10.5, fontWeight: '800' },
   privacyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4 },

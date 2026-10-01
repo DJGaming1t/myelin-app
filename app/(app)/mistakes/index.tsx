@@ -198,7 +198,7 @@ export default function MistakesScreen() {
                   ) : null}
                 </View>
                 <View style={styles.rowEnd}>
-                  <Text style={[styles.status, item.resolvedAt && styles.statusResolved]}>{status}</Text>
+                  <Text style={[styles.status, item.resolvedAt > 0 && styles.statusResolved]}>{status}</Text>
                   <AppIcon name="chevron" size={15} color={colors.subtle} />
                 </View>
               </Pressable>

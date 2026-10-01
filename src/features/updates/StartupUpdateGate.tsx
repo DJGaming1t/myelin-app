@@ -14,7 +14,8 @@ export function StartupUpdateGate({ children }: PropsWithChildren) {
     isUpdatePending,
   } = Updates.useUpdates();
 
-  const shouldGate = Updates.isEnabled && Updates.isEmbeddedLaunch;
+  const shouldCheck = Updates.isEnabled;
+  const shouldGate = shouldCheck && Updates.isEmbeddedLaunch;
   const [ready, setReady] = useState(!shouldGate);
   const released = useRef(!shouldGate);
   const reloadStarted = useRef(false);
@@ -32,7 +33,7 @@ export function StartupUpdateGate({ children }: PropsWithChildren) {
   }, [shouldGate]);
 
   useEffect(() => {
-    if (!shouldGate || released.current || reloadStarted.current) return;
+    if (!shouldCheck || reloadStarted.current) return;
 
     if (isUpdatePending) {
       reloadStarted.current = true;
@@ -50,25 +51,32 @@ export function StartupUpdateGate({ children }: PropsWithChildren) {
     void (async () => {
       try {
         const check = await Updates.checkForUpdateAsync();
-        if (released.current) return;
 
         if (!check.isAvailable) {
-          released.current = true;
-          setReady(true);
+          if (shouldGate && !released.current) {
+            released.current = true;
+            setReady(true);
+          }
           return;
         }
 
         await Updates.fetchUpdateAsync();
-        if (released.current) return;
 
         reloadStarted.current = true;
         await Updates.reloadAsync();
       } catch {
-        released.current = true;
-        setReady(true);
+        if (shouldGate && !released.current) {
+          released.current = true;
+          setReady(true);
+        }
       }
     })();
-  }, [isStartupProcedureRunning, isUpdatePending, shouldGate]);
+  }, [
+    isStartupProcedureRunning,
+    isUpdatePending,
+    shouldCheck,
+    shouldGate,
+  ]);
 
   if (ready) return <>{children}</>;
 

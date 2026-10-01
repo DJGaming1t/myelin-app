@@ -37,7 +37,11 @@ assert(tokens.includes('minTouch: 48'), '48-point Android touch target token is 
 assert(motion.includes('AccessibilityInfo.isReduceMotionEnabled'), 'System reduced-motion preference is not read.');
 assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion'), 'User and system motion preferences are not combined.');
 assert(root.includes("animation: reduceMotion ? 'none' : 'fade'"), 'Root navigation ignores reduced motion.');
-assert(app.includes("animation: 'none'"), 'Protected app navigation should not replay route fades between frequent study screens.');
+assert(app.includes("animation: reduceMotion ? 'none' : 'fade_from_bottom'"), 'Hierarchical app navigation should animate unless reduced motion is enabled.');
+assert(app.includes('<Stack.Screen name="today/index" options={{ animation: \'none\' }} />'), 'Today peer navigation must stay instant.');
+assert(app.includes('<Stack.Screen name="topics/index" options={{ animation: \'none\' }} />'), 'Library peer navigation must stay instant.');
+assert(app.includes('<Stack.Screen name="review/index" options={{ animation: \'none\' }} />'), 'Review peer navigation must stay instant.');
+assert(app.includes('<Stack.Screen name="progress/index" options={{ animation: \'none\' }} />'), 'Progress peer navigation must stay instant.');
 assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
 assert(app.includes('actionLabel="Try again"'), 'Workspace error state is missing a retry action.');
 assert(app.includes('retryWorkspace()'), 'Workspace retry action is not wired to the provider.');

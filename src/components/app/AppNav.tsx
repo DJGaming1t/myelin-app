@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { colors, layout, motion, space, type } from '@/src/theme/tokens';
+import { colors, layout, space, type } from '@/src/theme/tokens';
 
 const ITEMS: {
   key: 'today' | 'topics' | 'review' | 'progress';
@@ -25,7 +25,7 @@ export function AppNav() {
     <View style={styles.shell}>
       <View style={styles.wrap}>
         {ITEMS.slice(0, 2).map((item) => (
-          <NavItem key={item.key} item={item} active={pathname.includes(`/${item.key}`)} reduceMotion={reduceMotion} />
+          <NavItem key={item.key} item={item} active={pathname.includes(`/${item.key}`)} />
         ))}
 
         <View style={styles.addSlot}>
@@ -45,7 +45,7 @@ export function AppNav() {
         </View>
 
         {ITEMS.slice(2).map((item) => (
-          <NavItem key={item.key} item={item} active={pathname.includes(`/${item.key}`)} reduceMotion={reduceMotion} />
+          <NavItem key={item.key} item={item} active={pathname.includes(`/${item.key}`)} />
         ))}
       </View>
     </View>
@@ -55,11 +55,9 @@ export function AppNav() {
 function NavItem({
   item,
   active,
-  reduceMotion,
 }: {
   item: (typeof ITEMS)[number];
   active: boolean;
-  reduceMotion: boolean;
 }) {
   return (
     <Pressable
@@ -67,11 +65,13 @@ function NavItem({
       accessibilityLabel={item.label}
       accessibilityHint={active ? 'Current section' : `Open ${item.label}`}
       accessibilityState={{ selected: active }}
-      onPress={() => router.replace(item.path)}
+      onPress={() => {
+        if (active) return;
+        router.replace(item.path);
+      }}
       style={({ pressed }) => [
         styles.item,
-        pressed && styles.pressed,
-        pressed && !reduceMotion && styles.pressedMotion,
+        pressed && !active && styles.pressed,
       ]}>
       <View style={styles.iconBox}>
         <AppIcon name={item.icon} size={20} color={active ? colors.accent : colors.subtle} />
@@ -146,7 +146,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: '600',
   },
-  pressed: { opacity: 0.72 },
-  pressedMotion: { transform: [{ scale: motion.pressScale }] },
+  pressed: { opacity: 0.62 },
   addPressed: { transform: [{ scale: 0.95 }, { translateY: 1 }] },
 });

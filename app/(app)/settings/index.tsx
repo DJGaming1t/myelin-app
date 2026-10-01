@@ -63,7 +63,11 @@ export default function SettingsScreen() {
   } = useAuth();
   const { discard: discardFocus, session: focusSession } = useFocus();
   const { discardReview, session: reviewSession } = useReview();
-  const { deleteAccountAndCloud } = useCloudSync();
+  const {
+    deleteAccountAndCloud,
+    releaseEnabled: cloudSyncAvailable,
+    status: cloudSyncStatus,
+  } = useCloudSync();
   const {
     settings: reminderSettings,
     scheduledCount: reminderScheduledCount,
@@ -453,16 +457,26 @@ export default function SettingsScreen() {
             />
             <PrivacyRow
               label="Cloud sync"
-              value="Opt-in"
-              helper="Cloud sync is controlled from a separate screen and never applies to local-only workspaces."
+              value={cloudSyncAvailable ? (cloudSyncStatus === 'synced' ? 'Synced' : 'Opt-in') : 'Not activated'}
+              helper={
+                cloudSyncAvailable
+                  ? 'Cloud sync is opt-in and never applies to local-only workspaces.'
+                  : 'Cross-device sync is installed but intentionally disabled in this preview until its production Firebase rules are activated.'
+              }
             />
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/(app)/settings/cloud-sync')}
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
               <View style={styles.transferCopy}>
-                <Text style={styles.transferTitle}>Cloud sync</Text>
-                <Text style={styles.transferText}>Status, conflicts and cloud-data controls</Text>
+                <Text style={styles.transferTitle}>
+                  {cloudSyncAvailable ? 'Cloud sync' : 'Cloud sync status'}
+                </Text>
+                <Text style={styles.transferText}>
+                  {cloudSyncAvailable
+                    ? 'Status, conflicts and cloud-data controls'
+                    : 'Why cross-device sync is not activated in this preview'}
+                </Text>
               </View>
               <Text style={styles.transferArrow}>→</Text>
             </Pressable>

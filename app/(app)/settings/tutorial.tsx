@@ -1,13 +1,19 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Animated, {
+  Easing,
   FadeInRight,
   FadeOutLeft,
   LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
 } from 'react-native-reanimated';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -16,37 +22,25 @@ type TutorialStep = 0 | 1 | 2;
 
 const STEPS = [
   {
-    eyebrow: 'ACTIVE RECALL',
-    title: 'Try the answer before you reveal it.',
-    lead: 'MYELIN is built to make memory do the work first. Looking at the answer too early can feel easy without proving that you can actually recall it.',
-    cards: [
-      ['01', 'Answer', 'Attempt the question from memory before opening the reference.'],
-      ['02', 'Reveal', 'Compare what you produced with the reference answer or notes.'],
-      ['03', 'Grade', 'Mark how it went so MYELIN can place the next review at a useful time.'],
-    ],
-    tip: 'Hints are allowed. MYELIN records hint use so a successful answer with help is not treated exactly like clean recall.',
+    eyebrow: 'RECALL',
+    title: 'Think first. Then check.',
+    lead: 'MYELIN works best when your memory gets the first attempt.',
+    flow: ['Answer', 'Reveal', 'Grade'],
+    note: 'A hint is fine. MYELIN simply remembers that help was used.',
   },
   {
-    eyebrow: 'TODAY + FOCUS',
-    title: 'Plan from the time you really have.',
-    lead: 'Today uses your available minutes, due reviews, nearby exams, priority and subject variety to choose a realistic order instead of generating an endless task list.',
-    cards: [
-      ['01', 'Choose capacity', 'Use an ordinary-day estimate, not the biggest study day you can imagine.'],
-      ['02', 'Start one block', 'The next move should be concrete: a topic, a mode and a block length.'],
-      ['03', 'Recover cleanly', 'Focus timers and breaks are stored so closing or backgrounding the app does not erase the session.'],
-    ],
-    tip: 'The five-minute launch exists for starting resistance. It is a smaller doorway into the same study session, not a fake streak or punishment.',
+    eyebrow: 'TODAY',
+    title: 'One useful move, not a giant list.',
+    lead: 'MYELIN uses the time you actually have to choose what matters next.',
+    flow: ['Time', 'Next move', 'Focus'],
+    note: 'You can always adjust today without rebuilding your whole plan.',
   },
   {
-    eyebrow: 'REVIEW LOOP',
-    title: 'Turn mistakes into the next useful attempt.',
-    lead: 'Topics, recall questions, mistakes and exams feed the same loop: study something, retrieve it later, notice what failed, correct it, then retest.',
-    cards: [
-      ['01', 'Capture', 'Add recall questions and record mistakes that reveal a real gap.'],
-      ['02', 'Retest', 'Use Review and the mistake notebook to test the corrected idea again.'],
-      ['03', 'Calibrate', 'Progress compares confidence, results and planned-versus-actual time instead of pretending every session means mastery.'],
-    ],
-    tip: 'You can change daily capacity, focus length, breaks, reminders and reduced motion in Settings at any time.',
+    eyebrow: 'REVIEW',
+    title: 'What struggled comes back.',
+    lead: 'Mistakes and recall results feed the next review instead of disappearing.',
+    flow: ['Study', 'Recall', 'Correct'],
+    note: 'Progress is evidence for the next move, not a score of you.',
   },
 ] as const;
 
@@ -54,6 +48,22 @@ export default function TutorialReplayScreen() {
   const [step, setStep] = useState<TutorialStep>(0);
   const reduceMotion = useReducedMotion();
   const current = STEPS[step];
+  const signal = useSharedValue(0);
+
+  useEffect(() => {
+    signal.value = reduceMotion
+      ? 0.5
+      : withRepeat(
+          withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
+          -1,
+          true,
+        );
+  }, [reduceMotion, signal, step]);
+
+  const signalStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: signal.value * 190 }],
+    opacity: 0.55 + signal.value * 0.45,
+  }));
 
   function back() {
     if (step === 0) {
@@ -73,11 +83,12 @@ export default function TutorialReplayScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.page}>
         <ScreenHeader
           eyebrow="HELP"
           title="How MYELIN works"
-          subtitle="A replayable guide. Nothing on this screen changes your workspace or onboarding status."
+          subtitle="Three ideas. About a minute."
           backLabel="Settings"
           onBack={() => router.back()}
         />
@@ -103,29 +114,35 @@ export default function TutorialReplayScreen() {
             entering={reduceMotion ? undefined : FadeInRight.duration(190)}
             exiting={reduceMotion ? undefined : FadeOutLeft.duration(130)}
             layout={reduceMotion ? undefined : LinearTransition.duration(180)}>
-          <Text style={styles.eyebrow}>{current.eyebrow}</Text>
-          <Text accessibilityRole="header" style={styles.title}>{current.title}</Text>
-          <Text style={styles.lead}>{current.lead}</Text>
+            <Text style={styles.eyebrow}>{current.eyebrow}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{current.title}</Text>
+            <Text style={styles.lead}>{current.lead}</Text>
 
-          <View style={styles.cardGroup}>
-            {current.cards.map(([number, title, note]) => (
-              <View key={number} style={styles.card}>
-                <View style={styles.numberWrap}>
-                  <Text style={styles.number}>{number}</Text>
-                </View>
-                <View style={styles.cardCopy}>
-                  <Text style={styles.cardTitle}>{title}</Text>
-                  <Text style={styles.cardText}>{note}</Text>
-                </View>
+            <View style={styles.signalStage}>
+              <View style={styles.signalHalo} />
+              <View style={styles.rail}>
+                <View style={styles.railLine} />
+                <Animated.View style={[styles.signalDot, signalStyle]} />
               </View>
-            ))}
-          </View>
 
-          <View style={styles.tip}>
-            <Text style={styles.tipMark}>i</Text>
-            <Text style={styles.tipText}>{current.tip}</Text>
-          </View>
+              <View style={styles.flowRow}>
+                {current.flow.map((label, index) => (
+                  <View key={label} style={styles.flowItem}>
+                    <View style={[styles.flowNode, index === 1 && styles.flowNodeAccent]}>
+                      <Text style={[styles.flowNumber, index === 1 && styles.flowNumberAccent]}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <Text style={styles.flowLabel}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
 
+            <View style={styles.note}>
+              <View style={styles.noteDot} />
+              <Text style={styles.noteText}>{current.note}</Text>
+            </View>
           </Animated.View>
 
           <View style={styles.actions}>
@@ -145,10 +162,6 @@ export default function TutorialReplayScreen() {
               <Text style={styles.primaryArrow}>→</Text>
             </Pressable>
           </View>
-
-          <Text style={styles.readOnlyNote}>
-            Tutorial replay is read-only. Your topics, settings, history and first-run completion remain unchanged.
-          </Text>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -185,70 +198,133 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: colors.accent,
-    fontSize: 9,
+    fontSize: 10.5,
     fontWeight: '900',
-    letterSpacing: 1.5,
+    letterSpacing: 1.35,
   },
   title: {
     color: colors.text,
-    fontSize: 29,
-    lineHeight: 34,
+    fontSize: 31,
+    lineHeight: 36,
     fontWeight: '700',
-    letterSpacing: -0.8,
+    letterSpacing: -0.85,
     marginTop: 9,
   },
   lead: {
     color: colors.muted,
-    fontSize: 12,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 20,
     marginTop: 12,
+    maxWidth: 470,
   },
-  cardGroup: { gap: 9, marginTop: spacing.xl },
-  card: {
-    minHeight: 82,
-    borderRadius: radius.md,
+  signalStage: {
+    minHeight: 210,
+    marginTop: spacing.xl,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     backgroundColor: colors.panel,
-    padding: 13,
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-start',
+    padding: spacing.lg,
+    overflow: 'hidden',
+    justifyContent: 'center',
   },
-  numberWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
+  signalHalo: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    right: -72,
+    top: -72,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    opacity: 0.7,
+  },
+  rail: {
+    height: 18,
+    marginHorizontal: 22,
+    justifyContent: 'center',
+  },
+  railLine: {
+    height: 1,
+    backgroundColor: colors.lineStrong,
+  },
+  signalDot: {
+    position: 'absolute',
+    left: 0,
+    width: 11,
+    height: 11,
+    borderRadius: 11,
+    backgroundColor: colors.accentBright,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
+  },
+  flowRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 18,
+  },
+  flowItem: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  flowNode: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.bgRaised,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  flowNodeAccent: {
+    borderColor: colors.accentLine,
     backgroundColor: colors.accentSoft,
   },
-  number: { color: colors.accent, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
-  cardCopy: { flex: 1 },
-  cardTitle: { color: colors.text, fontSize: 12, fontWeight: '800' },
-  cardText: { color: colors.subtle, fontSize: 9.5, lineHeight: 15, marginTop: 4 },
-  tip: {
+  flowNumber: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  flowNumberAccent: { color: colors.accent },
+  flowLabel: {
+    color: colors.textDim,
+    fontSize: 11.5,
+    lineHeight: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  note: {
     marginTop: spacing.md,
+    minHeight: 52,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.18)',
-    backgroundColor: 'rgba(255,128,91,0.05)',
-    padding: 12,
+    backgroundColor: colors.accentFaint,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 9,
   },
-  tipMark: {
-    width: 20,
-    height: 20,
-    borderRadius: 20,
-    color: colors.accent,
-    backgroundColor: colors.accentSoft,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 10,
-    fontWeight: '900',
+  noteDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 7,
+    backgroundColor: colors.accent,
+    flexShrink: 0,
   },
-  tipText: { flex: 1, color: colors.muted, fontSize: 9.5, lineHeight: 15 },
+  noteText: {
+    flex: 1,
+    color: colors.muted,
+    fontSize: 11.5,
+    lineHeight: 17,
+  },
   actions: { flexDirection: 'row', gap: 9, marginTop: spacing.xl },
   secondary: {
     minHeight: layout.minTouch,
@@ -260,7 +336,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 14,
   },
-  secondaryText: { color: colors.text, fontSize: 11, fontWeight: '800' },
+  secondaryText: { color: colors.text, fontSize: 12, fontWeight: '800' },
   primary: {
     flex: 1,
     minHeight: layout.minTouch,
@@ -271,14 +347,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 15,
   },
-  primaryText: { color: '#24120D', fontSize: 11, fontWeight: '900' },
+  primaryText: { color: '#24120D', fontSize: 12, fontWeight: '900' },
   primaryArrow: { color: '#24120D', fontSize: 17, fontWeight: '800' },
-  readOnlyNote: {
-    color: colors.subtle,
-    fontSize: 8.8,
-    lineHeight: 14,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
   pressed: { opacity: 0.7 },
 });

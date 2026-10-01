@@ -232,12 +232,20 @@ function main() {
   console.log('✓ exhausted budget adds no fake work');
   const todayScreen = read('app/(app)/today/index.tsx');
   const planCard = read('src/features/today/PlanBlockCard.tsx');
+  const springPressable = read('src/components/motion/SpringPressable.tsx');
   assert.ok(todayScreen.includes('min left today'), 'Today does not show remaining daily capacity.');
   assert.ok(todayScreen.includes('capacityTrack'), 'Today capacity progress indicator is missing.');
   assert.ok(todayScreen.includes('maxWidth: layout.contentMax'), 'Today is not bounded responsively.');
   assert.ok(todayScreen.includes('minHeight: layout.minTouch'), 'Today choices do not meet the shared touch target.');
-  assert.ok(planCard.includes('useReducedMotion()'), 'Plan cards ignore reduced-motion preference.');
-  assert.ok(planCard.includes('pressed && !reduceMotion && styles.pressedMotion'), 'Plan card press motion is not gated.');
+  assert.ok(planCard.includes('<SpringPressable'), 'Plan cards are missing the shared spring press primitive.');
+  assert.ok(
+    springPressable.includes('useReducedMotion()'),
+    'Shared spring press motion ignores reduced-motion preference.',
+  );
+  assert.ok(
+    springPressable.includes('if (reduceMotion)'),
+    'Shared press motion is not gated when reduced motion is enabled.',
+  );
   assert.ok(todayScreen.includes('deferForToday(next)'), 'Today is missing the defer-for-today action.');
   assert.ok(todayScreen.includes('undoDefer'), 'Today defer action is missing undo.');
   assert.ok(todayScreen.includes('nextLocalDayStart(Date.now())'), 'Today does not defer until the next local day.');

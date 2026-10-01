@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { motion } from '@/src/theme/tokens';
 
 type Props = PropsWithChildren<
   Omit<PressableProps, 'children' | 'style'> & {
@@ -23,24 +24,10 @@ type Props = PropsWithChildren<
   }
 >;
 
-const PRESS_SPRING = {
-  stiffness: 320,
-  damping: 24,
-  mass: 0.58,
-  overshootClamping: true,
-};
-
-const RELEASE_SPRING = {
-  stiffness: 245,
-  damping: 24,
-  mass: 0.58,
-  overshootClamping: true,
-};
-
 export function SpringPressable({
   children,
   style,
-  scaleTo = 0.985,
+  scaleTo = motion.pressScale,
   lift = 1,
   onPressIn,
   onPressOut,
@@ -52,8 +39,8 @@ export function SpringPressable({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: scale.value },
       { translateY: translateY.value },
+      { scale: scale.value },
     ],
   }));
 
@@ -67,9 +54,9 @@ export function SpringPressable({
       return;
     }
 
-    const spring = pressed ? PRESS_SPRING : RELEASE_SPRING;
-    scale.value = withSpring(pressed ? scaleTo : 1, spring);
-    translateY.value = withSpring(pressed ? lift : 0, spring);
+    const spring = pressed ? motion.pressSpring : motion.releaseSpring;
+    scale.value = withSpring(pressed ? scaleTo : 1, { ...spring });
+    translateY.value = withSpring(pressed ? lift : 0, { ...spring });
   }
 
   return (

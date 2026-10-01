@@ -10,17 +10,39 @@ import { PasswordChecklist } from '@/src/components/auth/PasswordChecklist';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { passwordIsReady } from '@/src/features/auth/password';
-import { colors, layout, spacing } from '@/src/theme/tokens';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
+import { colors, layout, radius, space } from '@/src/theme/tokens';
 
 export default function SignUpScreen() {
-  const { signUpEmail, keepSignedIn: defaultKeepSignedIn } = useAuth();
+  const {
+    signUpEmail,
+    signInGoogle,
+    keepSignedIn: defaultKeepSignedIn,
+  } = useAuth();
+  const { runEntryTransition } = useOnboardingTransition();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [keepSignedIn, setKeepSignedIn] = useState(defaultKeepSignedIn);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState('');
+
+  async function google() {
+    setError('');
+    setGoogleBusy(true);
+    try {
+      await runEntryTransition(async () => {
+        await signInGoogle(keepSignedIn);
+        router.replace('/');
+      });
+    } catch (err) {
+      setError(authErrorMessage(err, 'google'));
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
 
   async function submit() {
     setError('');
@@ -54,18 +76,25 @@ export default function SignUpScreen() {
   return (
     <AuthScaffold
       compact
-      eyebrow="GIVE IT AN IDENTITY"
-      title="Your study system, under one account."
-      description="Create an account for identity and future sync options. MYELIN still works around your study decisions—not your profile.">
-      <View style={styles.identityCue}>
-        <Text style={styles.identityLabel}>THE ACCOUNT IS SECONDARY</Text>
-        <Text style={styles.identityText}>
-          Topics, exams, Today, Focus, Recall and corrections remain the core of MYELIN.
-        </Text>
+      eyebrow="CREATE YOUR ACCOUNT"
+      title="Make MYELIN yours."
+      description="Google is the quickest setup. Email works too, with verification before account sync features.">
+      <AuthButton
+        label="Continue with Google"
+        icon="G"
+        variant="google"
+        loading={googleBusy}
+        onPress={google}
+      />
+
+      <View style={styles.divider} accessible={false}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or create with email</Text>
+        <View style={styles.dividerLine} />
       </View>
 
       <AuthField
-        label="Display name (optional)"
+        label="Name (optional)"
         value={name}
         onChangeText={setName}
         placeholder="What should MYELIN call you?"
@@ -114,24 +143,39 @@ export default function SignUpScreen() {
       <KeepSignedInRow value={keepSignedIn} onChange={setKeepSignedIn} />
 
       <View style={styles.privacyNote}>
-        <Text style={styles.privacyTitle}>Local by default</Text>
-        <Text style={styles.privacyText}>
-          Creating an account does not automatically upload study answers, corrections or progress.
-        </Text>
+        <View style={styles.privacyMark}>
+          <View style={styles.privacyCore} />
+        </View>
+        <View style={styles.privacyCopy}>
+          <Text style={styles.privacyTitle}>Local by default</Text>
+          <Text style={styles.privacyText}>
+            Creating an account does not automatically upload your study answers or progress.
+          </Text>
+        </View>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorBox} accessibilityLiveRegion="polite">
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      ) : null}
 
       <AuthButton label="Create account" loading={busy} onPress={submit} />
 
       <View style={styles.bottomRow}>
-        <Text style={styles.muted}>Already have an account?</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.replace('/(auth)/sign-in')} style={styles.inlineLink}>
+        <Text style={styles.muted}>Already use MYELIN?</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace('/(auth)/sign-in')}
+          style={styles.inlineLink}>
           <Text style={styles.link}>Sign in</Text>
         </Pressable>
       </View>
 
-      <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.back()}
+        style={styles.back}>
         <Text style={styles.backText}>← Back</Text>
       </Pressable>
     </AuthScaffold>
@@ -139,39 +183,111 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  identityCue: {
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginVertical: space.lg,
   },
-  identityLabel: {
-    color: colors.accent,
-    fontSize: 8.5,
-    lineHeight: 12,
-    fontWeight: '900',
-    letterSpacing: 1.15,
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.lineStrong,
   },
-  identityText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
+  dividerText: {
+    color: colors.subtle,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
   privacyNote: {
-    paddingVertical: 10,
-    marginBottom: spacing.md,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: space.sm,
+    alignItems: 'flex-start',
+    padding: space.md,
+    marginBottom: space.md,
+    borderWidth: 1,
     borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgRaised,
   },
-  privacyTitle: { color: colors.success, fontSize: 10.5, fontWeight: '800' },
-  privacyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4 },
-  error: { color: colors.danger, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
+  privacyMark: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.accentFaint,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privacyCore: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+  },
+  privacyCopy: { flex: 1 },
+  privacyTitle: {
+    color: colors.textDim,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  privacyText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  errorBox: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,165,150,0.26)',
+    backgroundColor: 'rgba(255,165,150,0.06)',
+    borderRadius: 14,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    marginBottom: space.md,
+  },
+  error: {
+    color: colors.danger,
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
   bottomRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 6,
-    marginTop: spacing.lg,
+    marginTop: space.lg,
   },
-  muted: { color: colors.muted, fontSize: 12 },
-  inlineLink: { minHeight: layout.minTouch, justifyContent: 'center' },
-  link: { color: colors.accent, fontSize: 12, fontWeight: '700' },
-  back: { alignSelf: 'center', minHeight: layout.minTouch, marginTop: spacing.lg, paddingHorizontal: 10, justifyContent: 'center' },
-  backText: { color: colors.subtle, fontSize: 11, fontWeight: '600' },
+  muted: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  inlineLink: {
+    minHeight: layout.minTouch,
+    justifyContent: 'center',
+  },
+  link: {
+    color: colors.accent,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  back: {
+    alignSelf: 'center',
+    minHeight: layout.minTouch,
+    marginTop: space.sm,
+    paddingHorizontal: space.sm,
+    justifyContent: 'center',
+  },
+  backText: {
+    color: colors.subtle,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
 });

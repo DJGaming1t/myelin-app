@@ -19,11 +19,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: 24
+
+      - name: Native runtime boundary
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/check-native-runtime-boundary.cjs
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund

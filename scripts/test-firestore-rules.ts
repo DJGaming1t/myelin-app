@@ -22,7 +22,7 @@ const rules = fs.readFileSync('firestore.rules', 'utf8');
 const manifest = {
   format: 'myelin.cloud.workspace',
   version: 1,
-  schemaVersion: 1,
+  schemaVersion: 2,
   generation: 'g_test_1',
   fingerprint: 'abc-123',
   chunkCount: 1,
@@ -55,6 +55,13 @@ async function main() {
       'users/alice/cloud/current/chunks/0000',
     );
 
+    await assertSucceeds(setDoc(aliceManifest, manifest));
+    await assertSucceeds(
+      setDoc(aliceManifest, {
+        ...manifest,
+        schemaVersion: 1,
+      }),
+    );
     await assertSucceeds(setDoc(aliceManifest, manifest));
     await assertSucceeds(
       setDoc(aliceChunk, {
@@ -125,6 +132,7 @@ async function main() {
 
     console.log('✓ unauthenticated users cannot read or write MYELIN cloud data');
     console.log('✓ one Firebase user cannot read, list or write another user’s sync data');
+    console.log('✓ owners can write current schema v2 manifests while older v1 manifests remain compatible');
     console.log('✓ owners can access only their own bounded manifest/chunk paths');
     console.log('✓ unexpected manifest fields and oversized values are rejected');
     console.log('✓ unrelated Firestore paths remain default-denied');

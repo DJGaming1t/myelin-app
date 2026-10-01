@@ -19,8 +19,8 @@ export function KeepSignedInRow({
         accessibilityLabel="Keep me signed in"
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: '#2a2a2d', true: 'rgba(255,128,91,0.42)' }}
-        thumbColor={value ? colors.accent : '#b2b2ae'}
+        trackColor={{ false: colors.panelHighlight, true: colors.accentLine }}
+        thumbColor={value ? colors.accent : colors.textDim}
       />
     </View>
   );
@@ -28,12 +28,17 @@ export function KeepSignedInRow({
 
 const styles = StyleSheet.create({
   row: {
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     marginBottom: spacing.md,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
   },
   copy: { flex: 1 },
-  title: { color: colors.text, fontSize: 12, fontWeight: '600' },
-  caption: { color: colors.subtle, fontSize: 10.5, lineHeight: 15, marginTop: 2 },
+  title: { color: colors.textDim, fontSize: 11.5, fontWeight: '700' },
+  caption: { color: colors.subtle, fontSize: 10, lineHeight: 14, marginTop: 3 },
 });

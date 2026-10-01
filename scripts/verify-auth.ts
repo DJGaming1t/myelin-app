@@ -69,38 +69,44 @@ assert.ok(
 );
 
 assert.ok(
-  authIntro.includes('Know what to study. Then do it.'),
-  'The first unauthenticated screen should explain MYELIN before asking for an account.',
+  authIntro.includes('Know what to study next.'),
+  'The first unauthenticated screen should state the product value in one sentence.',
 );
 assert.ok(
   authIntro.includes("router.push('/(auth)/access')"),
-  'The product story should lead into a separate authentication choice screen.',
+  'The welcome screen should lead into a separate authentication choice screen.',
+);
+assert.equal(
+  authIntro.includes('TOPICS') || authIntro.includes('EXAMS') || authIntro.includes('TIME'),
+  false,
+  'The welcome screen should not teach the whole product before access.',
+);
+assert.equal(
+  authIntro.includes('<Signal') || authIntro.includes('<LoopStep'),
+  false,
+  'The welcome screen should avoid explanatory diagrams and multi-step study-loop UI.',
 );
 assert.ok(
-  authIntro.includes('TOPICS') &&
-    authIntro.includes('EXAMS') &&
-    authIntro.includes('TIME') &&
-    authIntro.includes('NEXT'),
-  'The opening screen should show the MYELIN decision loop.',
+  authAccess.includes('Continue to MYELIN'),
+  'Authentication choices should have one clear heading.',
+);
+assert.equal(
+  authAccess.includes('PersonalityStep') || authAccess.includes('YOUR STUDY SYSTEM'),
+  false,
+  'Authentication should not repeat the product tutorial.',
 );
 assert.ok(
-  authAccess.includes('Choose how MYELIN remembers you.'),
-  'Authentication choices should carry the MYELIN personality.',
-);
-assert.ok(
-  authAccess.includes('NEXT') &&
-    authAccess.includes('FOCUS') &&
-    authAccess.includes('RECALL') &&
-    authAccess.includes('ADAPT'),
-  'The authentication screen should express the core MYELIN study loop.',
-);
-assert.ok(
-  authAccess.includes('Use MYELIN without an account'),
+  authAccess.includes('Use without an account'),
   'Local-only access must remain explicit and available.',
 );
 assert.ok(
-  authScaffold.includes('<AmbientBackdrop />') && authScaffold.includes('<Reveal'),
-  'Auth forms should use the same visual and motion language as the main app.',
+  authScaffold.includes('<AmbientBackdrop />'),
+  'Auth forms should keep the MYELIN visual shell.',
+);
+assert.equal(
+  authScaffold.includes('<Reveal'),
+  false,
+  'High-frequency auth screens should not replay staged entrance motion.',
 );
 
 console.log('Authentication configuration and experience verification passed.');

@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { PulseHalo } from '@/src/components/motion/PulseHalo';
+import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
@@ -93,6 +93,12 @@ export default function FocusScreen() {
     [session, now],
   );
   const timerDone = session ? timerIsComplete(session, now) : false;
+  const phaseDurationMs = session
+    ? (session.phase === 'break' ? session.breakMinutes : session.plannedFocusMinutes) * 60_000
+    : 1;
+  const phaseProgress = session
+    ? Math.max(0, Math.min(1, 1 - remaining / Math.max(1, phaseDurationMs)))
+    : 0;
 
   async function begin(launchMode: 'full' | 'five-minute') {
     if (!topic) return;
@@ -313,8 +319,13 @@ export default function FocusScreen() {
               value={formatTimer(remaining)}
               label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
               complete={timerDone}
-              active={Boolean(session.runningSince)}
             />
+            <View style={styles.phaseProgress}>
+              <AnimatedProgress
+                value={phaseProgress}
+                accessibilityLabel={`Break progress: ${Math.round(phaseProgress * 100)}%`}
+              />
+            </View>
 
             <Text style={styles.breakPrompt}>
               Stand up, get water, look away from the screen. You do not need to earn the break.
@@ -392,8 +403,13 @@ export default function FocusScreen() {
                   : 'PAUSED'
             }
             complete={timerDone}
-            active={Boolean(session.runningSince)}
           />
+          <View style={styles.phaseProgress}>
+            <AnimatedProgress
+              value={phaseProgress}
+              accessibilityLabel={`Focus progress: ${Math.round(phaseProgress * 100)}%`}
+            />
+          </View>
 
           {canExtend ? (
             <View style={styles.finishPanel}>
@@ -558,10 +574,7 @@ function TopBar({
       <Pressable accessibilityRole="button" onPress={onBack} hitSlop={10}>
         <Text style={styles.back}>← {label === 'Focus' ? 'Today' : 'Today'}</Text>
       </Pressable>
-      <View style={styles.topBrand}>
-        <View style={styles.brandDot} />
-        <Text style={styles.brand}>MYELIN</Text>
-      </View>
+      <Text style={styles.modeTitle}>{label}</Text>
       <Text style={styles.topHelper}>{helper ?? ''}</Text>
     </View>
   );
@@ -580,24 +593,20 @@ function TimerDial({
   value,
   label,
   complete,
-  active = true,
 }: {
   value: string;
   label: string;
   complete?: boolean;
-  active?: boolean;
 }) {
   return (
     <Reveal distance={8}>
-      <PulseHalo active={active && !complete}>
-        <View style={[styles.dial, complete && styles.dialComplete]}>
-          <View style={styles.dialOuterRing} />
-          <View style={styles.dialInner}>
-            <Text style={[styles.timerValue, complete && styles.timerValueComplete]}>{value}</Text>
-            <Text style={styles.timerLabel}>{label}</Text>
-          </View>
+      <View style={[styles.dial, complete && styles.dialComplete]}>
+        <View style={styles.dialOuterRing} />
+        <View style={styles.dialInner}>
+          <Text style={[styles.timerValue, complete && styles.timerValueComplete]}>{value}</Text>
+          <Text style={styles.timerLabel}>{label}</Text>
         </View>
-      </PulseHalo>
+      </View>
     </Reveal>
   );
 }
@@ -618,10 +627,16 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   back: { color: colors.muted, fontSize: 11.5, fontWeight: '600' },
-  topBrand: { position: 'absolute', left: '50%', transform: [{ translateX: -35 }], flexDirection: 'row', alignItems: 'center', gap: 7 },
-  brandDot: { width: 6, height: 6, borderRadius: 6, backgroundColor: colors.accent },
-  brand: { color: colors.text, fontSize: 10.5, fontWeight: '800', letterSpacing: 2.2 },
-  topHelper: { color: colors.subtle, fontSize: 8.5 },
+  modeTitle: {
+    position: 'absolute',
+    left: '50%',
+    transform: [{ translateX: -24 }],
+    color: colors.textDim,
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  topHelper: { color: colors.subtle, fontSize: 9 },
   setupContent: { padding: spacing.lg, paddingBottom: 48 },
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
   setupTitle: { color: colors.text, fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.2, marginTop: 8 },
@@ -653,24 +668,46 @@ const styles = StyleSheet.create({
   sessionContent: { padding: spacing.lg, paddingBottom: 56 },
   sessionHeading: { alignItems: 'center' },
   sessionTitle: { color: colors.text, fontSize: 22, lineHeight: 27, fontWeight: '700', textAlign: 'center', marginTop: 7 },
-  stepCard: { marginTop: spacing.md, width: '100%', maxWidth: 500, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12 },
+  stepCard: {
+    marginTop: spacing.md,
+    width: '100%',
+    maxWidth: 500,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
   stepLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   stepText: { color: colors.text, fontSize: 11.5, lineHeight: 17, marginTop: 5, textAlign: 'center' },
   timerArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   dial: {
     position: 'relative',
-    overflow: 'visible', width: 228, height: 228, borderRadius: 228, marginTop: spacing.xl, borderWidth: 2, borderColor: 'rgba(255,128,91,0.25)', backgroundColor: 'rgba(255,128,91,0.035)', alignItems: 'center', justifyContent: 'center' },
+    overflow: 'visible',
+    width: 228,
+    height: 228,
+    borderRadius: 228,
+    marginTop: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: 'rgba(255,128,91,0.022)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dialComplete: { borderColor: 'rgba(180,216,174,0.34)', backgroundColor: 'rgba(180,216,174,0.04)' },
   dialOuterRing: {
     position: 'absolute',
-    top: -9,
-    left: -9,
-    right: -9,
-    bottom: -9,
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.accentLine,
+    borderColor: colors.lineStrong,
     opacity: 0.55,
+  },
+  phaseProgress: {
+    width: '100%',
+    maxWidth: 280,
+    marginTop: 18,
   },
   dialInner: { width: 188, height: 188, borderRadius: 188, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   timerValue: { color: colors.text, fontSize: 44, lineHeight: 50, fontWeight: '500', letterSpacing: -2 },

@@ -18,6 +18,8 @@ const release = read('RELEASE.md');
 const gitignore = read('.gitignore');
 const verifyWorkflow = read('.github/workflows/verify.yml');
 const nativeGuard = read('scripts/check-native-runtime-boundary.cjs');
+const rootLayout = read('app/_layout.tsx');
+const startupUpdateGate = read('src/features/updates/StartupUpdateGate.tsx');
 const googleServices = json('google-services.json');
 
 assert(eas.build?.development?.developmentClient === true, 'Development client profile is missing.');
@@ -31,6 +33,14 @@ assert(eas.cli?.appVersionSource === 'remote', 'EAS version source should be rem
 assert(app.expo?.runtimeVersion?.policy === 'appVersion', 'Runtime version policy must protect native compatibility.');
 assert(app.expo?.android?.package === 'com.djgaming1t.myelin', 'Android application ID changed unexpectedly.');
 assert(pkg.dependencies?.['expo-updates'], 'expo-updates is not installed.');
+assert(rootLayout.includes('<StartupUpdateGate>'), 'Root layout must gate fresh embedded launches on a compatible OTA check.');
+assert(startupUpdateGate.includes('Updates.isEmbeddedLaunch'), 'Startup update gate should only block an embedded/fresh-install launch.');
+assert(startupUpdateGate.includes('Updates.useUpdates()'), 'Startup update gate must observe the native startup update procedure.');
+assert(startupUpdateGate.includes('isUpdatePending'), 'Startup update gate must immediately apply a downloaded pending update.');
+assert(startupUpdateGate.includes('Updates.checkForUpdateAsync()'), 'Startup update gate needs an explicit fallback update check.');
+assert(startupUpdateGate.includes('Updates.fetchUpdateAsync()'), 'Startup update gate must fetch an available update.');
+assert(startupUpdateGate.includes('Updates.reloadAsync()'), 'Startup update gate must reload into a downloaded update.');
+assert(startupUpdateGate.includes('STARTUP_UPDATE_GATE_MS = 4500'), 'Startup update gate needs a bounded wait so offline launches are not trapped.');
 assert(pkg.scripts?.['eas:preview'], 'Preview build script is missing.');
 assert(pkg.scripts?.['eas:update:preview'], 'Preview update script is missing.');
 assert(

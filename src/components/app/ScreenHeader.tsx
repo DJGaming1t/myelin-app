@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
+import { colors, layout, radius, space, type } from '@/src/theme/tokens';
 
 type Props = {
   eyebrow?: string;
@@ -24,26 +24,22 @@ export function ScreenHeader({
   onAction,
   variant = 'standard',
 }: Props) {
-  const reduceMotion = useReducedMotion();
-
   return (
     <View style={[styles.wrap, variant === 'compact' && styles.wrapCompact]}>
       <View style={styles.topRow}>
         {onBack ? (
-          <Pressable
+          <SpringPressable
             accessibilityRole="button"
             accessibilityLabel={backLabel}
             accessibilityHint="Go to the previous screen"
             onPress={onBack}
             hitSlop={8}
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-              pressed && !reduceMotion && styles.pressedMotion,
-            ]}>
+            scaleTo={0.985}
+            lift={0}
+            style={styles.backButton}>
             <Text style={styles.backArrow}>←</Text>
             <Text style={styles.backText}>{backLabel}</Text>
-          </Pressable>
+          </SpringPressable>
         ) : (
           <View style={styles.brandRow} accessible accessibilityLabel="MYELIN">
             <View style={styles.brandMark}><View style={styles.brandCore} /></View>
@@ -52,18 +48,16 @@ export function ScreenHeader({
         )}
 
         {actionLabel && onAction ? (
-          <Pressable
+          <SpringPressable
             accessibilityRole="button"
             accessibilityLabel={actionLabel}
             onPress={onAction}
             hitSlop={8}
-            style={({ pressed }) => [
-              styles.actionButton,
-              pressed && styles.pressed,
-              pressed && !reduceMotion && styles.pressedMotion,
-            ]}>
+            scaleTo={0.985}
+            lift={0}
+            style={styles.actionButton}>
             <Text style={styles.actionText}>{actionLabel}</Text>
-          </Pressable>
+          </SpringPressable>
         ) : null}
       </View>
 
@@ -158,6 +152,5 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
     maxWidth: layout.readingMax,
   },
-  pressed: { opacity: 0.72 },
-  pressedMotion: { transform: [{ scale: motion.pressScale }] },
+
 });

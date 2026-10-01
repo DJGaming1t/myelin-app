@@ -11,12 +11,14 @@ import { FocusProvider } from '@/src/features/focus/FocusProvider';
 import { ReminderProvider } from '@/src/features/notifications/ReminderProvider';
 import { OnboardingProvider } from '@/src/features/onboarding/OnboardingProvider';
 import { ReviewProvider } from '@/src/features/review/ReviewProvider';
+import { StartupUpdateGate } from '@/src/features/updates/StartupUpdateGate';
 import { colors } from '@/src/theme/tokens';
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <StartupUpdateGate>
         <AuthProvider>
           <WorkspaceProvider>
             <OnboardingProvider>
@@ -32,6 +34,7 @@ export default function RootLayout() {
             </OnboardingProvider>
           </WorkspaceProvider>
         </AuthProvider>
+        </StartupUpdateGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -16,6 +16,7 @@ import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { TopicStatus } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
@@ -148,8 +149,7 @@ export default function TopicsScreen() {
           </Text>
         </Pressable>
 
-        {showFilters ? (
-          <View style={styles.filtersPanel}>
+        <AnimatedDisclosure visible={showFilters} style={styles.filtersPanel}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -197,8 +197,7 @@ export default function TopicsScreen() {
                 <Text style={styles.clearFiltersText}>Clear filters</Text>
               </Pressable>
             ) : null}
-          </View>
-        ) : null}
+        </AnimatedDisclosure>
 
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 

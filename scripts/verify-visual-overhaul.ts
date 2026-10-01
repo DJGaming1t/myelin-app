@@ -23,6 +23,11 @@ function main() {
   const springPressable = read('src/components/motion/SpringPressable.tsx');
   assert.ok(springPressable.includes('useReducedMotion'));
 
+  const disclosure = read('src/components/motion/AnimatedDisclosure.tsx');
+  assert.ok(disclosure.includes('FadeInDown.duration(motion.stateMs)'));
+  assert.ok(disclosure.includes('FadeOutUp.duration(motion.pressMs + 20)'));
+  assert.ok(disclosure.includes('useReducedMotion'));
+
   const progress = read('src/components/motion/AnimatedProgress.tsx');
   assert.ok(progress.includes('useReducedMotion'));
 
@@ -30,6 +35,7 @@ function main() {
   assert.ok(nav.includes("label: 'Library'"));
   assert.ok(nav.includes("router.push('/(app)/quick-add')"));
   assert.ok(nav.includes('<AppIcon'));
+  assert.ok(nav.includes('addButtonFrame'));
   assert.equal(nav.includes("key: 'exams'"), false);
   assert.equal((nav.match(/\{ key: '(today|topics|review|progress)'/g) ?? []).length, 4);
 
@@ -56,6 +62,8 @@ function main() {
   assert.ok(today.includes('Later today'));
   assert.ok(today.includes('Adjust today'));
   assert.ok(today.includes('showAdjust'));
+  assert.ok(today.includes('<AnimatedDisclosure visible={showWhy}'));
+  assert.ok(today.includes('<AnimatedDisclosure visible={showAdjust}'));
   assert.ok(today.includes('Why this?'));
   assert.equal(today.includes('TUNE TODAY'), false);
   assert.equal(today.includes('SummaryMetric'), false);
@@ -77,9 +85,13 @@ function main() {
     );
   }
 
+  const topicsLayout = read('app/(app)/topics/_layout.tsx');
+  assert.ok(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'));
+
   const topics = read('app/(app)/topics/index.tsx');
   assert.ok(topics.includes('title="Library"'));
   assert.ok(topics.includes('showFilters'));
+  assert.ok(topics.includes('<AnimatedDisclosure visible={showFilters}'));
   assert.ok(topics.includes('ActionRow'));
   assert.equal(topics.includes('eyebrow="STUDY LIBRARY"'), false);
 
@@ -98,6 +110,7 @@ function main() {
   const dayMap = read('app/(app)/today/day-map.tsx');
   assert.ok(dayMap.includes('TIMELINE'));
   assert.ok(dayMap.includes('showPlanning'));
+  assert.ok(dayMap.includes('<AnimatedDisclosure visible={showPlanning}>'));
   assert.ok(dayMap.includes('Planning options'));
   assert.equal(dayMap.includes('>Flow</Text>'), false);
 
@@ -116,12 +129,14 @@ function main() {
 
   const progressScreen = read('app/(app)/progress/index.tsx');
   assert.ok(progressScreen.includes('showEvidence'));
+  assert.ok(progressScreen.includes('<AnimatedDisclosure visible={showEvidence}>'));
   assert.ok(progressScreen.includes('See deeper evidence'));
   assert.ok(progressScreen.includes('Evidence, not a score'));
 
   const mistakes = read('app/(app)/mistakes/index.tsx');
   assert.ok(mistakes.includes('title="Corrections"'));
   assert.ok(mistakes.includes('showBrowse'));
+  assert.ok(mistakes.includes('<AnimatedDisclosure visible={showBrowse}'));
   assert.ok(mistakes.includes('Browse corrections'));
   assert.equal(mistakes.includes('CORRECTION LOOP'), false);
 

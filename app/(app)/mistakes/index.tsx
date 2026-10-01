@@ -15,6 +15,7 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppIcon } from '@/src/components/app/AppIcon';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   buildMistakeRetestQueue,
@@ -132,8 +133,7 @@ export default function MistakesScreen() {
           <Text style={styles.browseMeta}>{showBrowse ? 'Hide' : 'Search · filter · history'}</Text>
         </Pressable>
 
-        {showBrowse ? (
-          <View style={styles.browsePanel}>
+        <AnimatedDisclosure visible={showBrowse} style={styles.browsePanel}>
             <View style={styles.searchWrap}>
               <TextInput
                 accessibilityLabel="Search corrections"
@@ -163,8 +163,7 @@ export default function MistakesScreen() {
               <FilterChip label={`Open ${counts.open}`} active={filter === 'open'} onPress={() => setFilter('open')} />
               <FilterChip label={`Resolved ${counts.resolved}`} active={filter === 'resolved'} onPress={() => setFilter('resolved')} />
             </ScrollView>
-          </View>
-        ) : null}
+        </AnimatedDisclosure>
 
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 

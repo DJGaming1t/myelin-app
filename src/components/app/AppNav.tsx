@@ -28,16 +28,18 @@ export function AppNav() {
         ))}
 
         <View style={styles.addSlot}>
-          <SpringPressable
-            accessibilityRole="button"
-            accessibilityLabel="Add to MYELIN"
-            accessibilityHint="Add a topic, task, exam or fixed time"
-            onPress={() => router.push('/(app)/quick-add')}
-            scaleTo={0.96}
-            lift={1}
-            style={styles.addButton}>
-            <AppIcon name="add" size={24} color="#27130D" />
-          </SpringPressable>
+          <View style={styles.addButtonFrame}>
+            <SpringPressable
+              accessibilityRole="button"
+              accessibilityLabel="Add to MYELIN"
+              accessibilityHint="Add a topic, task, exam or fixed time"
+              onPress={() => router.push('/(app)/quick-add')}
+              scaleTo={0.96}
+              lift={1}
+              style={styles.addButton}>
+              <AppIcon name="add" size={24} color="#27130D" />
+            </SpringPressable>
+          </View>
           <Text accessible={false} style={styles.addLabel}>Add</Text>
         </View>
 
@@ -122,6 +124,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
+  addButtonFrame: {
+    width: 50,
+    height: 50,
+    alignSelf: 'center',
+    marginTop: -18,
+    marginBottom: 1,
+  },
   addButton: {
     width: 50,
     height: 50,
@@ -129,8 +138,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -18,
-    marginBottom: 1,
     shadowColor: colors.shadow,
     shadowOpacity: 0.28,
     shadowRadius: 15,

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   addLocalDays,
@@ -328,8 +329,7 @@ export default function DayMapScreen() {
             <Text style={styles.planningToggleMark}>{showPlanning ? '−' : '+'}</Text>
           </Pressable>
 
-          {showPlanning ? (
-            <>
+          <AnimatedDisclosure visible={showPlanning}>
           <View style={styles.freeStrip}>
             <View style={styles.fitHeader}>
               <Text style={styles.sectionLabel}>WHERE STUDY CAN FIT</Text>
@@ -397,8 +397,7 @@ export default function DayMapScreen() {
             </View>
             <Text style={styles.rebuildArrow}>→</Text>
           </Pressable>
-            </>
-          ) : null}
+          </AnimatedDisclosure>
         </ScrollView>
       </View>
     </SafeAreaView>

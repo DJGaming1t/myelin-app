@@ -1,8 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
-import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
+import { colors, layout, radius, space, type } from '@/src/theme/tokens';
 
 type Props = {
   icon?: AppIconName;
@@ -14,7 +13,6 @@ type Props = {
 };
 
 export function ActionRow({ icon, title, detail, meta, onPress, accent = false }: Props) {
-  const reduceMotion = useReducedMotion();
   const content = (
     <>
       {icon ? (
@@ -41,7 +39,6 @@ export function ActionRow({ icon, title, detail, meta, onPress, accent = false }
       style={({ pressed }) => [
         styles.row,
         pressed && styles.pressed,
-        pressed && !reduceMotion && styles.pressedMotion,
       ]}>
       {content}
     </Pressable>
@@ -72,6 +69,5 @@ const styles = StyleSheet.create({
   detail: { color: colors.muted, ...type.meta, marginTop: 2 },
   meta: { color: colors.muted, ...type.meta, fontWeight: '600' },
   metaAccent: { color: colors.accent },
-  pressed: { opacity: 0.72 },
-  pressedMotion: { transform: [{ scale: motion.pressScale }] },
+  pressed: { opacity: 0.72, backgroundColor: colors.accentFaint },
 });

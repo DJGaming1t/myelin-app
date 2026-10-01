@@ -15,6 +15,7 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppButton } from '@/src/components/app/AppButton';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
@@ -256,13 +257,11 @@ export default function TodayScreen() {
                 {next.reasons[0] ?? (next.mode === 'review' ? 'Ready for recall' : 'Worth continuing')}
               </Text>
 
-              {showWhy ? (
-                <View style={styles.whyBox}>
+              <AnimatedDisclosure visible={showWhy} style={styles.whyBox}>
                   {next.reasons.map((reason) => (
                     <Text key={reason} style={styles.whyText}>• {sentenceCase(reason)}</Text>
                   ))}
-                </View>
-              ) : null}
+              </AnimatedDisclosure>
 
               <View style={styles.heroActions}>
                 <AppButton
@@ -402,8 +401,7 @@ export default function TodayScreen() {
             </View>
           </View>
 
-          {showAdjust ? (
-            <View style={styles.adjustPanel}>
+          <AnimatedDisclosure visible={showAdjust} style={styles.adjustPanel}>
               <View style={styles.adjustHeader}>
                 <View style={styles.adjustCopy}>
                   <Text style={styles.adjustTitle}>Available study time</Text>
@@ -442,14 +440,13 @@ export default function TodayScreen() {
                   wide
                 />
               </View>
-            </View>
-          ) : null}
+          </AnimatedDisclosure>
 
-          {showInbox && currentPlan.inboxTaskCount > 0 ? (
-            <View style={styles.inboxWrap}>
-              <StudyInboxCard />
-            </View>
-          ) : null}
+          <AnimatedDisclosure
+            visible={showInbox && currentPlan.inboxTaskCount > 0}
+            style={styles.inboxWrap}>
+            <StudyInboxCard />
+          </AnimatedDisclosure>
 
           <View style={styles.bottomSpace} />
         </ScrollView>

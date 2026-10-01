@@ -18,7 +18,15 @@ export default function AuthLayout() {
   if (localMode || user?.emailVerified) return <Redirect href="/(app)" />;
   if (user) return <Redirect href="/(verification)/verify-email" />;
 
-  return <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+        contentStyle: { backgroundColor: colors.bg },
+      }}
+    />
+  );
 }
 
 const styles = StyleSheet.create({

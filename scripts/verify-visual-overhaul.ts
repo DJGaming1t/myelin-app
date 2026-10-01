@@ -38,10 +38,10 @@ function main() {
 
   const quickAdd = read('app/(app)/quick-add.tsx');
   assert.ok(quickAdd.includes('Add to MYELIN'));
-  assert.ok(quickAdd.includes("title="Topic""));
-  assert.ok(quickAdd.includes("title="Task""));
-  assert.ok(quickAdd.includes("title="Exam""));
-  assert.ok(quickAdd.includes("title="Fixed time""));
+  assert.ok(quickAdd.includes('title="Topic"'));
+  assert.ok(quickAdd.includes('title="Task"'));
+  assert.ok(quickAdd.includes('title="Exam"'));
+  assert.ok(quickAdd.includes('title="Fixed time"'));
 
   const topicForm = read('src/features/topics/TopicForm.tsx');
   assert.ok(topicForm.includes('showAdvanced'));

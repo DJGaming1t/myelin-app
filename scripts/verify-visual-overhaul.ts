@@ -66,6 +66,10 @@ function main() {
     'app/(app)/topics/[topicId]/index.tsx',
     'app/(app)/progress/index.tsx',
     'app/(app)/settings/index.tsx',
+    'app/(app)/settings/cloud-sync.tsx',
+    'app/(app)/settings/data-transfer.tsx',
+    'app/(app)/settings/reminders.tsx',
+    'app/(app)/settings/tutorial.tsx',
   ]) {
     assert.ok(
       read(path).includes('<AmbientBackdrop />'),
@@ -152,6 +156,12 @@ assert.ok(authIntro.includes('StudyPathVisual'));
 assert.ok(onboarding.includes('OnboardingShell'));
   assert.equal(onboarding.includes('TopicStep'), false);
   assert.equal(onboarding.includes('AnimatedProgress'), false);
+
+  const tutorialScreen = read('app/(app)/settings/tutorial.tsx');
+  assert.ok(tutorialScreen.includes('Three ideas. About a minute.'));
+  assert.ok(tutorialScreen.includes('signalStage'));
+  assert.ok(tutorialScreen.includes('withRepeat'));
+  assert.equal(tutorialScreen.includes('current.cards'), false);
 
   const settingsScreen = read('app/(app)/settings/index.tsx');
   assert.ok(settingsScreen.includes('accessibilityState={{ expanded: open }}'));

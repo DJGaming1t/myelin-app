@@ -165,7 +165,7 @@ assert.ok(onboarding.includes('OnboardingShell'));
 
   const settingsScreen = read('app/(app)/settings/index.tsx');
   assert.ok(settingsScreen.includes('accessibilityState={{ expanded: open }}'));
-  assert.ok(settingsScreen.includes('FadeInDown.duration(180)'));
+  assert.ok(settingsScreen.includes('FadeInDown.duration(motion.stateMs)'));
   assert.ok(settingsScreen.includes('label="Delete account"'));
   assert.equal(settingsScreen.includes('<AppNav />'), false);
 

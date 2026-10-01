@@ -150,6 +150,8 @@ function main() {
   assert.ok(rootGate.includes("'/(onboarding)'"));
 
   const screenSource = fs.readFileSync('app/(onboarding)/index.tsx', 'utf8');
+  const shellSource = fs.readFileSync('src/components/onboarding/OnboardingShell.tsx', 'utf8');
+  const welcomeSource = fs.readFileSync('app/(auth)/index.tsx', 'utf8');
   assert.ok(screenSource.includes("finish('skipped')"));
   assert.ok(screenSource.includes('applyOnboardingSetup'));
   assert.ok(screenSource.includes('Enter MYELIN'));
@@ -157,6 +159,10 @@ function main() {
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);
   assert.equal(screenSource.includes('Create topic & enter MYELIN'), false);
+  assert.ok(shellSource.includes('scrollable?: boolean'));
+  assert.ok(shellSource.includes('height < 740'));
+  assert.ok(welcomeSource.includes('scrollable={false}'));
+  assert.ok(welcomeSource.includes('I already use MYELIN'));
 
   console.log('✓ a truly fresh workspace enters first-run onboarding');
   console.log('✓ completed, skipped and experienced workspaces bypass onboarding');
@@ -169,6 +175,7 @@ assert.ok(screenSource.includes('OnboardingShell'));
   console.log('✓ creating a first topic cannot auto-dismiss onboarding mid-flow');
   console.log('✓ app/root route guards send fresh users to onboarding');
   console.log('✓ the UI keeps setup to one decision with an explicit skip path');
+  console.log('✓ the welcome screen keeps both entry actions in the first viewport');
 }
 
 main();

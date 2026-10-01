@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Props = {
@@ -22,17 +23,17 @@ export function AuthButton({
   const unavailable = disabled || loading;
 
   return (
-    <Pressable
+    <SpringPressable
       accessibilityRole="button"
       accessibilityState={{ disabled: !!unavailable, busy: !!loading }}
       disabled={unavailable}
       onPress={onPress}
-      style={({ pressed }) => [
+      scaleTo={0.988}
+      style={[
         styles.base,
         variant === 'primary' && styles.primary,
         variant === 'secondary' && styles.secondary,
         variant === 'quiet' && styles.quiet,
-        pressed && !unavailable && styles.pressed,
         unavailable && styles.disabled,
       ]}>
       <View style={styles.row}>
@@ -50,7 +51,7 @@ export function AuthButton({
           <Text accessible={false} style={styles.arrow}>→</Text>
         ) : null}
       </View>
-    </Pressable>
+    </SpringPressable>
   );
 }
 
@@ -74,10 +75,6 @@ const styles = StyleSheet.create({
   quiet: {
     backgroundColor: 'transparent',
     borderColor: colors.line,
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.99 }],
   },
   disabled: { opacity: 0.46 },
   row: {

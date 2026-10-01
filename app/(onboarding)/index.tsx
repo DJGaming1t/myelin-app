@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import {
   OnboardingPrimaryButton,
   OnboardingShell,
 } from '@/src/components/onboarding/OnboardingShell';
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   DAILY_CAPACITY_OPTIONS,
@@ -82,15 +83,16 @@ export default function OnboardingScreen() {
         {DAILY_CAPACITY_OPTIONS.map((minutes) => {
           const active = capacity === minutes;
           return (
-            <Pressable
+            <SpringPressable
               key={minutes}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => setCapacity(minutes)}
-              style={({ pressed }) => [
+              scaleTo={0.992}
+              lift={0}
+              style={[
                 styles.option,
                 active && styles.optionActive,
-                pressed && styles.pressed,
               ]}>
               <View>
                 <Text style={[styles.minutes, active && styles.minutesActive]}>
@@ -102,7 +104,7 @@ export default function OnboardingScreen() {
               <View style={[styles.marker, active && styles.markerActive]}>
                 {active ? <View style={styles.markerDot} /> : null}
               </View>
-            </Pressable>
+            </SpringPressable>
           );
         })}
       </View>
@@ -176,5 +178,4 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   primaryWrap: { marginTop: spacing.lg },
-  pressed: { opacity: 0.68 },
 });

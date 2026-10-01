@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { motion as motionTokens } from '@/src/theme/tokens';
 
 type Props = PropsWithChildren<{
   delay?: number;
@@ -23,7 +24,7 @@ export function Reveal({
   children,
   delay = 0,
   distance = 12,
-  duration = 240,
+  duration = motionTokens.hierarchyMs,
   style,
 }: Props) {
   const reduceMotion = useReducedMotion();
@@ -53,12 +54,7 @@ export function Reveal({
 
     motion.value = withDelay(
       delay,
-      withSpring(1, {
-        damping: 20,
-        stiffness: 170,
-        mass: 0.68,
-        overshootClamping: true,
-      }),
+      withSpring(1, { ...motionTokens.revealSpring }),
     );
   }, [delay, duration, motion, opacity, reduceMotion]);
 

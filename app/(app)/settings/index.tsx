@@ -36,7 +36,7 @@ import {
   providerLabels,
   workspaceDataSummary,
 } from '@/src/features/settings/settings-engine';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
 
 const DAILY = [30, 60, 90, 120, 180];
 const FOCUS = [20, 25, 30, 45, 60];
@@ -581,7 +581,7 @@ function Section({
     rotation.value = reduceMotion
       ? open ? 1 : 0
       : withTiming(open ? 1 : 0, {
-          duration: 180,
+          duration: motion.stateMs,
           easing: Easing.out(Easing.cubic),
         });
   }, [open, reduceMotion, rotation]);
@@ -592,7 +592,7 @@ function Section({
 
   return (
     <Animated.View
-      layout={reduceMotion ? undefined : LinearTransition.duration(180)}
+      layout={reduceMotion ? undefined : LinearTransition.duration(motion.stateMs)}
       style={styles.section}>
       <Pressable
         accessibilityRole="button"
@@ -612,9 +612,9 @@ function Section({
       </Pressable>
       {open ? (
         <Animated.View
-          entering={reduceMotion ? undefined : FadeInDown.duration(180)}
-          exiting={reduceMotion ? undefined : FadeOutUp.duration(130)}
-          layout={reduceMotion ? undefined : LinearTransition.duration(180)}
+          entering={reduceMotion ? undefined : FadeInDown.duration(motion.stateMs)}
+          exiting={reduceMotion ? undefined : FadeOutUp.duration(motion.pressMs + 20)}
+          layout={reduceMotion ? undefined : LinearTransition.duration(motion.stateMs)}
           style={styles.sectionBody}>
           {children}
         </Animated.View>
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
   sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   sectionIndicator: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
+  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md, overflow: 'hidden' },
   settingBlock: { paddingVertical: 4, marginBottom: 13 },
   settingTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   settingLabel: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },

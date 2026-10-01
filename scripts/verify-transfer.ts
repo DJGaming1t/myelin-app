@@ -491,6 +491,8 @@ async function main() {
     kind: 'tuition',
     startAt: now + 2000,
     endAt: now + 5000,
+    startMinutes: 16 * 60,
+    endMinutes: 17 * 60,
     recurrenceDays: [1, 3, 5],
     createdAt: now - 100,
     updatedAt: now - 100,

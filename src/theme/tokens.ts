@@ -9,7 +9,7 @@ export const colors = {
   text: '#F7F5F2',
   textDim: '#C6C2BC',
   muted: '#9F9A94',
-  subtle: '#6D6964',
+  subtle: '#89847D',
   line: 'rgba(255,255,255,0.075)',
   lineStrong: 'rgba(255,255,255,0.15)',
   accent: '#FF825D',

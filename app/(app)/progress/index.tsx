@@ -46,8 +46,6 @@ export default function ProgressScreen() {
           eyebrow="RECORDED EVIDENCE"
           title="Progress"
           subtitle="No mastery score. These are patterns from your actual study, recall and correction history."
-          actionLabel="Today"
-          onAction={() => router.push('/(app)/today')}
           actionLabel="Settings"
           onAction={() => router.push('/(app)/settings')}
         />

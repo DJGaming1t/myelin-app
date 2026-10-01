@@ -45,31 +45,34 @@ assert(header.includes('accessibilityRole="header"'), 'Screen titles are not exp
 assert(header.includes('minHeight: layout.minTouch'), 'Header controls are too small.');
 assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tablet/web bounded.');
 assert(focus.includes('setInterval(() => setNow(Date.now()), 1000)'), 'Focus timer redraw frequency was not reduced.');
-assert(reveal.includes('Animated.timing'), 'Shared entrance motion is missing.');
+assert(reveal.includes("from 'react-native-reanimated'"), 'Shared entrance motion is not running through Reanimated.');
+assert(reveal.includes('withTiming') && reveal.includes('withSpring'), 'Shared entrance motion is missing timing/spring transitions.');
 assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
-assert(
-  nav.includes('activeGlow') && nav.includes('activeDot'),
-  'Bottom navigation is missing the new active glow/dot treatment.',
-);
-assert(nav.includes('glyphWrapActive'), 'Bottom navigation is missing the active glyph treatment.');
-assert((nav.match(/path: '\/\(app\)\//g) ?? []).length === 5, 'Compact bottom navigation should expose exactly five primary destinations.');
-assert(!nav.includes("key: 'settings'"), 'Settings should be a secondary destination, not a seventh phone tab.');
-assert(!nav.includes("key: 'topics'"), 'Topics should be reached contextually from Today, not a sixth phone tab.');
+assert(nav.includes('activeIndicator'), 'Bottom navigation is missing the active indicator treatment.');
+
+assert((nav.match(/path: '\/\(app\)\//g) ?? []).length === 5, 'Bottom navigation should expose exactly five primary destinations.');
+assert(!nav.includes("key: 'settings'"), 'Settings should remain secondary.');
+assert(nav.includes("key: 'topics'"), 'Topics should be a first-class study destination.');
+assert(!nav.includes("key: 'mistakes'"), 'Mistakes should be contextual to Review/Today rather than permanent navigation.');
+
 assert(header.includes('<Reveal'), 'Screen headers are missing entrance motion.');
 assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
 assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');
 assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');
-assert(pulseHalo.includes('Animated.loop'), 'Focus breathing halo animation is missing.');
-assert(pulseHalo.includes('reduceMotion'), 'Focus breathing halo ignores reduced-motion.');
-assert(pulseHalo.includes('isInteraction: false'), 'Looping focus motion should not hold an interaction handle.');
-assert(!pulseHalo.includes('shadowOpacity: pulse.interpolate'), 'Native-driven focus motion must not animate shadow opacity.');
-assert(animatedProgress.includes('Animated.spring'), 'Animated progress spring primitive is missing.');
+assert(pulseHalo.includes('reduceMotion'), 'Legacy halo primitive must remain accessibility-safe while it exists.');
+
+assert(animatedProgress.includes("from 'react-native-reanimated'"), 'Progress animation is not running through Reanimated.');
+assert(animatedProgress.includes('withSpring'), 'Animated progress spring primitive is missing.');
+assert(animatedProgress.includes('scaleX'), 'Progress should animate a transform instead of layout width.');
 assert(animatedProgress.includes('if (reduceMotion)'), 'Animated progress ignores reduced motion.');
-assert(springPressable.includes('Animated.spring'), 'Shared spring press primitive is missing.');
+assert(springPressable.includes("from 'react-native-reanimated'"), 'Shared press feedback is not running through Reanimated.');
+assert(springPressable.includes('withSpring'), 'Shared spring press primitive is missing.');
 assert(springPressable.includes('useReducedMotion()'), 'Shared press motion ignores reduced motion.');
 assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
 assert(today.includes('nextGlow'), 'Today next-move card lacks focal visual treatment.');
-assert(focus.includes('<PulseHalo'), 'Focus timer is missing the breathing halo.');
+assert(focus.includes('<AnimatedProgress'), 'Focus must show explicit phase progress.');
+assert(focus.includes('phaseProgress'), 'Focus phase progress is not derived from the timer.');
+assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while the student is working.');
 assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
 assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
 

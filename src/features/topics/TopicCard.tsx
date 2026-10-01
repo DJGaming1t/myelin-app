@@ -1,100 +1,172 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
-
 import { Topic } from '@/src/data/schema';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, spacing } from '@/src/theme/tokens';
 
 const STATUS_LABEL: Record<Topic['status'], string> = {
-  new: 'NEW',
-  learning: 'LEARNING',
-  review: 'REVIEW',
+  new: 'New',
+  learning: 'Learning',
+  review: 'Review',
 };
 
 const PRIORITY_LABEL: Record<Topic['priority'], string> = {
-  1: 'LOW',
-  2: 'NORMAL',
-  3: 'HIGH',
+  1: 'Low',
+  2: 'Normal',
+  3: 'High',
 };
 
 export function TopicCard({ topic, onPress }: { topic: Topic; onPress: () => void }) {
+  const dueCount = topic.cards.filter(
+    (card) => card.dueAt > 0 && card.dueAt <= Date.now(),
+  ).length;
+
   return (
     <SpringPressable
       accessibilityRole="button"
       accessibilityLabel={`${topic.name}, ${topic.subject}`}
       onPress={onPress}
-      style={styles.card}
-      scaleTo={0.982}
-      lift={1}>
-      <View style={styles.top}>
-        <View style={styles.subjectRow}>
-          <Text style={styles.subject}>{topic.subject}</Text>
-          <View style={styles.dot} />
+      style={styles.row}
+      scaleTo={0.99}
+      lift={0}>
+      <View
+        style={[
+          styles.stateRail,
+          topic.status === 'review' && styles.stateRailReview,
+          topic.priority === 3 && styles.stateRailPriority,
+        ]}
+      />
+
+      <View style={styles.copy}>
+        <View style={styles.top}>
+          <Text style={styles.subject} numberOfLines={1}>{topic.subject}</Text>
           <Text style={styles.status}>{STATUS_LABEL[topic.status]}</Text>
         </View>
-        <Text style={styles.arrow}>→</Text>
+
+        <Text style={styles.name}>{topic.name}</Text>
+
+        <View style={styles.meta}>
+          <Text style={styles.metaText}>{topic.estimate} min</Text>
+          <View style={styles.dot} />
+          <Text style={styles.metaText}>
+            {topic.cards.length} recall {topic.cards.length === 1 ? 'question' : 'questions'}
+          </Text>
+          {dueCount > 0 ? (
+            <>
+              <View style={styles.dot} />
+              <Text style={styles.dueText}>{dueCount} due</Text>
+            </>
+          ) : null}
+          {topic.priority === 3 ? (
+            <>
+              <View style={styles.dot} />
+              <Text style={styles.priorityText}>{PRIORITY_LABEL[topic.priority]} priority</Text>
+            </>
+          ) : null}
+        </View>
+
+        {topic.notes ? (
+          <Text style={styles.notes} numberOfLines={1}>{topic.notes}</Text>
+        ) : null}
       </View>
 
-      <Text style={styles.name}>{topic.name}</Text>
-
-      {topic.notes ? (
-        <Text style={styles.notes} numberOfLines={2}>
-          {topic.notes}
-        </Text>
-      ) : (
-        <Text style={styles.notesMuted}>No notes yet.</Text>
-      )}
-
-      <View style={styles.meta}>
-        <Meta value={`${topic.estimate} min`} />
-        <Meta value={`${topic.cards.length} recall ${topic.cards.length === 1 ? 'question' : 'questions'}`} />
-        <Meta value={`${PRIORITY_LABEL[topic.priority]} priority`} accent={topic.priority === 3} />
-      </View>
+      <Text accessible={false} style={styles.arrow}>›</Text>
     </SpringPressable>
   );
 }
 
-function Meta({ value, accent }: { value: string; accent?: boolean }) {
-  return (
-    <View style={[styles.metaPill, accent && styles.metaPillAccent]}>
-      <Text style={[styles.metaText, accent && styles.metaTextAccent]}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panelGlass,
-    borderRadius: radius.lg,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 4,
-    padding: spacing.md,
-    marginBottom: 10,
+  row: {
+    minHeight: 92,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 13,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
   },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  subjectRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
-  subject: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
-  dot: { width: 3, height: 3, borderRadius: 3, backgroundColor: colors.subtle },
-  status: { color: colors.accent, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.1 },
-  arrow: { color: colors.subtle, fontSize: 17 },
-  name: { color: colors.text, fontSize: 18, lineHeight: 23, fontWeight: '700', marginTop: 10 },
-  notes: { color: colors.muted, fontSize: 11.5, lineHeight: 17, marginTop: 7 },
-  notesMuted: { color: colors.subtle, fontSize: 11.5, lineHeight: 17, marginTop: 7 },
-  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.md },
-  metaPill: {
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.bg,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+  stateRail: {
+    width: 3,
+    borderRadius: 3,
+    backgroundColor: colors.lineStrong,
   },
-  metaPillAccent: { borderColor: 'rgba(255,128,91,0.2)', backgroundColor: colors.accentSoft },
-  metaText: { color: colors.subtle, fontSize: 9.5, fontWeight: '600' },
-  metaTextAccent: { color: colors.accent },
+  stateRailReview: {
+    backgroundColor: colors.success,
+  },
+  stateRailPriority: {
+    backgroundColor: colors.accent,
+  },
+  copy: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  top: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  subject: {
+    flexShrink: 1,
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+  },
+  status: {
+    color: colors.subtle,
+    fontSize: 9.5,
+    lineHeight: 13,
+    fontWeight: '700',
+  },
+  name: {
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '700',
+    marginTop: 5,
+    letterSpacing: -0.15,
+  },
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 7,
+  },
+  metaText: {
+    color: colors.subtle,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  dot: {
+    width: 2,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: colors.subtle,
+  },
+  dueText: {
+    color: colors.success,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  priorityText: {
+    color: colors.accent,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  notes: {
+    color: colors.muted,
+    fontSize: 10.5,
+    lineHeight: 15,
+    marginTop: 6,
+  },
+  arrow: {
+    alignSelf: 'center',
+    color: colors.subtle,
+    fontSize: 22,
+    lineHeight: 24,
+    paddingLeft: spacing.xs,
+  },
 });

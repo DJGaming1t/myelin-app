@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -53,6 +54,7 @@ export default function ExamsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.page}>
         <ScreenHeader
           eyebrow="EXAM PRESSURE"
@@ -229,7 +231,13 @@ const styles = StyleSheet.create({
   listView: { flex: 1 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: 38 },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
-  card: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md, marginBottom: 9 },
+  card: {
+    minHeight: 82,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+    paddingVertical: 14,
+    marginBottom: 0,
+  },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   cardCopy: { flex: 1 },
   cardName: { color: colors.text, fontSize: 14, fontWeight: '700' },

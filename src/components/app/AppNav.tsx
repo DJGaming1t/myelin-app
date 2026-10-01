@@ -5,11 +5,11 @@ import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion'
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const ITEMS = [
-  { key: 'today', label: 'Today', glyph: '●', path: '/(app)/today' as const },
-  { key: 'review', label: 'Review', glyph: '↻', path: '/(app)/review' as const },
-  { key: 'mistakes', label: 'Mistakes', glyph: '!', path: '/(app)/mistakes' as const },
-  { key: 'exams', label: 'Exams', glyph: '◇', path: '/(app)/exams' as const },
-  { key: 'progress', label: 'Progress', glyph: '▥', path: '/(app)/progress' as const },
+  { key: 'today', label: 'Today', path: '/(app)/today' as const },
+  { key: 'topics', label: 'Topics', path: '/(app)/topics' as const },
+  { key: 'review', label: 'Review', path: '/(app)/review' as const },
+  { key: 'exams', label: 'Exams', path: '/(app)/exams' as const },
+  { key: 'progress', label: 'Progress', path: '/(app)/progress' as const },
 ];
 
 export function AppNav() {
@@ -35,16 +35,10 @@ export function AppNav() {
                 pressed && styles.pressed,
                 pressed && !reduceMotion && styles.pressedMotion,
               ]}>
-              <View style={[styles.glyphWrap, active && styles.glyphWrapActive]}>
-                {active ? <View style={styles.activeGlow} /> : null}
-                <Text accessible={false} style={[styles.glyph, active && styles.activeText]}>
-                  {item.glyph}
-                </Text>
-              </View>
+              <View style={[styles.activeIndicator, active && styles.activeIndicatorVisible]} />
               <Text accessible={false} style={[styles.label, active && styles.activeText]}>
                 {item.label}
               </Text>
-              {active ? <View style={styles.activeDot} /> : null}
             </Pressable>
           );
         })}
@@ -56,81 +50,61 @@ export function AppNav() {
 const styles = StyleSheet.create({
   shell: {
     paddingHorizontal: spacing.md,
-    paddingTop: 5,
+    paddingTop: 6,
     paddingBottom: 8,
     backgroundColor: 'transparent',
   },
   wrap: {
     width: '100%',
     maxWidth: layout.contentMax,
-    minHeight: 68,
+    minHeight: 60,
     alignSelf: 'center',
     flexDirection: 'row',
-    paddingHorizontal: 7,
-    paddingVertical: 7,
+    padding: 5,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: 'rgba(16,16,19,0.97)',
+    borderColor: colors.line,
+    backgroundColor: 'rgba(13,13,16,0.96)',
     shadowColor: colors.shadow,
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 18,
+    shadowOpacity: 0.26,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
   item: {
     flex: 1,
     minHeight: layout.minTouch,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    borderRadius: 18,
-    position: 'relative',
+    gap: 5,
+    borderRadius: 16,
   },
   itemActive: {
-    backgroundColor: colors.accentFaint,
+    backgroundColor: 'rgba(255,255,255,0.045)',
   },
-  glyphWrap: {
-    width: 32,
-    height: 28,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+  activeIndicator: {
+    width: 18,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
   },
-  glyphWrapActive: {
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-    backgroundColor: colors.accentSoft,
-  },
-  activeGlow: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 28,
-    backgroundColor: colors.accentGlow,
-    opacity: 0.42,
-  },
-  glyph: {
-    color: colors.subtle,
-    fontSize: 14,
-    fontWeight: '800',
+  activeIndicatorVisible: {
+    backgroundColor: colors.accent,
   },
   label: {
     color: colors.subtle,
-    fontSize: 9.2,
+    fontSize: 10.5,
+    lineHeight: 13,
     fontWeight: '700',
-    letterSpacing: 0.1,
+    letterSpacing: 0.05,
   },
-  activeText: { color: colors.accentBright },
-  activeDot: {
-    position: 'absolute',
-    bottom: 3,
-    width: 3,
-    height: 3,
-    borderRadius: 3,
-    backgroundColor: colors.accent,
+  activeText: {
+    color: colors.text,
   },
-  pressed: { opacity: 0.72 },
-  pressedMotion: { transform: [{ scale: 0.955 }, { translateY: 1 }] },
+  pressed: {
+    opacity: 0.74,
+  },
+  pressedMotion: {
+    transform: [{ scale: 0.98 }],
+  },
 });

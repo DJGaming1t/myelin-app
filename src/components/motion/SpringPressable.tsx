@@ -1,16 +1,17 @@
+import { PropsWithChildren } from 'react';
 import {
-  PropsWithChildren,
-  useCallback,
-  useRef,
-} from 'react';
-import {
-  Animated,
   Pressable,
   PressableProps,
   StyleProp,
   StyleSheet,
   ViewStyle,
 } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 
@@ -22,6 +23,20 @@ type Props = PropsWithChildren<
   }
 >;
 
+const PRESS_SPRING = {
+  stiffness: 320,
+  damping: 24,
+  mass: 0.58,
+  overshootClamping: true,
+};
+
+const RELEASE_SPRING = {
+  stiffness: 245,
+  damping: 24,
+  mass: 0.58,
+  overshootClamping: true,
+};
+
 export function SpringPressable({
   children,
   style,
@@ -32,43 +47,30 @@ export function SpringPressable({
   ...props
 }: Props) {
   const reduceMotion = useReducedMotion();
-  const scale = useRef(new Animated.Value(1)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
+  const scale = useSharedValue(1);
+  const translateY = useSharedValue(0);
 
-  const animate = useCallback(
-    (pressed: boolean) => {
-      scale.stopAnimation();
-      translateY.stopAnimation();
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { translateY: translateY.value },
+    ],
+  }));
 
-      if (reduceMotion) {
-        scale.setValue(1);
-        translateY.setValue(0);
-        return;
-      }
+  function animate(pressed: boolean) {
+    cancelAnimation(scale);
+    cancelAnimation(translateY);
 
-      Animated.parallel([
-        Animated.spring(scale, {
-          toValue: pressed ? scaleTo : 1,
-          stiffness: pressed ? 320 : 245,
-          damping: 24,
-          mass: 0.58,
-          overshootClamping: true,
-          isInteraction: false,
-          useNativeDriver: true,
-        }),
-        Animated.spring(translateY, {
-          toValue: pressed ? lift : 0,
-          stiffness: pressed ? 320 : 245,
-          damping: 24,
-          mass: 0.58,
-          overshootClamping: true,
-          isInteraction: false,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    },
-    [lift, reduceMotion, scale, scaleTo, translateY],
-  );
+    if (reduceMotion) {
+      scale.value = 1;
+      translateY.value = 0;
+      return;
+    }
+
+    const spring = pressed ? PRESS_SPRING : RELEASE_SPRING;
+    scale.value = withSpring(pressed ? scaleTo : 1, spring);
+    translateY.value = withSpring(pressed ? lift : 0, spring);
+  }
 
   return (
     <Pressable
@@ -82,13 +84,7 @@ export function SpringPressable({
         onPressOut?.(event);
       }}
       style={styles.pressable}>
-      <Animated.View
-        style={[
-          style,
-          {
-            transform: [{ scale }, { translateY }],
-          },
-        ]}>
+      <Animated.View style={[style, animatedStyle]}>
         {children}
       </Animated.View>
     </Pressable>

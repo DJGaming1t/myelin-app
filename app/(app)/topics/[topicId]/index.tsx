@@ -2,12 +2,17 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { buildReviewQueue } from '@/src/features/review/review-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
-import { deleteQuestionFromWorkspace, deleteTopicFromWorkspace, findTopic } from '@/src/features/topics/topic-operations';
+import {
+  deleteQuestionFromWorkspace,
+  deleteTopicFromWorkspace,
+  findTopic,
+} from '@/src/features/topics/topic-operations';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
@@ -33,6 +38,51 @@ export default function TopicDetailScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  const currentWorkspace = workspace;
+  const currentTopic = topic;
+  const dueNow = buildReviewQueue(currentWorkspace, { topicId }).length;
+  const recommendReview = dueNow > 0 && currentTopic.cards.length > 0;
+
+  function openFocus() {
+    if (activeReview) {
+      router.push('/(app)/review');
+      return;
+    }
+    if (activeFocus) {
+      router.push('/(app)/focus');
+      return;
+    }
+
+    const target =
+      currentWorkspace.settings.energy === 'low'
+        ? Math.max(5, Math.min(25, currentWorkspace.settings.focusMinutes, currentTopic.estimate))
+        : Math.max(5, Math.min(currentWorkspace.settings.focusMinutes, currentTopic.estimate));
+
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        topicId,
+        minutes: String(target),
+        breakMinutes: String(currentWorkspace.settings.breakMinutes),
+      },
+    });
+  }
+
+  function openReview() {
+    if (activeFocus) {
+      router.push('/(app)/focus');
+      return;
+    }
+    if (activeReview) {
+      router.push('/(app)/review');
+      return;
+    }
+    router.push({
+      pathname: '/(app)/review',
+      params: { topicId },
+    });
   }
 
   function deleteTopic() {
@@ -75,10 +125,11 @@ export default function TopicDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <ScreenHeader
         eyebrow={topic.subject.toUpperCase()}
         title={topic.name}
-        subtitle="Keep the material useful for future you: concise notes, specific recall prompts, and realistic study estimates."
+        subtitle="Everything MYELIN knows about this topic, with the most useful next move first."
         onBack={() => router.back()}
         actionLabel="Edit"
         onAction={() =>
@@ -90,97 +141,88 @@ export default function TopicDetailScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.metaGrid}>
-          <Meta label="STATUS" value={topic.status === 'new' ? 'New' : topic.status === 'learning' ? 'Learning' : 'Review'} />
-          <Meta label="PRIORITY" value={topic.priority === 3 ? 'High' : topic.priority === 2 ? 'Normal' : 'Low'} accent={topic.priority === 3} />
-          <Meta label="ESTIMATE" value={`${topic.estimate} min`} />
-          <Meta label="QUESTIONS" value={String(topic.cards.length)} />
+        <View style={styles.stateStrip}>
+          <StateMetric
+            label="STATE"
+            value={topic.status === 'new' ? 'New' : topic.status === 'learning' ? 'Learning' : 'Review'}
+          />
+          <View style={styles.stateDivider} />
+          <StateMetric
+            label="PRIORITY"
+            value={topic.priority === 3 ? 'High' : topic.priority === 2 ? 'Normal' : 'Low'}
+            accent={topic.priority === 3}
+          />
+          <View style={styles.stateDivider} />
+          <StateMetric label="TIME" value={`${currentTopic.estimate}m`} />
+          <View style={styles.stateDivider} />
+          <StateMetric label="RECALL" value={String(topic.cards.length)} />
         </View>
 
+        <Text style={styles.sectionKicker}>NEXT MOVE</Text>
         <Pressable
           accessibilityRole="button"
-          onPress={() => {
-            if (activeReview) {
-              router.push('/(app)/review');
-              return;
-            }
-
-            if (activeFocus) {
-              router.push('/(app)/focus');
-              return;
-            }
-
-            const target = workspace.settings.energy === 'low'
-              ? Math.max(5, Math.min(25, workspace.settings.focusMinutes, topic.estimate))
-              : Math.max(5, Math.min(workspace.settings.focusMinutes, topic.estimate));
-
-            router.push({
-              pathname: '/(app)/focus',
-              params: {
-                topicId,
-                minutes: String(target),
-                breakMinutes: String(workspace.settings.breakMinutes),
-              },
-            });
-          }}
-          style={({ pressed }) => [styles.focusButton, pressed && styles.pressed]}>
-          <View>
-            <Text style={styles.focusButtonLabel}>
-              {activeReview ? 'REVIEW ACTIVE' : activeFocus ? 'SESSION ACTIVE' : 'FOCUS THIS TOPIC'}
+          accessibilityLabel={recommendReview ? 'Review due recall questions' : 'Start focus on this topic'}
+          onPress={recommendReview ? openReview : openFocus}
+          style={({ pressed }) => [styles.nextMove, pressed && styles.pressed]}>
+          <View style={styles.nextMoveCopy}>
+            <Text style={styles.nextMoveLabel}>
+              {activeFocus || activeReview
+                ? 'SESSION IN PROGRESS'
+                : recommendReview
+                  ? 'ACTIVE RECALL'
+                  : 'FOCUS'}
             </Text>
-            <Text style={styles.focusButtonText}>
+            <Text style={styles.nextMoveTitle}>
               {activeReview
-                ? 'Resume the active recall queue'
+                ? 'Resume your recall queue'
                 : activeFocus
                   ? `Resume ${activeFocus.topicName}`
-                  : 'Choose a tiny first step, then start'}
+                  : recommendReview
+                    ? `Review ${dueNow} ${dueNow === 1 ? 'question' : 'questions'} due now`
+                    : 'Study this topic with one concrete first step'}
+            </Text>
+            <Text style={styles.nextMoveMeta}>
+              {recommendReview
+                ? 'Retrieval is due, so MYELIN is prioritising recall before more input.'
+                : `${currentTopic.estimate} min estimate · ${currentWorkspace.settings.energy === 'low' ? 'low-energy pacing' : 'normal pacing'}`}
             </Text>
           </View>
-          <Text style={styles.focusButtonArrow}>→</Text>
+          <Text style={styles.nextMoveArrow}>→</Text>
         </Pressable>
 
-        {topic.cards.length ? (
+        {topic.cards.length > 0 ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => {
-              if (activeFocus) {
-                router.push('/(app)/focus');
-                return;
-              }
-
-              if (activeReview) {
-                router.push('/(app)/review');
-                return;
-              }
-
-              router.push({
-                pathname: '/(app)/review',
-                params: { topicId },
-              });
-            }}
-            style={({ pressed }) => [styles.reviewButton, pressed && styles.pressed]}>
+            onPress={recommendReview ? openFocus : openReview}
+            style={({ pressed }) => [styles.secondaryMove, pressed && styles.pressed]}>
             <View>
-              <Text style={styles.reviewButtonLabel}>ACTIVE RECALL</Text>
-              <Text style={styles.reviewButtonText}>
-                {buildReviewQueue(workspace, { topicId }).length > 0
-                  ? `${buildReviewQueue(workspace, { topicId }).length} questions ready now`
-                  : `Practise ${topic.cards.length} saved ${topic.cards.length === 1 ? 'question' : 'questions'}`}
+              <Text style={styles.secondaryMoveLabel}>
+                {recommendReview ? 'STUDY INSTEAD' : 'RECALL'}
+              </Text>
+              <Text style={styles.secondaryMoveTitle}>
+                {recommendReview ? 'Start a focus block' : `Practise ${topic.cards.length} saved ${topic.cards.length === 1 ? 'question' : 'questions'}`}
               </Text>
             </View>
-            <Text style={styles.reviewButtonArrow}>→</Text>
+            <Text style={styles.secondaryMoveArrow}>›</Text>
           </Pressable>
         ) : null}
 
-        <SectionHeader title="Notes" action="Edit topic" onAction={() =>
-          router.push({
-            pathname: '/(app)/topics/[topicId]/edit',
-            params: { topicId },
-          })
-        } />
+        <SectionHeader
+          title="Notes"
+          action="Edit"
+          onAction={() =>
+            router.push({
+              pathname: '/(app)/topics/[topicId]/edit',
+              params: { topicId },
+            })
+          }
+        />
 
-        <View style={styles.notesCard}>
+        <View style={styles.notesSection}>
+          <View style={styles.notesRail} />
           <Text style={topic.notes ? styles.notes : styles.notesEmpty}>
-            {topic.notes || 'No notes yet. Add key definitions, weak areas or chapter boundaries when they become useful.'}
+            {topic.notes ||
+              'No notes yet. Add only what will help future study: definitions, chapter boundaries, or a weak area to revisit.'}
           </Text>
         </View>
 
@@ -197,47 +239,50 @@ export default function TopicDetailScreen() {
 
         {topic.cards.length ? (
           <View style={styles.questions}>
-            {topic.cards.map((question, index) => (
-              <Pressable
-                key={question.id}
-                accessibilityRole="button"
-                onPress={() =>
-                  router.push({
-                    pathname: '/(app)/topics/[topicId]/question/[questionId]',
-                    params: { topicId, questionId: question.id },
-                  })
-                }
-                style={({ pressed }) => [styles.questionCard, pressed && styles.pressed]}>
-                <View style={styles.questionIndex}>
-                  <Text style={styles.questionIndexText}>{String(index + 1).padStart(2, '0')}</Text>
-                </View>
-                <View style={styles.questionCopy}>
-                  <Text style={styles.questionPrompt} numberOfLines={3}>
-                    {question.prompt}
-                  </Text>
-                  <Text style={styles.questionMeta}>
-                    {question.hint ? 'Hint ready' : 'No hint'} · {question.answer ? 'Reference answer ready' : 'No reference answer'}
-                  </Text>
-                </View>
+            {topic.cards.map((question, index) => {
+              const due = question.dueAt > 0 && question.dueAt <= Date.now();
+              return (
                 <Pressable
+                  key={question.id}
                   accessibilityRole="button"
-                  accessibilityLabel="Delete recall question"
-                  hitSlop={10}
-                  onPress={(event) => {
-                    event.stopPropagation();
-                    deleteQuestion(question.id);
-                  }}
-                  style={({ pressed }) => [styles.deleteMini, pressed && styles.pressed]}>
-                  <Text style={styles.deleteMiniText}>×</Text>
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(app)/topics/[topicId]/question/[questionId]',
+                      params: { topicId, questionId: question.id },
+                    })
+                  }
+                  style={({ pressed }) => [styles.questionRow, pressed && styles.pressed]}>
+                  <Text style={styles.questionIndex}>{String(index + 1).padStart(2, '0')}</Text>
+                  <View style={styles.questionCopy}>
+                    <Text style={styles.questionPrompt} numberOfLines={3}>
+                      {question.prompt}
+                    </Text>
+                    <Text style={[styles.questionMeta, due && styles.questionDue]}>
+                      {due ? 'Due now' : question.dueAt > 0 ? 'Scheduled' : 'New'}
+                      {' · '}
+                      {question.hint ? 'hint ready' : 'no hint'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete recall question"
+                    hitSlop={10}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      deleteQuestion(question.id);
+                    }}
+                    style={({ pressed }) => [styles.deleteMini, pressed && styles.pressed]}>
+                    <Text style={styles.deleteMiniText}>×</Text>
+                  </Pressable>
                 </Pressable>
-              </Pressable>
-            ))}
+              );
+            })}
           </View>
         ) : (
           <View style={styles.emptyQuestions}>
             <Text style={styles.emptyTitle}>No recall questions yet.</Text>
             <Text style={styles.emptyText}>
-              Add prompts that force you to retrieve an idea instead of rereading it.
+              Add prompts that force retrieval instead of rereading.
             </Text>
             <Pressable
               accessibilityRole="button"
@@ -256,9 +301,9 @@ export default function TopicDetailScreen() {
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
         <View style={styles.dangerZone}>
-          <Text style={styles.dangerTitle}>Danger zone</Text>
+          <Text style={styles.dangerTitle}>Delete topic</Text>
           <Text style={styles.dangerText}>
-            Deleting a topic also removes linked local study history and mistakes so no broken references remain.
+            This also removes linked local study history and mistakes so no broken references remain.
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -272,11 +317,19 @@ export default function TopicDetailScreen() {
   );
 }
 
-function Meta({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function StateMetric({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
-    <View style={styles.metaCard}>
-      <Text style={styles.metaLabel}>{label}</Text>
-      <Text style={[styles.metaValue, accent && styles.metaValueAccent]}>{value}</Text>
+    <View style={styles.stateMetric}>
+      <Text style={styles.stateLabel}>{label}</Text>
+      <Text style={[styles.stateValue, accent && styles.stateValueAccent]}>{value}</Text>
     </View>
   );
 }
@@ -302,57 +355,117 @@ function SectionHeader({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 56 },
+  content: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 56,
+  },
   notFound: { flex: 1, justifyContent: 'center', padding: spacing.xl },
   notFoundText: { color: colors.muted, textAlign: 'center', lineHeight: 20 },
-  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metaCard: {
-    width: '48.5%',
-    minHeight: 76,
-    borderRadius: radius.md,
-    borderWidth: 1,
+  stateStrip: {
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: 12,
-    justifyContent: 'space-between',
   },
-  metaLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.2 },
-  metaValue: { color: colors.text, fontSize: 15, fontWeight: '700', marginTop: 9 },
-  metaValueAccent: { color: colors.accent },
-  focusButton: {
-    marginTop: 10,
-    minHeight: 64,
-    borderRadius: radius.md,
+  stateMetric: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  stateDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.line,
+    marginVertical: 12,
+  },
+  stateLabel: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  stateValue: {
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  stateValueAccent: { color: colors.accent },
+  sectionKicker: {
+    color: colors.subtle,
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    marginTop: spacing.xl,
+    marginBottom: 9,
+  },
+  nextMove: {
+    minHeight: 116,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.26)',
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 14,
   },
-  focusButtonLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  focusButtonText: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 4 },
-  focusButtonArrow: { color: colors.accent, fontSize: 19 },
-  reviewButton: {
+  nextMoveCopy: { flex: 1 },
+  nextMoveLabel: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  nextMoveTitle: {
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  nextMoveMeta: {
+    color: colors.muted,
+    fontSize: 10.5,
+    lineHeight: 16,
+    marginTop: 6,
+  },
+  nextMoveArrow: { color: colors.accent, fontSize: 22 },
+  secondaryMove: {
+    minHeight: layout.minTouch,
     marginTop: 8,
-    minHeight: 64,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(180,216,174,0.2)',
-    backgroundColor: 'rgba(180,216,174,0.05)',
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    paddingHorizontal: 2,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
   },
-  reviewButtonLabel: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  reviewButtonText: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 4 },
-  reviewButtonArrow: { color: colors.success, fontSize: 19 },
+  secondaryMoveLabel: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+  },
+  secondaryMoveTitle: {
+    color: colors.textDim,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  secondaryMoveArrow: { color: colors.subtle, fontSize: 20 },
   sectionHeader: {
     marginTop: spacing.xl,
     marginBottom: 10,
@@ -360,53 +473,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  sectionAction: { color: colors.accent, fontSize: 11.5, fontWeight: '700' },
-  notesCard: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: spacing.md,
+  sectionTitle: { color: colors.text, fontSize: 16, lineHeight: 21, fontWeight: '700' },
+  sectionAction: { color: colors.accent, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
+  notesSection: {
+    minHeight: 64,
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 4,
   },
-  notes: { color: colors.muted, fontSize: 12.5, lineHeight: 20 },
-  notesEmpty: { color: colors.subtle, fontSize: 12, lineHeight: 19 },
-  questions: { gap: 8 },
-  questionCard: {
+  notesRail: {
+    width: 2,
+    borderRadius: 2,
+    backgroundColor: colors.lineStrong,
+  },
+  notes: { flex: 1, color: colors.textDim, fontSize: 13, lineHeight: 20 },
+  notesEmpty: { flex: 1, color: colors.muted, fontSize: 12.5, lineHeight: 19 },
+  questions: { borderTopWidth: 1, borderTopColor: colors.line },
+  questionRow: {
     minHeight: 78,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: 12,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
   },
   questionIndex: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: 30,
+    color: colors.subtle,
+    fontSize: 9.5,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  questionCopy: { flex: 1 },
+  questionPrompt: {
+    color: colors.text,
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  questionMeta: { color: colors.subtle, fontSize: 9.5, lineHeight: 14, marginTop: 5 },
+  questionDue: { color: colors.success, fontWeight: '700' },
+  deleteMini: {
+    width: layout.minTouch,
+    height: layout.minTouch,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.accentSoft,
   },
-  questionIndexText: { color: colors.accent, fontSize: 10, fontWeight: '800' },
-  questionCopy: { flex: 1 },
-  questionPrompt: { color: colors.text, fontSize: 12.5, lineHeight: 18, fontWeight: '600' },
-  questionMeta: { color: colors.subtle, fontSize: 9.5, lineHeight: 14, marginTop: 5 },
-  deleteMini: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   deleteMiniText: { color: colors.subtle, fontSize: 22, fontWeight: '300' },
   emptyQuestions: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.lineStrong,
-    padding: spacing.lg,
-    alignItems: 'center',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
+    paddingVertical: spacing.lg,
+    alignItems: 'flex-start',
   },
-  emptyTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
-  emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, textAlign: 'center', marginTop: 5 },
+  emptyTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
   addQuestion: {
     marginTop: spacing.md,
     minHeight: layout.minTouch,
@@ -424,8 +548,14 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
     paddingTop: spacing.lg,
   },
-  dangerTitle: { color: colors.danger, fontSize: 11, fontWeight: '800' },
-  dangerText: { color: colors.subtle, fontSize: 10.5, lineHeight: 16, marginTop: 5, maxWidth: 500 },
+  dangerTitle: { color: colors.danger, fontSize: 11, lineHeight: 15, fontWeight: '800' },
+  dangerText: {
+    color: colors.subtle,
+    fontSize: 10.5,
+    lineHeight: 16,
+    marginTop: 5,
+    maxWidth: 500,
+  },
   deleteButton: {
     alignSelf: 'flex-start',
     marginTop: 12,
@@ -439,5 +569,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteButtonText: { color: colors.danger, fontSize: 11.5, fontWeight: '700' },
-  pressed: { opacity: 0.65 },
+  pressed: { opacity: 0.68 },
 });

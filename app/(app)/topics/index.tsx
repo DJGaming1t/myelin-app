@@ -50,6 +50,7 @@ export default function TopicsScreen() {
   );
 
   const activeFilter = query.trim() || statusFilter !== 'all' || subjectFilter !== 'all';
+  const reviewCount = (workspace?.topics ?? []).filter((topic) => topic.status === 'review').length;
 
   if (status === 'loading' || status === 'idle') {
     return (
@@ -69,10 +70,21 @@ export default function TopicsScreen() {
       <ScreenHeader
         eyebrow="STUDY LIBRARY"
         title="Topics"
-        subtitle="Keep study material structured enough to review, without turning setup into homework."
+        subtitle="Your study map: what you are learning, what is ready to recall, and what needs attention next."
         actionLabel="+ Add"
         onAction={() => router.push('/(app)/topics/new')}
       />
+
+      <View style={styles.librarySummary}>
+        <Text style={styles.librarySummaryText}>
+          {(workspace?.topics ?? []).length} {(workspace?.topics ?? []).length === 1 ? 'topic' : 'topics'}
+          {' · '}
+          {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
+        </Text>
+        {reviewCount > 0 ? (
+          <Text style={styles.libraryReviewText}>{reviewCount} in review</Text>
+        ) : null}
+      </View>
 
       <View style={styles.searchWrap}>
         <Text style={styles.searchIcon}>⌕</Text>
@@ -143,7 +155,7 @@ export default function TopicsScreen() {
           topics.length === 0 && styles.listEmpty,
         ]}
         renderItem={({ item, index }) => (
-          <Reveal delay={Math.min(index * 45, 225)} distance={8}>
+          <Reveal delay={Math.min(index * 30, 150)} distance={5}>
             <TopicCard
               topic={item}
               onPress={() =>
@@ -229,6 +241,19 @@ const styles = StyleSheet.create({
   listView: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { color: colors.muted, fontSize: 12 },
+  librarySummary: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  librarySummaryText: { color: colors.muted, fontSize: 11, lineHeight: 15 },
+  libraryReviewText: { color: colors.success, fontSize: 10.5, lineHeight: 15, fontWeight: '700' },
   searchWrap: {
     marginHorizontal: spacing.lg,
     minHeight: 48,

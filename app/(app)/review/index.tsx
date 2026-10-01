@@ -274,6 +274,18 @@ export default function ReviewScreen() {
                     onPress={() => router.push('/(app)/topics')}
                   />
                 )}
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open mistake notebook"
+                  onPress={() => router.push('/(app)/mistakes')}
+                  style={({ pressed }) => [styles.utilityRow, pressed && styles.pressed]}>
+                  <View>
+                    <Text style={styles.utilityLabel}>CORRECTIONS</Text>
+                    <Text style={styles.utilityTitle}>Mistake notebook</Text>
+                  </View>
+                  <Text style={styles.utilityArrow}>Open →</Text>
+                </Pressable>
               </>
             )}
           </ScrollView>
@@ -366,6 +378,9 @@ export default function ReviewScreen() {
           showsVerticalScrollIndicator={false}>
           <Reveal key={`${currentCard.id}:${session.stage}`} distance={8}>
           <View>
+          <Text style={styles.stageCue}>
+            {session.stage === 'attempt' ? 'RECALL BEFORE YOU CHECK' : 'COMPARE, THEN GRADE'}
+          </Text>
           <Text style={styles.topicKicker}>{currentTopic.name.toUpperCase()}</Text>
           <Text style={styles.prompt}>{currentCard.prompt}</Text>
 
@@ -565,6 +580,20 @@ const styles = StyleSheet.create({
   primaryArrow: { color: '#25140e', fontSize: 20 },
   secondaryLarge: { minHeight: 48, marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   secondaryLargeText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  utilityRow: {
+    minHeight: 62,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  utilityLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.15 },
+  utilityTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 3 },
+  utilityArrow: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   completeNotice: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(180,216,174,0.2)', backgroundColor: 'rgba(180,216,174,0.055)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   completeMark: { color: colors.success, fontSize: 18 },
   completeCopy: { flex: 1 },
@@ -594,15 +623,30 @@ const styles = StyleSheet.create({
   progressValue: { color: colors.text, fontSize: 10.5, fontWeight: '700', marginTop: 2 },
   subjectTop: { color: colors.muted, fontSize: 9.5, maxWidth: 120 },
   reviewProgress: { paddingHorizontal: spacing.lg },
-  reviewContent: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: spacing.lg, paddingBottom: 56 },
-  topicKicker: { color: colors.accent, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.4 },
+  reviewContent: {
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: 28,
+    paddingBottom: 56,
+  },
+  stageCue: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '800',
+    letterSpacing: 1.35,
+    marginBottom: 18,
+  },
+  topicKicker: { color: colors.accent, fontSize: 9, lineHeight: 13, fontWeight: '800', letterSpacing: 1.4 },
   prompt: {
     color: colors.text,
-    fontSize: 27,
-    lineHeight: 35,
+    fontSize: 30,
+    lineHeight: 38,
     fontWeight: '600',
-    letterSpacing: -0.65,
-    marginTop: 12,
+    letterSpacing: -0.8,
+    marginTop: 10,
     maxWidth: 650,
   },
   hintButton: { alignSelf: 'flex-start', minHeight: layout.minTouch, marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, paddingHorizontal: 13, justifyContent: 'center' },
@@ -612,37 +656,58 @@ const styles = StyleSheet.create({
   hintText: { color: colors.text, fontSize: 11.5, lineHeight: 17, marginTop: 5 },
   answerLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.3, marginTop: spacing.xl, marginBottom: 8 },
   answerInput: {
-    minHeight: 164,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
-    padding: 15,
+    minHeight: 156,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: 'rgba(16,16,19,0.42)',
+    paddingHorizontal: 2,
+    paddingVertical: 15,
     color: colors.text,
-    fontSize: 13.5,
-    lineHeight: 21,
-    shadowColor: '#000000',
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2,
+    fontSize: 14,
+    lineHeight: 22,
   },
   confidenceLabel: { color: colors.muted, fontSize: 10.5, fontWeight: '600', marginTop: spacing.lg, marginBottom: 8 },
-  confidenceRow: { flexDirection: 'row', gap: 7 },
-  confidenceCard: { flex: 1, minHeight: 62, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 9, justifyContent: 'center' },
-  confidenceActive: { borderColor: 'rgba(255,128,91,0.45)', backgroundColor: colors.accentSoft },
+  confidenceRow: {
+    flexDirection: 'row',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: 'rgba(16,16,19,0.66)',
+    padding: 4,
+    gap: 4,
+  },
+  confidenceCard: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+  },
+  confidenceActive: { backgroundColor: colors.accentSoft },
   confidenceTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
   confidenceTitleActive: { color: colors.accent },
   confidenceHelp: { color: colors.subtle, fontSize: 8.5, marginTop: 3 },
   disabled: { opacity: 0.38 },
-  compareCard: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
-  compareCardAccent: { borderColor: 'rgba(255,128,91,0.22)', backgroundColor: colors.accentSoft },
+  compareCard: {
+    marginTop: spacing.lg,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.lineStrong,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  compareCardAccent: {
+    borderLeftColor: colors.accent,
+    backgroundColor: colors.accentFaint,
+  },
   compareLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   compareLabelAccent: { color: colors.accent },
   compareText: { color: colors.text, fontSize: 12.5, lineHeight: 20, marginTop: 7 },
   recallMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 10 },
   recallMetaText: { color: colors.subtle, fontSize: 9 },
-  gradeHeading: { color: colors.text, fontSize: 15, fontWeight: '700', marginTop: spacing.xl },
+  gradeHeading: { color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: '700', marginTop: spacing.xl },
   gradeHelp: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4 },
   gradeStack: { gap: 8, marginTop: spacing.md },
   saving: { color: colors.muted, fontSize: 9.5, textAlign: 'center', marginTop: 9 },

@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { AppIcon } from '@/src/components/app/AppIcon';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -18,7 +20,7 @@ import {
   buildMistakeRetestQueue,
   mistakeCounts,
 } from '@/src/features/mistakes/mistake-engine';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
 type Filter = 'due' | 'open' | 'resolved';
 
@@ -26,6 +28,7 @@ export default function MistakesScreen() {
   const { workspace, saveError } = useWorkspace();
   const [filter, setFilter] = useState<Filter>('due');
   const [query, setQuery] = useState('');
+  const [showBrowse, setShowBrowse] = useState(false);
 
   const now = Date.now();
   const counts = workspace
@@ -73,7 +76,7 @@ export default function MistakesScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <Text style={styles.loading}>Opening mistake notebook…</Text>
+          <Text style={styles.loading}>Opening corrections…</Text>
         </View>
       </SafeAreaView>
     );
@@ -81,62 +84,87 @@ export default function MistakesScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.page}>
         <ScreenHeader
-          eyebrow="CORRECTION LOOP"
-          title="Mistakes"
-          subtitle="Keep the error, the reason and the corrected idea together—then prove the correction twice on different days."
-          actionLabel="+ Add"
+          variant="compact"
+          title="Corrections"
+          actionLabel="Add"
           onAction={() => router.push('/(app)/mistakes/new')}
         />
 
-        <View style={styles.summary}>
-          <Metric label="DUE" value={String(counts.due)} accent />
-          <Metric label="OPEN" value={String(counts.open)} />
-          <Metric label="RESOLVED" value={String(counts.resolved)} />
+        <View style={styles.summaryLine}>
+          <Text style={styles.summaryText}>
+            {counts.open} open · {counts.resolved} resolved
+          </Text>
         </View>
 
         {counts.due > 0 ? (
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={`Retest ${counts.due} due ${counts.due === 1 ? 'correction' : 'corrections'}`}
             onPress={() => router.push('/(app)/mistakes/retest')}
-            style={({ pressed }) => [styles.retestButton, pressed && styles.pressed]}>
-            <View>
-              <Text style={styles.retestLabel}>RETEST DUE MISTAKES</Text>
-              <Text style={styles.retestText}>
-                {counts.due} {counts.due === 1 ? 'mistake is' : 'mistakes are'} ready
+            style={({ pressed }) => [styles.retest, pressed && styles.pressed]}>
+            <View style={styles.retestCopy}>
+              <Text style={styles.retestTitle}>
+                {counts.due} {counts.due === 1 ? 'correction is' : 'corrections are'} due
               </Text>
+              <Text style={styles.retestMeta}>Rebuild them from memory before checking.</Text>
             </View>
-            <Text style={styles.arrow}>→</Text>
+            <Text style={styles.retestAction}>Retest</Text>
+            <AppIcon name="chevron" size={16} color={colors.accent} />
           </Pressable>
+        ) : (
+          <View style={styles.clearState}>
+            <Text style={styles.clearStateTitle}>Nothing needs a retest right now.</Text>
+            <Text style={styles.clearStateText}>
+              Corrections return when their next spaced retest is due.
+            </Text>
+          </View>
+        )}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showBrowse }}
+          onPress={() => setShowBrowse((current) => !current)}
+          style={({ pressed }) => [styles.browseToggle, pressed && styles.pressed]}>
+          <Text style={styles.browseTitle}>Browse corrections</Text>
+          <Text style={styles.browseMeta}>{showBrowse ? 'Hide' : 'Search · filter · history'}</Text>
+        </Pressable>
+
+        {showBrowse ? (
+          <View style={styles.browsePanel}>
+            <View style={styles.searchWrap}>
+              <TextInput
+                accessibilityLabel="Search corrections"
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search correction, topic or cause"
+                placeholderTextColor={colors.subtle}
+                selectionColor={colors.accent}
+                style={styles.search}
+              />
+              {query ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  onPress={() => setQuery('')}
+                  hitSlop={8}>
+                  <Text style={styles.clear}>Clear</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filters}>
+              <FilterChip label={`Due ${counts.due}`} active={filter === 'due'} onPress={() => setFilter('due')} />
+              <FilterChip label={`Open ${counts.open}`} active={filter === 'open'} onPress={() => setFilter('open')} />
+              <FilterChip label={`Resolved ${counts.resolved}`} active={filter === 'resolved'} onPress={() => setFilter('resolved')} />
+            </ScrollView>
+          </View>
         ) : null}
-
-        <View style={styles.searchWrap}>
-          <Text style={styles.searchGlyph}>⌕</Text>
-          <TextInput
-            accessibilityLabel="Search mistakes"
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search mistake, correction, topic or cause"
-            placeholderTextColor={colors.subtle}
-            selectionColor={colors.accent}
-            style={styles.search}
-          />
-          {query ? (
-            <Pressable accessibilityRole="button" onPress={() => setQuery('')} hitSlop={8}>
-              <Text style={styles.clear}>×</Text>
-            </Pressable>
-          ) : null}
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}>
-          <FilterChip label={`Due ${counts.due}`} active={filter === 'due'} onPress={() => setFilter('due')} />
-          <FilterChip label={`Open ${counts.open}`} active={filter === 'open'} onPress={() => setFilter('open')} />
-          <FilterChip label={`Resolved ${counts.resolved}`} active={filter === 'resolved'} onPress={() => setFilter('resolved')} />
-        </ScrollView>
 
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
@@ -147,35 +175,31 @@ export default function MistakesScreen() {
           contentContainerStyle={[styles.list, items.length === 0 && styles.listEmpty]}
           renderItem={({ item }) => {
             const topic = workspace.topics.find((candidate) => candidate.id === item.topicId);
+            const status = item.resolvedAt ? 'Resolved' : item.wins ? `${item.wins}/2 wins` : 'Needs proof';
+
             return (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={`${item.prompt}. ${status}`}
                 onPress={() =>
                   router.push({
                     pathname: '/(app)/mistakes/[mistakeId]',
                     params: { mistakeId: item.id },
                   })
                 }
-                style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-                <View style={styles.cardTop}>
-                  <View style={styles.kickerRow}>
-                    <Text style={styles.subject}>{topic?.subject ?? 'Topic'}</Text>
-                    <View style={styles.dot} />
-                    <Text style={styles.reason}>{item.reason.toUpperCase()}</Text>
-                  </View>
-                  <Text style={item.resolvedAt ? styles.resolvedBadge : styles.winBadge}>
-                    {item.resolvedAt ? 'RESOLVED' : `${item.wins}/2 WINS`}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.prompt} numberOfLines={2}>{item.prompt}</Text>
+                  <Text style={styles.rowMeta} numberOfLines={1}>
+                    {topic?.name ?? 'Unknown topic'} · {item.reason}
                   </Text>
+                  {item.correction ? (
+                    <Text style={styles.correction} numberOfLines={1}>{item.correction}</Text>
+                  ) : null}
                 </View>
-
-                <Text style={styles.prompt} numberOfLines={3}>{item.prompt}</Text>
-                <Text style={styles.correction} numberOfLines={2}>
-                  {item.correction || 'No correction written yet.'}
-                </Text>
-
-                <View style={styles.cardBottom}>
-                  <Text style={styles.topicName}>{topic?.name ?? 'Unknown topic'}</Text>
-                  <Text style={styles.openArrow}>→</Text>
+                <View style={styles.rowEnd}>
+                  <Text style={[styles.status, item.resolvedAt && styles.statusResolved]}>{status}</Text>
+                  <AppIcon name="chevron" size={15} color={colors.subtle} />
                 </View>
               </Pressable>
             );
@@ -184,22 +208,22 @@ export default function MistakesScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>
                 {filter === 'due'
-                  ? 'Nothing needs a retest right now.'
+                  ? 'No due corrections.'
                   : filter === 'open'
-                    ? 'No open mistakes.'
-                    : 'No resolved mistakes yet.'}
+                    ? 'No open corrections.'
+                    : 'No resolved corrections yet.'}
               </Text>
               <Text style={styles.emptyText}>
-                {filter === 'due'
-                  ? 'When a correction becomes due, it will appear here automatically.'
-                  : 'Mistakes graded “Again” in Active Recall can appear here automatically, or you can add one manually.'}
+                {counts.total === 0
+                  ? 'Review misses can create corrections automatically, or you can add one manually.'
+                  : 'Choose another filter to see the rest of your correction history.'}
               </Text>
               {counts.total === 0 ? (
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => router.push('/(app)/mistakes/new')}
                   style={({ pressed }) => [styles.emptyAction, pressed && styles.pressed]}>
-                  <Text style={styles.emptyActionText}>Add first mistake</Text>
+                  <Text style={styles.emptyActionText}>Add first correction</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -209,23 +233,6 @@ export default function MistakesScreen() {
         <AppNav />
       </View>
     </SafeAreaView>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={[styles.metricValue, accent && styles.metricValueAccent]}>{value}</Text>
-    </View>
   );
 }
 
@@ -257,46 +264,128 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   page: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loading: { color: colors.muted, fontSize: 12 },
-  summary: { flexDirection: 'row', gap: 7, paddingHorizontal: spacing.lg },
-  metric: { flex: 1, minHeight: 62, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 10, justifyContent: 'space-between' },
-  metricLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.1 },
-  metricValue: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  metricValueAccent: { color: colors.accent },
-  retestButton: { marginHorizontal: spacing.lg, marginTop: 9, minHeight: 64, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.3)', backgroundColor: colors.accentSoft, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  retestLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  retestText: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 4 },
-  arrow: { color: colors.accent, fontSize: 20 },
-  searchWrap: { marginHorizontal: spacing.lg, marginTop: 10, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
-  searchGlyph: { color: colors.subtle, fontSize: 17, marginRight: 7 },
-  search: { flex: 1, minHeight: layout.minTouch, color: colors.text, fontSize: 12.5 },
-  clear: { color: colors.muted, fontSize: 20, paddingLeft: 8 },
-  filters: { gap: 7, paddingHorizontal: spacing.lg, paddingVertical: 10 },
-  filter: { minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, justifyContent: 'center', paddingHorizontal: 12 },
-  filterActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
-  filterText: { color: colors.muted, fontSize: 10, fontWeight: '700' },
+  loading: { color: colors.muted, ...type.meta },
+  summaryLine: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
+    paddingBottom: space.xs,
+  },
+  summaryText: { color: colors.muted, ...type.meta },
+  retest: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    minHeight: 72,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+  },
+  retestCopy: { flex: 1 },
+  retestTitle: { color: colors.text, ...type.bodyStrong },
+  retestMeta: { color: colors.muted, ...type.meta, marginTop: 2 },
+  retestAction: { color: colors.accent, ...type.meta, fontWeight: '700' },
+  clearState: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
+  },
+  clearStateTitle: { color: colors.textDim, ...type.bodyStrong },
+  clearStateText: { color: colors.muted, ...type.meta, marginTop: 2 },
+  browseToggle: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    minHeight: 54,
+    paddingHorizontal: space.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
+  },
+  browseTitle: { color: colors.text, ...type.bodyStrong },
+  browseMeta: { color: colors.subtle, ...type.meta, fontWeight: '600' },
+  browsePanel: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+  },
+  searchWrap: {
+    marginHorizontal: space.lg,
+    minHeight: 50,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: space.md,
+  },
+  search: { flex: 1, minHeight: 48, color: colors.text, ...type.body },
+  clear: { color: colors.muted, ...type.meta, fontWeight: '600', paddingLeft: space.sm },
+  filters: { gap: space.xs, paddingHorizontal: space.lg, paddingVertical: space.xs },
+  filter: {
+    minHeight: 40,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    justifyContent: 'center',
+    paddingHorizontal: space.md,
+  },
+  filterActive: { borderColor: colors.accentLine, backgroundColor: colors.accentFaint },
+  filterText: { color: colors.muted, ...type.meta, fontWeight: '600' },
   filterTextActive: { color: colors.accent },
-  saveError: { color: colors.danger, fontSize: 10, marginHorizontal: spacing.lg, marginBottom: 5 },
+  saveError: { color: colors.danger, ...type.meta, marginHorizontal: space.lg, marginBottom: space.xs },
   listView: { flex: 1 },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: 38 },
+  list: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
+    paddingBottom: space.xl,
+  },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
-  card: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md, marginBottom: 9 },
-  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 9 },
-  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
-  subject: { color: colors.muted, fontSize: 9.5, fontWeight: '700' },
-  dot: { width: 3, height: 3, borderRadius: 3, backgroundColor: colors.subtle },
-  reason: { color: colors.accent, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
-  winBadge: { color: colors.muted, fontSize: 8.5, fontWeight: '800' },
-  resolvedBadge: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1 },
-  prompt: { color: colors.text, fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 10 },
-  correction: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 6 },
-  cardBottom: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  topicName: { color: colors.subtle, fontSize: 9.5 },
-  openArrow: { color: colors.subtle, fontSize: 16 },
-  empty: { alignItems: 'center', padding: spacing.xl, paddingBottom: 70 },
-  emptyTitle: { color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, textAlign: 'center', marginTop: 6, maxWidth: 330 },
-  emptyAction: { minHeight: layout.minTouch, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
-  emptyActionText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
-  pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
+  row: {
+    minHeight: 82,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  rowCopy: { flex: 1, minWidth: 0 },
+  prompt: { color: colors.text, ...type.bodyStrong },
+  rowMeta: { color: colors.muted, ...type.meta, marginTop: 3, textTransform: 'capitalize' },
+  correction: { color: colors.subtle, ...type.meta, marginTop: 3 },
+  rowEnd: { alignItems: 'flex-end', gap: space.xs },
+  status: { color: colors.accent, ...type.meta, fontWeight: '700' },
+  statusResolved: { color: colors.success },
+  empty: { alignItems: 'center', paddingHorizontal: space.xl, paddingBottom: space.xxxl },
+  emptyTitle: { color: colors.text, ...type.section, textAlign: 'center' },
+  emptyText: { color: colors.muted, ...type.body, textAlign: 'center', marginTop: space.xs, maxWidth: 350 },
+  emptyAction: {
+    minHeight: layout.minTouch,
+    marginTop: space.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+    paddingHorizontal: space.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyActionText: { color: '#25140e', ...type.bodyStrong },
+  pressed: { opacity: 0.68, transform: [{ scale: motion.pressScale }] },
 });

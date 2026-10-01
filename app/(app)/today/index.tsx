@@ -10,24 +10,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { AppButton } from '@/src/components/app/AppButton';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
-import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
-import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
-import {
-  examStatus,
-  nearestUpcomingExam,
-} from '@/src/features/exams/exam-engine';
+import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
 import { postponeTask } from '@/src/features/planning/task-engine';
 import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
-import { PlanBlockCard } from '@/src/features/today/PlanBlockCard';
 import { buildTodayPlan, nextLocalDayStart, PlanBlock } from '@/src/features/today/planner';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
 const BUDGETS = [30, 60, 90, 120, 180];
 
@@ -35,6 +31,9 @@ export default function TodayScreen() {
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
+  const [showAdjust, setShowAdjust] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+  const [showWhy, setShowWhy] = useState(false);
   const [lastDeferred, setLastDeferred] = useState<
     | {
         source: 'topic';
@@ -53,8 +52,8 @@ export default function TodayScreen() {
       }
     | null
   >(null);
-  const now = Date.now();
 
+  const now = Date.now();
   const plan = useMemo(
     () => (workspace ? buildTodayPlan(workspace, now) : null),
     [workspace, now],
@@ -73,7 +72,7 @@ export default function TodayScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <ActivityIndicator color={colors.accent} />
-          <Text style={styles.loadingText}>Building today’s plan…</Text>
+          <Text style={styles.loadingText}>Choosing what matters next…</Text>
         </View>
       </SafeAreaView>
     );
@@ -81,9 +80,10 @@ export default function TodayScreen() {
 
   const currentWorkspace = workspace;
   const next = plan.nextBlock;
+  const laterBlocks = plan.blocks
+    .filter((block) => !next || block.id !== next.id)
+    .slice(0, 3);
   const budgetFinished = plan.remainingBudgetMinutes <= 0;
-  const usedRatio = Math.min(1, plan.alreadyUsedMinutes / Math.max(1, plan.budgetMinutes));
-  const usedPercent = Math.round(usedRatio * 100);
 
   function setBudget(minutes: number) {
     updateWorkspace((draft) => {
@@ -154,7 +154,7 @@ export default function TodayScreen() {
     setLastDeferred(null);
   }
 
-  function startBlock(block: PlanBlock, selectedBreakMinutes: number) {
+  function startBlock(block: PlanBlock) {
     if (activeReview) {
       router.push('/(app)/review');
       return;
@@ -189,7 +189,7 @@ export default function TodayScreen() {
         topicId: block.topicId,
         ...(block.taskId ? { taskId: block.taskId } : {}),
         minutes: String(block.minutes),
-        breakMinutes: String(selectedBreakMinutes),
+        breakMinutes: String(plan.breakMinutes),
       },
     });
   }
@@ -199,313 +199,258 @@ export default function TodayScreen() {
       <AmbientBackdrop />
       <View style={styles.screen}>
         <ScreenHeader
-          eyebrow="TODAY"
+          variant="compact"
           title={greeting()}
-          subtitle="Know what matters, start the next useful thing, and let the rest stay quiet."
           actionLabel="Settings"
           onAction={() => router.push('/(app)/settings')}
         />
-
-        <View style={styles.modeToggle}>
-          <View style={[styles.modeButton, styles.modeButtonActive]}>
-            <Text style={[styles.modeButtonText, styles.modeButtonTextActive]}>Flow</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open Day Map"
-            onPress={() => router.push('/(app)/today/day-map')}
-            style={({ pressed }) => [styles.modeButton, pressed && styles.pressed]}>
-            <Text style={styles.modeButtonText}>Day Map</Text>
-          </Pressable>
-        </View>
 
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <Text style={[styles.sectionLabel, styles.firstSectionLabel]}>
+          <Text style={styles.nextLabel}>
             {activeReview || activeFocus ? 'CONTINUE' : 'NEXT'}
           </Text>
 
           {activeReview ? (
-            <Reveal delay={20} distance={8}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Resume active review"
-                onPress={() => router.push('/(app)/review')}
-                style={({ pressed }) => [styles.activeReviewCard, styles.resumeHero, pressed && styles.pressed]}>
-                <View>
-                  <Text style={styles.activeReviewLabel}>REVIEW IN PROGRESS</Text>
-                  <Text style={styles.resumeHeroTitle}>
-                    {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
-                  </Text>
-                  <Text style={styles.resumeHeroMeta}>Your queue is saved exactly where you left it.</Text>
-                </View>
-                <Text style={styles.resumeHeroArrow}>Resume →</Text>
-              </Pressable>
-            </Reveal>
-          ) : activeFocus ? (
-            <Reveal delay={20} distance={8}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Resume active focus session"
-                onPress={() => router.push('/(app)/focus')}
-                style={({ pressed }) => [styles.activeFocusCard, styles.resumeHero, pressed && styles.pressed]}>
-                <View style={styles.resumeHeroCopy}>
-                  <Text style={styles.activeFocusLabel}>
-                    {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
-                  </Text>
-                  <Text style={styles.resumeHeroTitle}>{activeFocus.topicName}</Text>
-                  <Text style={styles.resumeHeroMeta}>The timer stays intact while you are away.</Text>
-                </View>
-                <Text style={styles.resumeHeroArrow}>Resume →</Text>
-              </Pressable>
-            </Reveal>
-          ) : budgetFinished ? (
-            <View style={styles.doneCard}>
-              <Text style={styles.doneMark}>✓</Text>
-              <Text style={styles.doneTitle}>You have used today’s study capacity.</Text>
-              <Text style={styles.doneText}>
-                MYELIN will not invent more work just to keep the screen busy. Add time only if your
-                day genuinely changed.
+            <View style={styles.hero}>
+              <Text style={styles.heroMeta}>REVIEW IN PROGRESS</Text>
+              <Text style={styles.heroTitle}>
+                {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
               </Text>
+              <Text style={styles.heroReason}>Your place is saved.</Text>
+              <AppButton label="Resume review" onPress={() => router.push('/(app)/review')} />
+            </View>
+          ) : activeFocus ? (
+            <View style={styles.hero}>
+              <Text style={styles.heroMeta}>
+                {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
+              </Text>
+              <Text style={styles.heroTitle}>{activeFocus.topicName}</Text>
+              <Text style={styles.heroReason}>The timer stays intact while you are away.</Text>
+              <AppButton label="Resume focus" onPress={() => router.push('/(app)/focus')} />
+            </View>
+          ) : budgetFinished ? (
+            <View style={styles.heroQuiet}>
+              <Text style={styles.heroTitle}>You have used today’s study capacity.</Text>
+              <Text style={styles.heroReason}>
+                MYELIN will stay quiet unless your available time changes.
+              </Text>
+              <AppButton
+                label="Adjust today"
+                variant="secondary"
+                onPress={() => setShowAdjust(true)}
+              />
             </View>
           ) : next ? (
-            <Reveal delay={20} distance={10}>
-              <View style={styles.nextCard}>
-                <View style={styles.nextGlow} />
-                <View style={styles.nextTop}>
-                  <View style={styles.nextTopCopy}>
-                    <Text style={styles.nextSubject}>{next.subject.toUpperCase()}</Text>
-                    <Text style={styles.nextMode}>
-                      {next.mode === 'review' ? 'RECALL / REVIEW' : 'LEARN / PRACTISE'}
-                    </Text>
-                  </View>
-                  <View style={styles.nextTime}>
-                    <Text style={styles.nextMinutes}>{next.minutes}</Text>
-                    <Text style={styles.nextMinLabel}>MIN</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.nextTitle}>{next.topicName}</Text>
-                <Text style={styles.nextReason}>{next.reasons.join(' · ')}</Text>
-
-                <View style={styles.nextActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Defer ${next.topicName} for today`}
-                    onPress={() => deferForToday(next)}
-                    style={({ pressed }) => [styles.deferButton, pressed && styles.pressed]}>
-                    <Text style={styles.deferButtonText}>Not now</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Start ${next.topicName}`}
-                    onPress={() => startBlock(next, plan.breakMinutes)}
-                    style={({ pressed }) => [styles.nextAction, pressed && styles.pressed]}>
-                    <Text style={styles.nextActionText}>
-                      {next.source === 'task' && !next.focusable
-                        ? 'Open task'
-                        : next.mode === 'review' && next.dueQuestionCount > 0
-                          ? 'Start recall'
-                          : 'Start focus'}
-                    </Text>
-                    <Text style={styles.nextArrow}>→</Text>
-                  </Pressable>
-                </View>
+            <View style={styles.hero}>
+              <View style={styles.heroTop}>
+                <Text style={styles.heroMeta}>{next.subject}</Text>
+                <Text style={styles.heroTime}>{next.minutes} min</Text>
               </View>
-            </Reveal>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Nothing needs your attention yet.</Text>
-              <Text style={styles.emptyText}>
-                Add a study task or Topic and MYELIN can turn it into a concrete next action.
+
+              <Text style={styles.heroTitle}>{next.topicName}</Text>
+              <Text style={styles.heroReason}>
+                {next.reasons[0] ?? (next.mode === 'review' ? 'Ready for recall' : 'Worth continuing')}
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/(app)/today/task/new')}
-                style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}>
-                <Text style={styles.emptyButtonText}>Add study task</Text>
-              </Pressable>
+
+              {showWhy ? (
+                <View style={styles.whyBox}>
+                  {next.reasons.map((reason) => (
+                    <Text key={reason} style={styles.whyText}>• {sentenceCase(reason)}</Text>
+                  ))}
+                </View>
+              ) : null}
+
+              <View style={styles.heroActions}>
+                <AppButton
+                  label={
+                    next.source === 'task' && !next.focusable
+                      ? 'Open task'
+                      : next.mode === 'review' && next.dueQuestionCount > 0
+                        ? 'Start recall'
+                        : 'Start focus'
+                  }
+                  onPress={() => startBlock(next)}
+                  style={styles.primaryAction}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showWhy ? 'Hide recommendation reasons' : 'Why this recommendation'}
+                  onPress={() => setShowWhy((current) => !current)}
+                  style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
+                  <Text style={styles.textActionText}>{showWhy ? 'Hide why' : 'Why this?'}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Move ${next.topicName} out of today`}
+                  onPress={() => deferForToday(next)}
+                  style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
+                  <Text style={styles.textActionMuted}>Not now</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.heroQuiet}>
+              <Text style={styles.heroTitle}>Nothing needs your attention yet.</Text>
+              <Text style={styles.heroReason}>Add one thing and MYELIN can turn it into a next move.</Text>
+              <AppButton label="Add something" onPress={() => router.push('/(app)/quick-add')} />
             </View>
           )}
 
-          <Reveal delay={55} distance={7}>
-            <View style={styles.summaryRow}>
-              <SummaryMetric label="LEFT" value={`${plan.remainingBudgetMinutes}m`} accent />
-              <SummaryMetric label="PLANNED" value={`${plan.plannedStudyMinutes}m`} />
-              <SummaryMetric label="BLOCK" value={`${plan.targetFocusMinutes}m`} />
-            </View>
-          </Reveal>
-
-          {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
-
-          {(nextExam || mistakeSummary.due > 0) ? (
-            <View style={styles.contextGroup}>
-              {nextExam ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(app)/exams/[examId]',
-                      params: { examId: nextExam.id },
-                    })
-                  }
-                  style={({ pressed }) => [styles.contextRow, pressed && styles.pressed]}>
-                  <View style={styles.contextCopy}>
-                    <Text style={styles.contextLabel}>NEXT EXAM</Text>
-                    <Text style={styles.contextTitle}>{nextExam.name}</Text>
-                  </View>
-                  <Text style={styles.contextMeta}>{examStatus(nextExam.date, now).label} →</Text>
-                </Pressable>
-              ) : null}
-
-              {mistakeSummary.due > 0 ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => router.push('/(app)/mistakes/retest')}
-                  style={({ pressed }) => [styles.contextRow, pressed && styles.pressed]}>
-                  <View style={styles.contextCopy}>
-                    <Text style={[styles.contextLabel, styles.contextLabelDanger]}>RETEST</Text>
-                    <Text style={styles.contextTitle}>
-                      {mistakeSummary.due} {mistakeSummary.due === 1 ? 'correction is' : 'corrections are'} due
-                    </Text>
-                  </View>
-                  <Text style={[styles.contextMeta, styles.contextMetaDanger]}>Review →</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          ) : null}
-
-          <StudyInboxCard />
-
           {lastDeferred ? (
-            <View style={styles.deferUndo}>
-              <View style={styles.deferUndoCopy}>
-                <Text style={styles.deferUndoTitle}>Moved out of today</Text>
-                <Text style={styles.deferUndoText} numberOfLines={1}>
-                  {lastDeferred.name}
-                </Text>
+            <View style={styles.undoRow}>
+              <View style={styles.undoCopy}>
+                <Text style={styles.undoTitle}>Moved out of today</Text>
+                <Text numberOfLines={1} style={styles.undoText}>{lastDeferred.name}</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Undo deferring ${lastDeferred.name}`}
+                accessibilityLabel={`Undo moving ${lastDeferred.name} out of today`}
                 onPress={undoDefer}
-                style={({ pressed }) => [styles.deferUndoButton, pressed && styles.pressed]}>
-                <Text style={styles.deferUndoButtonText}>Undo</Text>
+                style={({ pressed }) => [styles.undoButton, pressed && styles.pressed]}>
+                <Text style={styles.undoButtonText}>Undo</Text>
               </Pressable>
             </View>
           ) : null}
 
-          <Text style={styles.sectionLabel}>TUNE TODAY</Text>
-          <View style={styles.controlCard}>
-            <View style={styles.controlHeader}>
-              <View>
-                <Text style={styles.controlEyebrow}>AVAILABLE STUDY TIME</Text>
-                <Text style={styles.controlValue}>{workspace.settings.dailyMinutes} min</Text>
-              </View>
-              <View style={styles.energyBadge}>
-                <View
-                  style={[
-                    styles.energyDot,
-                    workspace.settings.energy === 'low' && styles.energyDotLow,
-                  ]}
-                />
-                <Text style={styles.energyBadgeText}>
-                  {workspace.settings.energy === 'low' ? 'Low energy' : 'Normal energy'}
-                </Text>
+          {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
+
+          {laterBlocks.length ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Later today</Text>
+              <View style={styles.flatList}>
+                {laterBlocks.map((block) => (
+                  <Pressable
+                    key={block.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${block.topicName}. ${block.minutes} minutes.`}
+                    onPress={() => startBlock(block)}
+                    style={({ pressed }) => [styles.laterRow, pressed && styles.pressed]}>
+                    <View style={styles.laterCopy}>
+                      <Text style={styles.laterTitle}>{block.topicName}</Text>
+                      <Text style={styles.laterMeta}>
+                        {block.subject} · {block.mode === 'review' ? 'Recall' : 'Focus'}
+                      </Text>
+                    </View>
+                    <Text style={styles.laterTime}>{block.minutes}m</Text>
+                  </Pressable>
+                ))}
               </View>
             </View>
+          ) : null}
 
-            <View
-              accessible
-              accessibilityLabel={`${plan.alreadyUsedMinutes} of ${plan.budgetMinutes} minutes used today. ${plan.remainingBudgetMinutes} minutes remaining.`}
-              style={styles.capacityProgress}>
-              <View style={styles.capacityProgressCopy}>
-                <Text style={styles.capacityProgressTitle}>
-                  {budgetFinished ? 'Capacity used' : `${plan.remainingBudgetMinutes} min left today`}
-                </Text>
-                <Text style={styles.capacityProgressMeta}>{usedPercent}% used</Text>
+          {(nextExam || mistakeSummary.due > 0) ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Needs attention</Text>
+              <View style={styles.flatList}>
+                {mistakeSummary.due > 0 ? (
+                  <ActionRow
+                    icon="review"
+                    title={`${mistakeSummary.due} ${mistakeSummary.due === 1 ? 'correction' : 'corrections'} due`}
+                    detail="Retry them before they settle in."
+                    meta="Review"
+                    accent
+                    onPress={() => router.push('/(app)/mistakes/retest')}
+                  />
+                ) : null}
+                {nextExam ? (
+                  <ActionRow
+                    icon="calendar"
+                    title={nextExam.name}
+                    detail={examStatus(nextExam.date, now).label}
+                    meta="Exam"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(app)/exams/[examId]',
+                        params: { examId: nextExam.id },
+                      })
+                    }
+                  />
+                ) : null}
               </View>
-              <AnimatedProgress
-                value={usedRatio}
-                accessibilityLabel={`${usedPercent}% of today’s study capacity used`}
+            </View>
+          ) : null}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Plan</Text>
+            <View style={styles.flatList}>
+              <ActionRow
+                icon="today"
+                title="Day Map"
+                detail="See when study fits around the rest of your day."
+                onPress={() => router.push('/(app)/today/day-map')}
               />
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.budgetRow}>
-              {BUDGETS.map((minutes) => (
-                <Choice
-                  key={minutes}
-                  label={minutes < 60 ? `${minutes}m` : minutes % 60 === 0 ? `${minutes / 60}h` : `${minutes}m`}
-                  active={workspace.settings.dailyMinutes === minutes}
-                  onPress={() => setBudget(minutes)}
+              <ActionRow
+                icon="settings"
+                title="Adjust today"
+                detail={`${plan.remainingBudgetMinutes} min available · ${workspace.settings.energy === 'low' ? 'low' : 'normal'} energy`}
+                meta={showAdjust ? 'Hide' : 'Adjust'}
+                onPress={() => setShowAdjust((current) => !current)}
+              />
+              {plan.inboxTaskCount > 0 ? (
+                <ActionRow
+                  icon="library"
+                  title={`${plan.inboxTaskCount} unscheduled ${plan.inboxTaskCount === 1 ? 'task' : 'tasks'}`}
+                  detail="Captured, but not committed to today yet."
+                  meta={showInbox ? 'Hide' : 'Open'}
+                  onPress={() => setShowInbox((current) => !current)}
                 />
-              ))}
-            </ScrollView>
+              ) : null}
+            </View>
+          </View>
 
-            <View style={styles.energyRow}>
-              <Text style={styles.energyLabel}>Energy right now</Text>
-              <View style={styles.energyChoices}>
+          {showAdjust ? (
+            <View style={styles.adjustPanel}>
+              <View style={styles.adjustHeader}>
+                <View style={styles.adjustCopy}>
+                  <Text style={styles.adjustTitle}>Available study time</Text>
+                  <Text style={styles.adjustMeta}>
+                    {workspace.settings.dailyMinutes} min · {plan.remainingBudgetMinutes} min still open
+                  </Text>
+                </View>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.choiceRow}>
+                {BUDGETS.map((minutes) => (
+                  <Choice
+                    key={minutes}
+                    label={minutes < 60 ? `${minutes}m` : minutes % 60 === 0 ? `${minutes / 60}h` : `${minutes}m`}
+                    active={workspace.settings.dailyMinutes === minutes}
+                    onPress={() => setBudget(minutes)}
+                  />
+                ))}
+              </ScrollView>
+
+              <Text style={styles.adjustTitle}>Energy right now</Text>
+              <View style={styles.energyRow}>
                 <Choice
                   label="Low"
                   active={workspace.settings.energy === 'low'}
                   onPress={() => setEnergy('low')}
-                  compact
+                  wide
                 />
                 <Choice
                   label="Normal"
                   active={workspace.settings.energy === 'normal'}
                   onPress={() => setEnergy('normal')}
-                  compact
+                  wide
                 />
               </View>
             </View>
-          </View>
-
-          {plan.blocks.length > 0 ? (
-            <>
-              <View style={styles.planHeader}>
-                <View>
-                  <Text style={styles.sectionLabel}>TODAY’S ORDER</Text>
-                  <Text style={styles.planSubtitle}>
-                    {plan.blocks.length} {plan.blocks.length === 1 ? 'block' : 'blocks'} ·{' '}
-                    {plan.plannedTotalMinutes} min including breaks
-                  </Text>
-                </View>
-                {plan.deferredTopicCount > 0 ? (
-                  <Text style={styles.deferred}>{plan.deferredTopicCount} deferred</Text>
-                ) : null}
-              </View>
-
-              {plan.blocks.map((block, index) => (
-                <View key={block.id}>
-                  {index > 0 ? (
-                    <View style={styles.breakRow}>
-                      <View style={styles.breakLine} />
-                      <Text style={styles.breakText}>
-                        {plan.breakMinutes} min break
-                      </Text>
-                      <View style={styles.breakLine} />
-                    </View>
-                  ) : null}
-                  <PlanBlockCard block={block} index={index} onPress={() => startBlock(block, plan.breakMinutes)} />
-                </View>
-              ))}
-
-              <View style={styles.logicNote}>
-                <Text style={styles.logicTitle}>Why this order?</Text>
-                <Text style={styles.logicText}>
-                  Due recall and nearby exams get extra weight. High-priority and in-progress topics
-                  rise too. Repeating the same subject back-to-back is penalised where another useful
-                  option exists.
-                </Text>
-              </View>
-            </>
           ) : null}
+
+          {showInbox && plan.inboxTaskCount > 0 ? (
+            <View style={styles.inboxWrap}>
+              <StudyInboxCard />
+            </View>
+          ) : null}
+
+          <View style={styles.bottomSpace} />
         </ScrollView>
 
         <AppNav />
@@ -518,12 +463,12 @@ function Choice({
   label,
   active,
   onPress,
-  compact,
+  wide = false,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
-  compact?: boolean;
+  wide?: boolean;
 }) {
   return (
     <Pressable
@@ -532,30 +477,12 @@ function Choice({
       onPress={onPress}
       style={({ pressed }) => [
         styles.choice,
-        compact && styles.choiceCompact,
+        wide && styles.choiceWide,
         active && styles.choiceActive,
         pressed && styles.pressed,
       ]}>
       <Text style={[styles.choiceText, active && styles.choiceTextActive]}>{label}</Text>
     </Pressable>
-  );
-}
-
-function SummaryMetric({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <View style={[styles.summaryMetric, accent && styles.summaryMetricAccent]}>
-      <View style={[styles.summaryRail, accent && styles.summaryRailAccent]} />
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={[styles.summaryValue, accent && styles.summaryValueAccent]}>{value}</Text>
-    </View>
   );
 }
 
@@ -566,418 +493,170 @@ function greeting() {
   return 'Good evening.';
 }
 
+function sentenceCase(value: string) {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1 },
   scroll: { flex: 1 },
-  modeToggle: {
+  content: {
     width: '100%',
     maxWidth: layout.contentMax,
     alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 7,
-    paddingHorizontal: spacing.lg,
-    marginBottom: 4,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.sm,
   },
-  modeButton: {
-    flex: 1,
-    minHeight: layout.minTouch,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    alignItems: 'center',
-    justifyContent: 'center',
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
+  loadingText: { color: colors.muted, ...type.meta },
+
+  nextLabel: {
+    color: colors.accent,
+    ...type.label,
+    marginBottom: space.xs,
   },
-  modeButtonActive: {
-    borderColor: colors.accentLine,
-    backgroundColor: colors.accentSoft,
-  },
-  modeButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '800' },
-  modeButtonTextActive: { color: colors.accent },
-  content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 42 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  loadingText: { color: colors.muted, fontSize: 12 },
-  controlCard: {
-    position: 'relative',
-    overflow: 'hidden',
+  hero: {
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: spacing.md,
-  },
-  controlGlow: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 150,
-    top: -92,
-    right: -48,
-    backgroundColor: colors.accent,
-    opacity: 0,
-  },
-  controlHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  controlEyebrow: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.2 },
-  controlValue: { color: colors.text, fontSize: 22, fontWeight: '700', marginTop: 3 },
-  capacityProgress: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-  },
-  capacityProgressCopy: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 8,
-  },
-  capacityProgressTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  capacityProgressMeta: { color: colors.subtle, fontSize: 9, fontWeight: '700' },
-  capacityTrack: {
-    height: 6,
-    overflow: 'hidden',
-    borderRadius: 999,
-    backgroundColor: colors.lineStrong,
-  },
-  energyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-  },
-  energyDot: { width: 6, height: 6, borderRadius: 6, backgroundColor: colors.success },
-  energyDotLow: { backgroundColor: colors.accent },
-  energyBadgeText: { color: colors.muted, fontSize: 9.5, fontWeight: '600' },
-  budgetRow: { gap: 7, paddingTop: spacing.md, paddingBottom: 4 },
-  choice: {
-    minWidth: 48,
-    minHeight: layout.minTouch,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  choiceCompact: { minHeight: layout.minTouch, minWidth: 68 },
-  choiceActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
-  choiceText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
-  choiceTextActive: { color: colors.accent },
-  energyRow: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  energyLabel: { color: colors.muted, fontSize: 11 },
-  energyChoices: { flexDirection: 'row', gap: 7 },
-  summaryRow: {
-    flexDirection: 'row',
-    marginTop: 10,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: 'rgba(16,16,19,0.72)',
-    overflow: 'hidden',
-  },
-  summaryMetric: {
-    flex: 1,
-    minHeight: 60,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-    borderRightWidth: 1,
-    borderRightColor: colors.line,
-  },
-  summaryMetricAccent: {
-    backgroundColor: colors.accentFaint,
-  },
-  summaryRail: {
-    position: 'absolute',
-    left: 0,
-    top: 12,
-    bottom: 12,
-    width: 2,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  summaryRailAccent: { backgroundColor: colors.accent },
-  summaryLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
-  summaryValue: { color: colors.textDim, fontSize: 14, fontWeight: '700' },
-  summaryValueAccent: { color: colors.accentBright },
-  saveError: { color: colors.danger, fontSize: 10.5, marginTop: 8 },
-  examCard: {
-    marginTop: 10,
-    minHeight: 64,
-    borderRadius: radius.md,
+    backgroundColor: colors.panelRaised,
+    padding: space.lg,
     borderWidth: 1,
     borderColor: colors.accentLine,
-    backgroundColor: colors.panelWarm,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
   },
-  examLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  examTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 4 },
-  examWhen: { color: colors.accent, fontSize: 10.5, fontWeight: '700' },
-  mistakeDueCard: {
-    marginTop: 10,
-    minHeight: 62,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,161,145,0.2)',
-    backgroundColor: 'rgba(255,161,145,0.045)',
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  mistakeDueLabel: { color: colors.danger, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  mistakeDueTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 4 },
-  mistakeDueArrow: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
-  activeReviewCard: {
-    marginTop: 10,
-    minHeight: 66,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(180,216,174,0.22)',
-    backgroundColor: 'rgba(180,216,174,0.055)',
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  activeReviewLabel: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  activeReviewTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 4 },
-  activeReviewArrow: { color: colors.success, fontSize: 10.5, fontWeight: '700' },
-  activeFocusCard: {
-    marginTop: 10,
-    minHeight: 66,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.26)',
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  activeFocusLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  activeFocusTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 4 },
-  activeFocusArrow: { color: colors.accent, fontSize: 10.5, fontWeight: '700' },
-  resumeHero: {
-    minHeight: 116,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  resumeHeroCopy: { flex: 1 },
-  resumeHeroTitle: { color: colors.text, fontSize: 18, lineHeight: 23, fontWeight: '700', marginTop: 6 },
-  resumeHeroMeta: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 5, maxWidth: 260 },
-  resumeHeroArrow: { color: colors.accent, fontSize: 11, fontWeight: '800' },
-  contextGroup: {
-    marginTop: 10,
-    borderRadius: radius.md,
+  heroQuiet: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.panel,
+    padding: space.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
-    overflow: 'hidden',
   },
-  contextRow: {
-    minHeight: 62,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+  heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: space.md,
+  },
+  heroMeta: { color: colors.accent, ...type.label },
+  heroTime: { color: colors.textDim, ...type.meta, fontWeight: '600' },
+  heroTitle: {
+    color: colors.text,
+    ...type.hero,
+    marginTop: space.sm,
+  },
+  heroReason: {
+    color: colors.muted,
+    ...type.body,
+    marginTop: space.xs,
+    marginBottom: space.lg,
+  },
+  whyBox: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    paddingTop: space.sm,
+    marginBottom: space.md,
+    gap: space.xs,
+  },
+  whyText: { color: colors.textDim, ...type.meta },
+  heroActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: space.xs,
+  },
+  primaryAction: { minWidth: 150 },
+  textAction: {
+    minHeight: layout.minTouch,
+    paddingHorizontal: space.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textActionText: { color: colors.textDim, ...type.meta, fontWeight: '600' },
+  textActionMuted: { color: colors.subtle, ...type.meta, fontWeight: '600' },
+
+  undoRow: {
+    minHeight: 58,
+    marginTop: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.panel,
+  },
+  undoCopy: { flex: 1 },
+  undoTitle: { color: colors.text, ...type.meta, fontWeight: '600' },
+  undoText: { color: colors.muted, ...type.meta, marginTop: 1 },
+  undoButton: {
+    minHeight: layout.minTouch,
+    paddingHorizontal: space.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  undoButtonText: { color: colors.accent, ...type.meta, fontWeight: '700' },
+  saveError: { color: colors.danger, ...type.meta, marginTop: space.sm },
+
+  section: { marginTop: space.xl },
+  sectionTitle: { color: colors.text, ...type.section, marginBottom: space.xs },
+  flatList: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  laterRow: {
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  contextCopy: { flex: 1 },
-  contextLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  contextLabelDanger: { color: colors.danger },
-  contextTitle: { color: colors.text, fontSize: 12, lineHeight: 16, fontWeight: '700', marginTop: 3 },
-  contextMeta: { color: colors.accent, fontSize: 10, fontWeight: '700' },
-  contextMetaDanger: { color: colors.danger },
-  sectionLabel: {
-    color: colors.subtle,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginTop: spacing.xl,
-    marginBottom: 10,
-  },
-  firstSectionLabel: {
-    marginTop: 14,
-  },
-  deferUndo: {
-    minHeight: 58,
-    marginTop: 10,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.20)',
+  laterCopy: { flex: 1 },
+  laterTitle: { color: colors.text, ...type.bodyStrong },
+  laterMeta: { color: colors.muted, ...type.meta, marginTop: 2 },
+  laterTime: { color: colors.textDim, ...type.meta, fontWeight: '600' },
+
+  adjustPanel: {
+    marginTop: space.sm,
+    borderRadius: radius.lg,
     backgroundColor: colors.panel,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  deferUndoCopy: { flex: 1 },
-  deferUndoTitle: { color: colors.text, fontSize: 10.5, fontWeight: '800' },
-  deferUndoText: { color: colors.subtle, fontSize: 9, marginTop: 3 },
-  deferUndoButton: {
-    minHeight: layout.minTouch,
-    minWidth: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.accentSoft,
-  },
-  deferUndoButtonText: { color: colors.accent, fontSize: 10, fontWeight: '800' },
-  nextCard: {
-    position: 'relative',
-    overflow: 'hidden',
-    borderRadius: radius.xl,
+    padding: space.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.32)',
-    backgroundColor: 'rgba(255,128,91,0.10)',
-    padding: spacing.lg,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
+    borderColor: colors.line,
   },
-  nextGhost: {
-    position: 'absolute',
-    right: 12,
-    bottom: 2,
-    color: 'rgba(255,255,255,0.028)',
-    fontSize: 74,
-    fontWeight: '900',
-    letterSpacing: -5,
-  },
-  nextGlow: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 180,
-    right: -88,
-    top: -105,
-    backgroundColor: colors.accent,
-    opacity: 0.08,
-  },
-  nextTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  nextTopCopy: { flex: 1 },
-  nextSubject: { color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 1.3 },
-  nextMode: { color: colors.accent, fontSize: 8.5, fontWeight: '800', letterSpacing: 1, marginTop: 4 },
-  nextTime: { alignItems: 'flex-end' },
-  nextMinutes: { color: colors.accent, fontSize: 27, lineHeight: 28, fontWeight: '700' },
-  nextMinLabel: { color: colors.muted, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },
-  nextTitle: { color: colors.text, fontSize: 24, lineHeight: 29, fontWeight: '700', marginTop: 18, letterSpacing: -0.45 },
-  nextReason: { color: colors.textDim, fontSize: 11.5, lineHeight: 17, marginTop: 7 },
-  nextActions: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,128,91,0.17)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  deferButton: {
-    minHeight: layout.minTouch,
-    minWidth: 82,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  deferButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
-  nextAction: {
-    flex: 1,
-    minHeight: layout.minTouch,
-    borderRadius: radius.md,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: 12,
+  adjustHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: space.sm,
   },
-  nextActionText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
-  nextArrow: { color: colors.accent, fontSize: 18 },
-  doneCard: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(180,216,174,0.2)',
-    backgroundColor: 'rgba(180,216,174,0.055)',
-    padding: spacing.lg,
-  },
-  doneMark: { color: colors.success, fontSize: 22 },
-  doneTitle: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 9 },
-  doneText: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
-  emptyCard: {
-    borderRadius: radius.lg,
+  adjustCopy: { flex: 1 },
+  adjustTitle: { color: colors.text, ...type.bodyStrong },
+  adjustMeta: { color: colors.muted, ...type.meta, marginTop: 2 },
+  choiceRow: { gap: space.xs, paddingVertical: space.md, paddingRight: space.lg },
+  choice: {
+    minHeight: 40,
+    minWidth: 62,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: spacing.lg,
-  },
-  emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  emptyText: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
-  emptyButton: {
-    alignSelf: 'flex-start',
-    minHeight: layout.minTouch,
-    marginTop: spacing.md,
-    paddingHorizontal: 14,
+    backgroundColor: colors.bgRaised,
+    alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
   },
-  emptyButtonText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
-  planHeader: {
-    marginTop: 3,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 10,
+  choiceWide: { flex: 1 },
+  choiceActive: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
   },
-  planSubtitle: { color: colors.muted, fontSize: 10.5, marginTop: -5, marginBottom: 11 },
-  deferred: { color: colors.subtle, fontSize: 9.5, marginBottom: 11 },
-  breakRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 3 },
-  breakLine: { height: 1, backgroundColor: colors.line, flex: 1 },
-  breakText: { color: colors.subtle, fontSize: 8.5, fontWeight: '600' },
-  logicNote: {
-    marginTop: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
+  choiceText: { color: colors.textDim, ...type.meta, fontWeight: '600' },
+  choiceTextActive: { color: colors.accent },
+  energyRow: { flexDirection: 'row', gap: space.xs, marginTop: space.xs },
+  inboxWrap: { marginTop: space.sm },
+  bottomSpace: { height: space.xl },
+
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: motion.pressScale }],
   },
-  logicTitle: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  logicText: { color: colors.subtle, fontSize: 10, lineHeight: 16, marginTop: 5 },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.995 }] },
 });

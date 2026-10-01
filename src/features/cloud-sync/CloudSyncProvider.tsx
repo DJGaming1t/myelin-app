@@ -48,6 +48,8 @@ export type CloudSyncStatus =
 
 export type ConflictChoice = 'device' | 'cloud' | 'merge';
 
+export type AccountDeletionResult = 'deleted' | 'reauth-required' | 'unavailable';
+
 type CloudSyncContextValue = {
   releaseEnabled: boolean;
   enabled: boolean;
@@ -61,7 +63,7 @@ type CloudSyncContextValue = {
   syncNow: () => Promise<void>;
   resolveConflict: (choice: ConflictChoice) => Promise<void>;
   deleteCloudCopy: () => Promise<void>;
-  deleteAccountAndCloud: () => Promise<void>;
+  deleteAccountAndCloud: () => Promise<AccountDeletionResult>;
 };
 
 const CloudSyncContext = createContext<CloudSyncContextValue | null>(null);
@@ -453,11 +455,12 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
     } catch (error) {
       setStatus('error');
       setMessage(friendlySyncError(error));
+      throw error;
     }
   }, [localMode, savePreference, user]);
 
-  const deleteAccountAndCloud = useCallback(async () => {
-    if (!user || localMode) return;
+  const deleteAccountAndCloud = useCallback(async (): Promise<AccountDeletionResult> => {
+    if (!user || localMode) return 'unavailable';
     const uid = user.uid;
     const localOwnerKey = ownerKey;
 
@@ -489,9 +492,9 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
         const code = (error as { code?: string } | null)?.code;
         if (code === 'auth/requires-recent-login') {
           setMessage(
-            'Cloud study data was deleted, but Firebase requires a recent sign-in before the account itself can be deleted. Sign out, sign in again, then retry account deletion.',
+            'Firebase requires a recent sign-in before the account can be deleted. Sign in again, then retry deletion.',
           );
-          return;
+          return 'reauth-required';
         }
         throw error;
       }
@@ -504,9 +507,11 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
       setConflictSnapshot(null);
       setStatus('off');
       setMessage('Account, cloud study data and this device workspace were deleted.');
+      return 'deleted';
     } catch (error) {
       setStatus('error');
       setMessage(friendlySyncError(error));
+      throw error;
     }
   }, [
     discardFocus,

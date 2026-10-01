@@ -93,7 +93,7 @@ export default function CloudSyncScreen() {
     return 'MYELIN keeps the device workspace as the offline source of truth. Firestore is used only to move validated snapshots between devices.';
   }, [localMode, releaseEnabled, user]);
 
-  async function action(name: string, run: () => Promise<void>) {
+  async function action(name: string, run: () => Promise<unknown>) {
     setBusyAction(name);
     try {
       await run();

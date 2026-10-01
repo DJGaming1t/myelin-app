@@ -153,7 +153,8 @@ function main() {
   assert.ok(screenSource.includes("finish('skipped')"));
   assert.ok(screenSource.includes('applyOnboardingSetup'));
   assert.ok(screenSource.includes('Enter MYELIN'));
-  assert.ok(screenSource.includes('Set a realistic study day.'));
+  assert.ok(screenSource.includes('How much focus fits in a normal day?'));
+assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);
   assert.equal(screenSource.includes('Create topic & enter MYELIN'), false);
 

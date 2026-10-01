@@ -132,7 +132,9 @@ function main() {
   const authIntro = read('app/(auth)/index.tsx');
   const authAccess = read('app/(auth)/access.tsx');
   const authScaffold = read('src/components/auth/AuthScaffold.tsx');
-  assert.ok(authIntro.includes('Know what to study next.'));
+  assert.ok(authIntro.includes('Know what to study'));
+assert.ok(authIntro.includes('OnboardingShell'));
+assert.ok(authIntro.includes('StudyPathVisual'));
   assert.equal(authIntro.includes('<Signal'), false);
   assert.equal(authIntro.includes('<LoopStep'), false);
   assert.ok(authAccess.includes('Continue to MYELIN'));
@@ -140,13 +142,21 @@ function main() {
   assert.ok(authScaffold.includes('<AmbientBackdrop />'));
   assert.equal(authScaffold.includes('<Reveal'), false);
 
+  const onboardingShell = read('src/components/onboarding/OnboardingShell.tsx');
+  assert.ok(onboardingShell.includes('withRepeat'));
+  assert.ok(onboardingShell.includes('useReducedMotion'));
+  assert.ok(onboardingShell.includes('signal.value'));
+
   const onboarding = read('app/(onboarding)/index.tsx');
-  assert.ok(onboarding.includes('Set a realistic study day.'));
+  assert.ok(onboarding.includes('How much focus fits in a normal day?'));
+assert.ok(onboarding.includes('OnboardingShell'));
   assert.equal(onboarding.includes('TopicStep'), false);
   assert.equal(onboarding.includes('AnimatedProgress'), false);
 
   const settingsScreen = read('app/(app)/settings/index.tsx');
   assert.ok(settingsScreen.includes('accessibilityState={{ expanded: open }}'));
+  assert.ok(settingsScreen.includes('FadeInDown.duration(180)'));
+  assert.ok(settingsScreen.includes('label="Delete account"'));
   assert.equal(settingsScreen.includes('<AppNav />'), false);
 
   assert.ok(nav.includes('if (active) return;'));

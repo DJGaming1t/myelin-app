@@ -1,14 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import {
+  OnboardingPrimaryButton,
+  OnboardingShell,
+} from '@/src/components/onboarding/OnboardingShell';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   DAILY_CAPACITY_OPTIONS,
@@ -16,7 +13,7 @@ import {
   normalizeDailyCapacity,
 } from '@/src/features/onboarding/onboarding-engine';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, radius, spacing } from '@/src/theme/tokens';
 
 const CAPACITY_COPY: Record<number, string> = {
   45: 'Light',
@@ -76,155 +73,87 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.topbar}>
-        <View style={styles.brand}>
-          <View style={styles.brandDot} />
-          <Text style={styles.brandName}>MYELIN</Text>
-        </View>
+    <OnboardingShell
+      topActionLabel="Skip"
+      onTopAction={() => void skip()}
+      title="How much focus fits in a normal day?"
+      description="Pick a realistic default. MYELIN can adjust around the day you actually have.">
+      <View style={styles.options}>
+        {DAILY_CAPACITY_OPTIONS.map((minutes) => {
+          const active = capacity === minutes;
+          return (
+            <Pressable
+              key={minutes}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() => setCapacity(minutes)}
+              style={({ pressed }) => [
+                styles.option,
+                active && styles.optionActive,
+                pressed && styles.pressed,
+              ]}>
+              <View>
+                <Text style={[styles.minutes, active && styles.minutesActive]}>
+                  {minutes} min
+                </Text>
+                <Text style={styles.label}>{CAPACITY_COPY[minutes]}</Text>
+              </View>
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={finishing}
-          onPress={() => void skip()}
-          style={({ pressed }) => [
-            styles.skipButton,
-            pressed && styles.pressed,
-            finishing && styles.disabled,
-          ]}>
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
+              <View style={[styles.marker, active && styles.markerActive]}>
+                {active ? <View style={styles.markerDot} /> : null}
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-        <Text accessibilityRole="header" style={styles.title}>Set a realistic study day.</Text>
-        <Text style={styles.lead}>
-          This is only a default. You can change it anytime.
-        </Text>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Text style={styles.question}>How much focused study usually fits?</Text>
-
-        <View style={styles.capacityList}>
-          {DAILY_CAPACITY_OPTIONS.map((minutes) => {
-            const active = capacity === minutes;
-            return (
-              <Pressable
-                key={minutes}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => setCapacity(minutes)}
-                style={({ pressed }) => [
-                  styles.capacityRow,
-                  active && styles.capacityRowActive,
-                  pressed && styles.pressed,
-                ]}>
-                <View style={styles.capacityCopy}>
-                  <Text style={[styles.capacityMinutes, active && styles.activeText]}>
-                    {minutes} min
-                  </Text>
-                  <Text style={styles.capacityLabel}>{CAPACITY_COPY[minutes]}</Text>
-                </View>
-                <View style={[styles.radio, active && styles.radioActive]}>
-                  {active ? <View style={styles.radioDot} /> : null}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Pressable
-          accessibilityRole="button"
+      <View style={styles.primaryWrap}>
+        <OnboardingPrimaryButton
+          label={finishing ? 'Opening…' : 'Enter MYELIN'}
           disabled={finishing}
           onPress={() => void complete()}
-          style={({ pressed }) => [
-            styles.primary,
-            pressed && styles.pressed,
-            finishing && styles.disabled,
-          ]}>
-          <Text style={styles.primaryText}>{finishing ? 'Opening…' : 'Enter MYELIN'}</Text>
-          <Text style={styles.primaryArrow}>→</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+        />
+      </View>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  topbar: {
-    width: '100%',
-    maxWidth: layout.contentMax,
-    alignSelf: 'center',
-    minHeight: 56,
-    paddingHorizontal: spacing.lg,
-    paddingTop: 8,
+  options: {
+    gap: 8,
+    marginTop: spacing.md,
+  },
+  option: {
+    minHeight: 66,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  brandDot: { width: 7, height: 7, borderRadius: 7, backgroundColor: colors.accent },
-  brandName: { color: colors.textDim, fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 1.9 },
-  skipButton: {
-    minHeight: layout.minTouch,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+  optionActive: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
   },
-  skipText: { color: colors.muted, fontSize: 12.5, lineHeight: 17, fontWeight: '700' },
-  content: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: 560,
-    alignSelf: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
-  },
-  title: {
+  minutes: {
     color: colors.text,
-    fontSize: 34,
-    lineHeight: 39,
-    fontWeight: '600',
-    letterSpacing: -1.05,
-  },
-  lead: {
-    color: colors.muted,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 21,
-    marginTop: 9,
-  },
-  question: {
-    color: colors.textDim,
-    fontSize: 13,
-    lineHeight: 18,
     fontWeight: '700',
-    marginTop: spacing.xl,
-    marginBottom: 8,
   },
-  capacityList: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.line,
+  minutesActive: { color: colors.accentBright },
+  label: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 2,
   },
-  capacityRow: {
-    minHeight: 62,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
-    paddingHorizontal: 4,
-  },
-  capacityRowActive: { backgroundColor: colors.accentFaint },
-  capacityCopy: { flex: 1 },
-  capacityMinutes: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
-  capacityLabel: { color: colors.muted, fontSize: 12, lineHeight: 16, marginTop: 2 },
-  activeText: { color: colors.accent },
-  radio: {
+  marker: {
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -232,23 +161,20 @@ const styles = StyleSheet.create({
     borderColor: colors.lineStrong,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 4,
   },
-  radioActive: { borderColor: colors.accent },
-  radioDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
-  error: { color: colors.danger, fontSize: 12.5, lineHeight: 17, marginTop: 12 },
-  primary: {
-    minHeight: 56,
-    marginTop: spacing.xl,
-    borderRadius: radius.md,
+  markerActive: { borderColor: colors.accent },
+  markerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.accent,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  primaryText: { color: '#25140e', fontSize: 14, lineHeight: 19, fontWeight: '800' },
-  primaryArrow: { color: '#25140e', fontSize: 20, fontWeight: '700' },
+  error: {
+    color: colors.danger,
+    fontSize: 12.5,
+    lineHeight: 17,
+    marginTop: 12,
+  },
+  primaryWrap: { marginTop: spacing.lg },
   pressed: { opacity: 0.68 },
-  disabled: { opacity: 0.45 },
 });

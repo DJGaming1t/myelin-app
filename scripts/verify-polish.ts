@@ -37,7 +37,11 @@ assert(tokens.includes('minTouch: 48'), '48-point Android touch target token is 
 assert(motion.includes('AccessibilityInfo.isReduceMotionEnabled'), 'System reduced-motion preference is not read.');
 assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion'), 'User and system motion preferences are not combined.');
 assert(root.includes("animation: reduceMotion ? 'none' : 'fade'"), 'Root navigation ignores reduced motion.');
-assert(app.includes("animation: 'none'"), 'Protected app navigation should not replay route fades between frequent study screens.');
+assert(app.includes("animation: reduceMotion ? 'none' : 'fade_from_bottom'"), 'Hierarchical app navigation should animate unless reduced motion is enabled.');
+assert(app.includes('<Stack.Screen name="today/index" options={{ animation: \'none\' }} />'), 'Today peer navigation must stay instant.');
+assert(app.includes('<Stack.Screen name="topics/index" options={{ animation: \'none\' }} />'), 'Library peer navigation must stay instant.');
+assert(app.includes('<Stack.Screen name="review/index" options={{ animation: \'none\' }} />'), 'Review peer navigation must stay instant.');
+assert(app.includes('<Stack.Screen name="progress/index" options={{ animation: \'none\' }} />'), 'Progress peer navigation must stay instant.');
 assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
 assert(app.includes('actionLabel="Try again"'), 'Workspace error state is missing a retry action.');
 assert(app.includes('retryWorkspace()'), 'Workspace retry action is not wired to the provider.');
@@ -89,13 +93,17 @@ assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while
 assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
 assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
 
-assert(onboarding.includes('Set a realistic study day.'), 'Onboarding should ask for one useful setup decision.');
+assert(onboarding.includes('How much focus fits in a normal day?'), 'Onboarding should ask for one useful setup decision.');
 assert(!onboarding.includes('AnimatedProgress'), 'One-step onboarding should not show artificial multi-step progress.');
 assert(!onboarding.includes('TopicStep'), 'Onboarding should not require topic creation before entering the app.');
 assert(settings.includes('variant="compact"'), 'Settings should use the compact utility-screen header.');
 assert(settings.includes('sectionSubtitle: { color: colors.muted, fontSize: 12'), 'Settings section descriptions are too small.');
 assert(settings.includes('dataLabel: { color: colors.subtle, fontSize: 10'), 'Settings data labels regressed below the readability floor.');
 assert(settings.includes('accessibilityState={{ expanded: open }}'), 'Settings groups should use progressive disclosure.');
+assert(settings.includes('FadeInDown.duration(180)'), 'Settings disclosures should animate open.');
+assert(settings.includes('FadeOutUp.duration(130)'), 'Settings disclosures should animate closed.');
+assert(settings.includes("label=\"Delete account\""), 'Settings should expose direct account deletion.');
+assert(settings.includes('transferCopy: { flex: 1, minWidth: 0 }'), 'Settings action copy must be constrained so arrows stay inside rows.');
 assert(settings.includes("onBack={() => router.back()}"), 'Settings should behave like a secondary screen.');
 assert(!settings.includes('<AppNav />'), 'Settings should not duplicate top-level navigation.');
 assert(taskForm.includes('variant="compact"'), 'Task form should use the compact form header.');

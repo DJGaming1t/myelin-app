@@ -198,8 +198,8 @@ const cloudScreenSource = fs.readFileSync(
   'utf8',
 );
 assert.ok(
-  cloudProviderSource.includes('if (!user || localMode) return;'),
-  'Account deletion must remain available when cloud sync release is disabled.',
+  cloudProviderSource.includes("if (!user || localMode) return 'unavailable';"),
+  'Account deletion must report an unavailable identity without depending on cloud sync release.',
 );
 assert.ok(
   cloudProviderSource.includes('if (CLOUD_SYNC_RELEASE_ENABLED) {'),
@@ -208,4 +208,8 @@ assert.ok(
 assert.ok(
   cloudScreenSource.includes('disabled={!signedIn || busy}'),
   'Account deletion UI must not be disabled merely because cloud sync is locked.',
+);
+assert.ok(
+  cloudProviderSource.includes("return 'reauth-required'"),
+  'Account deletion must expose recent-login recovery instead of silently failing.',
 );

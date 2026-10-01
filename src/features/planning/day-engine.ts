@@ -82,7 +82,9 @@ export function commitmentOccurrencesForDay(
       if (item.recurrenceDays.includes(weekday)) {
         const rawStart = localAtMinutes(day, item.startMinutes);
         let rawEnd = localAtMinutes(day, item.endMinutes);
-        if (rawEnd <= rawStart) rawEnd = addLocalDays(rawEnd, 1);
+        if (rawEnd <= rawStart) {
+          rawEnd = localAtMinutes(addLocalDays(day, 1), item.endMinutes);
+        }
         if (overlaps(rawStart, rawEnd, day, next)) {
           occurrences.push({
             id: item.id,
@@ -99,7 +101,9 @@ export function commitmentOccurrencesForDay(
       if (item.recurrenceDays.includes(previousWeekday)) {
         const previousStart = localAtMinutes(previousDay, item.startMinutes);
         let previousEnd = localAtMinutes(previousDay, item.endMinutes);
-        if (previousEnd <= previousStart) previousEnd = addLocalDays(previousEnd, 1);
+        if (previousEnd <= previousStart) {
+          previousEnd = localAtMinutes(day, item.endMinutes);
+        }
         if (previousEnd > day) {
           occurrences.push({
             id: item.id + ':carry',

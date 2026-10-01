@@ -281,7 +281,6 @@ function commitment(raw: unknown): Commitment {
   const c = object(raw, 'commitment');
   const startAt = number(c.startAt, 'commitment start', 1);
   const endAt = number(c.endAt, 'commitment end', 1);
-  if (endAt <= startAt) throw new Error('Commitment end must be after its start.');
 
   const startDate = new Date(startAt);
   const endDate = new Date(endAt);
@@ -305,6 +304,14 @@ function commitment(raw: unknown): Commitment {
       ),
     ),
   ).sort((a, b) => a - b);
+
+  if (recurrenceDays.length) {
+    if (startMinutes === endMinutes) {
+      throw new Error('Recurring commitment must have a non-zero duration.');
+    }
+  } else if (endAt <= startAt) {
+    throw new Error('Commitment end must be after its start.');
+  }
 
   return {
     id: id(c.id),

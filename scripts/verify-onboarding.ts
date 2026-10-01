@@ -15,6 +15,10 @@ import {
 } from '../src/features/onboarding/onboarding-engine';
 import { createTopic } from '../src/features/topics/topic-operations';
 
+function read(relative: string) {
+  return fs.readFileSync(relative, 'utf8');
+}
+
 function main() {
   const now = new Date(2026, 8, 30, 12, 0, 0, 0).getTime();
 

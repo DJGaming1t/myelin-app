@@ -67,9 +67,9 @@ export const space = {
 
 export const type = {
   display: { fontSize: 40, lineHeight: 44, fontWeight: '600' as const, letterSpacing: -1.2 },
-  pageTitle: { fontSize: 30, lineHeight: 36, fontWeight: '650' as const, letterSpacing: -0.8 },
+  pageTitle: { fontSize: 30, lineHeight: 36, fontWeight: '600' as const, letterSpacing: -0.8 },
   hero: { fontSize: 24, lineHeight: 30, fontWeight: '700' as const, letterSpacing: -0.45 },
-  section: { fontSize: 19, lineHeight: 25, fontWeight: '650' as const, letterSpacing: -0.2 },
+  section: { fontSize: 19, lineHeight: 25, fontWeight: '600' as const, letterSpacing: -0.2 },
   body: { fontSize: 15, lineHeight: 21, fontWeight: '400' as const },
   bodyStrong: { fontSize: 15, lineHeight: 21, fontWeight: '600' as const },
   meta: { fontSize: 13, lineHeight: 18, fontWeight: '500' as const },

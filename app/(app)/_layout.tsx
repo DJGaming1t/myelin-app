@@ -4,11 +4,13 @@ import { ScreenState } from '@/src/components/app/ScreenState';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 
 export default function AppLayout() {
   const { ready: authReady, user, localMode } = useAuth();
   const { status, saveError, retryWorkspace } = useWorkspace();
   const { ready: onboardingReady, shouldShow } = useOnboarding();
+  const reduceMotion = useReducedMotion();
 
   if (!authReady) {
     return <ScreenState kind="loading" title="Opening MYELIN" message="Checking your session…" fill />;
@@ -46,8 +48,12 @@ export default function AppLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'none',
-      }}
-    />
+        animation: reduceMotion ? 'none' : 'fade_from_bottom',
+      }}>
+      <Stack.Screen name="today/index" options={{ animation: 'none' }} />
+      <Stack.Screen name="topics/index" options={{ animation: 'none' }} />
+      <Stack.Screen name="review/index" options={{ animation: 'none' }} />
+      <Stack.Screen name="progress/index" options={{ animation: 'none' }} />
+    </Stack>
   );
 }

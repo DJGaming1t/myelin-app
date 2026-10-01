@@ -17,7 +17,6 @@ const pkg = json('package.json');
 const release = read('RELEASE.md');
 const gitignore = read('.gitignore');
 const verifyWorkflow = read('.github/workflows/verify.yml');
-const previewWorkflow = read('.github/workflows/publish-preview.yml');
 const nativeGuard = read('scripts/check-native-runtime-boundary.cjs');
 const googleServices = json('google-services.json');
 
@@ -46,17 +45,19 @@ assert(gitignore.includes('*.jks') && gitignore.includes('*.key'), 'Signing/priv
 assert(release.includes('Google sign-in verification'), 'Release runbook is missing native auth verification.');
 assert(release.includes('Preview APK installs on a real Android device'), 'Release runbook lacks an on-device preview gate.');
 
-assert(previewWorkflow.includes("workflows: ['Verify Expo app']"), 'Preview publisher must wait for the verification workflow.');
-assert(previewWorkflow.includes('workflow_run.conclusion == \'success\''), 'Preview publisher must require successful verification.');
-assert(previewWorkflow.includes('workflow_dispatch:'), 'Preview publisher needs a manual recovery trigger.');
-assert(previewWorkflow.includes('EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}'), 'Preview publisher must use the Expo CI token secret.');
-assert(previewWorkflow.includes('EXPO_TOKEN is not configured'), 'Missing Expo token must skip with an explicit notice.');
-assert(previewWorkflow.includes('npx eas-cli@latest update'), 'Preview publisher must use EAS Update.');
-assert(previewWorkflow.includes('--channel preview'), 'Preview publisher must target the preview channel.');
-assert(previewWorkflow.includes('--environment preview'), 'Preview publisher must use preview environment variables.');
-assert(previewWorkflow.includes('--platform android'), 'Preview publisher must target Android.');
-assert(previewWorkflow.includes('--non-interactive'), 'Preview publisher must be CI-safe.');
-assert(previewWorkflow.includes('cancel-in-progress: true'), 'Preview publisher should collapse superseded update runs.');
+assert(verifyWorkflow.includes('publish_preview:'), 'Preview publishing must live in the verified workflow so it works on expo-migration.');
+assert(verifyWorkflow.includes('needs: verify'), 'Preview publisher must wait for successful verification.');
+assert(
+  verifyWorkflow.includes("github.event_name == 'push' && github.ref == 'refs/heads/expo-migration'"),
+  'Preview publisher must run only after pushes to expo-migration.',
+);
+assert(verifyWorkflow.includes('EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}'), 'Preview publisher must use the Expo CI token secret.');
+assert(verifyWorkflow.includes('EXPO_TOKEN is not configured'), 'Missing Expo token must skip with an explicit notice.');
+assert(verifyWorkflow.includes('npx eas-cli@latest update'), 'Preview publisher must use EAS Update.');
+assert(verifyWorkflow.includes('--channel preview'), 'Preview publisher must target the preview channel.');
+assert(verifyWorkflow.includes('--environment preview'), 'Preview publisher must use preview environment variables.');
+assert(verifyWorkflow.includes('--platform android'), 'Preview publisher must target Android.');
+assert(verifyWorkflow.includes('--non-interactive'), 'Preview publisher must be CI-safe.');
 
 assert(verifyWorkflow.includes('fetch-depth: 0'), 'Verification checkout must expose history for runtime-boundary checks.');
 assert(
@@ -70,8 +71,12 @@ assert(nativeGuard.includes("file.startsWith('ios/')"), 'Runtime guard must dete
 assert(nativeGuard.includes('currentVersion === previousVersion'), 'Runtime guard must require a version boundary for native-sensitive changes.');
 
 assert(
+  !fs.existsSync(path.join(process.cwd(), '.github/workflows/publish-preview.yml')),
+  'Preview publishing should be inline with verification instead of relying on workflow_run/default-branch behavior.',
+);
+assert(
   !fs.existsSync(path.join(process.cwd(), '.eas/workflows/publish-preview-update.yml')),
-  'Automatic preview publishing should not depend on the currently stalled EAS Workflow worker.',
+  'Automatic preview publishing should not depend on the stalled EAS Workflow worker.',
 );
 assert(
   !fs.existsSync(path.join(process.cwd(), '.eas/preview-native-baseline.txt')),

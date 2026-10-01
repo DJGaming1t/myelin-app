@@ -1,6 +1,6 @@
 # MYELIN release and preview runbook
 
-This repository is prepared for EAS development, preview and production builds. The first real EAS project link and Android signing credentials are account-specific and must be created while signed in to the Expo account that will own MYELIN.
+This repository is prepared for EAS development, preview and production builds.
 
 ## What is already configured
 
@@ -11,7 +11,9 @@ This repository is prepared for EAS development, preview and production builds. 
 - Preview and production channels are separated
 - Runtime compatibility uses the app-version policy
 - Production developer-facing build versions are managed remotely and auto-incremented
-- `expo-updates` is installed and verified preview OTA publishing is wired through GitHub Actions + EAS CLI
+- `expo-updates` is installed
+- GitHub verification blocks native-sensitive changes unless the app/runtime version advances
+- Preview OTA publishing is wired as a dependent job inside the verified GitHub workflow
 - Signing files and common private key formats are ignored by Git
 
 ## First-time EAS link
@@ -41,11 +43,11 @@ npm run eas:preview
 
 The `preview` profile uses internal distribution and an APK. When the build completes, EAS provides a build page/install link that can be opened on an Android phone. The installed preview does not need Metro or a laptop running.
 
-For the very first Android build, EAS can create/manage the signing keystore. Keep the same signing identity for later updates to the installed app and for Play releases.
+For the first Android build, EAS can create/manage the signing keystore. Keep the same signing identity for later updates to the installed app and for Play releases.
 
 ## Google sign-in verification
 
-The native Google sign-in code is wired and the committed Firebase Android config now contains the Android OAuth client for the EAS preview signing certificate, plus the web OAuth client used for Firebase credential exchange.
+The native Google sign-in code is wired and the committed Firebase Android config contains the Android OAuth client for the EAS preview signing certificate, plus the web OAuth client used for Firebase credential exchange.
 
 Configuration is not the same as runtime verification. Before treating authentication as fully verified:
 
@@ -59,17 +61,23 @@ Do not mark the auth safety gate complete until these flows are tested on-device
 
 ## Publish code-only preview updates
 
-Pushes to `expo-migration` trigger `.eas/workflows/publish-preview-update.yml`. The workflow publishes to the `preview` update branch only when an existing internal Android preview build matches the current app and runtime version.
+A push to `expo-migration` runs `.github/workflows/verify.yml`. Its `publish_preview` job depends on the full `verify` job and only runs for pushes to `expo-migration`.
 
-That means normal JavaScript/TypeScript, styling and asset changes can reach compatible preview installs without a new APK. Native changes must bump `app.json` version/runtime and create a new preview APK before OTA resumes.
+When the repository Actions secret `EXPO_TOKEN` is configured, the publish job runs:
 
-The manual command is still available for deliberate publishing:
+```bash
+npx eas-cli@latest update --channel preview --environment preview --platform android --non-interactive
+```
+
+If the token is absent, the publish job exits cleanly with an explicit notice instead of failing. Normal JavaScript/TypeScript, styling and asset changes can therefore reach compatible preview installs without a new APK once that one-time secret is configured.
+
+Native-sensitive changes are checked before the main verification suite. They must advance `app.json` `expo.version`, which also advances the `appVersion` runtime boundary, and then require a new preview APK before OTA resumes.
+
+The manual command remains available:
 
 ```bash
 npm run eas:update:preview -- --message "Describe the change"
 ```
-
-Create a new APK when native dependencies, native configuration, Android permissions, plugins, SDK/runtime inputs or the app-version runtime boundary change.
 
 ## Production
 
@@ -87,7 +95,8 @@ Production Android builds are store-oriented AABs by default. Do not submit one 
 
 - [x] EAS project linked to the intended Expo account
 - [x] EAS Update configured with the generated project ID/update URL
-- [ ] GitHub Actions `EXPO_TOKEN` secret configured for automatic preview OTA publishing\n- [x] Native-sensitive changes are blocked unless the app/runtime version advances
+- [ ] GitHub Actions `EXPO_TOKEN` secret configured for automatic preview OTA publishing
+- [x] Native-sensitive changes are blocked unless the app/runtime version advances
 - [x] Locked `npm ci` succeeds in GitHub verification
 - [x] `npx tsc --noEmit` succeeds
 - [x] All repository verification scripts succeed

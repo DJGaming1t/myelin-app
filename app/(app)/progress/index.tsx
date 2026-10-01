@@ -13,6 +13,7 @@ import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
@@ -129,8 +130,7 @@ export default function ProgressScreen() {
             <Text style={styles.inlineActionArrow}>{showEvidence ? '−' : '+'}</Text>
           </Pressable>
 
-          {showEvidence ? (
-            <>
+          <AnimatedDisclosure visible={showEvidence}>
               <SectionTitle
                 title="Confidence calibration"
                 subtitle="Confidence before checking compared with actual recall grades."
@@ -210,8 +210,7 @@ export default function ProgressScreen() {
                   Minutes are not mastery. Confidence is not correctness. MYELIN reports the study evidence it actually recorded.
                 </Text>
               </View>
-            </>
-          ) : null}
+          </AnimatedDisclosure>
         </ScrollView>
 
         <AppNav />

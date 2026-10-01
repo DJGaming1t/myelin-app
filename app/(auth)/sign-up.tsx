@@ -13,12 +13,12 @@ import { passwordIsReady } from '@/src/features/auth/password';
 import { colors, layout, spacing } from '@/src/theme/tokens';
 
 export default function SignUpScreen() {
-  const { signUpEmail } = useAuth();
+  const { signUpEmail, keepSignedIn: defaultKeepSignedIn } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [keepSignedIn, setKeepSignedIn] = useState(false);
+  const [keepSignedIn, setKeepSignedIn] = useState(defaultKeepSignedIn);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 

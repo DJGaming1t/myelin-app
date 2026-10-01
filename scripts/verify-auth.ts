@@ -52,6 +52,18 @@ assert.ok(
   'Auth routing must wait for Firebase persistence restoration.',
 );
 assert.ok(
+  authProvider.includes("const DEFAULT_KEEP_SIGNED_IN = Platform.OS !== 'web'"),
+  'Mobile authentication should persist by default.',
+);
+assert.ok(
+  authProvider.includes("keepValue === null ? DEFAULT_KEEP_SIGNED_IN : keepValue === '1'"),
+  'A device without a saved persistence preference should use the mobile default.',
+);
+assert.ok(
+  authProvider.includes('signInGoogle(keepSignedIn = DEFAULT_KEEP_SIGNED_IN)'),
+  'Google sign-in should use the platform persistence default unless explicitly overridden.',
+);
+assert.ok(
   authProvider.includes('sendEmailVerification(credential.user).catch'),
   'A verification-email delivery failure must not masquerade as account-creation failure.',
 );

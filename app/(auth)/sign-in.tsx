@@ -11,10 +11,10 @@ import { useAuth } from '@/src/features/auth/AuthProvider';
 import { colors, layout, spacing } from '@/src/theme/tokens';
 
 export default function SignInScreen() {
-  const { signInEmail, signInGoogle } = useAuth();
+  const { signInEmail, signInGoogle, keepSignedIn: defaultKeepSignedIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [keepSignedIn, setKeepSignedIn] = useState(false);
+  const [keepSignedIn, setKeepSignedIn] = useState(defaultKeepSignedIn);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState('');

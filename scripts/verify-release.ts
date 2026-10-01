@@ -61,11 +61,10 @@ assert(
 const androidGoogleClient = (googleServices.client ?? []).some((client: any) =>
   (client.oauth_client ?? []).some((oauth: any) => oauth.client_type === 1),
 );
-if (!androidGoogleClient) {
-  console.warn(
-    'Native Google sign-in is not release-ready: google-services.json has no Android OAuth client (client_type 1). Register the EAS signing SHA-1 and refresh the Firebase config.',
-  );
-}
+assert(
+  androidGoogleClient,
+  'google-services.json must contain the Android OAuth client for the EAS preview signing certificate.',
+);
 
 assert(
   fs.existsSync(path.join(process.cwd(), 'package-lock.json')),

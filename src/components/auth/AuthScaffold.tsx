@@ -9,7 +9,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { Reveal } from '@/src/components/motion/Reveal';
 import { colors, layout, spacing } from '@/src/theme/tokens';
 
 type Props = PropsWithChildren<{
@@ -31,28 +30,22 @@ export function AuthScaffold({ eyebrow, title, description, compact, children }:
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}>
           <View style={styles.content}>
-            <Reveal delay={20} distance={6}>
-              <View style={styles.brandRow}>
-                <View style={styles.brandMark}><View style={styles.brandCore} /></View>
-                <Text style={styles.brand}>MYELIN</Text>
-              </View>
-            </Reveal>
+            <View style={styles.brandRow}>
+              <View style={styles.brandMark}><View style={styles.brandCore} /></View>
+              <Text style={styles.brand}>MYELIN</Text>
+            </View>
 
-            <Reveal delay={70} distance={10}>
-              <View style={styles.heading}>
-                {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-                <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-                {description ? <Text style={styles.description}>{description}</Text> : null}
-              </View>
-            </Reveal>
+            <View style={styles.heading}>
+              {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+              <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+              {description ? <Text style={styles.description}>{description}</Text> : null}
+            </View>
 
-            <Reveal delay={120} distance={12} style={styles.body}>{children}</Reveal>
+            <View style={styles.body}>{children}</View>
 
-            <Reveal delay={170} distance={6}>
-              <Text style={styles.footer}>
-                Study data stays on this device unless you enable sync.
-              </Text>
-            </Reveal>
+            <Text style={styles.footer}>
+              Study data stays on this device unless you enable sync.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

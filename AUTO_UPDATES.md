@@ -1,55 +1,68 @@
 # Automatic preview updates
 
-MYELIN publishes compatible source changes to the Android preview app with EAS Workflows whenever `expo-migration` receives a push.
+MYELIN uses GitHub verification as the quality gate and GitHub Actions as the OTA publisher.
 
-## What happens
+## Automatic flow
 
-1. GitHub verification remains the source-quality gate for changes before they are merged.
-2. EAS looks for an existing internal Android `preview` build on the `preview` channel whose app version and runtime version match the current `app.json` version.
-3. If that compatible build exists, EAS publishes the current JavaScript/TypeScript/assets to the `preview` update branch using the `preview` environment.
-4. If no compatible build exists, the OTA publish job is skipped. A new preview APK is required first.
+1. A change lands on `expo-migration`.
+2. `.github/workflows/verify.yml` runs the full TypeScript, product, Firebase, Expo Doctor and Android-generation checks.
+3. Only after **Verify Expo app** succeeds, `.github/workflows/publish-preview.yml` is triggered.
+4. If the repository secret `EXPO_TOKEN` is configured, GitHub runs:
+   ```bash
+   npx eas-cli@latest update --channel preview --environment preview --platform android --non-interactive
+   ```
+5. If `EXPO_TOKEN` is not configured, publishing is skipped cleanly and the Actions log shows an explicit notice.
 
-The workflow deliberately does not use the EAS fingerprint job because that worker was not progressing reliably for this project. Runtime compatibility is enforced by the existing `runtimeVersion.policy = appVersion` boundary plus an exact version/runtime match in the build lookup.
+This avoids relying on the EAS Workflow compute workers that were remaining stuck before their first log line.
+
+## One-time GitHub setup
+
+Create an Expo personal access token in the Expo dashboard, then add it to the GitHub repository as an Actions secret named exactly:
+
+```
+EXPO_TOKEN
+```
+
+Do not paste the token into source code, commit history, issues or chat.
+
+After the secret exists, future verified merges publish automatically. The publisher also supports **Run workflow** manually from GitHub Actions, which is useful for publishing the current verified commit immediately after the secret is added.
 
 ## Native changes still require a new APK
 
-Before merging a native dependency or native configuration change:
+`scripts/check-native-runtime-boundary.cjs` runs in GitHub verification. If native-sensitive inputs change without a new `app.json` version, verification fails.
 
-- bump the user-facing app version in `app.json`
-- update the preview workflow's `app_version` and `runtime_version` to the same value
-- create a new preview APK
+Native-sensitive inputs include:
 
-Typical native-boundary changes include:
+- `app.json` / app config
+- `package.json` or `package-lock.json`
+- Firebase Android config
+- config plugins
+- committed `android/` or `ios/` files
 
-- adding/upgrading a native dependency
-- changing Expo config that affects Android native output
-- changing config plugins or Android permissions
-- upgrading Expo SDK / React Native
-- changing Google/Firebase native configuration
+For a real native change:
 
-Run:
+1. bump `app.json` `expo.version`;
+2. create a new preview APK with `npm run eas:preview`;
+3. install/test that runtime;
+4. resume OTA updates for normal JS/TS/style/asset changes.
 
-```bash
-npm run eas:preview
-```
+The app uses `runtimeVersion.policy = appVersion`, so each version bump creates a new OTA compatibility boundary.
 
-The release verifier intentionally fails if the preview workflow version/runtime no longer matches `app.json`.
+## Manual local publish
 
-## Manual preview update
-
-The existing manual command remains available:
+The existing local command remains available:
 
 ```bash
 npm run eas:update:preview -- --message "Describe the change"
 ```
 
-Use it only when you deliberately want to publish outside the automatic workflow and the installed preview build has the same runtime version.
+The local EAS CLI must be logged into the Expo account that owns the project.
 
 ## Preview activation on device
 
 A preview build may need up to two cold launches after a newly published update:
 
-1. one launch discovers/downloads the update in the background;
+1. one launch discovers/downloads the update;
 2. the next launch starts the downloaded update.
 
 Fully terminate the app between those launches. Backgrounding alone is not the same as a cold launch.

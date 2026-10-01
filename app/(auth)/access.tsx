@@ -20,10 +20,10 @@ export default function AccessScreen() {
     setError('');
     setGoogleBusy(true);
     try {
-      await runEntryTransition(async () => {
-        await signInGoogle();
-        router.replace('/');
-      });
+      await runEntryTransition(
+        () => signInGoogle(),
+        () => router.replace('/'),
+      );
     } catch (err) {
       setError(authErrorMessage(err, 'google'));
     } finally {
@@ -34,10 +34,10 @@ export default function AccessScreen() {
   async function handleLocal() {
     setLocalBusy(true);
     try {
-      await runEntryTransition(async () => {
-        await continueLocally();
-        router.replace('/');
-      });
+      await runEntryTransition(
+        () => continueLocally(),
+        () => router.replace('/'),
+      );
     } finally {
       setLocalBusy(false);
     }

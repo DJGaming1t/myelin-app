@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, space } from '@/src/theme/tokens';
 
 type Props = TextInputProps & {
   label: string;
@@ -34,6 +34,7 @@ export function AuthField({ label, error, password, style, ...props }: Props) {
           style={[styles.input, password && styles.passwordInput, style]}
           placeholderTextColor={colors.subtle}
           selectionColor={colors.accent}
+          cursorColor={colors.accent}
           secureTextEntry={password && !visible}
           onFocus={(event) => {
             setFocused(true);
@@ -48,7 +49,7 @@ export function AuthField({ label, error, password, style, ...props }: Props) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={visible ? 'Hide password' : 'Show password'}
-            hitSlop={10}
+            hitSlop={8}
             onPress={() => setVisible((value) => !value)}
             style={styles.reveal}>
             <Text style={styles.revealText}>{visible ? 'Hide' : 'Show'}</Text>
@@ -61,19 +62,19 @@ export function AuthField({ label, error, password, style, ...props }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: spacing.md },
+  wrap: { marginBottom: space.md },
   label: {
     color: colors.textDim,
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700',
-    marginBottom: 7,
+    marginBottom: space.xs,
   },
   inputWrap: {
-    minHeight: 54,
+    minHeight: 58,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: 'rgba(16,16,19,0.72)',
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.bgRaised,
     borderRadius: radius.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -82,16 +83,33 @@ const styles = StyleSheet.create({
     borderColor: colors.accentLine,
     backgroundColor: colors.panel,
   },
-  inputError: { borderColor: 'rgba(255,161,145,0.6)' },
+  inputError: { borderColor: 'rgba(255,161,145,0.62)' },
   input: {
     flex: 1,
-    minHeight: 50,
-    paddingHorizontal: 14,
+    minHeight: 56,
+    paddingHorizontal: space.md,
     color: colors.text,
-    fontSize: 15.5,
+    fontSize: 16,
+    lineHeight: 21,
   },
-  passwordInput: { paddingRight: 62 },
-  reveal: { position: 'absolute', right: 7, minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
-  revealText: { color: colors.accent, fontWeight: '700', fontSize: 11 },
-  error: { color: colors.danger, fontSize: 11, lineHeight: 16, marginTop: 6 },
+  passwordInput: { paddingRight: 70 },
+  reveal: {
+    position: 'absolute',
+    right: 8,
+    minWidth: layout.minTouch,
+    minHeight: layout.minTouch,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  revealText: {
+    color: colors.accent,
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  error: {
+    color: colors.danger,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 6,
+  },
 });

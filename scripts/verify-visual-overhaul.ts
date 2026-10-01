@@ -29,7 +29,7 @@ function main() {
   assert.ok(nav.includes("router.push('/(app)/quick-add')"));
   assert.ok(nav.includes('<AppIcon'));
   assert.equal(nav.includes("key: 'exams'"), false);
-  assert.equal((nav.match(/path: '\/\(app\)\//g) ?? []).length, 4);
+  assert.equal((nav.match(/\{ key: '(today|topics|review|progress)'/g) ?? []).length, 4);
 
   const header = read('src/components/app/ScreenHeader.tsx');
   assert.ok(header.includes("variant?: 'hero' | 'standard' | 'compact'"));

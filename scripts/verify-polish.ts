@@ -115,7 +115,7 @@ assert(onboardingShell.includes('<Reveal'), 'Onboarding entrance hierarchy is mi
 assert(onboardingShell.includes('<SpringPressable'), 'Onboarding primary action should use shared press motion.');
 assert(authWelcome.includes('scrollable={false}'), 'Welcome must keep both actions in the first viewport.');
 assert(authWelcome.includes('I already use MYELIN'), 'Existing-user path is missing from the welcome screen.');
-assert(authScaffold.includes('<Reveal'), 'Auth screens are missing calm entrance motion.');
+assert(!authScaffold.includes('<Reveal'), 'Repeated auth screens should remain motion-quiet.');
 assert(authButton.includes('<SpringPressable'), 'Auth buttons should use shared press motion.');
 assert(!onboarding.includes('AnimatedProgress'), 'One-step onboarding should not show artificial multi-step progress.');
 assert(!onboarding.includes('TopicStep'), 'Onboarding should not require topic creation before entering the app.');

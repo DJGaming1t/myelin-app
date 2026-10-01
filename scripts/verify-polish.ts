@@ -69,6 +69,8 @@ assert(!header.includes('<Reveal'), 'Shared screen headers should not replay ent
 assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
 assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');
 assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');
+assert(!ambient.includes('Animated.loop'), 'Ambient background should not run continuous decorative animation loops.');
+assert(!ambient.includes('Easing.'), 'Ambient background should remain static and quiet.');
 assert(pulseHalo.includes('reduceMotion'), 'Legacy halo primitive must remain accessibility-safe while it exists.');
 
 assert(animatedProgress.includes("from 'react-native-reanimated'"), 'Progress animation is not running through Reanimated.');

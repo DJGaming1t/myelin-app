@@ -142,6 +142,11 @@ assert.ok(authIntro.includes('StudyPathVisual'));
   assert.ok(authScaffold.includes('<AmbientBackdrop />'));
   assert.equal(authScaffold.includes('<Reveal'), false);
 
+  const onboardingShell = read('src/components/onboarding/OnboardingShell.tsx');
+  assert.ok(onboardingShell.includes('withRepeat'));
+  assert.ok(onboardingShell.includes('useReducedMotion'));
+  assert.ok(onboardingShell.includes('signal.value'));
+
   const onboarding = read('app/(onboarding)/index.tsx');
   assert.ok(onboarding.includes('How much focus fits in a normal day?'));
 assert.ok(onboarding.includes('OnboardingShell'));
@@ -150,6 +155,8 @@ assert.ok(onboarding.includes('OnboardingShell'));
 
   const settingsScreen = read('app/(app)/settings/index.tsx');
   assert.ok(settingsScreen.includes('accessibilityState={{ expanded: open }}'));
+  assert.ok(settingsScreen.includes('FadeInDown.duration(180)'));
+  assert.ok(settingsScreen.includes('label="Delete account"'));
   assert.equal(settingsScreen.includes('<AppNav />'), false);
 
   assert.ok(nav.includes('if (active) return;'));

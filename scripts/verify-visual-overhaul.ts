@@ -13,7 +13,9 @@ function main() {
   assert.ok(tokens.includes('export const motion ='));
 
   const backdrop = read('src/components/app/AmbientBackdrop.tsx');
-  assert.ok(backdrop.includes('useReducedMotion'));
+  assert.equal(backdrop.includes('Animated.loop'), false);
+  assert.equal(backdrop.includes('Animated.View'), false);
+  assert.ok(backdrop.includes('orbTop'));
 
   const reveal = read('src/components/motion/Reveal.tsx');
   assert.ok(reveal.includes('useReducedMotion'));

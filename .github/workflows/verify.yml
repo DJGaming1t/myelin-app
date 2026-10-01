@@ -109,3 +109,47 @@ jobs:
 
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean --no-install
+
+  publish_preview:
+    name: Publish preview OTA
+    needs: verify
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check Expo token
+        id: token
+        shell: bash
+        run: |
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EXPO_TOKEN is not configured; preview OTA publishing was skipped."
+          fi
+
+      - name: Checkout verified commit
+        if: steps.token.outputs.configured == 'true'
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        if: steps.token.outputs.configured == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        if: steps.token.outputs.configured == 'true'
+        run: npm ci --no-audit --no-fund
+
+      - name: Publish Android preview update
+        if: steps.token.outputs.configured == 'true'
+        run: >
+          npx eas-cli@latest update
+          --channel preview
+          --environment preview
+          --platform android
+          --non-interactive
+          --message "Verified preview $GITHUB_SHA"

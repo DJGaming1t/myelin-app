@@ -59,9 +59,9 @@ Do not mark the auth safety gate complete until these flows are tested on-device
 
 ## Publish code-only preview updates
 
-Pushes to `expo-migration` trigger `.eas/workflows/publish-preview-update.yml`. The workflow verifies the source, computes the Android native fingerprint and publishes to the `preview` update branch only when an existing `preview` build has the same fingerprint.
+Pushes to `expo-migration` trigger `.eas/workflows/publish-preview-update.yml`. The workflow publishes to the `preview` update branch only when an existing internal Android preview build matches the current app and runtime version.
 
-That means normal JavaScript/TypeScript, styling and asset changes can reach compatible preview installs without a new APK, while native changes automatically stop OTA publishing until a matching preview build exists.
+That means normal JavaScript/TypeScript, styling and asset changes can reach compatible preview installs without a new APK. Native changes must bump `app.json` version/runtime and create a new preview APK before OTA resumes.
 
 The manual command is still available for deliberate publishing:
 
@@ -87,7 +87,7 @@ Production Android builds are store-oriented AABs by default. Do not submit one 
 
 - [x] EAS project linked to the intended Expo account
 - [x] EAS Update configured with the generated project ID/update URL
-- [x] Preview EAS Workflow validates source + native fingerprint before OTA publishing
+- [x] Preview EAS Workflow targets an existing build with the same app/runtime version before OTA publishing
 - [x] Locked `npm ci` succeeds in GitHub verification
 - [x] `npx tsc --noEmit` succeeds
 - [x] All repository verification scripts succeed

@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 
 import { Reveal } from '@/src/components/motion/Reveal';
 import { PlanBlock } from './planner';
-import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
 export function PlanBlockCard({
@@ -14,19 +15,15 @@ export function PlanBlockCard({
   index: number;
   onPress: () => void;
 }) {
-  const reduceMotion = useReducedMotion();
-
   return (
     <Reveal delay={Math.min(index * 55, 220)} distance={8}>
-      <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${block.topicName}, ${block.minutes} minutes`}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.pressed,
-        pressed && !reduceMotion && styles.pressedMotion,
-      ]}>
+      <SpringPressable
+        accessibilityRole="button"
+        accessibilityLabel={`${block.topicName}, ${block.minutes} minutes`}
+        onPress={onPress}
+        style={styles.card}
+        scaleTo={0.982}
+        lift={1}>
       <View style={styles.indexWrap}>
         <Text style={styles.index}>{String(index + 1).padStart(2, '0')}</Text>
       </View>
@@ -50,7 +47,7 @@ export function PlanBlockCard({
         <Text style={styles.minLabel}>MIN</Text>
         <Text style={styles.arrow}>→</Text>
       </View>
-      </Pressable>
+      </SpringPressable>
     </Reveal>
   );
 }
@@ -64,7 +61,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: colors.panelGlass,
     borderRadius: radius.lg,
     shadowColor: '#000000',
     shadowOpacity: 0.18,
@@ -73,8 +70,6 @@ const styles = StyleSheet.create({
     elevation: 3,
     marginBottom: 9,
   },
-  pressed: { opacity: 0.72 },
-  pressedMotion: { transform: [{ scale: 0.995 }] },
   indexWrap: {
     width: 38,
     height: 38,

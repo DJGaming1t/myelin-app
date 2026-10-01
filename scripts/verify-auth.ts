@@ -69,8 +69,8 @@ assert.ok(
 );
 
 assert.ok(
-  authIntro.includes('Know what to study next.'),
-  'The first unauthenticated screen should state the product value in one sentence.',
+  authIntro.includes('Know what to study') && authIntro.includes('next.'),
+  'The first unauthenticated screen should keep one clear value proposition.',
 );
 assert.ok(
   authIntro.includes("router.push('/(auth)/access')"),

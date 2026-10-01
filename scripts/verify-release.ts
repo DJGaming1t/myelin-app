@@ -67,11 +67,19 @@ if (!androidGoogleClient) {
   );
 }
 
-if (!fs.existsSync(path.join(process.cwd(), 'package-lock.json'))) {
-  console.warn(
-    'Reproducible install warning: package-lock.json is not committed. Generate it with npm install and commit it before production release.',
-  );
-}
+assert(
+  fs.existsSync(path.join(process.cwd(), 'package-lock.json')),
+  'package-lock.json must be committed for reproducible CI/EAS installs.',
+);
+assert(
+  previewWorkflow.includes('npm ci --no-audit --no-fund'),
+  'Automatic preview updates must install the committed dependency lock.',
+);
+assert(
+  previewWorkflow.includes('npm run verify:planning') &&
+    previewWorkflow.includes('npm run verify:release'),
+  'Automatic preview updates must pass the full app-level verification gates before publish.',
+);
 
 const projectId = app.expo?.extra?.eas?.projectId;
 const updateUrl = app.expo?.updates?.url;

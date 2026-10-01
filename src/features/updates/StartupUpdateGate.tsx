@@ -70,7 +70,7 @@ export function StartupUpdateGate({ children }: PropsWithChildren) {
     })();
   }, [isStartupProcedureRunning, isUpdatePending, shouldGate]);
 
-  if (ready) return children;
+  if (ready) return <>{children}</>;
 
   return (
     <SafeAreaView style={styles.safe}>

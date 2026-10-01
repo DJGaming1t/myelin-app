@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { StyleSheet, Text, ViewStyle } from 'react-native';
 
-import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
+import { colors, layout, radius, space, type } from '@/src/theme/tokens';
 
 type Variant = 'primary' | 'secondary' | 'quiet' | 'danger';
 
@@ -22,7 +22,6 @@ export function AppButton({
   accessibilityLabel,
   style,
 }: Props) {
-  const reduceMotion = useReducedMotion();
   const textStyle =
     variant === 'primary'
       ? styles.primaryText
@@ -33,22 +32,22 @@ export function AppButton({
           : styles.quietText;
 
   return (
-    <Pressable
+    <SpringPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      scaleTo={0.985}
+      lift={0}
+      style={[
         styles.base,
         styles[variant],
         style,
         disabled && styles.disabled,
-        pressed && styles.pressed,
-        pressed && !reduceMotion && styles.pressedMotion,
       ]}>
       <Text style={[styles.label, textStyle]}>{label}</Text>
-    </Pressable>
+    </SpringPressable>
   );
 }
 
@@ -70,6 +69,4 @@ const styles = StyleSheet.create({
   quietText: { color: colors.textDim },
   dangerText: { color: colors.danger },
   disabled: { opacity: 0.45 },
-  pressed: { opacity: 0.78 },
-  pressedMotion: { transform: [{ scale: motion.pressScale }] },
 });

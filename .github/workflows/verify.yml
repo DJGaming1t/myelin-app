@@ -91,6 +91,9 @@ jobs:
       - name: Release engineering configuration
         run: npm run verify:release
 
+      - name: Visual system and motion regression
+        run: npm run verify:visual
+
       - name: Expo Doctor
         run: npx expo-doctor
 

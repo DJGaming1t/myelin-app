@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 44,
     lineHeight: 48,
-    fontWeight: '650',
+    fontWeight: '600',
     letterSpacing: -1.6,
   },
   description: {

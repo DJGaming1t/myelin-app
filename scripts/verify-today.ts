@@ -233,8 +233,8 @@ function main() {
   const todayScreen = read('app/(app)/today/index.tsx');
   const planCard = read('src/features/today/PlanBlockCard.tsx');
   const springPressable = read('src/components/motion/SpringPressable.tsx');
-  assert.ok(todayScreen.includes('min left today'), 'Today does not show remaining daily capacity.');
-  assert.ok(todayScreen.includes('capacityTrack'), 'Today capacity progress indicator is missing.');
+  assert.ok(todayScreen.includes('min available'), 'Today does not expose remaining capacity when requested.');
+  assert.ok(todayScreen.includes('showAdjust'), 'Today capacity controls are not progressively disclosed.');
   assert.ok(todayScreen.includes('maxWidth: layout.contentMax'), 'Today is not bounded responsively.');
   assert.ok(todayScreen.includes('minHeight: layout.minTouch'), 'Today choices do not meet the shared touch target.');
   assert.ok(planCard.includes('<SpringPressable'), 'Plan cards are missing the shared spring press primitive.');
@@ -251,7 +251,7 @@ function main() {
   assert.ok(todayScreen.includes('nextLocalDayStart(Date.now())'), 'Today does not defer until the next local day.');
 
   console.log('✓ small real topics remain schedulable');
-  console.log('✓ Today shows used/remaining capacity clearly');
+  console.log('✓ Today keeps capacity available without making it the primary hierarchy');
   console.log('✓ Today choices meet the 44-point touch target');
   console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
   console.log('✓ recommended blocks can be deferred for today and undone');

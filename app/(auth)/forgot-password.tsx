@@ -43,15 +43,15 @@ export default function ForgotPasswordScreen() {
   return (
     <AuthScaffold
       compact
-      eyebrow="ACCOUNT RECOVERY"
-      title="Reset your password."
-      description="Enter your email. For privacy, MYELIN will not confirm whether that address has an account.">
+      eyebrow="GET BACK IN"
+      title="Reset access to MYELIN."
+      description="Enter your email and we’ll request a reset link. For privacy, this screen never confirms whether an address has an account.">
       {sent ? (
         <View style={styles.success}>
           <Text style={styles.successMark}>✓</Text>
           <Text style={styles.successTitle}>Check your inbox</Text>
           <Text style={styles.successText}>
-            If an account can receive a reset email at that address, Firebase will send one.
+            If that address can receive an account reset, a link will be sent.
           </Text>
           <AuthButton label="Back to sign in" onPress={() => router.replace('/(auth)/sign-in')} />
         </View>

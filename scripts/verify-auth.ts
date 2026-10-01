@@ -11,6 +11,12 @@ const authProvider = fs.readFileSync(
   path.join(root, 'src/features/auth/AuthProvider.tsx'),
   'utf8',
 );
+const authIntro = fs.readFileSync(path.join(root, 'app/(auth)/index.tsx'), 'utf8');
+const authAccess = fs.readFileSync(path.join(root, 'app/(auth)/access.tsx'), 'utf8');
+const authScaffold = fs.readFileSync(
+  path.join(root, 'src/components/auth/AuthScaffold.tsx'),
+  'utf8',
+);
 
 const packageName = app.expo?.android?.package;
 assert.equal(packageName, 'com.djgaming1t.myelin', 'Unexpected Android package.');
@@ -50,4 +56,39 @@ assert.ok(
   'A verification-email delivery failure must not masquerade as account-creation failure.',
 );
 
-console.log('Authentication configuration verification passed.');
+assert.ok(
+  authIntro.includes('Know what to study. Then do it.'),
+  'The first unauthenticated screen should explain MYELIN before asking for an account.',
+);
+assert.ok(
+  authIntro.includes("router.push('/(auth)/access')"),
+  'The product story should lead into a separate authentication choice screen.',
+);
+assert.ok(
+  authIntro.includes('TOPICS') &&
+    authIntro.includes('EXAMS') &&
+    authIntro.includes('TIME') &&
+    authIntro.includes('NEXT'),
+  'The opening screen should show the MYELIN decision loop.',
+);
+assert.ok(
+  authAccess.includes('Choose how MYELIN remembers you.'),
+  'Authentication choices should carry the MYELIN personality.',
+);
+assert.ok(
+  authAccess.includes('NEXT') &&
+    authAccess.includes('FOCUS') &&
+    authAccess.includes('RECALL') &&
+    authAccess.includes('ADAPT'),
+  'The authentication screen should express the core MYELIN study loop.',
+);
+assert.ok(
+  authAccess.includes('Use MYELIN without an account'),
+  'Local-only access must remain explicit and available.',
+);
+assert.ok(
+  authScaffold.includes('<AmbientBackdrop />') && authScaffold.includes('<Reveal'),
+  'Auth forms should use the same visual and motion language as the main app.',
+);
+
+console.log('Authentication configuration and experience verification passed.');

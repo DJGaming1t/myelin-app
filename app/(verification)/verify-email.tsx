@@ -6,7 +6,7 @@ import { AuthButton } from '@/src/components/auth/AuthButton';
 import { AuthScaffold } from '@/src/components/auth/AuthScaffold';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, spacing } from '@/src/theme/tokens';
 import { maskEmail } from '@/src/utils/maskEmail';
 
 export default function VerifyEmailScreen() {
@@ -62,16 +62,15 @@ export default function VerifyEmailScreen() {
   return (
     <AuthScaffold
       eyebrow="ONE QUICK CHECK"
-      title="Verify your email."
-      description="Verification helps prevent somebody else from creating an account using your email address. If the first email did not arrive, use Resend below.">
+      title="Confirm this account is yours."
+      description="Verify the email once, then MYELIN can move you into the study system.">
       <View style={styles.mailCard}>
-        <Text style={styles.mailIcon}>✉</Text>
         <Text style={styles.mailLabel}>VERIFICATION SENT TO</Text>
         <Text style={styles.mailAddress}>{maskEmail(user?.email)}</Text>
       </View>
 
       <Text style={styles.instructions}>
-        Open the email from Firebase, tap the verification link, then come back to MYELIN.
+        Open the verification email, tap the link, then return here and continue.
       </Text>
 
       {message ? <Text style={styles.message}>{message}</Text> : null}
@@ -94,14 +93,12 @@ export default function VerifyEmailScreen() {
 
 const styles = StyleSheet.create({
   mailCard: {
-    alignItems: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1,
+    alignItems: 'flex-start',
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
-    padding: spacing.lg,
   },
-  mailIcon: { color: colors.accent, fontSize: 24, marginBottom: spacing.sm },
   mailLabel: {
     color: colors.subtle,
     fontSize: 9,

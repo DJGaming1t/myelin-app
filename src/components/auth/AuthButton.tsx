@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Props = {
   label: string;
@@ -36,12 +36,19 @@ export function AuthButton({
         unavailable && styles.disabled,
       ]}>
       <View style={styles.row}>
-        {icon ? <Text style={[styles.icon, variant === 'primary' && styles.primaryText]}>{icon}</Text> : null}
+        {icon ? (
+          <View style={[styles.iconWrap, variant === 'primary' && styles.iconWrapPrimary]}>
+            <Text style={[styles.icon, variant === 'primary' && styles.primaryText]}>{icon}</Text>
+          </View>
+        ) : null}
         {loading ? (
           <ActivityIndicator color={variant === 'primary' ? '#25140e' : colors.text} size="small" />
         ) : (
           <Text style={[styles.label, variant === 'primary' && styles.primaryText]}>{label}</Text>
         )}
+        {variant === 'primary' && !loading ? (
+          <Text accessible={false} style={styles.arrow}>→</Text>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -49,20 +56,66 @@ export function AuthButton({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 50,
+    minHeight: 54,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
-  primary: { backgroundColor: colors.accent, borderColor: colors.accent },
-  secondary: { backgroundColor: colors.panelRaised, borderColor: colors.lineStrong },
-  quiet: { backgroundColor: 'transparent', borderColor: colors.line },
-  pressed: { opacity: 0.84, transform: [{ scale: 0.992 }] },
-  disabled: { opacity: 0.48 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
-  label: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  primary: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  secondary: {
+    backgroundColor: 'rgba(16,16,19,0.68)',
+    borderColor: colors.lineStrong,
+  },
+  quiet: {
+    backgroundColor: 'transparent',
+    borderColor: colors.line,
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
+  },
+  disabled: { opacity: 0.46 },
+  row: {
+    width: '100%',
+    minHeight: layout.minTouch,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+  },
+  label: {
+    color: colors.text,
+    fontSize: 13.5,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
   primaryText: { color: '#25140e' },
-  icon: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  arrow: {
+    position: 'absolute',
+    right: 0,
+    color: '#25140e',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  iconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.panelRaised,
+  },
+  iconWrapPrimary: {
+    backgroundColor: 'rgba(37,20,14,0.08)',
+  },
+  icon: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+  },
 });

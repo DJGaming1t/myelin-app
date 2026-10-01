@@ -53,9 +53,16 @@ export default function SignInScreen() {
   return (
     <AuthScaffold
       compact
-      eyebrow="WELCOME BACK"
-      title="Pick up where you left off."
-      description="Your password is handled by Firebase Authentication, not stored inside your study records.">
+      eyebrow="RETURN TO MYELIN"
+      title="Back to the study system."
+      description="Sign in to your account identity. Your study data still stays local unless you explicitly enable sync.">
+      <View style={styles.identityCue}>
+        <Text style={styles.identityLabel}>MYELIN REMEMBERS THE WORKFLOW</Text>
+        <Text style={styles.identityText}>
+          Today decides → you Focus or Recall → results shape the next recommendation.
+        </Text>
+      </View>
+
       <AuthField
         label="Email"
         value={email}
@@ -120,6 +127,25 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
+  identityCue: {
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  identityLabel: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 1.15,
+  },
+  identityText: {
+    color: colors.muted,
+    fontSize: 10.5,
+    lineHeight: 16,
+    marginTop: 5,
+  },
   forgotRow: { alignItems: 'flex-end', marginTop: -8, marginBottom: spacing.md },
   inlineLink: { minHeight: layout.minTouch, justifyContent: 'center' },
   link: { color: colors.accent, fontSize: 12, fontWeight: '700' },

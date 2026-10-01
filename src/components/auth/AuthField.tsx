@@ -62,21 +62,25 @@ export function AuthField({ label, error, password, style, ...props }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '600', marginBottom: 7 },
+  label: {
+    color: colors.textDim,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    marginBottom: 7,
+  },
   inputWrap: {
-    minHeight: 52,
+    minHeight: 54,
     borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.bg,
+    borderColor: colors.line,
+    backgroundColor: 'rgba(16,16,19,0.72)',
     borderRadius: radius.md,
     flexDirection: 'row',
     alignItems: 'center',
   },
   inputFocused: {
-    borderColor: 'rgba(255,128,91,0.72)',
-    shadowColor: colors.accent,
-    shadowOpacity: 0.13,
-    shadowRadius: 12,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panel,
   },
   inputError: { borderColor: 'rgba(255,161,145,0.6)' },
   input: {
@@ -84,7 +88,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
     paddingHorizontal: 14,
     color: colors.text,
-    fontSize: 15,
+    fontSize: 15.5,
   },
   passwordInput: { paddingRight: 62 },
   reveal: { position: 'absolute', right: 7, minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },

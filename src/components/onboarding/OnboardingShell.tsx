@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -17,6 +18,8 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { Reveal } from '@/src/components/motion/Reveal';
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
@@ -26,6 +29,7 @@ type Props = PropsWithChildren<{
   topActionLabel?: string;
   onTopAction?: () => void;
   visual?: ReactNode;
+  scrollable?: boolean;
 }>;
 
 export function OnboardingShell({
@@ -34,48 +38,86 @@ export function OnboardingShell({
   topActionLabel,
   onTopAction,
   visual,
+  scrollable = true,
   children,
 }: Props) {
+  const { height } = useWindowDimensions();
+  const compact = height < 740;
+
+  const content = (
+    <View style={[styles.content, !scrollable && styles.contentLocked]}>
+      <View style={styles.topbar}>
+        <View style={styles.brand} accessible accessibilityLabel="MYELIN">
+          <View style={styles.brandMark}><View style={styles.brandCore} /></View>
+          <Text style={styles.brandName}>MYELIN</Text>
+        </View>
+
+        {topActionLabel && onTopAction ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onTopAction}
+            hitSlop={8}
+            style={({ pressed }) => [styles.topAction, pressed && styles.pressed]}>
+            <Text style={styles.topActionText}>{topActionLabel}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      <Reveal delay={40} distance={10}>
+        <View style={[styles.hero, compact && styles.heroCompact]}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.title, compact && styles.titleCompact]}>
+            {title}
+          </Text>
+          {description ? (
+            <Text style={[styles.description, compact && styles.descriptionCompact]}>
+              {description}
+            </Text>
+          ) : null}
+        </View>
+      </Reveal>
+
+      {visual ? (
+        <Reveal
+          delay={110}
+          distance={14}
+          style={[styles.visual, compact && styles.visualCompact]}>
+          {visual}
+        </Reveal>
+      ) : (
+        <View style={[styles.flexSpacer, compact && styles.flexSpacerCompact]} />
+      )}
+
+      <Reveal delay={180} distance={10} style={styles.actions}>
+        {children}
+      </Reveal>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}>
-        <View style={styles.content}>
-          <View style={styles.topbar}>
-            <View style={styles.brand} accessible accessibilityLabel="MYELIN">
-              <View style={styles.brandMark}><View style={styles.brandCore} /></View>
-              <Text style={styles.brandName}>MYELIN</Text>
-            </View>
-
-            {topActionLabel && onTopAction ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={onTopAction}
-                hitSlop={8}
-                style={({ pressed }) => [styles.topAction, pressed && styles.pressed]}>
-                <Text style={styles.topActionText}>{topActionLabel}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-
-          <View style={styles.hero}>
-            <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-            {description ? <Text style={styles.description}>{description}</Text> : null}
-          </View>
-
-          {visual ? <View style={styles.visual}>{visual}</View> : <View style={styles.flexSpacer} />}
-
-          <View style={styles.actions}>{children}</View>
+      {scrollable ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}>
+          {content}
+        </ScrollView>
+      ) : (
+        <View style={[styles.lockedFrame, compact && styles.lockedFrameCompact]}>
+          {content}
         </View>
-      </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 export function StudyPathVisual() {
   const reduceMotion = useReducedMotion();
+  const { height } = useWindowDimensions();
+  const compact = height < 740;
   const signal = useSharedValue(0);
   const float = useSharedValue(0);
   const breathe = useSharedValue(0);
@@ -126,7 +168,7 @@ export function StudyPathVisual() {
   }));
 
   return (
-    <View style={visualStyles.stage} accessible={false}>
+    <View style={[visualStyles.stage, compact && visualStyles.stageCompact]} accessible={false}>
       <Animated.View style={[visualStyles.backPulse, pulseStyle]} />
       <View style={visualStyles.neuralLineA} />
       <View style={visualStyles.neuralLineB} />
@@ -145,7 +187,7 @@ export function StudyPathVisual() {
 
       <View style={visualStyles.orbit} />
 
-      <Animated.View style={[visualStyles.primaryCard, cardStyle]}>
+      <Animated.View style={[visualStyles.primaryCard, compact && visualStyles.primaryCardCompact, cardStyle]}>
         <View style={visualStyles.cardTop}>
           <Text style={visualStyles.cardEyebrow}>NEXT</Text>
           <View style={visualStyles.livePill}>
@@ -161,7 +203,7 @@ export function StudyPathVisual() {
         </View>
       </Animated.View>
 
-      <View style={visualStyles.smallCard}>
+      <View style={[visualStyles.smallCard, compact && visualStyles.smallCardCompact]}>
         <Text style={visualStyles.smallLabel}>RECALL</Text>
         <View style={visualStyles.smallBar} />
         <View style={[visualStyles.smallBar, visualStyles.smallBarShort]} />
@@ -180,18 +222,16 @@ export function OnboardingPrimaryButton({
   disabled?: boolean;
 }) {
   return (
-    <Pressable
+    <SpringPressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.primary,
-        pressed && styles.pressed,
-        disabled && styles.disabled,
-      ]}>
+      scaleTo={0.985}
+      style={[styles.primary, disabled && styles.disabled]}>
       <Text style={styles.primaryText}>{label}</Text>
       <Text style={styles.primaryArrow}>→</Text>
-    </Pressable>
+    </SpringPressable>
   );
 }
 
@@ -202,11 +242,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
   },
+  scrollCompact: {
+    paddingVertical: 14,
+  },
+  lockedFrame: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  lockedFrameCompact: {
+    paddingVertical: 12,
+  },
   content: {
     width: '100%',
     maxWidth: 560,
     minHeight: '100%',
     alignSelf: 'center',
+  },
+  contentLocked: {
+    flex: 1,
+    minHeight: 0,
   },
   topbar: {
     minHeight: 48,
@@ -248,12 +303,20 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     maxWidth: layout.readingMax,
   },
+  heroCompact: {
+    paddingTop: 12,
+  },
   title: {
     color: colors.text,
     fontSize: 44,
     lineHeight: 48,
     fontWeight: '600',
     letterSpacing: -1.6,
+  },
+  titleCompact: {
+    fontSize: 38,
+    lineHeight: 41,
+    letterSpacing: -1.25,
   },
   description: {
     color: colors.muted,
@@ -262,13 +325,23 @@ const styles = StyleSheet.create({
     marginTop: 14,
     maxWidth: 430,
   },
+  descriptionCompact: {
+    marginTop: 9,
+    fontSize: 13.5,
+    lineHeight: 19,
+  },
   visual: {
     flex: 1,
     minHeight: 240,
     justifyContent: 'center',
     paddingVertical: spacing.xl,
   },
+  visualCompact: {
+    minHeight: 184,
+    paddingVertical: 4,
+  },
   flexSpacer: { flex: 1, minHeight: spacing.xl },
+  flexSpacerCompact: { minHeight: spacing.md },
   actions: { paddingBottom: spacing.sm },
   primary: {
     minHeight: 56,
@@ -290,6 +363,11 @@ const visualStyles = StyleSheet.create({
     height: 240,
     position: 'relative',
     justifyContent: 'center',
+  },
+  stageCompact: {
+    height: 190,
+    transform: [{ scale: 0.84 }],
+    marginVertical: -14,
   },
   backPulse: {
     position: 'absolute',
@@ -404,6 +482,9 @@ const visualStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 7,
   },
+  primaryCardCompact: {
+    padding: 16,
+  },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -460,6 +541,10 @@ const visualStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
     transform: [{ rotate: '4deg' }],
+  },
+  smallCardCompact: {
+    right: 18,
+    bottom: 32,
   },
   smallLabel: {
     color: colors.subtle,

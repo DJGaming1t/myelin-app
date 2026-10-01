@@ -201,9 +201,9 @@ export default function TodayScreen() {
         <ScreenHeader
           eyebrow="TODAY"
           title={greeting()}
-          subtitle="One realistic next move from tasks, recall, Topics, exams and the time you actually have."
-          actionLabel="Topics"
-          onAction={() => router.push('/(app)/topics')}
+          subtitle="Know what matters, start the next useful thing, and let the rest stay quiet."
+          actionLabel="Settings"
+          onAction={() => router.push('/(app)/settings')}
         />
 
         <View style={styles.modeToggle}>
@@ -223,12 +223,185 @@ export default function TodayScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <Reveal delay={20} distance={8}>
-            <View style={styles.controlCard}>
-            <View style={styles.controlGlow} />
+          <Text style={[styles.sectionLabel, styles.firstSectionLabel]}>
+            {activeReview || activeFocus ? 'CONTINUE' : 'NEXT'}
+          </Text>
+
+          {activeReview ? (
+            <Reveal delay={20} distance={8}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Resume active review"
+                onPress={() => router.push('/(app)/review')}
+                style={({ pressed }) => [styles.activeReviewCard, styles.resumeHero, pressed && styles.pressed]}>
+                <View>
+                  <Text style={styles.activeReviewLabel}>REVIEW IN PROGRESS</Text>
+                  <Text style={styles.resumeHeroTitle}>
+                    {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
+                  </Text>
+                  <Text style={styles.resumeHeroMeta}>Your queue is saved exactly where you left it.</Text>
+                </View>
+                <Text style={styles.resumeHeroArrow}>Resume →</Text>
+              </Pressable>
+            </Reveal>
+          ) : activeFocus ? (
+            <Reveal delay={20} distance={8}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Resume active focus session"
+                onPress={() => router.push('/(app)/focus')}
+                style={({ pressed }) => [styles.activeFocusCard, styles.resumeHero, pressed && styles.pressed]}>
+                <View style={styles.resumeHeroCopy}>
+                  <Text style={styles.activeFocusLabel}>
+                    {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
+                  </Text>
+                  <Text style={styles.resumeHeroTitle}>{activeFocus.topicName}</Text>
+                  <Text style={styles.resumeHeroMeta}>The timer stays intact while you are away.</Text>
+                </View>
+                <Text style={styles.resumeHeroArrow}>Resume →</Text>
+              </Pressable>
+            </Reveal>
+          ) : budgetFinished ? (
+            <View style={styles.doneCard}>
+              <Text style={styles.doneMark}>✓</Text>
+              <Text style={styles.doneTitle}>You have used today’s study capacity.</Text>
+              <Text style={styles.doneText}>
+                MYELIN will not invent more work just to keep the screen busy. Add time only if your
+                day genuinely changed.
+              </Text>
+            </View>
+          ) : next ? (
+            <Reveal delay={20} distance={10}>
+              <View style={styles.nextCard}>
+                <View style={styles.nextGlow} />
+                <View style={styles.nextTop}>
+                  <View style={styles.nextTopCopy}>
+                    <Text style={styles.nextSubject}>{next.subject.toUpperCase()}</Text>
+                    <Text style={styles.nextMode}>
+                      {next.mode === 'review' ? 'RECALL / REVIEW' : 'LEARN / PRACTISE'}
+                    </Text>
+                  </View>
+                  <View style={styles.nextTime}>
+                    <Text style={styles.nextMinutes}>{next.minutes}</Text>
+                    <Text style={styles.nextMinLabel}>MIN</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.nextTitle}>{next.topicName}</Text>
+                <Text style={styles.nextReason}>{next.reasons.join(' · ')}</Text>
+
+                <View style={styles.nextActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Defer ${next.topicName} for today`}
+                    onPress={() => deferForToday(next)}
+                    style={({ pressed }) => [styles.deferButton, pressed && styles.pressed]}>
+                    <Text style={styles.deferButtonText}>Not now</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Start ${next.topicName}`}
+                    onPress={() => startBlock(next, plan.breakMinutes)}
+                    style={({ pressed }) => [styles.nextAction, pressed && styles.pressed]}>
+                    <Text style={styles.nextActionText}>
+                      {next.source === 'task' && !next.focusable
+                        ? 'Open task'
+                        : next.mode === 'review' && next.dueQuestionCount > 0
+                          ? 'Start recall'
+                          : 'Start focus'}
+                    </Text>
+                    <Text style={styles.nextArrow}>→</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </Reveal>
+          ) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Nothing needs your attention yet.</Text>
+              <Text style={styles.emptyText}>
+                Add a study task or Topic and MYELIN can turn it into a concrete next action.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/(app)/today/task/new')}
+                style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}>
+                <Text style={styles.emptyButtonText}>Add study task</Text>
+              </Pressable>
+            </View>
+          )}
+
+          <Reveal delay={55} distance={7}>
+            <View style={styles.summaryRow}>
+              <SummaryMetric label="LEFT" value={`${plan.remainingBudgetMinutes}m`} accent />
+              <SummaryMetric label="PLANNED" value={`${plan.plannedStudyMinutes}m`} />
+              <SummaryMetric label="BLOCK" value={`${plan.targetFocusMinutes}m`} />
+            </View>
+          </Reveal>
+
+          {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
+
+          {(nextExam || mistakeSummary.due > 0) ? (
+            <View style={styles.contextGroup}>
+              {nextExam ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(app)/exams/[examId]',
+                      params: { examId: nextExam.id },
+                    })
+                  }
+                  style={({ pressed }) => [styles.contextRow, pressed && styles.pressed]}>
+                  <View style={styles.contextCopy}>
+                    <Text style={styles.contextLabel}>NEXT EXAM</Text>
+                    <Text style={styles.contextTitle}>{nextExam.name}</Text>
+                  </View>
+                  <Text style={styles.contextMeta}>{examStatus(nextExam.date, now).label} →</Text>
+                </Pressable>
+              ) : null}
+
+              {mistakeSummary.due > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push('/(app)/mistakes/retest')}
+                  style={({ pressed }) => [styles.contextRow, pressed && styles.pressed]}>
+                  <View style={styles.contextCopy}>
+                    <Text style={[styles.contextLabel, styles.contextLabelDanger]}>RETEST</Text>
+                    <Text style={styles.contextTitle}>
+                      {mistakeSummary.due} {mistakeSummary.due === 1 ? 'correction is' : 'corrections are'} due
+                    </Text>
+                  </View>
+                  <Text style={[styles.contextMeta, styles.contextMetaDanger]}>Review →</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
+          <StudyInboxCard />
+
+          {lastDeferred ? (
+            <View style={styles.deferUndo}>
+              <View style={styles.deferUndoCopy}>
+                <Text style={styles.deferUndoTitle}>Moved out of today</Text>
+                <Text style={styles.deferUndoText} numberOfLines={1}>
+                  {lastDeferred.name}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Undo deferring ${lastDeferred.name}`}
+                onPress={undoDefer}
+                style={({ pressed }) => [styles.deferUndoButton, pressed && styles.pressed]}>
+                <Text style={styles.deferUndoButtonText}>Undo</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <Text style={styles.sectionLabel}>TUNE TODAY</Text>
+          <View style={styles.controlCard}>
             <View style={styles.controlHeader}>
               <View>
-                <Text style={styles.controlEyebrow}>DAILY CAPACITY</Text>
+                <Text style={styles.controlEyebrow}>AVAILABLE STUDY TIME</Text>
                 <Text style={styles.controlValue}>{workspace.settings.dailyMinutes} min</Text>
               </View>
               <View style={styles.energyBadge}>
@@ -250,7 +423,7 @@ export default function TodayScreen() {
               style={styles.capacityProgress}>
               <View style={styles.capacityProgressCopy}>
                 <Text style={styles.capacityProgressTitle}>
-                  {budgetFinished ? 'Daily capacity used' : `${plan.remainingBudgetMinutes} min left today`}
+                  {budgetFinished ? 'Capacity used' : `${plan.remainingBudgetMinutes} min still available`}
                 </Text>
                 <Text style={styles.capacityProgressMeta}>{usedPercent}% used</Text>
               </View>
@@ -291,181 +464,7 @@ export default function TodayScreen() {
                 />
               </View>
             </View>
-            </View>
-          </Reveal>
-
-          <Reveal delay={70} distance={9}>
-            <View style={styles.summaryRow}>
-              <SummaryMetric label="USED" value={`${plan.alreadyUsedMinutes}m`} />
-              <SummaryMetric label="STUDY" value={`${plan.plannedStudyMinutes}m`} accent />
-              <SummaryMetric label="BREAKS" value={`${plan.plannedBreakMinutes}m`} />
-              <SummaryMetric label="BLOCK" value={`${plan.targetFocusMinutes}m`} />
-            </View>
-          </Reveal>
-
-          {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
-
-          {nextExam ? (
-            <Reveal delay={105} distance={8}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                router.push({
-                  pathname: '/(app)/exams/[examId]',
-                  params: { examId: nextExam.id },
-                })
-              }
-              style={({ pressed }) => [styles.examCard, pressed && styles.pressed]}>
-              <View>
-                <Text style={styles.examLabel}>NEXT EXAM</Text>
-                <Text style={styles.examTitle}>{nextExam.name}</Text>
-              </View>
-              <Text style={styles.examWhen}>{examStatus(nextExam.date, now).label} →</Text>
-            </Pressable>
-            </Reveal>
-          ) : null}
-
-          {mistakeSummary.due > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/(app)/mistakes/retest')}
-              style={({ pressed }) => [styles.mistakeDueCard, pressed && styles.pressed]}>
-              <View>
-                <Text style={styles.mistakeDueLabel}>CORRECTION RETEST</Text>
-                <Text style={styles.mistakeDueTitle}>
-                  {mistakeSummary.due} {mistakeSummary.due === 1 ? 'mistake is' : 'mistakes are'} due
-                </Text>
-              </View>
-              <Text style={styles.mistakeDueArrow}>Retest →</Text>
-            </Pressable>
-          ) : null}
-
-          {activeReview ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/(app)/review')}
-              style={({ pressed }) => [styles.activeReviewCard, pressed && styles.pressed]}>
-              <View>
-                <Text style={styles.activeReviewLabel}>REVIEW IN PROGRESS</Text>
-                <Text style={styles.activeReviewTitle}>
-                  {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
-                </Text>
-              </View>
-              <Text style={styles.activeReviewArrow}>Resume →</Text>
-            </Pressable>
-          ) : null}
-
-          {activeFocus ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/(app)/focus')}
-              style={({ pressed }) => [styles.activeFocusCard, pressed && styles.pressed]}>
-              <View>
-                <Text style={styles.activeFocusLabel}>
-                  {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
-                </Text>
-                <Text style={styles.activeFocusTitle}>{activeFocus.topicName}</Text>
-              </View>
-              <Text style={styles.activeFocusArrow}>Resume →</Text>
-            </Pressable>
-          ) : null}
-
-          <StudyInboxCard />
-
-          {lastDeferred ? (
-            <View style={styles.deferUndo}>
-              <View style={styles.deferUndoCopy}>
-                <Text style={styles.deferUndoTitle}>Deferred for today</Text>
-                <Text style={styles.deferUndoText} numberOfLines={1}>
-                  {lastDeferred.name}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Undo deferring ${lastDeferred.name}`}
-                onPress={undoDefer}
-                style={({ pressed }) => [styles.deferUndoButton, pressed && styles.pressed]}>
-                <Text style={styles.deferUndoButtonText}>Undo</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          <Text style={styles.sectionLabel}>NEXT MOVE</Text>
-
-          {budgetFinished ? (
-            <View style={styles.doneCard}>
-              <Text style={styles.doneMark}>✓</Text>
-              <Text style={styles.doneTitle}>Your time budget is already used.</Text>
-              <Text style={styles.doneText}>
-                MYELIN is not adding more work just to fill the screen. Increase today’s available
-                time only if you genuinely have more time.
-              </Text>
-            </View>
-          ) : next ? (
-            <Reveal delay={90} distance={10}>
-            <View style={styles.nextCard}>
-              <View style={styles.nextGlow} />
-              <View style={styles.nextTop}>
-                <View>
-                  <Text style={styles.nextSubject}>{next.subject.toUpperCase()}</Text>
-                  <Text style={styles.nextMode}>
-                    {next.mode === 'review' ? 'RECALL / REVIEW' : 'LEARN / PRACTISE'}
-                  </Text>
-                </View>
-                <View style={styles.nextTime}>
-                  <Text style={styles.nextMinutes}>{next.minutes}</Text>
-                  <Text style={styles.nextMinLabel}>MIN</Text>
-                </View>
-              </View>
-
-              <Text style={styles.nextGhost}>NOW</Text>
-              <Text style={styles.nextTitle}>{next.topicName}</Text>
-              <Text style={styles.nextReason}>{next.reasons.join(' · ')}</Text>
-
-              <View style={styles.nextActions}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Defer ${next.topicName} for today`}
-                  onPress={() => deferForToday(next)}
-                  style={({ pressed }) => [styles.deferButton, pressed && styles.pressed]}>
-                  <Text style={styles.deferButtonText}>Not now</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Start ${next.topicName}`}
-                  onPress={() => startBlock(next, plan.breakMinutes)}
-                  style={({ pressed }) => [styles.nextAction, pressed && styles.pressed]}>
-                  <Text style={styles.nextActionText}>
-                    {activeReview
-                      ? 'Resume review'
-                      : activeFocus
-                        ? 'Resume focus'
-                        : next.source === 'task' && !next.focusable
-                          ? 'Open task'
-                          : next.mode === 'review' && next.dueQuestionCount > 0
-                            ? 'Start recall'
-                            : 'Start focus'}
-                  </Text>
-                  <Text style={styles.nextArrow}>→</Text>
-                </Pressable>
-              </View>
-            </View>
-            </Reveal>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Nothing to plan yet.</Text>
-              <Text style={styles.emptyText}>
-                Add a study task or Topic first. MYELIN needs something concrete before it can choose
-                what deserves your time.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/(app)/today/task/new')}
-                style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}>
-                <Text style={styles.emptyButtonText}>Add study task</Text>
-              </Pressable>
-            </View>
-          )}
+          </View>
 
           {plan.blocks.length > 0 ? (
             <>
@@ -601,16 +600,11 @@ const styles = StyleSheet.create({
   controlCard: {
     position: 'relative',
     overflow: 'hidden',
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.panelGlass,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
     padding: spacing.md,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.28,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
   },
   controlGlow: {
     position: 'absolute',
@@ -620,7 +614,7 @@ const styles = StyleSheet.create({
     top: -92,
     right: -48,
     backgroundColor: colors.accent,
-    opacity: 0.055,
+    opacity: 0,
   },
   controlHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   controlEyebrow: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.2 },
@@ -687,20 +681,26 @@ const styles = StyleSheet.create({
   },
   energyLabel: { color: colors.muted, fontSize: 11 },
   energyChoices: { flexDirection: 'row', gap: 7 },
-  summaryRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
-  summaryMetric: {
-    flex: 1,
-    minHeight: 62,
+  summaryRow: {
+    flexDirection: 'row',
+    marginTop: 10,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panelGlass,
-    padding: 10,
-    justifyContent: 'space-between',
+    backgroundColor: 'rgba(16,16,19,0.72)',
     overflow: 'hidden',
   },
+  summaryMetric: {
+    flex: 1,
+    minHeight: 60,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+    borderRightWidth: 1,
+    borderRightColor: colors.line,
+  },
   summaryMetricAccent: {
-    borderColor: colors.accentLine,
     backgroundColor: colors.accentFaint,
   },
   summaryRail: {
@@ -785,6 +785,40 @@ const styles = StyleSheet.create({
   activeFocusLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   activeFocusTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 4 },
   activeFocusArrow: { color: colors.accent, fontSize: 10.5, fontWeight: '700' },
+  resumeHero: {
+    minHeight: 116,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  resumeHeroCopy: { flex: 1 },
+  resumeHeroTitle: { color: colors.text, fontSize: 18, lineHeight: 23, fontWeight: '700', marginTop: 6 },
+  resumeHeroMeta: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 5, maxWidth: 260 },
+  resumeHeroArrow: { color: colors.accent, fontSize: 11, fontWeight: '800' },
+  contextGroup: {
+    marginTop: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    overflow: 'hidden',
+  },
+  contextRow: {
+    minHeight: 62,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  contextCopy: { flex: 1 },
+  contextLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  contextLabelDanger: { color: colors.danger },
+  contextTitle: { color: colors.text, fontSize: 12, lineHeight: 16, fontWeight: '700', marginTop: 3 },
+  contextMeta: { color: colors.accent, fontSize: 10, fontWeight: '700' },
+  contextMetaDanger: { color: colors.danger },
   sectionLabel: {
     color: colors.subtle,
     fontSize: 9,
@@ -792,6 +826,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: spacing.xl,
     marginBottom: 10,
+  },
+  firstSectionLabel: {
+    marginTop: 14,
   },
   deferUndo: {
     minHeight: 58,
@@ -851,13 +888,14 @@ const styles = StyleSheet.create({
     opacity: 0.08,
   },
   nextTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  nextTopCopy: { flex: 1 },
   nextSubject: { color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 1.3 },
   nextMode: { color: colors.accent, fontSize: 8.5, fontWeight: '800', letterSpacing: 1, marginTop: 4 },
   nextTime: { alignItems: 'flex-end' },
   nextMinutes: { color: colors.accent, fontSize: 27, lineHeight: 28, fontWeight: '700' },
   nextMinLabel: { color: colors.muted, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },
-  nextTitle: { color: colors.text, fontSize: 22, lineHeight: 27, fontWeight: '700', marginTop: spacing.lg },
-  nextReason: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 7 },
+  nextTitle: { color: colors.text, fontSize: 24, lineHeight: 29, fontWeight: '700', marginTop: 18, letterSpacing: -0.45 },
+  nextReason: { color: colors.textDim, fontSize: 11.5, lineHeight: 17, marginTop: 7 },
   nextActions: {
     marginTop: spacing.lg,
     paddingTop: spacing.md,

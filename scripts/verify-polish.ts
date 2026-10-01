@@ -54,7 +54,7 @@ assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion')
 assert(root.includes("animation: reduceMotion ? 'none' : 'fade'"), 'Root navigation ignores reduced motion.');
 assert(app.includes("animation: reduceMotion ? 'none' : 'fade_from_bottom'"), 'Hierarchical app navigation should animate unless reduced motion is enabled.');
 assert(app.includes('<Stack.Screen name="today/index" options={{ animation: \'none\' }} />'), 'Today peer navigation must stay instant.');
-assert(app.includes('<Stack.Screen name="topics/index" options={{ animation: \'none\' }} />'), 'Library peer navigation must stay instant.');
+assert(app.includes('<Stack.Screen name="topics" options={{ animation: \'none\' }} />'), 'Library parent route must stay instant.');
 assert(app.includes('<Stack.Screen name="review/index" options={{ animation: \'none\' }} />'), 'Review peer navigation must stay instant.');
 assert(app.includes('<Stack.Screen name="progress/index" options={{ animation: \'none\' }} />'), 'Progress peer navigation must stay instant.');
 assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
@@ -69,7 +69,7 @@ assert(nav.includes('maxWidth: layout.contentMax'), 'Bottom navigation is not ta
 assert(nav.includes('if (active) return;'), 'Tapping the active tab should be a true no-op.');
 assert(!nav.includes('pressedMotion'), 'Bottom tabs should not scale on press.');
 assert(nav.includes('addButtonFrame'), 'Quick Add needs an explicit centered frame above its label.');
-assert(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'), 'Library peer navigation must match the other instant tab destinations.');
+assert(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'), 'Library nested index should not add a second transition.');
 assert(appButton.includes('<SpringPressable'), 'Shared buttons should use the same spring press primitive.');
 assert(header.includes('<SpringPressable'), 'Header controls should use the shared spring press primitive.');
 assert(!actionRow.includes('pressedMotion'), 'Full-width action rows should highlight rather than scale.');

@@ -219,3 +219,11 @@ assert.ok(
   cloudProviderSource.includes("return 'reauth-required'"),
   'Account deletion must expose recent-login recovery instead of silently failing.',
 );
+assert.ok(
+  cloudProviderSource.includes('onboardingStorage.clear(localOwnerKey)'),
+  'Deleting an account must also clear its saved onboarding record.',
+);
+assert.ok(
+  settingsScreenSource.includes("router.replace('/(auth)')"),
+  'Successful account deletion must return to the welcome screen directly.',
+);

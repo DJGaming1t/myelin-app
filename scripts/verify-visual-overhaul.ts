@@ -85,12 +85,20 @@ function main() {
   const topicDetail = read('app/(app)/topics/[topicId]/index.tsx');
   assert.ok(topicDetail.includes('NEXT MOVE'));
   assert.ok(topicDetail.includes('recommendReview'));
+  assert.ok(topicDetail.includes('showDetails'));
+  assert.ok(topicDetail.includes('Topic details'));
+  assert.ok(topicDetail.indexOf('NEXT MOVE') < topicDetail.indexOf('Topic details'));
 
   const dayMap = read('app/(app)/today/day-map.tsx');
   assert.ok(dayMap.includes('TIMELINE'));
+  assert.ok(dayMap.includes('showPlanning'));
+  assert.ok(dayMap.includes('Planning options'));
+  assert.equal(dayMap.includes('>Flow</Text>'), false);
 
   const focus = read('app/(app)/focus/index.tsx');
   assert.ok(focus.includes('<AnimatedProgress'));
+  assert.ok(focus.includes('showParking'));
+  assert.ok(focus.includes('Park a distraction'));
   assert.equal(focus.includes('<PulseHalo'), false);
 
   const review = read('app/(app)/review/index.tsx');
@@ -104,6 +112,20 @@ function main() {
   assert.ok(progressScreen.includes('showEvidence'));
   assert.ok(progressScreen.includes('See deeper evidence'));
   assert.ok(progressScreen.includes('Evidence, not a score'));
+
+  const mistakes = read('app/(app)/mistakes/index.tsx');
+  assert.ok(mistakes.includes('title="Corrections"'));
+  assert.ok(mistakes.includes('showBrowse'));
+  assert.ok(mistakes.includes('Browse corrections'));
+  assert.equal(mistakes.includes('CORRECTION LOOP'), false);
+
+  const exams = read('app/(app)/exams/index.tsx');
+  assert.ok(exams.includes('variant="compact"'));
+  assert.equal(exams.includes('EXAM PRESSURE'), false);
+
+  const retest = read('app/(app)/mistakes/retest.tsx');
+  assert.ok(retest.includes('fontSize: 11'));
+  assert.ok(retest.includes('fontSize: 13'));
 
   const authIntro = read('app/(auth)/index.tsx');
   const authAccess = read('app/(auth)/access.tsx');
@@ -123,6 +145,10 @@ function main() {
   console.log('✓ Library hides secondary filters until requested');
   console.log('✓ Review keeps the idle hub simple while active recall stays immersive');
   console.log('✓ Progress shows action-relevant evidence before deeper calibration');
+  console.log('✓ Focus hides distraction management until requested');
+  console.log('✓ Day Map keeps the timeline primary and planning tools secondary');
+  console.log('✓ Topic detail puts the recommended study action before admin state');
+  console.log('✓ Corrections behaves like a queue instead of a dashboard');
   console.log('✓ Focus and Recall remain immersive study modes');
   console.log('✓ the existing product engine remains connected behind the new hierarchy');
 }

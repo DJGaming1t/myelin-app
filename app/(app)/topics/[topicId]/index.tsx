@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +27,7 @@ export default function TopicDetailScreen() {
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
   const topic = workspace ? findTopic(workspace, topicId) : null;
+  const [showDetails, setShowDetails] = useState(false);
 
   if (!workspace || !topic) {
     return (
@@ -127,9 +129,9 @@ export default function TopicDetailScreen() {
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <ScreenHeader
+        variant="compact"
         eyebrow={topic.subject.toUpperCase()}
         title={topic.name}
-        subtitle="Everything MYELIN knows about this topic, with the most useful next move first."
         onBack={() => router.back()}
         actionLabel="Edit"
         onAction={() =>
@@ -141,23 +143,6 @@ export default function TopicDetailScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.stateStrip}>
-          <StateMetric
-            label="STATE"
-            value={topic.status === 'new' ? 'New' : topic.status === 'learning' ? 'Learning' : 'Review'}
-          />
-          <View style={styles.stateDivider} />
-          <StateMetric
-            label="PRIORITY"
-            value={topic.priority === 3 ? 'High' : topic.priority === 2 ? 'Normal' : 'Low'}
-            accent={topic.priority === 3}
-          />
-          <View style={styles.stateDivider} />
-          <StateMetric label="TIME" value={`${currentTopic.estimate}m`} />
-          <View style={styles.stateDivider} />
-          <StateMetric label="RECALL" value={String(topic.cards.length)} />
-        </View>
-
         <Text style={styles.sectionKicker}>NEXT MOVE</Text>
         <Pressable
           accessibilityRole="button"
@@ -205,6 +190,37 @@ export default function TopicDetailScreen() {
             </View>
             <Text style={styles.secondaryMoveArrow}>›</Text>
           </Pressable>
+        ) : null}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showDetails }}
+          onPress={() => setShowDetails((current) => !current)}
+          style={({ pressed }) => [styles.detailsToggle, pressed && styles.pressed]}>
+          <View>
+            <Text style={styles.detailsToggleTitle}>Topic details</Text>
+            <Text style={styles.detailsToggleMeta}>Status · priority · estimate · recall count</Text>
+          </View>
+          <Text style={styles.detailsToggleMark}>{showDetails ? '−' : '+'}</Text>
+        </Pressable>
+
+        {showDetails ? (
+        <View style={styles.stateStrip}>
+          <StateMetric
+            label="STATE"
+            value={topic.status === 'new' ? 'New' : topic.status === 'learning' ? 'Learning' : 'Review'}
+          />
+          <View style={styles.stateDivider} />
+          <StateMetric
+            label="PRIORITY"
+            value={topic.priority === 3 ? 'High' : topic.priority === 2 ? 'Normal' : 'Low'}
+            accent={topic.priority === 3}
+          />
+          <View style={styles.stateDivider} />
+          <StateMetric label="TIME" value={`${currentTopic.estimate}m`} />
+          <View style={styles.stateDivider} />
+          <StateMetric label="RECALL" value={String(topic.cards.length)} />
+        </View>
         ) : null}
 
         <SectionHeader
@@ -300,6 +316,7 @@ export default function TopicDetailScreen() {
 
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
+        {showDetails ? (
         <View style={styles.dangerZone}>
           <Text style={styles.dangerTitle}>Delete topic</Text>
           <Text style={styles.dangerText}>
@@ -312,6 +329,8 @@ export default function TopicDetailScreen() {
             <Text style={styles.deleteButtonText}>Delete topic</Text>
           </Pressable>
         </View>
+
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -384,10 +403,10 @@ const styles = StyleSheet.create({
   },
   stateLabel: {
     color: colors.subtle,
-    fontSize: 8.5,
-    lineHeight: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    letterSpacing: 0.45,
   },
   stateValue: {
     color: colors.text,
@@ -398,12 +417,12 @@ const styles = StyleSheet.create({
   },
   stateValueAccent: { color: colors.accent },
   sectionKicker: {
-    color: colors.subtle,
-    fontSize: 9,
-    lineHeight: 13,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-    marginTop: spacing.xl,
+    color: colors.accent,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    letterSpacing: 0.65,
+    marginTop: spacing.sm,
     marginBottom: 9,
   },
   nextMove: {
@@ -420,10 +439,10 @@ const styles = StyleSheet.create({
   nextMoveCopy: { flex: 1 },
   nextMoveLabel: {
     color: colors.accent,
-    fontSize: 8.5,
-    lineHeight: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    letterSpacing: 0.55,
   },
   nextMoveTitle: {
     color: colors.text,
@@ -434,8 +453,8 @@ const styles = StyleSheet.create({
   },
   nextMoveMeta: {
     color: colors.muted,
-    fontSize: 10.5,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 19,
     marginTop: 6,
   },
   nextMoveArrow: { color: colors.accent, fontSize: 22 },
@@ -453,10 +472,10 @@ const styles = StyleSheet.create({
   },
   secondaryMoveLabel: {
     color: colors.subtle,
-    fontSize: 8.5,
-    lineHeight: 12,
-    fontWeight: '800',
-    letterSpacing: 1.1,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    letterSpacing: 0.45,
   },
   secondaryMoveTitle: {
     color: colors.textDim,
@@ -466,6 +485,21 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   secondaryMoveArrow: { color: colors.subtle, fontSize: 20 },
+  detailsToggle: {
+    minHeight: 62,
+    marginTop: spacing.lg,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  detailsToggleTitle: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
+  detailsToggleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
+  detailsToggleMark: { color: colors.accent, fontSize: 22, lineHeight: 24 },
   sectionHeader: {
     marginTop: spacing.xl,
     marginBottom: 10,
@@ -513,7 +547,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '600',
   },
-  questionMeta: { color: colors.subtle, fontSize: 9.5, lineHeight: 14, marginTop: 5 },
+  questionMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 5 },
   questionDue: { color: colors.success, fontWeight: '700' },
   deleteMini: {
     width: layout.minTouch,
@@ -530,7 +564,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   emptyTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
+  emptyText: { color: colors.muted, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
   addQuestion: {
     marginTop: spacing.md,
     minHeight: layout.minTouch,
@@ -551,8 +585,8 @@ const styles = StyleSheet.create({
   dangerTitle: { color: colors.danger, fontSize: 11, lineHeight: 15, fontWeight: '800' },
   dangerText: {
     color: colors.subtle,
-    fontSize: 10.5,
-    lineHeight: 16,
+    fontSize: 12.5,
+    lineHeight: 18,
     marginTop: 5,
     maxWidth: 500,
   },

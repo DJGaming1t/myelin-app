@@ -15,6 +15,7 @@ import Animated, {
   withDelay,
   withSequence,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
@@ -167,11 +168,11 @@ function TransitionOverlay({
   lift,
   reduceMotion,
 }: {
-  overlayOpacity: ReturnType<typeof useSharedValue<number>>;
-  gather: ReturnType<typeof useSharedValue<number>>;
-  coreScale: ReturnType<typeof useSharedValue<number>>;
-  wordmarkOpacity: ReturnType<typeof useSharedValue<number>>;
-  lift: ReturnType<typeof useSharedValue<number>>;
+  overlayOpacity: SharedValue<number>;
+  gather: SharedValue<number>;
+  coreScale: SharedValue<number>;
+  wordmarkOpacity: SharedValue<number>;
+  lift: SharedValue<number>;
   reduceMotion: boolean;
 }) {
   const overlayStyle = useAnimatedStyle(() => ({

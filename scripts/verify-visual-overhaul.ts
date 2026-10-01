@@ -82,6 +82,16 @@ function main() {
   const progressScreen = read('app/(app)/progress/index.tsx');
   assert.ok(progressScreen.includes('<Reveal delay={35}'));
 
+  const authIntro = read('app/(auth)/index.tsx');
+  const authAccess = read('app/(auth)/access.tsx');
+  const authScaffold = read('src/components/auth/AuthScaffold.tsx');
+  assert.ok(authIntro.includes('Know what to study. Then do it.'));
+  assert.ok(authIntro.includes('Trigonometry practice'));
+  assert.ok(authAccess.includes('YOUR STUDY SYSTEM'));
+  assert.ok(authAccess.includes('ADAPT'));
+  assert.ok(authScaffold.includes('<AmbientBackdrop />'));
+  assert.ok(authScaffold.includes('<Reveal'));
+
   const onboarding = read('app/(onboarding)/index.tsx');
   assert.ok(onboarding.includes('<AnimatedProgress'));
   assert.ok(onboarding.includes('of 2'));
@@ -97,6 +107,8 @@ function main() {
   console.log('✓ Day Map is timeline-first and spatial');
   console.log('✓ Focus uses explicit progress without continuous pulsing decoration');
   console.log('✓ Recall is a single-task immersive mode');
+  console.log('✓ unauthenticated entry explains the product before authentication');
+  console.log('✓ authentication carries the MYELIN study-system personality');
   console.log('✓ onboarding is reduced to two useful decisions');
 }
 

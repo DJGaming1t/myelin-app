@@ -205,7 +205,7 @@ assert.ok(
   cloudProviderSource.includes('if (CLOUD_SYNC_RELEASE_ENABLED) {'),
   'Released cloud data must be deleted before Auth account deletion.',
 );
-const settingsScreenSource = readFileSync('app/(app)/settings/index.tsx', 'utf8');
+const settingsScreenSource = fs.readFileSync('app/(app)/settings/index.tsx', 'utf8');
 assert.ok(
   settingsScreenSource.includes('label="Delete account"'),
   'Account deletion must remain available from Account & session even when cloud sync is locked.',

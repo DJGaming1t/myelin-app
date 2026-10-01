@@ -2,10 +2,12 @@ import { Redirect, Stack } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/src/features/auth/AuthProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { colors } from '@/src/theme/tokens';
 
 export default function AuthLayout() {
   const { ready, user, localMode } = useAuth();
+  const { entryPending } = useOnboardingTransition();
 
   if (!ready) {
     return (
@@ -15,8 +17,12 @@ export default function AuthLayout() {
     );
   }
 
-  if (localMode || user?.emailVerified) return <Redirect href="/(app)" />;
-  if (user) return <Redirect href="/(verification)/verify-email" />;
+  if (!entryPending && (localMode || user?.emailVerified)) {
+    return <Redirect href="/(app)" />;
+  }
+  if (!entryPending && user) {
+    return <Redirect href="/(verification)/verify-email" />;
+  }
 
   return (
     <Stack

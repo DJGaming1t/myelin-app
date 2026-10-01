@@ -25,7 +25,11 @@ type TransitionTask = () => Promise<void> | void;
 
 type OnboardingTransitionContextValue = {
   runTransition: (commit: TransitionTask) => Promise<void>;
-  runEntryTransition: (task: TransitionTask) => Promise<void>;
+  runEntryTransition: (
+    task: TransitionTask,
+    commit: TransitionTask,
+  ) => Promise<void>;
+  entryPending: boolean;
 };
 
 const OnboardingTransitionContext =
@@ -49,6 +53,7 @@ function nextFrame() {
 export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState(false);
+  const [entryPending, setEntryPending] = useState(false);
   const running = useRef(false);
 
   const overlayOpacity = useSharedValue(0);
@@ -140,62 +145,79 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   );
 
   const runEntryTransition = useCallback(
-    async (task: TransitionTask) => {
+    async (task: TransitionTask, commit: TransitionTask) => {
       if (running.current) return;
 
       running.current = true;
-      overlayOpacity.set(1);
+      setEntryPending(true);
+
+      overlayOpacity.set(0);
       gather.set(0);
       coreScale.set(0.86);
-      wordmarkOpacity.set(reduceMotion ? 1 : 0);
+      wordmarkOpacity.set(0);
       lift.set(0);
-      setActive(true);
 
       try {
-        // Cover the current screen before authentication can trigger a route
-        // redirect. This also gives Android a dark resume surface after the
-        // native Google account picker closes instead of flashing white.
+        // Hold the auth navigator in place before Firebase can update routing,
+        // but keep the transition completely invisible while Google's native
+        // account picker is on screen.
         await nextFrame();
         await task();
 
+        // Authentication is complete. Only now mount and play the branded
+        // transition so none of it is consumed behind the Google picker.
+        setActive(true);
+        await nextFrame();
+
         if (reduceMotion) {
-          await sleep(70);
           overlayOpacity.set(
-            withTiming(0, { duration: 150, easing: EASE_OUT }),
+            withTiming(1, { duration: 120, easing: EASE_OUT }),
           );
-          await sleep(160);
+          await sleep(130);
+          await commit();
+          await sleep(60);
+          overlayOpacity.set(
+            withTiming(0, { duration: 160, easing: EASE_OUT }),
+          );
+          await sleep(170);
           setActive(false);
           return;
         }
 
+        overlayOpacity.set(
+          withTiming(1, { duration: 170, easing: EASE_OUT }),
+        );
         gather.set(
-          withTiming(1, { duration: 260, easing: EASE_IN_OUT }),
+          withTiming(1, { duration: 300, easing: EASE_IN_OUT }),
         );
         coreScale.set(
           withSequence(
-            withTiming(1.08, { duration: 210, easing: EASE_OUT }),
-            withTiming(1, { duration: 130, easing: EASE_IN_OUT }),
+            withTiming(1.08, { duration: 230, easing: EASE_OUT }),
+            withTiming(1, { duration: 150, easing: EASE_IN_OUT }),
           ),
         );
         wordmarkOpacity.set(
-          withDelay(90, withTiming(1, { duration: 170, easing: EASE_OUT })),
+          withDelay(105, withTiming(1, { duration: 190, easing: EASE_OUT })),
         );
 
-        await sleep(280);
-        lift.set(withTiming(-8, { duration: 210, easing: EASE_OUT }));
+        // Route only after the transition has visibly formed, then keep the
+        // surface up briefly so Today/onboarding settles underneath it.
+        await sleep(300);
+        await commit();
+        await sleep(180);
+
+        lift.set(withTiming(-8, { duration: 220, easing: EASE_OUT }));
         overlayOpacity.set(
-          withTiming(0, { duration: 230, easing: EASE_OUT }),
+          withTiming(0, { duration: 250, easing: EASE_OUT }),
         );
-        await sleep(240);
+        await sleep(260);
         setActive(false);
       } catch (error) {
-        overlayOpacity.set(
-          withTiming(0, { duration: 140, easing: EASE_OUT }),
-        );
-        await sleep(150);
+        overlayOpacity.set(0);
         setActive(false);
         throw error;
       } finally {
+        setEntryPending(false);
         running.current = false;
       }
     },
@@ -210,8 +232,8 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo(
-    () => ({ runTransition, runEntryTransition }),
-    [runEntryTransition, runTransition],
+    () => ({ runTransition, runEntryTransition, entryPending }),
+    [entryPending, runEntryTransition, runTransition],
   );
 
   return (

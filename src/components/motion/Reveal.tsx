@@ -1,10 +1,14 @@
-import { PropsWithChildren, useEffect, useRef } from 'react';
-import {
-  Animated,
+import { PropsWithChildren, useEffect } from 'react';
+import { StyleProp, ViewStyle } from 'react-native';
+import Animated, {
   Easing,
-  StyleProp,
-  ViewStyle,
-} from 'react-native';
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 
@@ -19,76 +23,52 @@ export function Reveal({
   children,
   delay = 0,
   distance = 12,
-  duration = 280,
+  duration = 240,
   style,
 }: Props) {
   const reduceMotion = useReducedMotion();
-  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
-  const motion = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const opacity = useSharedValue(reduceMotion ? 1 : 0);
+  const motion = useSharedValue(reduceMotion ? 1 : 0);
 
   useEffect(() => {
-    opacity.stopAnimation();
-    motion.stopAnimation();
+    cancelAnimation(opacity);
+    cancelAnimation(motion);
 
     if (reduceMotion) {
-      opacity.setValue(1);
-      motion.setValue(1);
+      opacity.value = 1;
+      motion.value = 1;
       return;
     }
 
-    opacity.setValue(0);
-    motion.setValue(0);
+    opacity.value = 0;
+    motion.value = 0;
 
-    const animation = Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        delay,
+    opacity.value = withDelay(
+      delay,
+      withTiming(1, {
         duration,
         easing: Easing.out(Easing.cubic),
-        isInteraction: false,
-        useNativeDriver: true,
       }),
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.spring(motion, {
-          toValue: 1,
-          damping: 18,
-          stiffness: 155,
-          mass: 0.72,
-          overshootClamping: true,
-          isInteraction: false,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]);
+    );
 
-    animation.start();
-    return () => animation.stop();
+    motion.value = withDelay(
+      delay,
+      withSpring(1, {
+        damping: 20,
+        stiffness: 170,
+        mass: 0.68,
+        overshootClamping: true,
+      }),
+    );
   }, [delay, duration, motion, opacity, reduceMotion]);
 
-  return (
-    <Animated.View
-      style={[
-        style,
-        {
-          opacity,
-          transform: [
-            {
-              translateY: motion.interpolate({
-                inputRange: [0, 1],
-                outputRange: [distance, 0],
-              }),
-            },
-            {
-              scale: motion.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.985, 1],
-              }),
-            },
-          ],
-        },
-      ]}>
-      {children}
-    </Animated.View>
-  );
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: (1 - motion.value) * distance },
+      { scale: 0.99 + motion.value * 0.01 },
+    ],
+  }));
+
+  return <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>;
 }

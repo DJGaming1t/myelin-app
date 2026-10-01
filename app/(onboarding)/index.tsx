@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   DAILY_CAPACITY_OPTIONS,
@@ -152,58 +154,65 @@ export default function OnboardingScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.progressRow}>
-        {[0, 1, 2].map((index) => (
-          <View
-            key={index}
-            style={[
-              styles.progressSegment,
-              index <= step && styles.progressSegmentActive,
-            ]}
-          />
-        ))}
+      <View style={styles.progressWrap}>
+        <View style={styles.progressMeta}>
+          <Text style={styles.progressLabel}>SETUP</Text>
+          <Text style={styles.progressCount}>{step + 1} / 3</Text>
+        </View>
+        <AnimatedProgress
+          value={(step + 1) / 3}
+          accessibilityLabel={`Setup step ${step + 1} of 3`}
+        />
       </View>
 
-      {step === 0 ? (
-        <IntroStep
-          onContinue={() => {
-            setError('');
-            setStep(1);
-          }}
-        />
-      ) : null}
+      <View style={styles.flex}>
+        {step === 0 ? (
+          <Reveal key="intro" distance={14} style={styles.flex}>
+            <IntroStep
+              onContinue={() => {
+                setError('');
+                setStep(1);
+              }}
+            />
+          </Reveal>
+        ) : null}
 
-      {step === 1 ? (
-        <CapacityStep
-          capacity={capacity}
-          onChange={setCapacity}
-          onBack={() => {
-            setError('');
-            setStep(0);
-          }}
-          onContinue={() => {
-            setError('');
-            setStep(2);
-          }}
-        />
-      ) : null}
+        {step === 1 ? (
+          <Reveal key="capacity" distance={14} style={styles.flex}>
+            <CapacityStep
+              capacity={capacity}
+              onChange={setCapacity}
+              onBack={() => {
+                setError('');
+                setStep(0);
+              }}
+              onContinue={() => {
+                setError('');
+                setStep(2);
+              }}
+            />
+          </Reveal>
+        ) : null}
 
-      {step === 2 ? (
-        <TopicStep
-          subject={subject}
-          topicName={topicName}
-          error={error}
-          finishing={finishing}
-          onSubject={setSubject}
-          onTopicName={setTopicName}
-          onBack={() => {
-            setError('');
-            setStep(1);
-          }}
-          onCreate={() => void complete(true)}
-          onFinishWithoutTopic={() => void complete(false)}
-        />
-      ) : null}
+        {step === 2 ? (
+          <Reveal key="topic" distance={14} style={styles.flex}>
+            <TopicStep
+              subject={subject}
+              topicName={topicName}
+              error={error}
+              finishing={finishing}
+              onSubject={setSubject}
+              onTopicName={setTopicName}
+              onBack={() => {
+                setError('');
+                setStep(1);
+              }}
+              onCreate={() => void complete(true)}
+              onFinishWithoutTopic={() => void complete(false)}
+            />
+          </Reveal>
+        ) : null}
+      </View>
     </SafeAreaView>
   );
 }
@@ -571,19 +580,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   skipText: { color: colors.subtle, fontSize: 10, fontWeight: '700' },
-  progressRow: {
-    flexDirection: 'row',
-    gap: 6,
+  progressWrap: {
     paddingHorizontal: spacing.lg,
-    marginTop: 2,
+    marginTop: 4,
   },
-  progressSegment: {
-    flex: 1,
-    height: 2,
-    borderRadius: 4,
-    backgroundColor: colors.lineStrong,
+  progressMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 7,
   },
-  progressSegmentActive: { backgroundColor: colors.accent },
+  progressLabel: {
+    color: colors.subtle,
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 1.25,
+  },
+  progressCount: {
+    color: colors.accent,
+    fontSize: 8,
+    fontWeight: '800',
+  },
   stepContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg,

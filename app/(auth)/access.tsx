@@ -18,7 +18,7 @@ export default function AccessScreen() {
     setError('');
     setGoogleBusy(true);
     try {
-      await signInGoogle(false);
+      await signInGoogle();
       router.replace('/');
     } catch (err) {
       setError(authErrorMessage(err, 'google'));

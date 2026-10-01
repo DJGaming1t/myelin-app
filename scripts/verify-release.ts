@@ -17,7 +17,6 @@ const pkg = json('package.json');
 const release = read('RELEASE.md');
 const gitignore = read('.gitignore');
 const verifyWorkflow = read('.github/workflows/verify.yml');
-const previewWorkflow = read('.github/workflows/publish-preview.yml');
 const nativeGuard = read('scripts/check-native-runtime-boundary.cjs');
 const googleServices = json('google-services.json');
 

@@ -11,7 +11,7 @@ This repository is prepared for EAS development, preview and production builds. 
 - Preview and production channels are separated
 - Runtime compatibility uses the app-version policy
 - Production developer-facing build versions are managed remotely and auto-incremented
-- `expo-updates` is installed and preview OTA publishing is fingerprint-gated through EAS Workflows
+- `expo-updates` is installed and verified preview OTA publishing is wired through GitHub Actions + EAS CLI
 - Signing files and common private key formats are ignored by Git
 
 ## First-time EAS link
@@ -87,7 +87,7 @@ Production Android builds are store-oriented AABs by default. Do not submit one 
 
 - [x] EAS project linked to the intended Expo account
 - [x] EAS Update configured with the generated project ID/update URL
-- [x] Preview EAS Workflow targets an existing build with the same app/runtime version before OTA publishing
+- [ ] GitHub Actions `EXPO_TOKEN` secret configured for automatic preview OTA publishing\n- [x] Native-sensitive changes are blocked unless the app/runtime version advances
 - [x] Locked `npm ci` succeeds in GitHub verification
 - [x] `npx tsc --noEmit` succeeds
 - [x] All repository verification scripts succeed

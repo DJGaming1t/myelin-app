@@ -1,4 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 
 import { colors, radius } from '@/src/theme/tokens';
 
@@ -26,22 +28,23 @@ export function ReviewChoiceButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <SpringPressable
       accessibilityRole="button"
       accessibilityLabel={`${LABEL[choice]}. ${schedule.label}`}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.card,
         choice === 'again' && styles.again,
         choice === 'good' && styles.good,
-        pressed && styles.pressed,
-      ]}>
+      ]}
+      scaleTo={0.978}
+      lift={1}>
       <View style={styles.top}>
         <Text style={styles.label}>{LABEL[choice]}</Text>
         <Text style={styles.when}>{schedule.label}</Text>
       </View>
       <Text style={styles.help}>{HELP[choice]}</Text>
-    </Pressable>
+    </SpringPressable>
   );
 }
 
@@ -67,5 +70,4 @@ const styles = StyleSheet.create({
   label: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
   when: { color: colors.accent, fontSize: 9.5, fontWeight: '700' },
   help: { color: colors.subtle, fontSize: 9.5, lineHeight: 14, marginTop: 4 },
-  pressed: { opacity: 0.65, transform: [{ scale: 0.995 }] },
 });

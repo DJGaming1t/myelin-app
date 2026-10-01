@@ -40,8 +40,10 @@ export default function TopicDetailScreen() {
     );
   }
 
-  const dueNow = buildReviewQueue(workspace, { topicId }).length;
-  const recommendReview = dueNow > 0 && topic.cards.length > 0;
+  const currentWorkspace = workspace;
+  const currentTopic = topic;
+  const dueNow = buildReviewQueue(currentWorkspace, { topicId }).length;
+  const recommendReview = dueNow > 0 && currentTopic.cards.length > 0;
 
   function openFocus() {
     if (activeReview) {
@@ -54,16 +56,16 @@ export default function TopicDetailScreen() {
     }
 
     const target =
-      workspace.settings.energy === 'low'
-        ? Math.max(5, Math.min(25, workspace.settings.focusMinutes, topic.estimate))
-        : Math.max(5, Math.min(workspace.settings.focusMinutes, topic.estimate));
+      currentWorkspace.settings.energy === 'low'
+        ? Math.max(5, Math.min(25, currentWorkspace.settings.focusMinutes, currentTopic.estimate))
+        : Math.max(5, Math.min(currentWorkspace.settings.focusMinutes, currentTopic.estimate));
 
     router.push({
       pathname: '/(app)/focus',
       params: {
         topicId,
         minutes: String(target),
-        breakMinutes: String(workspace.settings.breakMinutes),
+        breakMinutes: String(currentWorkspace.settings.breakMinutes),
       },
     });
   }
@@ -151,7 +153,7 @@ export default function TopicDetailScreen() {
             accent={topic.priority === 3}
           />
           <View style={styles.stateDivider} />
-          <StateMetric label="TIME" value={`${topic.estimate}m`} />
+          <StateMetric label="TIME" value={`${currentTopic.estimate}m`} />
           <View style={styles.stateDivider} />
           <StateMetric label="RECALL" value={String(topic.cards.length)} />
         </View>
@@ -182,7 +184,7 @@ export default function TopicDetailScreen() {
             <Text style={styles.nextMoveMeta}>
               {recommendReview
                 ? 'Retrieval is due, so MYELIN is prioritising recall before more input.'
-                : `${topic.estimate} min estimate · ${workspace.settings.energy === 'low' ? 'low-energy pacing' : 'normal pacing'}`}
+                : `${currentTopic.estimate} min estimate · ${currentWorkspace.settings.energy === 'low' ? 'low-energy pacing' : 'normal pacing'}`}
             </Text>
           </View>
           <Text style={styles.nextMoveArrow}>→</Text>

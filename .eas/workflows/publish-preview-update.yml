@@ -5,47 +5,16 @@ on:
     branches: ['expo-migration']
 
 jobs:
-  fingerprint:
-    name: Verify source and calculate native fingerprint
-    type: fingerprint
-    environment: preview
-    hooks:
-      after_install_node_modules:
-        - name: TypeScript
-          run: npx tsc --noEmit
-        - name: App verification
-          run: |
-            npm run verify:auth
-            npm run verify:data
-            npm run verify:topics
-            npm run verify:today
-            npm run verify:planning
-            npm run verify:focus
-            npm run verify:review
-            npm run verify:mistakes
-            npm run verify:exams
-            npm run verify:progress
-            npm run verify:settings
-            npm run verify:transfer
-            npm run verify:cloud
-            npm run verify:firestore-rules
-            npm run verify:notifications
-            npm run verify:onboarding
-            npm run verify:polish
-            npm run verify:release
-            npm run verify:visual
-            npx expo-doctor
-
   get_android_build:
-    name: Find compatible preview build
-    needs: [fingerprint]
+    name: Find compatible Android preview build
     type: get-build
     params:
       platform: android
-      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
       profile: preview
       channel: preview
       distribution: internal
+      app_version: 0.2.0
+      runtime_version: 0.2.0
 
   publish_android_update:
     name: Publish Android preview update

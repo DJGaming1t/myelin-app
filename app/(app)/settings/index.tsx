@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
@@ -202,8 +201,7 @@ export default function SettingsScreen() {
         <ScreenHeader
           variant="compact"
           title="Settings"
-          actionLabel="Today"
-          onAction={() => router.push('/(app)/today')}
+          onBack={() => router.back()}
         />
 
         <ScrollView
@@ -485,7 +483,6 @@ export default function SettingsScreen() {
           </View>
         </ScrollView>
 
-        <AppNav />
       </View>
     </SafeAreaView>
   );

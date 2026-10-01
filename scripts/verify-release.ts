@@ -16,7 +16,9 @@ const app = json('app.json');
 const pkg = json('package.json');
 const release = read('RELEASE.md');
 const gitignore = read('.gitignore');
-const previewWorkflow = read('.eas/workflows/publish-preview-update.yml');
+const verifyWorkflow = read('.github/workflows/verify.yml');
+const previewWorkflow = read('.github/workflows/publish-preview.yml');
+const nativeGuard = read('scripts/check-native-runtime-boundary.cjs');
 const googleServices = json('google-services.json');
 
 assert(eas.build?.development?.developmentClient === true, 'Development client profile is missing.');
@@ -44,39 +46,36 @@ assert(gitignore.includes('*.jks') && gitignore.includes('*.key'), 'Signing/priv
 assert(release.includes('Google sign-in verification'), 'Release runbook is missing native auth verification.');
 assert(release.includes('Preview APK installs on a real Android device'), 'Release runbook lacks an on-device preview gate.');
 
-assert(previewWorkflow.includes("branches: ['expo-migration']"), 'Preview EAS workflow must trigger on expo-migration.');
-assert(previewWorkflow.includes('type: get-build'), 'Preview EAS workflow must look up an installed-runtime-compatible preview build.');
-assert(previewWorkflow.includes('platform: android'), 'Preview EAS workflow must target Android.');
-assert(previewWorkflow.includes('profile: preview'), 'Preview EAS workflow must match the preview build profile.');
-assert(previewWorkflow.includes('channel: preview'), 'Compatible build lookup must target the preview channel.');
-assert(previewWorkflow.includes('distribution: internal'), 'Compatible build lookup must target internal preview builds.');
+assert(previewWorkflow.includes("workflows: ['Verify Expo app']"), 'Preview publisher must wait for the verification workflow.');
+assert(previewWorkflow.includes('workflow_run.conclusion == \'success\''), 'Preview publisher must require successful verification.');
+assert(previewWorkflow.includes('workflow_dispatch:'), 'Preview publisher needs a manual recovery trigger.');
+assert(previewWorkflow.includes('EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}'), 'Preview publisher must use the Expo CI token secret.');
+assert(previewWorkflow.includes('EXPO_TOKEN is not configured'), 'Missing Expo token must skip with an explicit notice.');
+assert(previewWorkflow.includes('npx eas-cli@latest update'), 'Preview publisher must use EAS Update.');
+assert(previewWorkflow.includes('--channel preview'), 'Preview publisher must target the preview channel.');
+assert(previewWorkflow.includes('--environment preview'), 'Preview publisher must use preview environment variables.');
+assert(previewWorkflow.includes('--platform android'), 'Preview publisher must target Android.');
+assert(previewWorkflow.includes('--non-interactive'), 'Preview publisher must be CI-safe.');
+assert(previewWorkflow.includes('cancel-in-progress: true'), 'Preview publisher should collapse superseded update runs.');
+
+assert(verifyWorkflow.includes('fetch-depth: 0'), 'Verification checkout must expose history for runtime-boundary checks.');
 assert(
-  previewWorkflow.includes(`app_version: ${app.expo?.version}`),
-  'Preview build lookup app version must match app.json.',
+  verifyWorkflow.includes('node scripts/check-native-runtime-boundary.cjs'),
+  'Verification must run the native runtime boundary guard.',
 );
+assert(nativeGuard.includes("file === 'app.json'"), 'Runtime guard must treat Expo app config as native-sensitive.');
+assert(nativeGuard.includes("file === 'package.json'"), 'Runtime guard must treat dependency changes as native-sensitive.');
+assert(nativeGuard.includes("file.startsWith('android/')"), 'Runtime guard must detect committed Android changes.');
+assert(nativeGuard.includes("file.startsWith('ios/')"), 'Runtime guard must detect committed iOS changes.');
+assert(nativeGuard.includes('currentVersion === previousVersion'), 'Runtime guard must require a version boundary for native-sensitive changes.');
+
 assert(
-  previewWorkflow.includes(`runtime_version: ${app.expo?.version}`),
-  'Preview build lookup runtime version must match the appVersion runtime boundary.',
-);
-assert(!previewWorkflow.includes('type: fingerprint'), 'Preview OTA must not depend on the hanging fingerprint worker.');
-assert(previewWorkflow.includes('type: update'), 'Preview EAS workflow must publish through EAS Update.');
-assert(previewWorkflow.includes('branch: preview'), 'Preview EAS workflow must target the preview update branch.');
-assert(previewWorkflow.includes('environment: preview'), 'Preview EAS workflow must use preview environment variables.');
-assert(
-  previewWorkflow.includes('if: ${{ needs.get_android_build.outputs.build_id }}'),
-  'Preview EAS workflow must skip OTA when no compatible preview build exists.',
-);
-assert(
-  !fs.existsSync(path.join(process.cwd(), '.github/workflows/publish-preview.yml')),
-  'Legacy GitHub-token preview updater should be removed.',
+  !fs.existsSync(path.join(process.cwd(), '.eas/workflows/publish-preview-update.yml')),
+  'Automatic preview publishing should not depend on the currently stalled EAS Workflow worker.',
 );
 assert(
   !fs.existsSync(path.join(process.cwd(), '.eas/preview-native-baseline.txt')),
-  'Manual preview native baseline should not be required after fingerprint gating.',
-);
-assert(
-  !fs.existsSync(path.join(process.cwd(), 'scripts/check-native-package-change.cjs')),
-  'Legacy manual native-package diff helper should be removed.',
+  'Manual preview native baseline should not be required.',
 );
 
 const androidGoogleClient = (googleServices.client ?? []).some((client: any) =>

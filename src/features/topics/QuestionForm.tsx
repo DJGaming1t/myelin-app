@@ -125,15 +125,15 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: 48 },
   helper: {
     color: colors.muted,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
     borderLeftWidth: 2,
     borderLeftColor: colors.accent,
     paddingLeft: 11,
     marginBottom: spacing.md,
   },
   field: { marginTop: spacing.md },
-  label: { color: colors.muted, fontSize: 11, fontWeight: '700', marginBottom: 8 },
+  label: { color: colors.textDim, fontSize: 12.5, lineHeight: 17, fontWeight: '700', marginBottom: 8 },
   input: {
     borderWidth: 1,
     borderColor: colors.lineStrong,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-  error: { color: colors.danger, fontSize: 11.5, lineHeight: 17, marginTop: spacing.md },
+  error: { color: colors.danger, fontSize: 12.5, lineHeight: 18, marginTop: spacing.md },
   actions: { flexDirection: 'row', gap: 10, marginTop: spacing.xl },
   primaryButton: {
     flex: 1,

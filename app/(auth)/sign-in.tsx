@@ -30,10 +30,10 @@ export default function SignInScreen() {
 
     setBusy(true);
     try {
-      await runEntryTransition(async () => {
-        await signInEmail(email, password, keepSignedIn);
-        router.replace('/');
-      });
+      await runEntryTransition(
+        () => signInEmail(email, password, keepSignedIn),
+        () => router.replace('/'),
+      );
     } catch (err) {
       setError(authErrorMessage(err, 'signin'));
     } finally {
@@ -45,10 +45,10 @@ export default function SignInScreen() {
     setError('');
     setGoogleBusy(true);
     try {
-      await runEntryTransition(async () => {
-        await signInGoogle(keepSignedIn);
-        router.replace('/');
-      });
+      await runEntryTransition(
+        () => signInGoogle(keepSignedIn),
+        () => router.replace('/'),
+      );
     } catch (err) {
       setError(authErrorMessage(err, 'google'));
     } finally {

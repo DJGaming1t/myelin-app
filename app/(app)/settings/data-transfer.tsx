@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
@@ -278,6 +279,7 @@ export default function DataTransferScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <ScreenHeader
         eyebrow="PORTABLE DATA"
         title="Backup & migration"
@@ -323,7 +325,7 @@ export default function DataTransferScreen() {
               busy && styles.disabled,
               pressed && !busy && styles.pressed,
             ]}>
-            <View>
+            <View style={styles.chooseCopy}>
               <Text style={styles.chooseTitle}>
                 {busy ? 'Working…' : 'Choose JSON backup'}
               </Text>
@@ -508,42 +510,43 @@ const styles = StyleSheet.create({
   loading: { color: colors.muted, fontSize: 12 },
   content: { paddingHorizontal: spacing.lg, paddingBottom: 56 },
   primaryPanel: { borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,128,91,0.25)', backgroundColor: colors.accentSoft, padding: spacing.lg },
-  panelEyebrow: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.3 },
+  panelEyebrow: { color: colors.accent, fontSize: 10.5, fontWeight: '800', letterSpacing: 1.1 },
   panelTitle: { color: colors.text, fontSize: 18, fontWeight: '700', marginTop: 6 },
-  panelText: { color: colors.muted, fontSize: 10.5, lineHeight: 17, marginTop: 6 },
+  panelText: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 6 },
   primaryButton: { minHeight: 50, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   primaryButtonText: { color: '#25140e', fontSize: 11.5, fontWeight: '800' },
   primaryArrow: { color: '#25140e', fontSize: 18 },
   section: { marginTop: spacing.xl },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  sectionText: { color: colors.subtle, fontSize: 9.8, lineHeight: 15, marginTop: 4 },
-  chooseButton: { minHeight: 64, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  sectionText: { color: colors.subtle, fontSize: 11.5, lineHeight: 17, marginTop: 4 },
+  chooseButton: { minHeight: 64, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  chooseCopy: { flex: 1, minWidth: 0 },
   chooseTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
-  chooseText: { color: colors.subtle, fontSize: 8.8, marginTop: 4 },
-  chooseArrow: { color: colors.accent, fontSize: 20 },
+  chooseText: { color: colors.subtle, fontSize: 11, lineHeight: 15, marginTop: 4 },
+  chooseArrow: { color: colors.accent, fontSize: 20, flexShrink: 0 },
   preview: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: spacing.md },
   previewHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   previewCopy: { flex: 1 },
-  previewEyebrow: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  previewEyebrow: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.05 },
   previewTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: 5 },
-  previewSource: { color: colors.muted, fontSize: 9.5, marginTop: 3 },
+  previewSource: { color: colors.muted, fontSize: 11.2, marginTop: 3 },
   readyBadge: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1 },
   olderBadge: { color: colors.danger, fontSize: 8, fontWeight: '800', letterSpacing: 1 },
   metaRows: { marginTop: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 7 },
   metaRow: { minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  metaLabel: { color: colors.subtle, fontSize: 8.5 },
-  metaValue: { color: colors.muted, fontSize: 8.8, textAlign: 'right' },
+  metaLabel: { color: colors.subtle, fontSize: 10.5 },
+  metaValue: { flex: 1, minWidth: 0, color: colors.muted, fontSize: 10.8, textAlign: 'right' },
   countGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },
   count: { width: '31.7%', minHeight: 54, borderRadius: radius.md, backgroundColor: colors.bg, padding: 9, justifyContent: 'space-between' },
-  countLabel: { color: colors.subtle, fontSize: 6.8, fontWeight: '800', letterSpacing: 0.9 },
+  countLabel: { color: colors.subtle, fontSize: 9.2, fontWeight: '800', letterSpacing: 0.75 },
   countValue: { color: colors.text, fontSize: 13.5, fontWeight: '700' },
   notice: { marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: 10 },
   noticeDanger: { borderColor: 'rgba(255,161,145,0.24)', backgroundColor: 'rgba(255,161,145,0.045)' },
-  noticeText: { color: colors.muted, fontSize: 9.5, lineHeight: 15 },
+  noticeText: { color: colors.muted, fontSize: 11.2, lineHeight: 16.5 },
   noticeDangerText: { color: colors.danger },
   mergeInfo: { marginTop: 10, borderLeftWidth: 2, borderLeftColor: colors.success, paddingLeft: 10 },
   mergeTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  mergeText: { color: colors.muted, fontSize: 9.3, lineHeight: 15, marginTop: 4 },
+  mergeText: { color: colors.muted, fontSize: 11, lineHeight: 16.5, marginTop: 4 },
   actions: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
   mergeButton: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   mergeButtonText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
@@ -554,7 +557,7 @@ const styles = StyleSheet.create({
   recoveryPanel: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(180,216,174,0.2)', backgroundColor: 'rgba(180,216,174,0.045)', padding: spacing.md },
   recoveryEyebrow: { color: colors.success, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   recoveryTitle: { color: colors.text, fontSize: 13, fontWeight: '700', marginTop: 5 },
-  recoveryText: { color: colors.muted, fontSize: 9.5, lineHeight: 15, marginTop: 5 },
+  recoveryText: { color: colors.muted, fontSize: 11.2, lineHeight: 16.5, marginTop: 5 },
   recoveryButton: { minHeight: layout.minTouch, marginTop: 11, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(180,216,174,0.28)', alignItems: 'center', justifyContent: 'center' },
   recoveryButtonText: { color: colors.success, fontSize: 10.5, fontWeight: '700' },
   success: { color: colors.success, fontSize: 10, lineHeight: 15, marginTop: spacing.md },
@@ -563,7 +566,7 @@ const styles = StyleSheet.create({
   rulesTitle: { color: colors.text, fontSize: 11, fontWeight: '700', marginBottom: 7 },
   rule: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 7 },
   ruleMark: { color: colors.success, fontSize: 10.5 },
-  ruleText: { flex: 1, color: colors.subtle, fontSize: 9.4, lineHeight: 14 },
+  ruleText: { flex: 1, color: colors.subtle, fontSize: 11, lineHeight: 16 },
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

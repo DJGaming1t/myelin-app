@@ -204,15 +204,29 @@ async function main() {
   console.log('✓ local-data summary counts current workspace records');
   console.log('✓ account provider labels are deduplicated and readable');
   console.log('✓ corrupt data is quarantined before explicit reset');
-  const settingsSource = await import('node:fs').then(({ readFileSync }) => readFileSync('app/(app)/settings/index.tsx', 'utf8'));
+  const { readFileSync } = await import('node:fs');
+  const settingsSource = readFileSync('app/(app)/settings/index.tsx', 'utf8');
+  const cloudSource = readFileSync('app/(app)/settings/cloud-sync.tsx', 'utf8');
+  const transferSource = readFileSync('app/(app)/settings/data-transfer.tsx', 'utf8');
+  const remindersSource = readFileSync('app/(app)/settings/reminders.tsx', 'utf8');
+  const tutorialSource = readFileSync('app/(app)/settings/tutorial.tsx', 'utf8');
   assert.ok(settingsSource.includes('FadeInDown.duration(180)'));
   assert.ok(settingsSource.includes('FadeOutUp.duration(130)'));
   assert.ok(settingsSource.includes('transferCopy: { flex: 1, minWidth: 0 }'));
   assert.ok(settingsSource.includes('label="Delete account"'));
+  assert.ok(!cloudSource.includes('Delete account & study data'));
+  assert.ok(cloudSource.includes('actionCopy: { flex: 1, minWidth: 0 }'));
+  assert.ok(transferSource.includes('chooseCopy: { flex: 1, minWidth: 0 }'));
+  assert.ok(remindersSource.includes('previewButtonCopy: { flex: 1, minWidth: 0 }'));
+  assert.ok(tutorialSource.includes('Three ideas. About a minute.'));
+  assert.ok(tutorialSource.includes('signalStage'));
+  assert.ok(!tutorialSource.includes('current.cards'));
 
   console.log('✓ explicit reset clears primary copies, backups and quarantine');
   console.log('✓ Settings disclosures animate and action rows constrain their arrows');
   console.log('✓ account deletion is exposed directly from Account & session');
+  console.log('✓ Settings subpages keep long copy and arrows inside their rows');
+  console.log('✓ tutorial replay stays short, visual and animated');
 }
 
 main().catch((error) => {

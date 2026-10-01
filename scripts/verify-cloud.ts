@@ -205,9 +205,15 @@ assert.ok(
   cloudProviderSource.includes('if (CLOUD_SYNC_RELEASE_ENABLED) {'),
   'Released cloud data must be deleted before Auth account deletion.',
 );
+const settingsScreenSource = fs.readFileSync('app/(app)/settings/index.tsx', 'utf8');
 assert.ok(
-  cloudScreenSource.includes('disabled={!signedIn || busy}'),
-  'Account deletion UI must not be disabled merely because cloud sync is locked.',
+  settingsScreenSource.includes('label="Delete account"'),
+  'Account deletion must remain available from Account & session even when cloud sync is locked.',
+);
+assert.equal(
+  cloudScreenSource.includes('Delete account & study data'),
+  false,
+  'Cloud Sync should not duplicate the account deletion control.',
 );
 assert.ok(
   cloudProviderSource.includes("return 'reauth-required'"),

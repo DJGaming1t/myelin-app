@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import {
@@ -71,7 +72,6 @@ export default function CloudSyncScreen() {
     syncNow,
     resolveConflict,
     deleteCloudCopy,
-    deleteAccountAndCloud,
   } = useCloudSync();
 
   const [busyAction, setBusyAction] = useState('');
@@ -131,23 +131,9 @@ export default function CloudSyncScreen() {
     );
   }
 
-  function confirmDeleteAccount() {
-    Alert.alert(
-      'Delete account and study data?',
-      'MYELIN will first delete the Firestore study copy, then request deletion of the Firebase account. If Firebase requires a recent sign-in, the account deletion will stop and you can sign in again to retry. If account deletion succeeds, this device workspace is also erased.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete account',
-          style: 'destructive',
-          onPress: () => void action('delete-account', deleteAccountAndCloud),
-        },
-      ],
-    );
-  }
-
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <ScreenHeader
         eyebrow="CLOUD"
         title="Cloud sync"
@@ -316,17 +302,9 @@ export default function CloudSyncScreen() {
             danger
           />
 
-          <ActionButton
-            title="Delete account & study data"
-            detail={
-              releaseEnabled
-                ? 'Delete cloud study data, Firebase account, then this device workspace'
-                : 'Delete the Firebase account and this device workspace; cloud upload is disabled in this build'
-            }
-            disabled={!signedIn || busy}
-            onPress={confirmDeleteAccount}
-            danger
-          />
+<Text style={styles.accountDeleteNote}>
+            Account deletion is handled in Settings → Account & session so MYELIN can guide you through Firebase’s recent-login requirement in one place.
+          </Text>
         </View>
 
         <View style={styles.note}>
@@ -456,9 +434,9 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: colors.subtle,
-    fontSize: 7.5,
+    fontSize: 10.5,
     fontWeight: '800',
-    letterSpacing: 1.1,
+    letterSpacing: 1.05,
   },
   status: {
     color: colors.muted,
@@ -478,14 +456,14 @@ const styles = StyleSheet.create({
   },
   pillText: {
     color: colors.subtle,
-    fontSize: 7.5,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.9,
   },
   explanation: {
     color: colors.muted,
-    fontSize: 10,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 18,
     marginTop: 12,
   },
   meta: {
@@ -509,9 +487,11 @@ const styles = StyleSheet.create({
   },
   metaValue: {
     color: colors.text,
-    fontSize: 9.5,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'right',
+    flex: 1,
+    minWidth: 0,
   },
   messageBox: {
     marginTop: 10,
@@ -525,14 +505,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,161,145,0.25)',
     backgroundColor: 'rgba(255,161,145,0.04)',
   },
-  messageText: { color: colors.muted, fontSize: 9.4, lineHeight: 15 },
+  messageText: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
   messageDangerText: { color: colors.danger },
   section: { marginTop: spacing.xl },
   sectionTitle: { color: colors.text, fontSize: 14.5, fontWeight: '700' },
   sectionText: {
     color: colors.subtle,
-    fontSize: 9.5,
-    lineHeight: 15,
+    fontSize: 11.5,
+    lineHeight: 17,
     marginTop: 4,
     marginBottom: 9,
   },
@@ -558,17 +538,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,161,145,0.22)',
     backgroundColor: 'rgba(255,161,145,0.035)',
   },
-  actionCopy: { flex: 1 },
-  actionTitle: { color: colors.text, fontSize: 11.2, fontWeight: '700' },
+  actionCopy: { flex: 1, minWidth: 0 },
+  actionTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
   actionTitleAccent: { color: colors.accent },
   actionTitleDanger: { color: colors.danger },
   actionDetail: {
     color: colors.subtle,
-    fontSize: 8.7,
-    lineHeight: 13,
+    fontSize: 11.2,
+    lineHeight: 16,
     marginTop: 3,
   },
-  actionArrow: { color: colors.muted, fontSize: 18 },
+  actionArrow: { color: colors.muted, fontSize: 18, flexShrink: 0 },
   conflictCard: {
     marginTop: spacing.xl,
     borderRadius: radius.lg,
@@ -604,8 +584,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     padding: 10,
   },
-  choiceTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  choiceDetail: { color: colors.subtle, fontSize: 8.7, marginTop: 3 },
+  choiceTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
+  choiceDetail: { color: colors.subtle, fontSize: 11, lineHeight: 15, marginTop: 3 },
   listCard: {
     borderRadius: radius.md,
     borderWidth: 1,
@@ -620,18 +600,19 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   ruleMark: { color: colors.success, fontSize: 10 },
-  ruleText: { flex: 1, color: colors.muted, fontSize: 9.3, lineHeight: 14 },
+  ruleText: { flex: 1, color: colors.muted, fontSize: 11.2, lineHeight: 16 },
+  accountDeleteNote: { color: colors.muted, fontSize: 11.5, lineHeight: 17, marginTop: 12 },
   note: {
     marginTop: 32,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     paddingTop: spacing.md,
   },
-  noteTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
+  noteTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
   noteText: {
     color: colors.subtle,
-    fontSize: 9.3,
-    lineHeight: 15,
+    fontSize: 11.2,
+    lineHeight: 16.5,
     marginTop: 4,
   },
   disabled: { opacity: 0.4 },

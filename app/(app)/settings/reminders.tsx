@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
@@ -136,6 +137,7 @@ export default function RemindersScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <ScreenHeader
         eyebrow="NUDGES, NOT PRESSURE"
         title="Reminders"
@@ -417,7 +419,7 @@ export default function RemindersScreen() {
                 disabled && styles.disabled,
                 pressed && !disabled && styles.pressed,
               ]}>
-              <View>
+              <View style={styles.previewButtonCopy}>
                 <Text style={styles.previewButtonTitle}>
                   {busy === 'preview' ? 'Sending…' : 'Send live preview'}
                 </Text>
@@ -792,12 +794,12 @@ const styles = StyleSheet.create({
   heroCopy: { flex: 1 },
   heroEyebrow: {
     color: colors.accent,
-    fontSize: 7.2,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.1,
   },
   heroTitle: { color: colors.text, fontSize: 17, fontWeight: '700', marginTop: 3 },
-  heroText: { color: colors.muted, fontSize: 9.4, lineHeight: 14, marginTop: 4 },
+  heroText: { color: colors.muted, fontSize: 11.3, lineHeight: 16, marginTop: 4 },
   statusPill: {
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -811,7 +813,7 @@ const styles = StyleSheet.create({
   },
   statusPillText: {
     color: colors.subtle,
-    fontSize: 7,
+    fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 1,
   },
@@ -826,11 +828,11 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     color: colors.subtle,
-    fontSize: 7.5,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.1,
   },
-  previewMeta: { color: colors.muted, fontSize: 8.5 },
+  previewMeta: { color: colors.muted, fontSize: 10.5 },
   notification: {
     borderRadius: 18,
     borderWidth: 1,
@@ -857,14 +859,14 @@ const styles = StyleSheet.create({
   appDotText: { color: '#27150f', fontSize: 9, fontWeight: '900' },
   notificationApp: {
     color: colors.muted,
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.7,
     marginLeft: 7,
   },
-  notificationTime: { color: colors.subtle, fontSize: 8, marginLeft: 'auto' },
+  notificationTime: { color: colors.subtle, fontSize: 10, marginLeft: 'auto' },
   notificationTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 9 },
-  notificationBody: { color: colors.muted, fontSize: 9.5, lineHeight: 14.5, marginTop: 3 },
+  notificationBody: { color: colors.muted, fontSize: 11.2, lineHeight: 16, marginTop: 3 },
   notificationBottom: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -873,14 +875,14 @@ const styles = StyleSheet.create({
   },
   notificationKind: {
     color: colors.accent,
-    fontSize: 6.8,
+    fontSize: 9.2,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  notificationAction: { color: colors.subtle, fontSize: 8.2, fontWeight: '600' },
+  notificationAction: { color: colors.subtle, fontSize: 10.3, fontWeight: '600' },
   section: { marginTop: spacing.xl },
   sectionTitle: { color: colors.text, fontSize: 14.5, fontWeight: '700' },
-  sectionSubtitle: { color: colors.subtle, fontSize: 9.4, lineHeight: 14.5, marginTop: 4 },
+  sectionSubtitle: { color: colors.subtle, fontSize: 11.3, lineHeight: 16.5, marginTop: 4 },
   sectionBody: {
     marginTop: 10,
     borderRadius: radius.lg,
@@ -912,11 +914,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   voiceName: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 5 },
-  voiceText: { color: colors.subtle, fontSize: 9, lineHeight: 13.5, marginTop: 3 },
+  voiceText: { color: colors.subtle, fontSize: 11, lineHeight: 16, marginTop: 3 },
   toggleRow: { minHeight: 69, flexDirection: 'row', alignItems: 'center', gap: 12 },
   toggleCopy: { flex: 1 },
   toggleLabel: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  toggleHelper: { color: colors.subtle, fontSize: 9, lineHeight: 13.5, marginTop: 3 },
+  toggleHelper: { color: colors.subtle, fontSize: 11, lineHeight: 16, marginTop: 3 },
   presetRow: { gap: 7, paddingVertical: 7 },
   preset: {
     minWidth: 98,
@@ -930,9 +932,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,128,91,0.34)',
     backgroundColor: colors.accentSoft,
   },
-  presetLabel: { color: colors.muted, fontSize: 8.5, fontWeight: '700' },
+  presetLabel: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   presetLabelActive: { color: colors.text },
-  presetTime: { color: colors.subtle, fontSize: 8, marginTop: 3 },
+  presetTime: { color: colors.subtle, fontSize: 10, marginTop: 3 },
   presetTimeActive: { color: colors.accent },
   timeRow: {
     minHeight: 58,
@@ -946,7 +948,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   timeRowCompact: { flex: 1, borderTopWidth: 0, marginTop: 0, paddingTop: 0 },
-  timeLabel: { color: colors.subtle, fontSize: 8.3, fontWeight: '700' },
+  timeLabel: { color: colors.subtle, fontSize: 10.5, fontWeight: '700' },
   timeValue: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 3 },
   stepper: { flexDirection: 'row', gap: 5 },
   stepButton: {
@@ -959,7 +961,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 7,
   },
-  stepButtonText: { color: colors.muted, fontSize: 8.5, fontWeight: '700' },
+  stepButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
   microLabel: {
     color: colors.subtle,
     fontSize: 7.2,
@@ -982,7 +984,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,128,91,0.35)',
     backgroundColor: colors.accentSoft,
   },
-  offsetText: { color: colors.muted, fontSize: 8.8, fontWeight: '700' },
+  offsetText: { color: colors.muted, fontSize: 10.8, fontWeight: '700' },
   offsetTextActive: { color: colors.accent },
   quietGrid: { flexDirection: 'row', gap: 13 },
   statusLine: {
@@ -1000,7 +1002,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
   },
-  statusLineValue: { color: colors.text, fontSize: 9.3, fontWeight: '700' },
+  statusLineValue: { flex: 1, minWidth: 0, color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'right' },
   previewButton: {
     minHeight: 57,
     marginTop: 10,
@@ -1014,9 +1016,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
-  previewButtonTitle: { color: colors.text, fontSize: 10.8, fontWeight: '700' },
-  previewButtonText: { color: colors.subtle, fontSize: 8.5, marginTop: 3 },
-  previewGlyph: { color: colors.accent, fontSize: 17 },
+  previewButtonTitle: { color: colors.text, fontSize: 12.2, fontWeight: '700' },
+  previewButtonText: { color: colors.subtle, fontSize: 10.8, lineHeight: 15, marginTop: 3 },
+  previewButtonCopy: { flex: 1, minWidth: 0 },
+  previewGlyph: { color: colors.accent, fontSize: 17, flexShrink: 0 },
   message: {
     marginTop: spacing.md,
     borderRadius: radius.md,
@@ -1028,7 +1031,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,161,145,0.25)',
     backgroundColor: 'rgba(255,161,145,0.04)',
   },
-  messageText: { color: colors.muted, fontSize: 9.3, lineHeight: 14.5 },
+  messageText: { color: colors.muted, fontSize: 11.2, lineHeight: 16.5 },
   messageDangerText: { color: colors.danger },
   activationCard: {
     marginTop: spacing.xl,
@@ -1045,7 +1048,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
   },
   activationTitle: { color: colors.text, fontSize: 13.5, fontWeight: '700', marginTop: 5 },
-  activationText: { color: colors.muted, fontSize: 9.4, lineHeight: 14.5, marginTop: 5 },
+  activationText: { color: colors.muted, fontSize: 11.2, lineHeight: 16.5, marginTop: 5 },
   primaryButton: {
     minHeight: 49,
     marginTop: 13,
@@ -1068,7 +1071,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  secondaryButtonText: { color: colors.text, fontSize: 9.8, fontWeight: '700' },
+  secondaryButtonText: { color: colors.text, fontSize: 11.2, fontWeight: '700' },
   arrow: { color: colors.accent, fontSize: 16, position: 'absolute', right: 11 },
   activeActions: { flexDirection: 'row', gap: 8, marginTop: 5 },
   flexButton: { flex: 1 },
@@ -1082,9 +1085,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  offButtonText: { color: colors.danger, fontSize: 9.8, fontWeight: '700' },
+  offButtonText: { color: colors.danger, fontSize: 11.2, fontWeight: '700' },
   permissionRefresh: { minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center', marginTop: 3 },
-  permissionRefreshText: { color: colors.subtle, fontSize: 8.7, fontWeight: '600' },
+  permissionRefreshText: { color: colors.subtle, fontSize: 10.8, fontWeight: '600' },
   ethics: {
     marginTop: 31,
     borderTopWidth: 1,
@@ -1094,7 +1097,7 @@ const styles = StyleSheet.create({
   ethicsTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700', marginBottom: 8 },
   rule: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 7 },
   ruleMark: { color: colors.success, fontSize: 10 },
-  ruleText: { flex: 1, color: colors.subtle, fontSize: 9.1, lineHeight: 14 },
+  ruleText: { flex: 1, color: colors.subtle, fontSize: 11, lineHeight: 16 },
   disabled: { opacity: 0.42 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

@@ -1,19 +1,19 @@
 # Automatic preview updates
 
-MYELIN uses GitHub verification as the quality gate and GitHub Actions as the OTA publisher.
+MYELIN uses the existing GitHub verification workflow as both the quality gate and the OTA publisher.
 
 ## Automatic flow
 
 1. A change lands on `expo-migration`.
 2. `.github/workflows/verify.yml` runs the full TypeScript, product, Firebase, Expo Doctor and Android-generation checks.
-3. Only after **Verify Expo app** succeeds, `.github/workflows/publish-preview.yml` is triggered.
+3. Only after the `verify` job succeeds, its dependent `publish_preview` job becomes eligible to run on pushes to `expo-migration`.
 4. If the repository secret `EXPO_TOKEN` is configured, GitHub runs:
    ```bash
    npx eas-cli@latest update --channel preview --environment preview --platform android --non-interactive
    ```
 5. If `EXPO_TOKEN` is not configured, publishing is skipped cleanly and the Actions log shows an explicit notice.
 
-This avoids relying on the EAS Workflow compute workers that were remaining stuck before their first log line.
+Keeping publishing in the same workflow avoids GitHub's `workflow_run` requirement that the downstream workflow file exist on the repository's default branch. It also avoids the EAS Workflow compute workers that were stalling before their first log line.
 
 ## One-time GitHub setup
 
@@ -25,7 +25,7 @@ EXPO_TOKEN
 
 Do not paste the token into source code, commit history, issues or chat.
 
-After the secret exists, future verified merges publish automatically. The publisher also supports **Run workflow** manually from GitHub Actions, which is useful for publishing the current verified commit immediately after the secret is added.
+After the secret exists, future verified pushes to `expo-migration` publish automatically. To publish the already-verified current commit immediately after adding the secret, make a new verified commit/push or run the existing local preview-update command below.
 
 ## Native changes still require a new APK
 

@@ -14,6 +14,7 @@ import {
   normalizeDailyCapacity,
 } from '@/src/features/onboarding/onboarding-engine';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
 const CAPACITY_COPY: Record<number, string> = {
@@ -26,6 +27,7 @@ const CAPACITY_COPY: Record<number, string> = {
 export default function OnboardingScreen() {
   const { workspace, updateWorkspace, waitForSaves } = useWorkspace();
   const { finish } = useOnboarding();
+  const { runTransition } = useOnboardingTransition();
 
   const [capacity, setCapacity] = useState(
     normalizeDailyCapacity(workspace?.settings.dailyMinutes ?? 90),
@@ -39,8 +41,10 @@ export default function OnboardingScreen() {
     setError('');
 
     try {
-      await finish('skipped');
-      router.replace('/(app)/today');
+      await runTransition(async () => {
+        await finish('skipped');
+        router.replace('/(app)/today');
+      });
     } catch {
       setError('Could not save this choice. Try again.');
       setFinishing(false);
@@ -65,8 +69,10 @@ export default function OnboardingScreen() {
 
     try {
       await waitForSaves();
-      await finish('completed');
-      router.replace('/(app)/today');
+      await runTransition(async () => {
+        await finish('completed');
+        router.replace('/(app)/today');
+      });
     } catch {
       setError('Setup could not be finished on this device.');
       setFinishing(false);

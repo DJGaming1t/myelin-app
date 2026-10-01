@@ -151,11 +151,24 @@ function main() {
 
   const screenSource = fs.readFileSync('app/(onboarding)/index.tsx', 'utf8');
   const shellSource = fs.readFileSync('src/components/onboarding/OnboardingShell.tsx', 'utf8');
+  const transitionSource = fs.readFileSync(
+    'src/features/onboarding/OnboardingTransitionProvider.tsx',
+    'utf8',
+  );
+  const rootLayoutSource = fs.readFileSync('app/_layout.tsx', 'utf8');
   const welcomeSource = fs.readFileSync('app/(auth)/index.tsx', 'utf8');
   assert.ok(screenSource.includes("finish('skipped')"));
   assert.ok(screenSource.includes('applyOnboardingSetup'));
   assert.ok(screenSource.includes('Enter MYELIN'));
   assert.ok(screenSource.includes('How much focus fits in a normal day?'));
+  assert.ok(screenSource.includes('useOnboardingTransition'));
+  assert.ok(screenSource.includes('runTransition(async () =>'));
+  assert.ok(rootLayoutSource.includes('<OnboardingTransitionProvider>'));
+  assert.ok(transitionSource.includes('useReducedMotion()'));
+  assert.ok(transitionSource.includes('withTiming'));
+  assert.ok(transitionSource.includes('withSequence'));
+  assert.ok(transitionSource.includes('await commit()'));
+  assert.ok(transitionSource.includes('accessibilityLabel="Opening MYELIN"'));
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);
   assert.equal(screenSource.includes('Create topic & enter MYELIN'), false);

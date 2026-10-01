@@ -12,11 +12,11 @@ export function KeepSignedInRow({
   return (
     <View style={styles.row}>
       <View style={styles.copy}>
-        <Text style={styles.title}>Keep me signed in</Text>
-        <Text style={styles.caption}>Leave this off on a shared computer or phone.</Text>
+        <Text style={styles.title}>Stay signed in on this device</Text>
+        <Text style={styles.caption}>Recommended on your phone. Turn this off on a shared device.</Text>
       </View>
       <Switch
-        accessibilityLabel="Keep me signed in"
+        accessibilityLabel="Stay signed in on this device"
         value={value}
         onValueChange={onChange}
         trackColor={{ false: colors.panelHighlight, true: colors.accentLine }}

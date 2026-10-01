@@ -1,5 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors } from '@/src/theme/tokens';
@@ -12,39 +18,35 @@ export function AnimatedProgress({
   accessibilityLabel?: string;
 }) {
   const reduceMotion = useReducedMotion();
-  const progress = useRef(new Animated.Value(clamp(value))).current;
+  const progress = useSharedValue(clamp(value));
 
   useEffect(() => {
     const target = clamp(value);
-    progress.stopAnimation();
+    cancelAnimation(progress);
 
     if (reduceMotion) {
-      progress.setValue(target);
+      progress.value = target;
       return;
     }
 
-    Animated.spring(progress, {
-      toValue: target,
-      stiffness: 145,
-      damping: 19,
-      mass: 0.72,
+    progress.value = withSpring(target, {
+      stiffness: 170,
+      damping: 22,
+      mass: 0.68,
       overshootClamping: true,
-      isInteraction: false,
-      useNativeDriver: false,
-    }).start();
+    });
   }, [progress, reduceMotion, value]);
 
-  const width = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  const fillStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: progress.value }],
+  }));
 
   return (
     <View
       accessible={Boolean(accessibilityLabel)}
       accessibilityLabel={accessibilityLabel}
       style={styles.track}>
-      <Animated.View style={[styles.fill, { width }]} />
+      <Animated.View style={[styles.fill, fillStyle]} />
       <View style={styles.highlight} />
     </View>
   );
@@ -62,12 +64,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.lineStrong,
   },
   fill: {
-    height: '100%',
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     borderRadius: 5,
     backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
+    transformOrigin: 'left center',
   },
   highlight: {
     position: 'absolute',

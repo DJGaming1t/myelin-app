@@ -210,8 +210,8 @@ async function main() {
   const transferSource = readFileSync('app/(app)/settings/data-transfer.tsx', 'utf8');
   const remindersSource = readFileSync('app/(app)/settings/reminders.tsx', 'utf8');
   const tutorialSource = readFileSync('app/(app)/settings/tutorial.tsx', 'utf8');
-  assert.ok(settingsSource.includes('FadeInDown.duration(180)'));
-  assert.ok(settingsSource.includes('FadeOutUp.duration(130)'));
+  assert.ok(settingsSource.includes('FadeInDown.duration(motion.stateMs)'));
+  assert.ok(settingsSource.includes('FadeOutUp.duration(motion.pressMs + 20)'));
   assert.ok(settingsSource.includes('transferCopy: { flex: 1, minWidth: 0 }'));
   assert.ok(settingsSource.includes('label="Delete account"'));
   assert.ok(!cloudSource.includes('Delete account & study data'));

@@ -4,9 +4,9 @@ MYELIN publishes compatible source changes to the Android preview app with EAS W
 
 ## What happens
 
-1. EAS installs the locked dependencies and runs the same repository verification gates used before merge.
-2. EAS calculates the current Android native fingerprint.
-3. It looks for an existing `preview` build with that exact native fingerprint.
+1. EAS starts the pre-packaged fingerprint job, installs dependencies, and runs the repository verification gates in its supported post-install hook.
+2. Only after those checks pass does the job calculate the current Android native fingerprint.
+3. It looks for an existing internal Android `preview` build on the `preview` channel with that exact native fingerprint.
 4. If a matching build exists, EAS publishes an update to the `preview` branch with the `preview` environment.
 5. If no matching build exists, the OTA publish job is skipped. That means a real native change needs a new preview APK.
 

@@ -1,6 +1,6 @@
 type FirebaseLikeError = { code?: string };
 
-export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | 'reset' | 'google') {
+export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | 'reset' | 'google' | 'delete') {
   const code = (error as FirebaseLikeError | undefined)?.code ?? '';
 
   if (code.includes('network-request-failed')) {
@@ -49,5 +49,6 @@ export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | '
   if (action === 'signin') return 'We could not sign you in. Check your details and try again.';
   if (action === 'signup') return 'We could not create that account. Check the details and try again.';
   if (action === 'google') return 'Google sign-in did not finish. Try again.';
+  if (action === 'delete') return 'The account could not be deleted right now. Sign in again if needed, then retry.';
   return 'The request could not be completed. Try again.';
 }

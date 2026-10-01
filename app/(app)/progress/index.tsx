@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   ConfidenceBucket,
@@ -56,12 +57,14 @@ export default function ProgressScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <View style={styles.summaryGrid}>
-            <Metric label="TODAY" value={formatMinutesCompact(snapshot.study.todayMinutes)} />
-            <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
-            <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
-            <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
-          </View>
+          <Reveal delay={35} distance={9}>
+            <View style={styles.summaryGrid}>
+              <Metric label="TODAY" value={formatMinutesCompact(snapshot.study.todayMinutes)} />
+              <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
+              <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
+              <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
+            </View>
+          </Reveal>
 
           <SectionTitle
             title="Study time"
@@ -183,9 +186,9 @@ export default function ProgressScreen() {
           />
           {snapshot.topics.length ? (
             <View style={styles.topicList}>
-              {snapshot.topics.map((trend) => (
+              {snapshot.topics.map((trend, index) => (
+                <Reveal key={trend.topicId} delay={Math.min(index * 45, 225)} distance={7}>
                 <TopicTrendCard
-                  key={trend.topicId}
                   trend={trend}
                   onPress={() =>
                     router.push({
@@ -194,6 +197,7 @@ export default function ProgressScreen() {
                     })
                   }
                 />
+                </Reveal>
               ))}
             </View>
           ) : (
@@ -429,11 +433,11 @@ const styles = StyleSheet.create({
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   metric: {
     width: '48.5%',
-    minHeight: 68,
+    minHeight: 72,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: colors.panelGlass,
     padding: 10,
     justifyContent: 'space-between',
   },
@@ -442,7 +446,7 @@ const styles = StyleSheet.create({
   sectionHeading: { marginTop: spacing.xl, marginBottom: 9 },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   sectionSubtitle: { color: colors.subtle, fontSize: 9.5, lineHeight: 15, marginTop: 3, maxWidth: 540 },
-  chartPanel: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12 },
+  chartPanel: { borderRadius: radius.xl, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panelGlass, padding: 14 },
   chart: { minHeight: 154, flexDirection: 'row', alignItems: 'flex-end', gap: 5 },
   barColumn: { flex: 1, alignItems: 'center' },
   barValue: { color: colors.subtle, fontSize: 7.5, marginBottom: 5 },
@@ -450,7 +454,7 @@ const styles = StyleSheet.create({
   bar: { width: '100%', borderRadius: 8, backgroundColor: colors.accent },
   barLabel: { color: colors.muted, fontSize: 8.5, fontWeight: '700', marginTop: 6 },
   chartFoot: { color: colors.muted, fontSize: 9.5, marginTop: 10, textAlign: 'center' },
-  panel: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
+  panel: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelGlass, padding: spacing.md },
   outcome: { marginBottom: 12 },
   outcomeTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   outcomeLabel: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
@@ -479,7 +483,7 @@ const styles = StyleSheet.create({
   inlineActionText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
   inlineActionArrow: { color: colors.danger, fontSize: 17 },
   topicList: { gap: 8 },
-  topicCard: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
+  topicCard: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelGlass, padding: spacing.md, shadowColor: colors.shadow, shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
   topicTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   topicCopy: { flex: 1 },
   topicSubject: { color: colors.accent, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },

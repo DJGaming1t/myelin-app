@@ -132,7 +132,7 @@ function main() {
   const authIntro = read('app/(auth)/index.tsx');
   const authAccess = read('app/(auth)/access.tsx');
   const authScaffold = read('src/components/auth/AuthScaffold.tsx');
-  assert.ok(authIntro.includes('Know what to study next.'));
+  assert.ok(authIntro.includes('Know what to study'));\n  assert.ok(authIntro.includes('OnboardingShell'));\n  assert.ok(authIntro.includes('StudyPathVisual'));
   assert.equal(authIntro.includes('<Signal'), false);
   assert.equal(authIntro.includes('<LoopStep'), false);
   assert.ok(authAccess.includes('Continue to MYELIN'));
@@ -141,7 +141,7 @@ function main() {
   assert.equal(authScaffold.includes('<Reveal'), false);
 
   const onboarding = read('app/(onboarding)/index.tsx');
-  assert.ok(onboarding.includes('Set a realistic study day.'));
+  assert.ok(onboarding.includes('How much focus fits in a normal day?'));\n  assert.ok(onboarding.includes('OnboardingShell'));
   assert.equal(onboarding.includes('TopicStep'), false);
   assert.equal(onboarding.includes('AnimatedProgress'), false);
 

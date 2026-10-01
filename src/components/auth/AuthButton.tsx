@@ -21,12 +21,8 @@ export function AuthButton({
   icon,
 }: Props) {
   const unavailable = disabled || loading;
-  const darkText = variant === 'primary' || variant === 'google';
-  const spinnerColor = variant === 'primary'
-    ? '#25140e'
-    : variant === 'google'
-      ? '#202124'
-      : colors.text;
+  const darkText = variant === 'primary';
+  const spinnerColor = variant === 'primary' ? '#25140e' : colors.text;
 
   return (
     <SpringPressable
@@ -105,8 +101,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
   },
   google: {
-    backgroundColor: '#F4F2EF',
-    borderColor: '#F4F2EF',
+    backgroundColor: colors.panelRaised,
+    borderColor: colors.accentLine,
   },
   disabled: { opacity: 0.46 },
   row: {
@@ -124,7 +120,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   darkLabel: { color: '#25140e' },
-  googleText: { color: '#202124' },
+  googleText: { color: colors.text },
   primaryText: { color: '#25140e' },
   arrow: {
     position: 'absolute',
@@ -145,7 +141,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(37,20,14,0.08)',
   },
   iconWrapGoogle: {
-    backgroundColor: 'rgba(32,33,36,0.06)',
+    backgroundColor: colors.accentFaint,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
   },
   icon: {
     color: colors.text,

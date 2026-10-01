@@ -420,7 +420,7 @@ export default function TodayScreen() {
             <View
               accessible
               accessibilityLabel={`${plan.alreadyUsedMinutes} of ${plan.budgetMinutes} minutes used today. ${plan.remainingBudgetMinutes} minutes remaining.`}
-              style={styles.capacityTrack}>
+              style={styles.capacityProgress}>
               <View style={styles.capacityProgressCopy}>
                 <Text style={styles.capacityProgressTitle}>
                   {budgetFinished ? 'Capacity used' : `${plan.remainingBudgetMinutes} min left today`}
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   controlHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   controlEyebrow: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.2 },
   controlValue: { color: colors.text, fontSize: 22, fontWeight: '700', marginTop: 3 },
-  capacityTrack: {
+  capacityProgress: {
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,

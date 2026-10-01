@@ -48,12 +48,14 @@ assert(focus.includes('setInterval(() => setNow(Date.now()), 1000)'), 'Focus tim
 assert(reveal.includes("from 'react-native-reanimated'"), 'Shared entrance motion is not running through Reanimated.');
 assert(reveal.includes('withTiming') && reveal.includes('withSpring'), 'Shared entrance motion is missing timing/spring transitions.');
 assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
-assert(nav.includes('activeIndicator'), 'Bottom navigation is missing the active indicator treatment.');
+assert(nav.includes('<AppIcon'), 'Bottom navigation is missing the shared icon treatment.');
 
-assert((nav.match(/path: '\/\(app\)\//g) ?? []).length === 5, 'Bottom navigation should expose exactly five primary destinations.');
+assert((nav.match(/\{ key: '(today|topics|review|progress)'/g) ?? []).length === 4, 'Bottom navigation should expose exactly four primary destinations.');
 assert(!nav.includes("key: 'settings'"), 'Settings should remain secondary.');
-assert(nav.includes("key: 'topics'"), 'Topics should be a first-class study destination.');
+assert(nav.includes("label: 'Library'"), 'Topics should be presented as the Library destination.');
 assert(!nav.includes("key: 'mistakes'"), 'Mistakes should be contextual to Review/Today rather than permanent navigation.');
+assert(!nav.includes("key: 'exams'"), 'Exams should be contextual rather than permanent navigation.');
+assert(nav.includes("router.push('/(app)/quick-add')"), 'Global Quick Add is missing from the navigation shell.');
 
 assert(header.includes('<Reveal'), 'Screen headers are missing entrance motion.');
 assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
@@ -69,7 +71,8 @@ assert(springPressable.includes("from 'react-native-reanimated'"), 'Shared press
 assert(springPressable.includes('withSpring'), 'Shared spring press primitive is missing.');
 assert(springPressable.includes('useReducedMotion()'), 'Shared press motion ignores reduced motion.');
 assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
-assert(today.includes('nextGlow'), 'Today next-move card lacks focal visual treatment.');
+assert(today.includes('Later today'), 'Today is missing the reduced later-today hierarchy.');
+assert(today.includes('showAdjust'), 'Today tuning should be progressively disclosed.');
 assert(focus.includes('<AnimatedProgress'), 'Focus must show explicit phase progress.');
 assert(focus.includes('phaseProgress'), 'Focus phase progress is not derived from the timer.');
 assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while the student is working.');

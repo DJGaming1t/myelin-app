@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Reveal } from '@/src/components/motion/Reveal';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
@@ -68,21 +67,19 @@ export function ScreenHeader({
         ) : null}
       </View>
 
-      <Reveal delay={variant === 'compact' ? 0 : 25} distance={variant === 'compact' ? 4 : 8}>
-        <View style={[styles.copy, variant === 'compact' && styles.copyCompact]}>
-          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-          <Text
-            accessibilityRole="header"
-            style={[
-              styles.title,
-              variant === 'hero' && styles.titleHero,
-              variant === 'compact' && styles.titleCompact,
-            ]}>
-            {title}
-          </Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        </View>
-      </Reveal>
+      <View style={[styles.copy, variant === 'compact' && styles.copyCompact]}>
+        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+        <Text
+          accessibilityRole="header"
+          style={[
+            styles.title,
+            variant === 'hero' && styles.titleHero,
+            variant === 'compact' && styles.titleCompact,
+          ]}>
+          {title}
+        </Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      </View>
     </View>
   );
 }

@@ -11,7 +11,7 @@ This repository is prepared for EAS development, preview and production builds. 
 - Preview and production channels are separated
 - Runtime compatibility uses the app-version policy
 - Production developer-facing build versions are managed remotely and auto-incremented
-- `expo-updates` is installed so EAS Update can be enabled once the project is linked
+- `expo-updates` is installed and preview OTA publishing is fingerprint-gated through EAS Workflows
 - Signing files and common private key formats are ignored by Git
 
 ## First-time EAS link
@@ -59,15 +59,17 @@ Do not mark the auth safety gate complete until these flows are tested on-device
 
 ## Publish code-only preview updates
 
-After `eas update:configure` has written the project-specific update URL:
+Pushes to `expo-migration` trigger `.eas/workflows/publish-preview-update.yml`. The workflow verifies the source, computes the Android native fingerprint and publishes to the `preview` update branch only when an existing `preview` build has the same fingerprint.
+
+That means normal JavaScript/TypeScript, styling and asset changes can reach compatible preview installs without a new APK, while native changes automatically stop OTA publishing until a matching preview build exists.
+
+The manual command is still available for deliberate publishing:
 
 ```bash
 npm run eas:update:preview -- --message "Describe the change"
 ```
 
-A compatible preview build follows the `preview` channel. Most JavaScript/TypeScript, styling and asset changes can be delivered this way when they are compatible with the installed native runtime.
-
-Create a new APK instead when native dependencies, native configuration, Android permissions, plugins, or other native runtime inputs change. When the user-facing app version changes, the `appVersion` runtime policy also creates a new update boundary.
+Create a new APK when native dependencies, native configuration, Android permissions, plugins, SDK/runtime inputs or the app-version runtime boundary change.
 
 ## Production
 
@@ -85,6 +87,7 @@ Production Android builds are store-oriented AABs by default. Do not submit one 
 
 - [x] EAS project linked to the intended Expo account
 - [x] EAS Update configured with the generated project ID/update URL
+- [x] Preview EAS Workflow validates source + native fingerprint before OTA publishing
 - [x] Locked `npm ci` succeeds in GitHub verification
 - [x] `npx tsc --noEmit` succeeds
 - [x] All repository verification scripts succeed

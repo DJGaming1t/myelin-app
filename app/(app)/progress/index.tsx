@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
@@ -25,6 +26,7 @@ import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 export default function ProgressScreen() {
   const { workspace } = useWorkspace();
   const now = Date.now();
+  const [showEvidence, setShowEvidence] = useState(false);
 
   const snapshot = useMemo(
     () => (workspace ? buildProgressSnapshot(workspace, now) : null),
@@ -46,9 +48,8 @@ export default function ProgressScreen() {
       <AmbientBackdrop />
       <View style={styles.page}>
         <ScreenHeader
-          eyebrow="RECORDED EVIDENCE"
+          variant="compact"
           title="Progress"
-          subtitle="No mastery score. These are patterns from your actual study, recall and correction history."
           actionLabel="Settings"
           onAction={() => router.push('/(app)/settings')}
         />
@@ -57,18 +58,18 @@ export default function ProgressScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <Reveal delay={35} distance={9}>
+          <Reveal delay={35} distance={7}>
             <View style={styles.summaryGrid}>
-              <Metric label="TODAY" value={formatMinutesCompact(snapshot.study.todayMinutes)} />
               <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
               <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
               <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
+              <Metric label="DUE CORRECTIONS" value={String(snapshot.mistakes.due)} />
             </View>
           </Reveal>
 
           <SectionTitle
             title="Study time"
-            subtitle="Recorded study + review minutes. Breaks are not counted here."
+            subtitle="Recorded study + review minutes."
           />
           <StudyBars
             points={snapshot.study.last7Days}
@@ -76,9 +77,22 @@ export default function ProgressScreen() {
             current7Minutes={snapshot.study.last7Minutes}
           />
 
+          {snapshot.mistakes.due > 0 ? (
+            <View style={styles.progressActionList}>
+              <ActionRow
+                icon="review"
+                title={`${snapshot.mistakes.due} ${snapshot.mistakes.due === 1 ? 'correction' : 'corrections'} due`}
+                detail="Retest before the correction fades."
+                meta="Review"
+                accent
+                onPress={() => router.push('/(app)/mistakes/retest')}
+              />
+            </View>
+          ) : null}
+
           <SectionTitle
-            title="Review results"
-            subtitle="Distribution of graded recall and mistake-retest sessions from the last 30 days."
+            title="Recall"
+            subtitle="How recent graded retrieval attempts went."
           />
           {snapshot.reviews.last30 > 0 ? (
             <View style={styles.panel}>
@@ -99,118 +113,105 @@ export default function ProgressScreen() {
                 total={snapshot.reviews.last30}
                 tone="success"
               />
-              <Text style={styles.panelFoot}>
-                Average recorded grade: {snapshot.reviews.averageGrade?.toFixed(2) ?? '—'} / 3
-              </Text>
             </View>
           ) : (
-            <Insufficient text="No graded review results in the last 30 days yet." />
+            <Insufficient text="No graded recall results in the last 30 days yet." />
           )}
 
-          <SectionTitle
-            title="Confidence calibration"
-            subtitle="What happened after you rated your answer Unsure, Partly sure or Sure—before seeing the reference."
-          />
-          <View style={styles.panel}>
-            {snapshot.confidence.buckets.map((bucket) => (
-              <ConfidenceRow key={bucket.confidence} bucket={bucket} />
-            ))}
-            <View style={styles.insightDivider} />
-            <Text style={styles.insightText}>{snapshot.confidence.message}</Text>
-            <Text style={styles.sampleText}>
-              {snapshot.confidence.sampleSize} graded recall{' '}
-              {snapshot.confidence.sampleSize === 1 ? 'attempt' : 'attempts'} in this sample
-              {!snapshot.confidence.enoughData ? ' · at least 5 recommended' : ''}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showEvidence }}
+            onPress={() => setShowEvidence((current) => !current)}
+            style={({ pressed }) => [styles.inlineAction, pressed && styles.pressed]}>
+            <Text style={styles.inlineActionText}>
+              {showEvidence ? 'Hide deeper evidence' : 'See deeper evidence'}
             </Text>
-          </View>
+            <Text style={styles.inlineActionArrow}>{showEvidence ? '−' : '+'}</Text>
+          </Pressable>
 
-          <SectionTitle
-            title="Time calibration"
-            subtitle="Planned focus duration compared with the actual duration recorded when you finished."
-          />
-          <View style={styles.panel}>
-            {snapshot.timing.direction === 'insufficient' ? (
-              <>
-                <Text style={styles.insightText}>{snapshot.timing.message}</Text>
+          {showEvidence ? (
+            <>
+              <SectionTitle
+                title="Confidence calibration"
+                subtitle="Confidence before checking compared with actual recall grades."
+              />
+              <View style={styles.panel}>
+                {snapshot.confidence.buckets.map((bucket) => (
+                  <ConfidenceRow key={bucket.confidence} bucket={bucket} />
+                ))}
+                <View style={styles.insightDivider} />
+                <Text style={styles.insightText}>{snapshot.confidence.message}</Text>
                 <Text style={styles.sampleText}>
-                  {snapshot.timing.sampleSize}/3 completed focus blocks available
+                  {snapshot.confidence.sampleSize} graded recall{' '}
+                  {snapshot.confidence.sampleSize === 1 ? 'attempt' : 'attempts'}
+                  {!snapshot.confidence.enoughData ? ' · at least 5 recommended' : ''}
                 </Text>
-              </>
-            ) : (
-              <>
-                <View style={styles.timingGrid}>
-                  <MetricInline
-                    label="PLANNED"
-                    value={formatMinutesCompact(snapshot.timing.plannedMinutes)}
-                  />
-                  <MetricInline
-                    label="ACTUAL"
-                    value={formatMinutesCompact(snapshot.timing.actualMinutes)}
-                  />
-                  <MetricInline
-                    label="MEDIAN"
-                    value={`${Math.round((snapshot.timing.medianRatio ?? 1) * 100)}%`}
-                  />
+              </View>
+
+              <SectionTitle
+                title="Time calibration"
+                subtitle="Planned focus compared with actual finished blocks."
+              />
+              <View style={styles.panel}>
+                {snapshot.timing.direction === 'insufficient' ? (
+                  <>
+                    <Text style={styles.insightText}>{snapshot.timing.message}</Text>
+                    <Text style={styles.sampleText}>
+                      {snapshot.timing.sampleSize}/3 completed focus blocks available
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.timingGrid}>
+                      <MetricInline
+                        label="PLANNED"
+                        value={formatMinutesCompact(snapshot.timing.plannedMinutes)}
+                      />
+                      <MetricInline
+                        label="ACTUAL"
+                        value={formatMinutesCompact(snapshot.timing.actualMinutes)}
+                      />
+                      <MetricInline
+                        label="MEDIAN"
+                        value={`${Math.round((snapshot.timing.medianRatio ?? 1) * 100)}%`}
+                      />
+                    </View>
+                    <Text style={styles.insightText}>{snapshot.timing.message}</Text>
+                  </>
+                )}
+              </View>
+
+              <SectionTitle
+                title="Topic activity"
+                subtitle="Recent activity compared with the previous week."
+              />
+              {snapshot.topics.length ? (
+                <View style={styles.topicList}>
+                  {snapshot.topics.slice(0, 5).map((trend) => (
+                    <TopicTrendCard
+                      key={trend.topicId}
+                      trend={trend}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(app)/topics/[topicId]',
+                          params: { topicId: trend.topicId },
+                        })
+                      }
+                    />
+                  ))}
                 </View>
-                <Text style={styles.insightText}>{snapshot.timing.message}</Text>
-                <Text style={styles.sampleText}>
-                  {snapshot.timing.withinTwentyPercent}/{snapshot.timing.sampleSize} blocks finished
-                  within ±20% of plan
+              ) : (
+                <Insufficient text="No topic activity has been recorded across the last 14 days yet." />
+              )}
+
+              <View style={styles.methodNote}>
+                <Text style={styles.methodTitle}>Evidence, not a score</Text>
+                <Text style={styles.methodText}>
+                  Minutes are not mastery. Confidence is not correctness. MYELIN reports the study evidence it actually recorded.
                 </Text>
-              </>
-            )}
-          </View>
-
-          <SectionTitle
-            title="Mistake correction"
-            subtitle="Resolution requires two successful retests on different days."
-          />
-          <View style={styles.mistakeGrid}>
-            <Metric label="OPEN" value={String(snapshot.mistakes.open)} />
-            <Metric label="DUE" value={String(snapshot.mistakes.due)} />
-            <Metric label="RESOLVED" value={String(snapshot.mistakes.resolved)} />
-          </View>
-          {snapshot.mistakes.due > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/(app)/mistakes/retest')}
-              style={({ pressed }) => [styles.inlineAction, pressed && styles.pressed]}>
-              <Text style={styles.inlineActionText}>Retest due mistakes</Text>
-              <Text style={styles.inlineActionArrow}>→</Text>
-            </Pressable>
+              </View>
+            </>
           ) : null}
-
-          <SectionTitle
-            title="Topic activity"
-            subtitle="Last 7 days compared with the 7 days before that. Activity is not the same as understanding."
-          />
-          {snapshot.topics.length ? (
-            <View style={styles.topicList}>
-              {snapshot.topics.map((trend, index) => (
-                <Reveal key={trend.topicId} delay={Math.min(index * 45, 225)} distance={7}>
-                <TopicTrendCard
-                  trend={trend}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(app)/topics/[topicId]',
-                      params: { topicId: trend.topicId },
-                    })
-                  }
-                />
-                </Reveal>
-              ))}
-            </View>
-          ) : (
-            <Insufficient text="No topic activity has been recorded across the last 14 days yet." />
-          )}
-
-          <View style={styles.methodNote}>
-            <Text style={styles.methodTitle}>What this page deliberately does not do</Text>
-            <Text style={styles.methodText}>
-              It does not convert minutes into a productivity score, claim that a topic is mastered,
-              or treat confidence as correctness. It reports the evidence MYELIN actually recorded.
-            </Text>
-          </View>
         </ScrollView>
 
         <AppNav />
@@ -489,6 +490,7 @@ const styles = StyleSheet.create({
   metricInlineLabel: { color: colors.subtle, fontSize: 7, fontWeight: '800', letterSpacing: 1 },
   metricInlineValue: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
   mistakeGrid: { flexDirection: 'row', gap: 7 },
+  progressActionList: { marginTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   inlineAction: { minHeight: layout.minTouch, marginTop: 8, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.22)', backgroundColor: 'rgba(255,161,145,0.045)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   inlineActionText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
   inlineActionArrow: { color: colors.danger, fontSize: 17 },

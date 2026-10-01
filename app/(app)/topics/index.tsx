@@ -12,15 +12,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
-import { Reveal } from '@/src/components/motion/Reveal';
 import { TopicStatus } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
 import { TopicCard } from '@/src/features/topics/TopicCard';
 import { filterTopics, topicSubjects } from '@/src/features/topics/topic-operations';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
 type StatusFilter = TopicStatus | 'all';
 
@@ -36,8 +37,14 @@ export default function TopicsScreen() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const now = Date.now();
 
   const subjects = useMemo(() => topicSubjects(workspace?.topics ?? []), [workspace?.topics]);
+  const nextExam = useMemo(
+    () => (workspace ? nearestUpcomingExam(workspace, now) : null),
+    [now, workspace],
+  );
 
   const topics = useMemo(
     () =>
@@ -49,7 +56,8 @@ export default function TopicsScreen() {
     [query, statusFilter, subjectFilter, workspace?.topics],
   );
 
-  const activeFilter = query.trim() || statusFilter !== 'all' || subjectFilter !== 'all';
+  const activeFilter = Boolean(query.trim()) || statusFilter !== 'all' || subjectFilter !== 'all';
+  const totalTopics = workspace?.topics.length ?? 0;
   const reviewCount = (workspace?.topics ?? []).filter((topic) => topic.status === 'review').length;
 
   if (status === 'loading' || status === 'idle') {
@@ -57,7 +65,7 @@ export default function TopicsScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <ActivityIndicator color={colors.accent} />
-          <Text style={styles.loadingText}>Opening your topics…</Text>
+          <Text style={styles.loadingText}>Opening Library…</Text>
         </View>
       </SafeAreaView>
     );
@@ -67,95 +75,139 @@ export default function TopicsScreen() {
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <View style={styles.screen}>
-      <ScreenHeader
-        eyebrow="STUDY LIBRARY"
-        title="Topics"
-        subtitle="Your study map: what you are learning, what is ready to recall, and what needs attention next."
-        actionLabel="+ Add"
-        onAction={() => router.push('/(app)/topics/new')}
-      />
-
-      <View style={styles.librarySummary}>
-        <Text style={styles.librarySummaryText}>
-          {(workspace?.topics ?? []).length} {(workspace?.topics ?? []).length === 1 ? 'topic' : 'topics'}
-          {' · '}
-          {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
-        </Text>
-        {reviewCount > 0 ? (
-          <Text style={styles.libraryReviewText}>{reviewCount} in review</Text>
-        ) : null}
-      </View>
-
-      <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>⌕</Text>
-        <TextInput
-          accessibilityLabel="Search topics"
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search topics, subjects, notes or questions"
-          placeholderTextColor={colors.subtle}
-          selectionColor={colors.accent}
-          style={styles.search}
-          returnKeyType="search"
+        <ScreenHeader
+          variant="compact"
+          title="Library"
+          actionLabel="Exams"
+          onAction={() => router.push('/(app)/exams')}
         />
-        {query ? (
-          <Pressable accessibilityRole="button" onPress={() => setQuery('')} hitSlop={8}>
-            <Text style={styles.clear}>×</Text>
-          </Pressable>
-        ) : null}
-      </View>
 
-      <View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}>
-          {STATUS_FILTERS.map((filter) => (
-            <FilterChip
-              key={filter.value}
-              label={filter.label}
-              active={statusFilter === filter.value}
-              onPress={() => setStatusFilter(filter.value)}
+        <View style={styles.summary}>
+          <Text style={styles.summaryText}>
+            {totalTopics} {totalTopics === 1 ? 'topic' : 'topics'} · {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
+            {reviewCount ? ` · ${reviewCount} in review` : ''}
+          </Text>
+        </View>
+
+        <View style={styles.contextList}>
+          {nextExam ? (
+            <ActionRow
+              icon="calendar"
+              title={nextExam.name}
+              detail={examStatus(nextExam.date, now).label}
+              meta="Exam"
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/exams/[examId]',
+                  params: { examId: nextExam.id },
+                })
+              }
             />
-          ))}
-        </ScrollView>
-
-        {subjects.length ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.subjectScroll}>
-            <FilterChip
-              label="All subjects"
-              active={subjectFilter === 'all'}
-              onPress={() => setSubjectFilter('all')}
-              subtle
+          ) : (
+            <ActionRow
+              icon="calendar"
+              title="Exams"
+              detail="Add dates so Today can raise the right topics."
+              meta="Open"
+              onPress={() => router.push('/(app)/exams')}
             />
-            {subjects.map((subject) => (
-              <FilterChip
-                key={subject}
-                label={subject}
-                active={subjectFilter === subject}
-                onPress={() => setSubjectFilter(subject)}
-                subtle
-              />
-            ))}
-          </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.searchWrap}>
+          <TextInput
+            accessibilityLabel="Search Library"
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search topics or subjects"
+            placeholderTextColor={colors.subtle}
+            selectionColor={colors.accent}
+            style={styles.search}
+            returnKeyType="search"
+          />
+          {query ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              onPress={() => setQuery('')}
+              hitSlop={8}
+              style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}>
+              <Text style={styles.clearText}>Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showFilters }}
+          onPress={() => setShowFilters((current) => !current)}
+          style={({ pressed }) => [styles.filterToggle, pressed && styles.pressed]}>
+          <Text style={styles.filterToggleTitle}>Filters</Text>
+          <Text style={[styles.filterToggleMeta, activeFilter && styles.filterToggleMetaActive]}>
+            {activeFilter ? 'On' : showFilters ? 'Hide' : 'Show'}
+          </Text>
+        </Pressable>
+
+        {showFilters ? (
+          <View style={styles.filtersPanel}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScroll}>
+              {STATUS_FILTERS.map((filter) => (
+                <FilterChip
+                  key={filter.value}
+                  label={filter.label}
+                  active={statusFilter === filter.value}
+                  onPress={() => setStatusFilter(filter.value)}
+                />
+              ))}
+            </ScrollView>
+
+            {subjects.length ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterScroll}>
+                <FilterChip
+                  label="All subjects"
+                  active={subjectFilter === 'all'}
+                  onPress={() => setSubjectFilter('all')}
+                />
+                {subjects.map((subject) => (
+                  <FilterChip
+                    key={subject}
+                    label={subject}
+                    active={subjectFilter === subject}
+                    onPress={() => setSubjectFilter(subject)}
+                  />
+                ))}
+              </ScrollView>
+            ) : null}
+
+            {activeFilter ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setQuery('');
+                  setStatusFilter('all');
+                  setSubjectFilter('all');
+                }}
+                style={({ pressed }) => [styles.clearFilters, pressed && styles.pressed]}>
+                <Text style={styles.clearFiltersText}>Clear filters</Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
-      </View>
 
-      {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
+        {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
-      <FlatList
-        style={styles.listView}
-        data={topics}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.list,
-          topics.length === 0 && styles.listEmpty,
-        ]}
-        renderItem={({ item, index }) => (
-          <Reveal delay={Math.min(index * 30, 150)} distance={5}>
+        <FlatList
+          style={styles.listView}
+          data={topics}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.list, topics.length === 0 && styles.listEmpty]}
+          renderItem={({ item }) => (
             <TopicCard
               topic={item}
               onPress={() =>
@@ -165,44 +217,34 @@ export default function TopicsScreen() {
                 })
               }
             />
-          </Reveal>
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={styles.emptyMark}>
-              <Text style={styles.emptyMarkText}>+</Text>
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>
+                {activeFilter ? 'Nothing matches those filters.' : 'Start with one real topic.'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {activeFilter
+                  ? 'Clear a search or filter to see the rest of your Library.'
+                  : 'Use Add below to capture a chapter, concept or skill. Details can grow later.'}
+              </Text>
+              {activeFilter ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setQuery('');
+                    setStatusFilter('all');
+                    setSubjectFilter('all');
+                  }}
+                  style={({ pressed }) => [styles.emptyAction, pressed && styles.pressed]}>
+                  <Text style={styles.emptyActionText}>Clear filters</Text>
+                </Pressable>
+              ) : null}
             </View>
-            <Text style={styles.emptyTitle}>
-              {activeFilter ? 'Nothing matches that filter.' : 'Start with one real topic.'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {activeFilter
-                ? 'Clear a search or filter to see the rest of your library.'
-                : 'Add the chapter, concept or skill you actually plan to study. Questions and notes can grow later.'}
-            </Text>
-            {activeFilter ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setQuery('');
-                  setStatusFilter('all');
-                  setSubjectFilter('all');
-                }}
-                style={({ pressed }) => [styles.emptyButtonSecondary, pressed && styles.pressed]}>
-                <Text style={styles.emptyButtonSecondaryText}>Clear filters</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/(app)/topics/new')}
-                style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}>
-                <Text style={styles.emptyButtonText}>Add first topic</Text>
-              </Pressable>
-            )}
-          </View>
-        }
-      />
-      <AppNav />
+          }
+        />
+
+        <AppNav />
       </View>
     </SafeAreaView>
   );
@@ -212,12 +254,10 @@ function FilterChip({
   label,
   active,
   onPress,
-  subtle,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
-  subtle?: boolean;
 }) {
   return (
     <Pressable
@@ -226,7 +266,6 @@ function FilterChip({
       onPress={onPress}
       style={({ pressed }) => [
         styles.filterChip,
-        subtle && styles.filterChipSubtle,
         active && styles.filterChipActive,
         pressed && styles.pressed,
       ]}>
@@ -238,96 +277,131 @@ function FilterChip({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1 },
-  listView: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  loadingText: { color: colors.muted, fontSize: 12 },
-  librarySummary: {
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
+  loadingText: { color: colors.muted, ...type.meta },
+  summary: {
     width: '100%',
     maxWidth: layout.contentMax,
     alignSelf: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.xs,
   },
-  librarySummaryText: { color: colors.muted, fontSize: 11, lineHeight: 15 },
-  libraryReviewText: { color: colors.success, fontSize: 10.5, lineHeight: 15, fontWeight: '700' },
+  summaryText: { color: colors.muted, ...type.meta },
+  contextList: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
+  },
   searchWrap: {
-    marginHorizontal: spacing.lg,
-    minHeight: 48,
+    width: 'auto',
+    maxWidth: layout.contentMax,
+    marginHorizontal: space.lg,
+    marginTop: space.sm,
+    minHeight: 50,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
     backgroundColor: colors.panel,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 13,
+    paddingHorizontal: space.md,
   },
-  searchIcon: { color: colors.subtle, fontSize: 18, marginRight: 8 },
-  search: { flex: 1, color: colors.text, fontSize: 13.5, minHeight: layout.minTouch },
-  clear: { color: colors.muted, fontSize: 22, paddingLeft: 8 },
-  filterScroll: { gap: 7, paddingHorizontal: spacing.lg, paddingTop: 12, paddingBottom: 8 },
-  subjectScroll: { gap: 7, paddingHorizontal: spacing.lg, paddingBottom: 10 },
-  filterChip: {
-    minHeight: layout.minTouch,
+  search: {
+    flex: 1,
+    minHeight: 48,
+    color: colors.text,
+    ...type.body,
+  },
+  clearButton: {
+    minHeight: 44,
+    paddingLeft: space.sm,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 13,
+  },
+  clearText: { color: colors.muted, ...type.meta, fontWeight: '600' },
+  filterToggle: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    minHeight: 52,
+    paddingHorizontal: space.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  filterToggleTitle: { color: colors.textDim, ...type.bodyStrong },
+  filterToggleMeta: { color: colors.subtle, ...type.meta, fontWeight: '600' },
+  filterToggleMetaActive: { color: colors.accent },
+  filtersPanel: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingBottom: space.xs,
+  },
+  filterScroll: {
+    gap: space.xs,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.xs,
+  },
+  filterChip: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.panel,
   },
-  filterChipSubtle: { minHeight: layout.minTouch, backgroundColor: colors.bg },
-  filterChipActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
-  filterText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
+  filterChipActive: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+  },
+  filterText: { color: colors.muted, ...type.meta, fontWeight: '600' },
   filterTextActive: { color: colors.accent },
-  list: { paddingHorizontal: spacing.lg, paddingTop: 4, paddingBottom: 40 },
-  listEmpty: { flexGrow: 1, justifyContent: 'center' },
-  empty: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingBottom: 60 },
-  emptyMark: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
+  clearFilters: {
+    minHeight: 44,
+    alignSelf: 'flex-start',
+    marginHorizontal: space.lg,
+    paddingRight: space.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.accentSoft,
-    borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.22)',
-    marginBottom: spacing.md,
   },
-  emptyMarkText: { color: colors.accent, fontSize: 27, fontWeight: '400' },
-  emptyTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  clearFiltersText: { color: colors.textDim, ...type.meta, fontWeight: '600' },
+  saveError: {
+    color: colors.danger,
+    ...type.meta,
+    marginHorizontal: space.lg,
+    marginBottom: space.xs,
+  },
+  listView: { flex: 1 },
+  list: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
+    paddingBottom: space.xl,
+  },
+  listEmpty: { flexGrow: 1, justifyContent: 'center' },
+  empty: { alignItems: 'center', paddingHorizontal: space.xl, paddingBottom: space.xxxl },
+  emptyTitle: { color: colors.text, ...type.section, textAlign: 'center' },
   emptyText: {
     color: colors.muted,
-    fontSize: 11.5,
-    lineHeight: 18,
+    ...type.body,
     textAlign: 'center',
-    marginTop: 7,
-    maxWidth: 340,
+    marginTop: space.xs,
+    maxWidth: 360,
   },
-  emptyButton: {
-    marginTop: spacing.lg,
-    minHeight: layout.minTouch,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyButtonText: { color: '#25140e', fontSize: 12, fontWeight: '800' },
-  emptyButtonSecondary: {
-    marginTop: spacing.lg,
-    minHeight: layout.minTouch,
+  emptyAction: {
+    minHeight: 48,
+    marginTop: space.md,
+    paddingHorizontal: space.md,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyButtonSecondaryText: { color: colors.text, fontSize: 12, fontWeight: '700' },
-  saveError: { color: colors.danger, fontSize: 10.5, marginHorizontal: spacing.lg, marginBottom: 8 },
-  pressed: { opacity: 0.7 },
+  emptyActionText: { color: colors.text, ...type.bodyStrong },
+  pressed: { opacity: 0.7, transform: [{ scale: motion.pressScale }] },
 });

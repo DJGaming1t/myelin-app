@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
+import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { Confidence } from '@/src/data/schema';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { Reveal } from '@/src/components/motion/Reveal';
@@ -134,29 +135,25 @@ export default function ReviewScreen() {
 
     return (
       <SafeAreaView style={styles.safe}>
+        <AmbientBackdrop />
         <View style={styles.page}>
+          <ScreenHeader
+            variant="compact"
+            title="Review"
+            subtitle={
+              requestedTopic
+                ? requestedTopic.name
+                : 'Recall what is due. Corrections stay close.'
+            }
+          />
+
           <ScrollView contentContainerStyle={styles.dashboard} showsVerticalScrollIndicator={false}>
-            <View style={styles.brandRow}>
-              <View style={styles.brandDot} />
-              <Text style={styles.brand}>MYELIN</Text>
-            </View>
-
-            <Text style={styles.eyebrow}>ACTIVE RECALL</Text>
-            <Text style={styles.dashboardTitle}>
-              {requestedTopic ? requestedTopic.name : 'Retrieve before you reread.'}
-            </Text>
-            <Text style={styles.dashboardText}>
-              {requestedTopic
-                ? 'Review this topic from memory. The reference answer stays hidden until after your attempt.'
-                : 'Due questions from different subjects are mixed where possible so recall depends less on context.'}
-            </Text>
-
             {completedNotice ? (
               <View style={styles.completeNotice}>
                 <Text style={styles.completeMark}>✓</Text>
                 <View style={styles.completeCopy}>
                   <Text style={styles.completeTitle}>Review queue complete.</Text>
-                  <Text style={styles.completeText}>The cards you graded have already been rescheduled.</Text>
+                  <Text style={styles.completeText}>Those cards are already rescheduled.</Text>
                 </View>
               </View>
             ) : null}
@@ -169,18 +166,23 @@ export default function ReviewScreen() {
                 <View>
                   <Text style={styles.blockedLabel}>FOCUS SESSION ACTIVE</Text>
                   <Text style={styles.blockedTitle}>{activeFocus?.topicName ?? 'Resume focus first'}</Text>
-                  <Text style={styles.blockedText}>
-                    Finish or discard the active focus block before starting a recall queue.
-                  </Text>
+                  <Text style={styles.blockedText}>Finish or discard Focus before starting recall.</Text>
                 </View>
                 <Text style={styles.arrow}>→</Text>
               </Pressable>
             ) : requestedTopic ? (
               <>
-                <View style={styles.summaryGrid}>
-                  <Metric label="DUE NOW" value={String(dueForTopic)} />
-                  <Metric label="TOTAL CARDS" value={String(requestedTopic.cards.length)} />
-                </View>
+                <Text style={styles.eyebrow}>TOPIC RECALL</Text>
+                <Text style={styles.dashboardTitle}>
+                  {requestedTopic.cards.length === 0
+                    ? 'Add a recall question first.'
+                    : dueForTopic > 0
+                      ? `${dueForTopic} due now.`
+                      : 'Nothing due. Practice is optional.'}
+                </Text>
+                <Text style={styles.dashboardText}>
+                  Try to retrieve the answer before the reference appears.
+                </Text>
 
                 {requestedTopic.cards.length ? (
                   <>
@@ -193,7 +195,7 @@ export default function ReviewScreen() {
                         }}
                         style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
                         <View>
-                          <Text style={styles.primaryText}>Review due questions</Text>
+                          <Text style={styles.primaryText}>Start due recall</Text>
                           <Text style={styles.primarySubtext}>{dueForTopic} ready now</Text>
                         </View>
                         <Text style={styles.primaryArrow}>→</Text>
@@ -211,15 +213,13 @@ export default function ReviewScreen() {
                         });
                       }}
                       style={({ pressed }) => [styles.secondaryLarge, pressed && styles.pressed]}>
-                      <Text style={styles.secondaryLargeText}>
-                        {dueForTopic ? 'Practise all questions anyway' : 'Practise all questions'}
-                      </Text>
+                      <Text style={styles.secondaryLargeText}>Practise all questions</Text>
                     </Pressable>
                   </>
                 ) : (
                   <EmptyReview
                     title="No recall questions yet."
-                    text="Add at least one recall prompt to this topic before starting a review."
+                    text="Add one prompt to this topic before starting Review."
                     action="Add question"
                     onPress={() =>
                       router.push({
@@ -234,15 +234,26 @@ export default function ReviewScreen() {
                   accessibilityRole="button"
                   onPress={() => router.replace('/(app)/review')}
                   style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
-                  <Text style={styles.textButtonText}>← Back to mixed review</Text>
+                  <Text style={styles.textButtonText}>Back to mixed review</Text>
                 </Pressable>
               </>
             ) : (
               <>
-                <View style={styles.summaryGrid}>
-                  <Metric label="DUE NOW" value={String(counts.due)} />
-                  <Metric label="TOTAL CARDS" value={String(counts.total)} />
-                </View>
+                <Text style={styles.eyebrow}>DUE NOW</Text>
+                <Text style={styles.dashboardTitle}>
+                  {counts.due > 0
+                    ? `${counts.due} ${counts.due === 1 ? 'question is' : 'questions are'} ready.`
+                    : counts.total > 0
+                      ? 'Nothing is due right now.'
+                      : 'No recall material yet.'}
+                </Text>
+                <Text style={styles.dashboardText}>
+                  {counts.due > 0
+                    ? 'MYELIN mixes due material where useful so recall depends less on context.'
+                    : counts.total > 0
+                      ? 'Review will surface cards again when their next time arrives.'
+                      : 'Create recall questions inside Library first.'}
+                </Text>
 
                 {counts.due > 0 ? (
                   <Pressable
@@ -254,26 +265,18 @@ export default function ReviewScreen() {
                     style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
                     <View>
                       <Text style={styles.primaryText}>Start mixed review</Text>
-                      <Text style={styles.primarySubtext}>{counts.due} due across your topics</Text>
+                      <Text style={styles.primarySubtext}>{counts.due} due across your Library</Text>
                     </View>
                     <Text style={styles.primaryArrow}>→</Text>
                   </Pressable>
-                ) : counts.total > 0 ? (
-                  <View style={styles.clearCard}>
-                    <Text style={styles.clearMark}>✓</Text>
-                    <Text style={styles.clearTitle}>Nothing is due right now.</Text>
-                    <Text style={styles.clearText}>
-                      MYELIN will surface cards again when their next review time arrives. You can still practise from an individual topic.
-                    </Text>
-                  </View>
-                ) : (
+                ) : counts.total === 0 ? (
                   <EmptyReview
-                    title="No recall material yet."
-                    text="Create recall questions inside Topics first. Review works from those prompts rather than generating fake material."
-                    action="Open Topics"
+                    title="Start in Library."
+                    text="Add a recall question to any Topic. Review never invents fake material."
+                    action="Open Library"
                     onPress={() => router.push('/(app)/topics')}
                   />
-                )}
+                ) : null}
 
                 <Pressable
                   accessibilityRole="button"

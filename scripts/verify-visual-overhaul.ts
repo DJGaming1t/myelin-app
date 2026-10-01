@@ -71,9 +71,16 @@ function main() {
     );
   }
 
+  const topics = read('app/(app)/topics/index.tsx');
+  assert.ok(topics.includes('title="Library"'));
+  assert.ok(topics.includes('showFilters'));
+  assert.ok(topics.includes('ActionRow'));
+  assert.equal(topics.includes('eyebrow="STUDY LIBRARY"'), false);
+
   const topicCard = read('src/features/topics/TopicCard.tsx');
   assert.ok(topicCard.includes('<SpringPressable'));
-  assert.ok(topicCard.includes('stateRail'));
+  assert.ok(topicCard.includes('rightMeta'));
+  assert.equal(topicCard.includes('notes'), false);
 
   const topicDetail = read('app/(app)/topics/[topicId]/index.tsx');
   assert.ok(topicDetail.includes('NEXT MOVE'));
@@ -87,9 +94,16 @@ function main() {
   assert.equal(focus.includes('<PulseHalo'), false);
 
   const review = read('app/(app)/review/index.tsx');
+  assert.ok(review.includes('title="Review"'));
+  assert.ok(review.includes('Recall what is due. Corrections stay close.'));
   assert.ok(review.includes('RECALL BEFORE YOU CHECK'));
   assert.ok(review.includes('COMPARE, THEN GRADE'));
   assert.ok(review.includes('<AnimatedProgress'));
+
+  const progressScreen = read('app/(app)/progress/index.tsx');
+  assert.ok(progressScreen.includes('showEvidence'));
+  assert.ok(progressScreen.includes('See deeper evidence'));
+  assert.ok(progressScreen.includes('Evidence, not a score'));
 
   const authIntro = read('app/(auth)/index.tsx');
   const authAccess = read('app/(auth)/access.tsx');
@@ -106,6 +120,9 @@ function main() {
   console.log('✓ Quick Add routes capture into the existing study model');
   console.log('✓ Topic creation is simple by default and progressively discloses power');
   console.log('✓ Today is decision-first and hides tuning until requested');
+  console.log('✓ Library hides secondary filters until requested');
+  console.log('✓ Review keeps the idle hub simple while active recall stays immersive');
+  console.log('✓ Progress shows action-relevant evidence before deeper calibration');
   console.log('✓ Focus and Recall remain immersive study modes');
   console.log('✓ the existing product engine remains connected behind the new hierarchy');
 }

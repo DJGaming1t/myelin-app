@@ -80,7 +80,26 @@ export const motion = {
   pressMs: 110,
   stateMs: 190,
   hierarchyMs: 260,
-  pressScale: 0.98,
+  enterMs: 320,
+  pressScale: 0.985,
+  pressSpring: {
+    stiffness: 320,
+    damping: 24,
+    mass: 0.58,
+    overshootClamping: true,
+  },
+  releaseSpring: {
+    stiffness: 245,
+    damping: 24,
+    mass: 0.58,
+    overshootClamping: true,
+  },
+  revealSpring: {
+    damping: 20,
+    stiffness: 170,
+    mass: 0.68,
+    overshootClamping: true,
+  },
 } as const;
 
 export const shadow = {

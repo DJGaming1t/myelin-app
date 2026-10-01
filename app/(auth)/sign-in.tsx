@@ -8,10 +8,12 @@ import { AuthScaffold } from '@/src/components/auth/AuthScaffold';
 import { KeepSignedInRow } from '@/src/components/auth/KeepSignedInRow';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
-import { colors, layout, spacing } from '@/src/theme/tokens';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
+import { colors, layout, space } from '@/src/theme/tokens';
 
 export default function SignInScreen() {
   const { signInEmail, signInGoogle, keepSignedIn: defaultKeepSignedIn } = useAuth();
+  const { runEntryTransition } = useOnboardingTransition();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [keepSignedIn, setKeepSignedIn] = useState(defaultKeepSignedIn);
@@ -28,8 +30,10 @@ export default function SignInScreen() {
 
     setBusy(true);
     try {
-      await signInEmail(email, password, keepSignedIn);
-      router.replace('/');
+      await runEntryTransition(async () => {
+        await signInEmail(email, password, keepSignedIn);
+        router.replace('/');
+      });
     } catch (err) {
       setError(authErrorMessage(err, 'signin'));
     } finally {
@@ -41,8 +45,10 @@ export default function SignInScreen() {
     setError('');
     setGoogleBusy(true);
     try {
-      await signInGoogle(keepSignedIn);
-      router.replace('/');
+      await runEntryTransition(async () => {
+        await signInGoogle(keepSignedIn);
+        router.replace('/');
+      });
     } catch (err) {
       setError(authErrorMessage(err, 'google'));
     } finally {
@@ -53,14 +59,21 @@ export default function SignInScreen() {
   return (
     <AuthScaffold
       compact
-      eyebrow="RETURN TO MYELIN"
-      title="Back to the study system."
-      description="Sign in to your account identity. Your study data still stays local unless you explicitly enable sync.">
-      <View style={styles.identityCue}>
-        <Text style={styles.identityLabel}>MYELIN REMEMBERS THE WORKFLOW</Text>
-        <Text style={styles.identityText}>
-          Today decides → you Focus or Recall → results shape the next recommendation.
-        </Text>
+      eyebrow="WELCOME BACK"
+      title="Pick up where you left off."
+      description="Use Google for the fastest return, or sign in with your MYELIN email.">
+      <AuthButton
+        label="Continue with Google"
+        icon="G"
+        variant="google"
+        loading={googleBusy}
+        onPress={google}
+      />
+
+      <View style={styles.divider} accessible={false}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or sign in with email</Text>
+        <View style={styles.dividerLine} />
       </View>
 
       <AuthField
@@ -88,7 +101,7 @@ export default function SignInScreen() {
         returnKeyType="go"
       />
 
-      <View style={styles.forgotRow}>
+      <View style={styles.utilityRow}>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/(auth)/forgot-password')}
@@ -99,27 +112,28 @@ export default function SignInScreen() {
 
       <KeepSignedInRow value={keepSignedIn} onChange={setKeepSignedIn} />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorBox} accessibilityLiveRegion="polite">
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      ) : null}
 
-      <View style={styles.stack}>
-        <AuthButton label="Sign in" loading={busy} onPress={submit} />
-        <AuthButton
-          label="Continue with Google"
-          icon="G"
-          variant="secondary"
-          loading={googleBusy}
-          onPress={google}
-        />
-      </View>
+      <AuthButton label="Sign in to MYELIN" loading={busy} onPress={submit} />
 
       <View style={styles.bottomRow}>
         <Text style={styles.muted}>New to MYELIN?</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.replace('/(auth)/sign-up')} style={styles.inlineLink}>
-          <Text style={styles.link}>Create account</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace('/(auth)/sign-up')}
+          style={styles.inlineLink}>
+          <Text style={styles.link}>Create an account</Text>
         </Pressable>
       </View>
 
-      <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.back()}
+        style={styles.back}>
         <Text style={styles.backText}>← Back</Text>
       </Pressable>
     </AuthScaffold>
@@ -127,37 +141,76 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  identityCue: {
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginVertical: space.lg,
   },
-  identityLabel: {
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.lineStrong,
+  },
+  dividerText: {
+    color: colors.subtle,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  utilityRow: {
+    alignItems: 'flex-end',
+    marginTop: -8,
+    marginBottom: space.sm,
+  },
+  inlineLink: {
+    minHeight: layout.minTouch,
+    justifyContent: 'center',
+  },
+  link: {
     color: colors.accent,
-    fontSize: 8.5,
-    lineHeight: 12,
-    fontWeight: '900',
-    letterSpacing: 1.15,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
   },
-  identityText: {
-    color: colors.muted,
-    fontSize: 10.5,
-    lineHeight: 16,
-    marginTop: 5,
+  errorBox: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,165,150,0.26)',
+    backgroundColor: 'rgba(255,165,150,0.06)',
+    borderRadius: 14,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    marginBottom: space.md,
   },
-  forgotRow: { alignItems: 'flex-end', marginTop: -8, marginBottom: spacing.md },
-  inlineLink: { minHeight: layout.minTouch, justifyContent: 'center' },
-  link: { color: colors.accent, fontSize: 12, fontWeight: '700' },
-  error: { color: colors.danger, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
-  stack: { gap: 10 },
+  error: {
+    color: colors.danger,
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
   bottomRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 6,
-    marginTop: spacing.lg,
+    marginTop: space.lg,
   },
-  muted: { color: colors.muted, fontSize: 12 },
-  back: { alignSelf: 'center', minHeight: layout.minTouch, marginTop: spacing.lg, paddingHorizontal: 10, justifyContent: 'center' },
-  backText: { color: colors.subtle, fontSize: 11, fontWeight: '600' },
+  muted: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  back: {
+    alignSelf: 'center',
+    minHeight: layout.minTouch,
+    marginTop: space.sm,
+    paddingHorizontal: space.sm,
+    justifyContent: 'center',
+  },
+  backText: {
+    color: colors.subtle,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
 });

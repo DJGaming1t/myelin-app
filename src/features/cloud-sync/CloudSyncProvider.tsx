@@ -14,6 +14,7 @@ import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { workspaceStorage } from '@/src/data/storage';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { onboardingStorage } from '@/src/features/onboarding/onboarding-storage';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { mergeWorkspaces } from '@/src/features/transfer/backup-engine';
 
@@ -500,7 +501,10 @@ export function CloudSyncProvider({ children }: PropsWithChildren) {
       }
 
       if (localOwnerKey) {
-        await workspaceStorage.reset(localOwnerKey);
+        await Promise.all([
+          workspaceStorage.reset(localOwnerKey),
+          onboardingStorage.clear(localOwnerKey),
+        ]);
       }
       await syncPreferenceStorage.clear(uid);
       setPreference(emptyPreference());

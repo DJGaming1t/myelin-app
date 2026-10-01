@@ -25,6 +25,7 @@ type TransitionTask = () => Promise<void> | void;
 
 type OnboardingTransitionContextValue = {
   runTransition: (commit: TransitionTask) => Promise<void>;
+  runEntryTransition: (task: TransitionTask) => Promise<void>;
 };
 
 const OnboardingTransitionContext =
@@ -138,9 +139,79 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     ],
   );
 
+  const runEntryTransition = useCallback(
+    async (task: TransitionTask) => {
+      if (running.current) return;
+
+      running.current = true;
+      overlayOpacity.set(1);
+      gather.set(0);
+      coreScale.set(0.86);
+      wordmarkOpacity.set(reduceMotion ? 1 : 0);
+      lift.set(0);
+      setActive(true);
+
+      try {
+        // Cover the current screen before authentication can trigger a route
+        // redirect. This also gives Android a dark resume surface after the
+        // native Google account picker closes instead of flashing white.
+        await nextFrame();
+        await task();
+
+        if (reduceMotion) {
+          await sleep(70);
+          overlayOpacity.set(
+            withTiming(0, { duration: 150, easing: EASE_OUT }),
+          );
+          await sleep(160);
+          setActive(false);
+          return;
+        }
+
+        gather.set(
+          withTiming(1, { duration: 260, easing: EASE_IN_OUT }),
+        );
+        coreScale.set(
+          withSequence(
+            withTiming(1.08, { duration: 210, easing: EASE_OUT }),
+            withTiming(1, { duration: 130, easing: EASE_IN_OUT }),
+          ),
+        );
+        wordmarkOpacity.set(
+          withDelay(90, withTiming(1, { duration: 170, easing: EASE_OUT })),
+        );
+
+        await sleep(280);
+        lift.set(withTiming(-8, { duration: 210, easing: EASE_OUT }));
+        overlayOpacity.set(
+          withTiming(0, { duration: 230, easing: EASE_OUT }),
+        );
+        await sleep(240);
+        setActive(false);
+      } catch (error) {
+        overlayOpacity.set(
+          withTiming(0, { duration: 140, easing: EASE_OUT }),
+        );
+        await sleep(150);
+        setActive(false);
+        throw error;
+      } finally {
+        running.current = false;
+      }
+    },
+    [
+      coreScale,
+      gather,
+      lift,
+      overlayOpacity,
+      reduceMotion,
+      wordmarkOpacity,
+    ],
+  );
+
   const value = useMemo(
-    () => ({ runTransition }),
-    [runTransition],
+    () => ({ runTransition, runEntryTransition }),
+    [runEntryTransition, runTransition],
   );
 
   return (

@@ -1,6 +1,6 @@
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
-import { colors, spacing } from '@/src/theme/tokens';
+import { colors, radius, space } from '@/src/theme/tokens';
 
 export function KeepSignedInRow({
   value,
@@ -12,8 +12,8 @@ export function KeepSignedInRow({
   return (
     <View style={styles.row}>
       <View style={styles.copy}>
-        <Text style={styles.title}>Stay signed in on this device</Text>
-        <Text style={styles.caption}>Recommended on your phone. Turn this off on a shared device.</Text>
+        <Text style={styles.title}>Stay signed in</Text>
+        <Text style={styles.caption}>Recommended on your own phone.</Text>
       </View>
       <Switch
         accessibilityLabel="Stay signed in on this device"
@@ -28,17 +28,29 @@ export function KeepSignedInRow({
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 64,
+    minHeight: 66,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+    gap: space.md,
+    marginBottom: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 9,
+    borderWidth: 1,
     borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgRaised,
   },
   copy: { flex: 1 },
-  title: { color: colors.textDim, fontSize: 11.5, fontWeight: '700' },
-  caption: { color: colors.subtle, fontSize: 10, lineHeight: 14, marginTop: 3 },
+  title: {
+    color: colors.textDim,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  caption: {
+    color: colors.subtle,
+    fontSize: 11.5,
+    lineHeight: 16,
+    marginTop: 2,
+  },
 });

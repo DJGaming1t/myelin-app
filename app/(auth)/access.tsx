@@ -6,10 +6,12 @@ import { AuthButton } from '@/src/components/auth/AuthButton';
 import { AuthScaffold } from '@/src/components/auth/AuthScaffold';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { colors, layout, spacing } from '@/src/theme/tokens';
 
 export default function AccessScreen() {
   const { signInGoogle, continueLocally } = useAuth();
+  const { runEntryTransition } = useOnboardingTransition();
   const [googleBusy, setGoogleBusy] = useState(false);
   const [localBusy, setLocalBusy] = useState(false);
   const [error, setError] = useState('');
@@ -18,8 +20,10 @@ export default function AccessScreen() {
     setError('');
     setGoogleBusy(true);
     try {
-      await signInGoogle();
-      router.replace('/');
+      await runEntryTransition(async () => {
+        await signInGoogle();
+        router.replace('/');
+      });
     } catch (err) {
       setError(authErrorMessage(err, 'google'));
     } finally {
@@ -30,8 +34,10 @@ export default function AccessScreen() {
   async function handleLocal() {
     setLocalBusy(true);
     try {
-      await continueLocally();
-      router.replace('/');
+      await runEntryTransition(async () => {
+        await continueLocally();
+        router.replace('/');
+      });
     } finally {
       setLocalBusy(false);
     }
@@ -45,6 +51,7 @@ export default function AccessScreen() {
         <AuthButton
           label="Continue with Google"
           icon="G"
+          variant="google"
           loading={googleBusy}
           onPress={handleGoogle}
         />

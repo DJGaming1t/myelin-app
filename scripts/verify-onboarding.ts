@@ -168,6 +168,9 @@ function main() {
   assert.ok(transitionSource.includes('withTiming'));
   assert.ok(transitionSource.includes('withSequence'));
   assert.ok(transitionSource.includes('await commit()'));
+  assert.ok(transitionSource.includes('runEntryTransition'));
+  assert.ok(transitionSource.includes('overlayOpacity.set(1)'));
+  assert.ok(transitionSource.includes('await task()'));
   assert.ok(transitionSource.includes('accessibilityLabel="Opening MYELIN"'));
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);

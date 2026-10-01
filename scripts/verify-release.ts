@@ -45,21 +45,26 @@ assert(release.includes('Google sign-in verification'), 'Release runbook is miss
 assert(release.includes('Preview APK installs on a real Android device'), 'Release runbook lacks an on-device preview gate.');
 
 assert(previewWorkflow.includes("branches: ['expo-migration']"), 'Preview EAS workflow must trigger on expo-migration.');
-assert(previewWorkflow.includes('name: Verify source and calculate native fingerprint'), 'Preview EAS workflow must verify source inside the fingerprint job.');
-assert(previewWorkflow.includes('after_install_node_modules:'), 'Preview EAS fingerprint job must run verification after dependency install.');
-assert(previewWorkflow.includes('npm run verify:release'), 'Preview EAS workflow must include release verification.');
-assert(previewWorkflow.includes('type: fingerprint'), 'Preview EAS workflow must fingerprint native compatibility.');
-assert(previewWorkflow.includes('type: get-build'), 'Preview EAS workflow must look up a compatible preview build.');
+assert(previewWorkflow.includes('type: get-build'), 'Preview EAS workflow must look up an installed-runtime-compatible preview build.');
+assert(previewWorkflow.includes('platform: android'), 'Preview EAS workflow must target Android.');
 assert(previewWorkflow.includes('profile: preview'), 'Preview EAS workflow must match the preview build profile.');
 assert(previewWorkflow.includes('channel: preview'), 'Compatible build lookup must target the preview channel.');
 assert(previewWorkflow.includes('distribution: internal'), 'Compatible build lookup must target internal preview builds.');
+assert(
+  previewWorkflow.includes(`app_version: ${app.expo?.version}`),
+  'Preview build lookup app version must match app.json.',
+);
+assert(
+  previewWorkflow.includes(`runtime_version: ${app.expo?.version}`),
+  'Preview build lookup runtime version must match the appVersion runtime boundary.',
+);
+assert(!previewWorkflow.includes('type: fingerprint'), 'Preview OTA must not depend on the hanging fingerprint worker.');
 assert(previewWorkflow.includes('type: update'), 'Preview EAS workflow must publish through EAS Update.');
 assert(previewWorkflow.includes('branch: preview'), 'Preview EAS workflow must target the preview update branch.');
-assert(previewWorkflow.includes('platform: android'), 'Preview EAS workflow must publish the Android preview update.');
 assert(previewWorkflow.includes('environment: preview'), 'Preview EAS workflow must use preview environment variables.');
 assert(
   previewWorkflow.includes('if: ${{ needs.get_android_build.outputs.build_id }}'),
-  'Preview EAS workflow must skip OTA when no native-compatible build exists.',
+  'Preview EAS workflow must skip OTA when no compatible preview build exists.',
 );
 assert(
   !fs.existsSync(path.join(process.cwd(), '.github/workflows/publish-preview.yml')),

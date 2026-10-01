@@ -17,6 +17,17 @@ const authScaffold = fs.readFileSync(
   path.join(root, 'src/components/auth/AuthScaffold.tsx'),
   'utf8',
 );
+const authButton = fs.readFileSync(
+  path.join(root, 'src/components/auth/AuthButton.tsx'),
+  'utf8',
+);
+const signInSource = fs.readFileSync(path.join(root, 'app/(auth)/sign-in.tsx'), 'utf8');
+const signUpSource = fs.readFileSync(path.join(root, 'app/(auth)/sign-up.tsx'), 'utf8');
+const authLayoutSource = fs.readFileSync(path.join(root, 'app/(auth)/_layout.tsx'), 'utf8');
+const entryTransitionSource = fs.readFileSync(
+  path.join(root, 'src/features/onboarding/OnboardingTransitionProvider.tsx'),
+  'utf8',
+);
 
 const packageName = app.expo?.android?.package;
 assert.equal(packageName, 'com.djgaming1t.myelin', 'Unexpected Android package.');
@@ -107,6 +118,42 @@ assert.equal(
   authScaffold.includes('<Reveal'),
   false,
   'High-frequency auth screens should not replay staged entrance motion.',
+);
+assert.ok(
+  authScaffold.includes('bodyCard') && authScaffold.includes('backgroundColor: colors.panelGlass'),
+  'Auth forms should live in a clear raised surface instead of floating directly on the background.',
+);
+assert.ok(
+  authButton.includes("variant?: 'primary' | 'secondary' | 'quiet' | 'google'"),
+  'Shared auth actions need a dedicated Google treatment.',
+);
+assert.ok(
+  signInSource.includes('variant="google"') &&
+    signInSource.includes('or sign in with email') &&
+    signInSource.includes('runEntryTransition(async () =>'),
+  'Sign-in should lead with Google, separate email clearly, and cover the route handoff.',
+);
+assert.ok(
+  signUpSource.includes('variant="google"') &&
+    signUpSource.includes('or create with email') &&
+    signUpSource.includes('runEntryTransition(async () =>'),
+  'Account creation should offer the same polished Google-first entry path.',
+);
+assert.equal(
+  signInSource.includes('MYELIN REMEMBERS THE WORKFLOW') ||
+    signUpSource.includes('THE ACCOUNT IS SECONDARY'),
+  false,
+  'Auth screens should not use tiny explanatory developer-copy panels.',
+);
+assert.ok(
+  authLayoutSource.includes('contentStyle: { backgroundColor: colors.bg }'),
+  'The auth native stack must keep a dark surface during route changes.',
+);
+assert.ok(
+  entryTransitionSource.includes('runEntryTransition') &&
+    entryTransitionSource.includes('overlayOpacity.set(1)') &&
+    entryTransitionSource.includes('await task()'),
+  'Successful auth entry must cover redirects before revealing the destination.',
 );
 
 console.log('Authentication configuration and experience verification passed.');

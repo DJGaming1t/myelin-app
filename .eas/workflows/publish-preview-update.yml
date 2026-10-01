@@ -1,0 +1,61 @@
+name: Publish compatible preview update
+
+on:
+  push:
+    branches: ['expo-migration']
+
+jobs:
+  verify_source:
+    name: Verify preview source
+    environment: preview
+    steps:
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: App verification
+        run: |
+          npm run verify:auth
+          npm run verify:data
+          npm run verify:topics
+          npm run verify:today
+          npm run verify:planning
+          npm run verify:focus
+          npm run verify:review
+          npm run verify:mistakes
+          npm run verify:exams
+          npm run verify:progress
+          npm run verify:settings
+          npm run verify:transfer
+          npm run verify:cloud
+          npm run verify:firestore-rules
+          npm run verify:notifications
+          npm run verify:onboarding
+          npm run verify:polish
+          npm run verify:release
+          npm run verify:visual
+          npx expo-doctor
+
+  fingerprint:
+    name: Calculate native fingerprint
+    needs: [verify_source]
+    type: fingerprint
+    environment: preview
+
+  get_android_build:
+    name: Find compatible preview build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      profile: preview
+
+  publish_android_update:
+    name: Publish Android preview update
+    needs: [get_android_build]
+    if: ${{ needs.get_android_build.outputs.build_id }}
+    type: update
+    environment: preview
+    params:
+      branch: preview
+      platform: android

@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { TopicStatus } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { TopicCard } from '@/src/features/topics/TopicCard';
@@ -62,6 +64,7 @@ export default function TopicsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.screen}>
       <ScreenHeader
         eyebrow="STUDY LIBRARY"
@@ -139,16 +142,18 @@ export default function TopicsScreen() {
           styles.list,
           topics.length === 0 && styles.listEmpty,
         ]}
-        renderItem={({ item }) => (
-          <TopicCard
-            topic={item}
-            onPress={() =>
-              router.push({
-                pathname: '/(app)/topics/[topicId]',
-                params: { topicId: item.id },
-              })
-            }
-          />
+        renderItem={({ item, index }) => (
+          <Reveal delay={Math.min(index * 45, 225)} distance={8}>
+            <TopicCard
+              topic={item}
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/topics/[topicId]',
+                  params: { topicId: item.id },
+                })
+              }
+            />
+          </Reveal>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>

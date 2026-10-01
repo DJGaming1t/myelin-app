@@ -23,9 +23,13 @@ export function AnimatedProgress({
       return;
     }
 
-    Animated.timing(progress, {
+    Animated.spring(progress, {
       toValue: target,
-      duration: 340,
+      stiffness: 145,
+      damping: 19,
+      mass: 0.72,
+      overshootClamping: true,
+      isInteraction: false,
       useNativeDriver: false,
     }).start();
   }, [progress, reduceMotion, value]);
@@ -41,6 +45,7 @@ export function AnimatedProgress({
       accessibilityLabel={accessibilityLabel}
       style={styles.track}>
       <Animated.View style={[styles.fill, { width }]} />
+      <View style={styles.highlight} />
     </View>
   );
 }
@@ -51,14 +56,25 @@ function clamp(value: number) {
 
 const styles = StyleSheet.create({
   track: {
-    height: 3,
+    height: 5,
     overflow: 'hidden',
-    borderRadius: 3,
+    borderRadius: 5,
     backgroundColor: colors.lineStrong,
   },
   fill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 5,
     backgroundColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+  },
+  highlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
 });

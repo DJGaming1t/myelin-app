@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
@@ -224,6 +225,7 @@ export default function TodayScreen() {
           showsVerticalScrollIndicator={false}>
           <Reveal delay={20} distance={8}>
             <View style={styles.controlCard}>
+            <View style={styles.controlGlow} />
             <View style={styles.controlHeader}>
               <View>
                 <Text style={styles.controlEyebrow}>DAILY CAPACITY</Text>
@@ -252,9 +254,10 @@ export default function TodayScreen() {
                 </Text>
                 <Text style={styles.capacityProgressMeta}>{usedPercent}% used</Text>
               </View>
-              <View style={styles.capacityTrack}>
-                <View style={[styles.capacityFill, { width: `${usedPercent}%` }]} />
-              </View>
+              <AnimatedProgress
+                value={usedRatio}
+                accessibilityLabel={`${usedPercent}% of today’s study capacity used`}
+              />
             </View>
 
             <ScrollView
@@ -291,16 +294,19 @@ export default function TodayScreen() {
             </View>
           </Reveal>
 
-          <View style={styles.summaryRow}>
-            <SummaryMetric label="USED" value={`${plan.alreadyUsedMinutes}m`} />
-            <SummaryMetric label="STUDY" value={`${plan.plannedStudyMinutes}m`} />
-            <SummaryMetric label="BREAKS" value={`${plan.plannedBreakMinutes}m`} />
-            <SummaryMetric label="BLOCK" value={`${plan.targetFocusMinutes}m`} />
-          </View>
+          <Reveal delay={70} distance={9}>
+            <View style={styles.summaryRow}>
+              <SummaryMetric label="USED" value={`${plan.alreadyUsedMinutes}m`} />
+              <SummaryMetric label="STUDY" value={`${plan.plannedStudyMinutes}m`} accent />
+              <SummaryMetric label="BREAKS" value={`${plan.plannedBreakMinutes}m`} />
+              <SummaryMetric label="BLOCK" value={`${plan.targetFocusMinutes}m`} />
+            </View>
+          </Reveal>
 
           {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
           {nextExam ? (
+            <Reveal delay={105} distance={8}>
             <Pressable
               accessibilityRole="button"
               onPress={() =>
@@ -316,6 +322,7 @@ export default function TodayScreen() {
               </View>
               <Text style={styles.examWhen}>{examStatus(nextExam.date, now).label} →</Text>
             </Pressable>
+            </Reveal>
           ) : null}
 
           {mistakeSummary.due > 0 ? (
@@ -411,6 +418,7 @@ export default function TodayScreen() {
                 </View>
               </View>
 
+              <Text style={styles.nextGhost}>NOW</Text>
               <Text style={styles.nextTitle}>{next.topicName}</Text>
               <Text style={styles.nextReason}>{next.reasons.join(' · ')}</Text>
 
@@ -534,11 +542,20 @@ function Choice({
   );
 }
 
-function SummaryMetric({ label, value }: { label: string; value: string }) {
+function SummaryMetric({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
-    <View style={styles.summaryMetric}>
+    <View style={[styles.summaryMetric, accent && styles.summaryMetricAccent]}>
+      <View style={[styles.summaryRail, accent && styles.summaryRailAccent]} />
       <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
+      <Text style={[styles.summaryValue, accent && styles.summaryValueAccent]}>{value}</Text>
     </View>
   );
 }
@@ -582,11 +599,28 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { color: colors.muted, fontSize: 12 },
   controlCard: {
-    borderRadius: radius.lg,
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panelGlass,
     padding: spacing.md,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  controlGlow: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 150,
+    top: -92,
+    right: -48,
+    backgroundColor: colors.accent,
+    opacity: 0.055,
   },
   controlHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   controlEyebrow: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.2 },
@@ -611,11 +645,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 999,
     backgroundColor: colors.lineStrong,
-  },
-  capacityFill: {
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: colors.accent,
   },
   energyBadge: {
     flexDirection: 'row',
@@ -661,24 +690,40 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
   summaryMetric: {
     flex: 1,
-    minHeight: 58,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: 9,
-    justifyContent: 'space-between',
-  },
-  summaryLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
-  summaryValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
-  saveError: { color: colors.danger, fontSize: 10.5, marginTop: 8 },
-  examCard: {
-    marginTop: 10,
     minHeight: 62,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.18)',
-    backgroundColor: colors.panel,
+    borderColor: colors.line,
+    backgroundColor: colors.panelGlass,
+    padding: 10,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  summaryMetricAccent: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+  },
+  summaryRail: {
+    position: 'absolute',
+    left: 0,
+    top: 12,
+    bottom: 12,
+    width: 2,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  summaryRailAccent: { backgroundColor: colors.accent },
+  summaryLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
+  summaryValue: { color: colors.textDim, fontSize: 14, fontWeight: '700' },
+  summaryValueAccent: { color: colors.accentBright },
+  saveError: { color: colors.danger, fontSize: 10.5, marginTop: 8 },
+  examCard: {
+    marginTop: 10,
+    minHeight: 64,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panelWarm,
     paddingHorizontal: 13,
     paddingVertical: 11,
     flexDirection: 'row',
@@ -775,7 +820,7 @@ const styles = StyleSheet.create({
   nextCard: {
     position: 'relative',
     overflow: 'hidden',
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.32)',
     backgroundColor: 'rgba(255,128,91,0.10)',
@@ -785,6 +830,15 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
     elevation: 5,
+  },
+  nextGhost: {
+    position: 'absolute',
+    right: 12,
+    bottom: 2,
+    color: 'rgba(255,255,255,0.028)',
+    fontSize: 74,
+    fontWeight: '900',
+    letterSpacing: -5,
   },
   nextGlow: {
     position: 'absolute',

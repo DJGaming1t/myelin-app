@@ -32,7 +32,8 @@
     "eas:update:preview": "npx eas-cli@latest update --channel preview --environment preview",
     "eas:update:production": "npx eas-cli@latest update --channel production --environment production",
     "verify:planning": "tsx scripts/verify-planning.ts",
-    "verify:auth": "tsx scripts/verify-auth.ts"
+    "verify:auth": "tsx scripts/verify-auth.ts",
+    "verify:visual": "tsx scripts/verify-visual-overhaul.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

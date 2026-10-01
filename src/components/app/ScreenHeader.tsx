@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { colors, layout, spacing } from '@/src/theme/tokens';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Props = {
   eyebrow?: string;
@@ -36,15 +36,18 @@ export function ScreenHeader({
             onPress={onBack}
             hitSlop={6}
             style={({ pressed }) => [
-              styles.topButton,
+              styles.backButton,
               pressed && styles.pressed,
               pressed && !reduceMotion && styles.pressedMotion,
             ]}>
-            <Text style={styles.backText}>← {backLabel}</Text>
+            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backText}>{backLabel}</Text>
           </Pressable>
         ) : (
           <View style={styles.brandRow} accessible accessibilityLabel="MYELIN">
-            <View style={styles.dot} />
+            <View style={styles.brandMark}>
+              <View style={styles.brandCore} />
+            </View>
             <Text style={styles.brand}>MYELIN</Text>
           </View>
         )}
@@ -56,20 +59,21 @@ export function ScreenHeader({
             onPress={onAction}
             hitSlop={6}
             style={({ pressed }) => [
-              styles.topButton,
+              styles.actionButton,
               pressed && styles.pressed,
               pressed && !reduceMotion && styles.pressedMotion,
             ]}>
             <Text style={styles.actionText}>{actionLabel}</Text>
+            <Text style={styles.actionArrow}>↗</Text>
           </Pressable>
         ) : null}
       </View>
 
-      <Reveal delay={40} distance={8}>
+      <Reveal delay={30} distance={10}>
         <View style={styles.copy}>
           {eyebrow ? (
-            <View style={styles.eyebrowRow}>
-              <View style={styles.eyebrowLine} />
+            <View style={styles.eyebrowPill}>
+              <View style={styles.eyebrowDot} />
               <Text style={styles.eyebrow}>{eyebrow}</Text>
             </View>
           ) : null}
@@ -87,7 +91,7 @@ const styles = StyleSheet.create({
     maxWidth: layout.contentMax,
     alignSelf: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
   topRow: {
@@ -98,65 +102,104 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   brandRow: {
-    minHeight: layout.minTouch,
+    minHeight: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
   },
-  dot: {
+  brandMark: {
+    width: 25,
+    height: 25,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.accent,
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  brandCore: {
     width: 7,
     height: 7,
     borderRadius: 7,
     backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.55,
-    shadowRadius: 7,
-    elevation: 3,
   },
-  brand: { color: colors.text, fontSize: 13, fontWeight: '800', letterSpacing: 2.8 },
-  topButton: {
+  brand: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.7,
+  },
+  backButton: {
     minHeight: layout.minTouch,
-    minWidth: layout.minTouch,
-    paddingVertical: 5,
-    paddingHorizontal: 2,
-    justifyContent: 'center',
+    minWidth: 74,
+    paddingHorizontal: 9,
+    borderRadius: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
   },
-  backText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
-  actionText: { color: colors.accent, fontSize: 12, fontWeight: '700' },
+  backArrow: { color: colors.accent, fontSize: 15, fontWeight: '800' },
+  backText: { color: colors.muted, fontSize: 11.5, fontWeight: '700' },
+  actionButton: {
+    minHeight: 40,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  actionText: { color: colors.accentBright, fontSize: 11, fontWeight: '800' },
+  actionArrow: { color: colors.accent, fontSize: 12, fontWeight: '800' },
   copy: {
     marginTop: spacing.md,
     paddingBottom: spacing.xs,
   },
-  eyebrowRow: {
+  eyebrowPill: {
+    alignSelf: 'flex-start',
+    minHeight: 25,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panelGlass,
+    paddingHorizontal: 9,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
+    marginBottom: 10,
   },
-  eyebrowLine: {
-    width: 18,
-    height: 1,
+  eyebrowDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 5,
     backgroundColor: colors.accent,
   },
   eyebrow: {
-    color: colors.accent,
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 1.7,
-    marginBottom: 7,
+    color: colors.accentBright,
+    fontSize: 8.5,
+    fontWeight: '900',
+    letterSpacing: 1.35,
   },
   title: {
     color: colors.text,
-    fontSize: 34,
-    lineHeight: 39,
+    fontSize: 36,
+    lineHeight: 40,
     fontWeight: '600',
-    letterSpacing: -1.2,
+    letterSpacing: -1.3,
   },
-  subtitle: { color: colors.muted, fontSize: 12.5, lineHeight: 19, marginTop: 8, maxWidth: layout.readingMax },
-  pressed: { opacity: 0.66 },
-  pressedMotion: { transform: [{ scale: 0.98 }] },
+  subtitle: {
+    color: colors.muted,
+    fontSize: 12.5,
+    lineHeight: 19,
+    marginTop: 9,
+    maxWidth: layout.readingMax,
+  },
+  pressed: { opacity: 0.72 },
+  pressedMotion: { transform: [{ scale: 0.965 }, { translateY: 1 }] },
 });

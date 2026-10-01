@@ -22,6 +22,7 @@ const planCard = read('src/features/today/PlanBlockCard.tsx');
 const ambient = read('src/components/app/AmbientBackdrop.tsx');
 const pulseHalo = read('src/components/motion/PulseHalo.tsx');
 const animatedProgress = read('src/components/motion/AnimatedProgress.tsx');
+const springPressable = read('src/components/motion/SpringPressable.tsx');
 const today = read('app/(app)/today/index.tsx');
 const review = read('app/(app)/review/index.tsx');
 
@@ -46,7 +47,10 @@ assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tab
 assert(focus.includes('setInterval(() => setNow(Date.now()), 1000)'), 'Focus timer redraw frequency was not reduced.');
 assert(reveal.includes('Animated.timing'), 'Shared entrance motion is missing.');
 assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
-assert(nav.includes('activeRail'), 'Bottom navigation is missing a strong active-state indicator.');
+assert(
+  nav.includes('activeGlow') && nav.includes('activeDot'),
+  'Bottom navigation is missing the new active glow/dot treatment.',
+);
 assert(nav.includes('glyphWrapActive'), 'Bottom navigation is missing the active glyph treatment.');
 assert((nav.match(/path: '\/\(app\)\//g) ?? []).length === 5, 'Compact bottom navigation should expose exactly five primary destinations.');
 assert(!nav.includes("key: 'settings'"), 'Settings should be a secondary destination, not a seventh phone tab.');
@@ -59,7 +63,10 @@ assert(pulseHalo.includes('Animated.loop'), 'Focus breathing halo animation is m
 assert(pulseHalo.includes('reduceMotion'), 'Focus breathing halo ignores reduced-motion.');
 assert(pulseHalo.includes('isInteraction: false'), 'Looping focus motion should not hold an interaction handle.');
 assert(!pulseHalo.includes('shadowOpacity: pulse.interpolate'), 'Native-driven focus motion must not animate shadow opacity.');
-assert(animatedProgress.includes('Animated.timing'), 'Animated progress primitive is missing.');
+assert(animatedProgress.includes('Animated.spring'), 'Animated progress spring primitive is missing.');
+assert(animatedProgress.includes('if (reduceMotion)'), 'Animated progress ignores reduced motion.');
+assert(springPressable.includes('Animated.spring'), 'Shared spring press primitive is missing.');
+assert(springPressable.includes('useReducedMotion()'), 'Shared press motion ignores reduced motion.');
 assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
 assert(today.includes('nextGlow'), 'Today next-move card lacks focal visual treatment.');
 assert(focus.includes('<PulseHalo'), 'Focus timer is missing the breathing halo.');

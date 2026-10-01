@@ -1,4 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 
 import { Topic } from '@/src/data/schema';
 import { colors, radius, spacing } from '@/src/theme/tokens';
@@ -17,11 +19,13 @@ const PRIORITY_LABEL: Record<Topic['priority'], string> = {
 
 export function TopicCard({ topic, onPress }: { topic: Topic; onPress: () => void }) {
   return (
-    <Pressable
+    <SpringPressable
       accessibilityRole="button"
       accessibilityLabel={`${topic.name}, ${topic.subject}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+      style={styles.card}
+      scaleTo={0.982}
+      lift={1}>
       <View style={styles.top}>
         <View style={styles.subjectRow}>
           <Text style={styles.subject}>{topic.subject}</Text>
@@ -46,7 +50,7 @@ export function TopicCard({ topic, onPress }: { topic: Topic; onPress: () => voi
         <Meta value={`${topic.cards.length} recall ${topic.cards.length === 1 ? 'question' : 'questions'}`} />
         <Meta value={`${PRIORITY_LABEL[topic.priority]} priority`} accent={topic.priority === 3} />
       </View>
-    </Pressable>
+    </SpringPressable>
   );
 }
 
@@ -62,12 +66,16 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: colors.panelGlass,
     borderRadius: radius.lg,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 4,
     padding: spacing.md,
     marginBottom: 10,
   },
-  pressed: { opacity: 0.8, transform: [{ scale: 0.995 }] },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   subjectRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
   subject: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },

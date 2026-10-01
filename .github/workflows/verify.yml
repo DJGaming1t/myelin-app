@@ -26,15 +26,7 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Capture generated npm lockfile for release branch
-        if: github.ref == 'refs/heads/feature/release-finalization'
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-package-lock
-          path: package-lock.json
-          retention-days: 1
+        run: npm ci --no-audit --no-fund
 
       - name: Use Java for Firebase emulators
         uses: actions/setup-java@v4

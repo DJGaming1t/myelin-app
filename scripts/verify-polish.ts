@@ -25,6 +25,12 @@ const animatedProgress = read('src/components/motion/AnimatedProgress.tsx');
 const springPressable = read('src/components/motion/SpringPressable.tsx');
 const today = read('app/(app)/today/index.tsx');
 const review = read('app/(app)/review/index.tsx');
+const onboarding = read('app/(onboarding)/index.tsx');
+const settings = read('app/(app)/settings/index.tsx');
+const taskForm = read('src/features/planning/TaskForm.tsx');
+const commitmentForm = read('src/features/planning/CommitmentForm.tsx');
+const examForm = read('src/features/exams/ExamForm.tsx');
+const questionForm = read('src/features/topics/QuestionForm.tsx');
 
 assert(tokens.includes('contentMax: 820'), 'Responsive content cap is missing.');
 assert(tokens.includes('minTouch: 48'), '48-point Android touch target token is missing.');
@@ -78,5 +84,18 @@ assert(focus.includes('phaseProgress'), 'Focus phase progress is not derived fro
 assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while the student is working.');
 assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
 assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
+
+assert(onboarding.includes('progressLabel: { color: colors.subtle, fontSize: 11'), 'Onboarding progress metadata is too small.');
+assert(onboarding.includes('capacityNote: { color: colors.muted, fontSize: 11.5'), 'Onboarding option detail is too small.');
+assert(settings.includes('variant="compact"'), 'Settings should use the compact utility-screen header.');
+assert(settings.includes('sectionSubtitle: { color: colors.muted, fontSize: 12'), 'Settings section descriptions are too small.');
+assert(settings.includes('dataLabel: { color: colors.subtle, fontSize: 10'), 'Settings data labels regressed below the readability floor.');
+assert(taskForm.includes('variant="compact"'), 'Task form should use the compact form header.');
+assert(taskForm.includes("chipText: { color: colors.muted, fontSize: 12"), 'Task form chip labels are too small.');
+assert(commitmentForm.includes('variant="compact"'), 'Fixed-time form should use the compact form header.');
+assert(commitmentForm.includes("helper: { color: colors.muted, fontSize: 11.5"), 'Fixed-time helper text is too small.');
+assert(examForm.includes("dateHelp: { color: colors.muted, fontSize: 11.5"), 'Exam date helper is too small.');
+assert(questionForm.includes("label: { color: colors.textDim, fontSize: 12.5"), 'Recall form labels are too small.');
+assert(states.includes('fontSize: 13'), 'Shared state messages should remain readable.');
 
 console.log('Product polish verification passed.');

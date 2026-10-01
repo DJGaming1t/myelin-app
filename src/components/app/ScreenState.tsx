@@ -103,16 +103,16 @@ const styles = StyleSheet.create({
   errorMarkText: { color: colors.danger },
   title: {
     color: colors.text,
-    fontSize: 17,
-    lineHeight: 23,
+    fontSize: 19,
+    lineHeight: 25,
     fontWeight: '700',
     textAlign: 'center',
   },
   message: {
     maxWidth: 360,
     color: colors.muted,
-    fontSize: 11.5,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: 'center',
     marginTop: 7,
   },
@@ -125,6 +125,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionText: { color: '#25140e', fontSize: 12, fontWeight: '800' },
+  actionText: { color: '#25140e', fontSize: 13.5, lineHeight: 18, fontWeight: '800' },
   pressed: { opacity: 0.72 },
 });

@@ -223,9 +223,10 @@ export function TaskForm({ taskId }: { taskId?: string }) {
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <ScreenHeader
+        variant="compact"
         eyebrow={existing ? 'STUDY TASK' : 'QUICK CAPTURE'}
         title={existing ? 'Edit task' : 'Add study work'}
-        subtitle="Keep it concrete. You can leave it in Inbox without choosing an exact time."
+        subtitle="Keep it concrete. Exact scheduling can come later."
         onBack={() => router.back()}
       />
 
@@ -417,8 +418,8 @@ function Chip({ label, active, onPress, flex }: { label: string; active: boolean
 
 const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 56 },
-  label: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
-  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
+  label: { color: colors.textDim, fontSize: 12.5, lineHeight: 17, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
+  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
   disabledInput: { opacity: 0.65 },
   smallInput: { minHeight: layout.minTouch, width: 110, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
   notes: { minHeight: 110, paddingTop: 13, paddingBottom: 13 },
@@ -450,17 +451,17 @@ const styles = StyleSheet.create({
   },
   chip: { minHeight: layout.minTouch, maxWidth: 220, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
   chipActive: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
-  chipText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
+  chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   chipTextActive: { color: colors.accent },
   flex: { flex: 1, maxWidth: undefined },
-  helper: { color: colors.subtle, fontSize: 9.5, marginTop: 5 },
-  error: { color: colors.danger, fontSize: 10.5, marginTop: spacing.md },
+  helper: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 5 },
+  error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: spacing.md },
   primary: { minHeight: 56, marginTop: spacing.xl, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  primaryText: { color: '#25140e', fontSize: 12.5, fontWeight: '900' },
+  primaryText: { color: '#25140e', fontSize: 14, lineHeight: 19, fontWeight: '900' },
   primaryArrow: { color: '#25140e', fontSize: 19 },
   secondary: { minHeight: layout.minTouch, marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: colors.text, fontSize: 11, fontWeight: '700' },
+  secondaryText: { color: colors.text, fontSize: 12.5, lineHeight: 17, fontWeight: '700' },
   deleteButton: { minHeight: layout.minTouch, marginTop: 9, alignItems: 'center', justifyContent: 'center' },
-  deleteText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
+  deleteText: { color: colors.danger, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   pressed: { opacity: 0.68 },
 });

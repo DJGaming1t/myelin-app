@@ -57,10 +57,9 @@ export default function ExamsScreen() {
       <AmbientBackdrop />
       <View style={styles.page}>
         <ScreenHeader
-          eyebrow="EXAM PRESSURE"
+          variant="compact"
           title="Exams"
-          subtitle="Tell MYELIN exactly what is included. Today will increase planning pressure only for those subjects or topics as the date approaches."
-          actionLabel="+ Add"
+          actionLabel="Add"
           onAction={() => router.push('/(app)/exams/new')}
         />
 
@@ -214,18 +213,18 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   page: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loading: { color: colors.muted, fontSize: 12 },
+  loading: { color: colors.muted, fontSize: 13 },
   hero: { marginHorizontal: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,128,91,0.28)', backgroundColor: colors.accentSoft, padding: spacing.md },
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  heroEyebrow: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  heroEyebrow: { color: colors.accent, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.55 },
   heroName: { color: colors.text, fontSize: 17, fontWeight: '700', marginTop: 4 },
   heroCountdown: { color: colors.accent, fontSize: 11, fontWeight: '800' },
-  heroDate: { color: colors.muted, fontSize: 10.5, marginTop: 10 },
-  heroScope: { color: colors.subtle, fontSize: 9.5, marginTop: 5 },
+  heroDate: { color: colors.muted, fontSize: 12.5, lineHeight: 17, marginTop: 10 },
+  heroScope: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 5 },
   filters: { flexDirection: 'row', gap: 7, paddingHorizontal: spacing.lg, paddingVertical: 10 },
   filter: { minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
   filterActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
-  filterText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
+  filterText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   filterTextActive: { color: colors.accent },
   saveError: { color: colors.danger, fontSize: 10, marginHorizontal: spacing.lg, marginBottom: 5 },
   listView: { flex: 1 },
@@ -241,18 +240,18 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   cardCopy: { flex: 1 },
   cardName: { color: colors.text, fontSize: 14, fontWeight: '700' },
-  cardDate: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  cardDate: { color: colors.muted, fontSize: 12, lineHeight: 16, marginTop: 4 },
   statusBadge: { borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 9, paddingVertical: 5 },
   statusBadgeToday: { borderColor: 'rgba(255,128,91,0.38)', backgroundColor: colors.accentSoft },
   statusBadgePast: { opacity: 0.65 },
-  statusText: { color: colors.muted, fontSize: 8.5, fontWeight: '800' },
+  statusText: { color: colors.muted, fontSize: 11, lineHeight: 15, fontWeight: '700' },
   statusTextToday: { color: colors.accent },
   scopeRow: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  scopeLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
-  scopeValue: { color: colors.muted, fontSize: 9.5 },
+  scopeLabel: { color: colors.subtle, fontSize: 10.5, lineHeight: 14, fontWeight: '700', letterSpacing: 0.45 },
+  scopeValue: { color: colors.muted, fontSize: 11.5, lineHeight: 16 },
   empty: { alignItems: 'center', padding: spacing.xl, paddingBottom: 70 },
   emptyTitle: { color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 6, textAlign: 'center', maxWidth: 340 },
+  emptyText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 6, textAlign: 'center', maxWidth: 340 },
   emptyButton: { minHeight: layout.minTouch, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 15, alignItems: 'center', justifyContent: 'center' },
   emptyButtonText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },

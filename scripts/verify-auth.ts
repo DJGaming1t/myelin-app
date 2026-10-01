@@ -130,13 +130,16 @@ assert.ok(
 assert.ok(
   signInSource.includes('variant="google"') &&
     signInSource.includes('or sign in with email') &&
-    signInSource.includes('runEntryTransition(async () =>'),
+    signInSource.includes('runEntryTransition(') &&
+    signInSource.includes('() => signInGoogle(keepSignedIn)') &&
+    signInSource.includes("() => router.replace('/')"),
   'Sign-in should lead with Google, separate email clearly, and cover the route handoff.',
 );
 assert.ok(
   signUpSource.includes('variant="google"') &&
     signUpSource.includes('or create with email') &&
-    signUpSource.includes('runEntryTransition(async () =>'),
+    signUpSource.includes('runEntryTransition(') &&
+    signUpSource.includes('() => signInGoogle(keepSignedIn)'),
   'Account creation should offer the same polished Google-first entry path.',
 );
 assert.equal(
@@ -150,10 +153,28 @@ assert.ok(
   'The auth native stack must keep a dark surface during route changes.',
 );
 assert.ok(
+  authLayoutSource.includes('entryPending') &&
+    authLayoutSource.includes('!entryPending && (localMode || user?.emailVerified)'),
+  'Firebase auth changes must not auto-redirect while the branded entry handoff is pending.',
+);
+assert.ok(
+  authButton.includes('backgroundColor: colors.panelRaised') &&
+    authButton.includes('borderColor: colors.accentLine') &&
+    !authButton.includes("backgroundColor: '#F4F2EF'"),
+  'The Google action must stay inside the dark MYELIN visual system.',
+);
+assert.ok(
   entryTransitionSource.includes('runEntryTransition') &&
-    entryTransitionSource.includes('overlayOpacity.set(1)') &&
-    entryTransitionSource.includes('await task()'),
-  'Successful auth entry must cover redirects before revealing the destination.',
+    entryTransitionSource.includes('setEntryPending(true)') &&
+    entryTransitionSource.includes('await task()') &&
+    entryTransitionSource.includes('setActive(true)') &&
+    entryTransitionSource.includes('await commit()'),
+  'Auth entry must hold routing invisibly, wait for authentication, then animate before committing navigation.',
+);
+assert.ok(
+  entryTransitionSource.indexOf('await task()') <
+    entryTransitionSource.indexOf('setActive(true)', entryTransitionSource.indexOf('runEntryTransition')),
+  'The branded overlay must not appear while the Google account picker is still active.',
 );
 
 console.log('Authentication configuration and experience verification passed.');

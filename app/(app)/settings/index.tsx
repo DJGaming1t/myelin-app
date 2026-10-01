@@ -1,5 +1,14 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeOutUp,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   Alert,
   Pressable,
@@ -12,13 +21,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { AppIcon } from '@/src/components/app/AppIcon';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
+import { useCloudSync } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useReminders } from '@/src/features/notifications/ReminderProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import {
   applyStudyDefaults,
   providerLabels,
@@ -51,6 +63,7 @@ export default function SettingsScreen() {
   } = useAuth();
   const { discard: discardFocus, session: focusSession } = useFocus();
   const { discardReview, session: reviewSession } = useReview();
+  const { deleteAccountAndCloud } = useCloudSync();
   const {
     settings: reminderSettings,
     scheduledCount: reminderScheduledCount,
@@ -163,6 +176,54 @@ export default function SettingsScreen() {
     ]);
   }
 
+  function confirmDeleteAccount() {
+    Alert.alert(
+      'Delete MYELIN account?',
+      'This permanently deletes your Firebase account, any MYELIN cloud study copy, and this account’s local workspace on this device. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: async () => {
+            setAccountError('');
+            setAccountMessage('');
+            setAccountBusy(true);
+            try {
+              const result = await deleteAccountAndCloud();
+              if (result === 'deleted') {
+                router.replace('/');
+                return;
+              }
+              if (result === 'reauth-required') {
+                Alert.alert(
+                  'Sign in again first',
+                  'Firebase requires a recent login for account deletion. Sign out, sign back in, then return to Settings and delete the account again.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Sign out now',
+                      onPress: async () => {
+                        await signOutUser();
+                        router.replace('/(auth)/sign-in');
+                      },
+                    },
+                  ],
+                );
+                return;
+              }
+              setAccountError('No signed-in account is available to delete.');
+            } catch (error) {
+              setAccountError(authErrorMessage(error, 'delete'));
+            } finally {
+              setAccountBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
   function confirmReset() {
     Alert.alert(
       'Reset this workspace?',
@@ -257,7 +318,7 @@ export default function SettingsScreen() {
               accessibilityLabel="View MYELIN tutorial again"
               onPress={() => router.push('/(app)/settings/tutorial')}
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
-              <View>
+              <View style={styles.transferCopy}>
                 <Text style={styles.transferTitle}>View tutorial again</Text>
                 <Text style={styles.transferText}>
                   Active recall, realistic planning, focus and review
@@ -320,9 +381,10 @@ export default function SettingsScreen() {
                     />
                   ) : null}
                   <SmallAction
-                    label="Account deletion"
+                    label="Delete account"
                     disabled={accountBusy}
-                    onPress={() => router.push('/(app)/settings/cloud-sync')}
+                    danger
+                    onPress={confirmDeleteAccount}
                   />
                 </View>
               </>
@@ -373,7 +435,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               onPress={() => router.push('/(app)/settings/reminders')}
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
-              <View>
+              <View style={styles.transferCopy}>
                 <Text style={styles.transferTitle}>Reminder studio</Text>
                 <Text style={styles.transferText}>Tone, quiet hours, exam timing and live previews</Text>
               </View>
@@ -398,7 +460,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               onPress={() => router.push('/(app)/settings/cloud-sync')}
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
-              <View>
+              <View style={styles.transferCopy}>
                 <Text style={styles.transferTitle}>Cloud sync</Text>
                 <Text style={styles.transferText}>Status, conflicts and cloud-data controls</Text>
               </View>
@@ -447,7 +509,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               onPress={() => router.push('/(app)/settings/data-transfer')}
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
-              <View>
+              <View style={styles.transferCopy}>
                 <Text style={styles.transferTitle}>Backup & migration</Text>
                 <Text style={styles.transferText}>Export, import or move data from the web app</Text>
               </View>
@@ -465,7 +527,7 @@ export default function SettingsScreen() {
                 resetBusy && styles.disabled,
                 pressed && !resetBusy && styles.pressed,
               ]}>
-              <View>
+              <View style={styles.transferCopy}>
                 <Text style={styles.resetTitle}>
                   {resetBusy ? 'Resetting…' : 'Reset this workspace'}
                 </Text>
@@ -498,9 +560,26 @@ function Section({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    rotation.value = reduceMotion
+      ? open ? 1 : 0
+      : withTiming(open ? 1 : 0, {
+          duration: 180,
+          easing: Easing.out(Easing.cubic),
+        });
+  }, [open, reduceMotion, rotation]);
+
+  const arrowStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value * 90}deg` }],
+  }));
 
   return (
-    <View style={styles.section}>
+    <Animated.View
+      layout={reduceMotion ? undefined : LinearTransition.duration(180)}
+      style={styles.section}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
@@ -513,10 +592,20 @@ function Section({
             {subtitle}
           </Text>
         </View>
-        <Text style={styles.sectionIndicator}>{open ? '−' : '+'}</Text>
+        <Animated.View style={[styles.sectionIndicator, arrowStyle]}>
+          <AppIcon name="chevron" size={17} color={colors.accent} />
+        </Animated.View>
       </Pressable>
-      {open ? <View style={styles.sectionBody}>{children}</View> : null}
-    </View>
+      {open ? (
+        <Animated.View
+          entering={reduceMotion ? undefined : FadeInDown.duration(180)}
+          exiting={reduceMotion ? undefined : FadeOutUp.duration(130)}
+          layout={reduceMotion ? undefined : LinearTransition.duration(180)}
+          style={styles.sectionBody}>
+          {children}
+        </Animated.View>
+      ) : null}
+    </Animated.View>
   );
 }
 
@@ -652,10 +741,12 @@ function DataMetric({ label, value }: { label: string; value: number }) {
 function SmallAction({
   label,
   disabled,
+  danger,
   onPress,
 }: {
   label: string;
   disabled?: boolean;
+  danger?: boolean;
   onPress: () => void;
 }) {
   return (
@@ -665,10 +756,11 @@ function SmallAction({
       onPress={onPress}
       style={({ pressed }) => [
         styles.smallAction,
+        danger && styles.smallActionDanger,
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed,
       ]}>
-      <Text style={styles.smallActionText}>{label}</Text>
+      <Text style={[styles.smallActionText, danger && styles.smallActionTextDanger]}>{label}</Text>
     </Pressable>
   );
 }
@@ -693,7 +785,7 @@ const styles = StyleSheet.create({
   sectionHeaderCopy: { flex: 1, minWidth: 0 },
   sectionTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
   sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
-  sectionIndicator: { color: colors.accent, fontSize: 22, lineHeight: 24, fontWeight: '400' },
+  sectionIndicator: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   settingBlock: { paddingVertical: 4, marginBottom: 13 },
   settingTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
@@ -719,10 +811,12 @@ const styles = StyleSheet.create({
   accountActions: { gap: 7, marginTop: 11 },
   smallAction: { minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   smallActionText: { color: colors.text, fontSize: 12.5, lineHeight: 17, fontWeight: '700' },
+  smallActionDanger: { borderColor: 'rgba(255,161,145,0.25)', backgroundColor: 'rgba(255,161,145,0.04)' },
+  smallActionTextDanger: { color: colors.danger },
   successMessage: { color: colors.success, fontSize: 12, lineHeight: 17, marginTop: 10 },
   errorMessage: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: 10 },
   switchButton: { minHeight: 52, marginTop: 12, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.24)', backgroundColor: colors.accentSoft, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  switchButtonText: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  switchButtonText: { flex: 1, minWidth: 0, color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   switchArrow: { color: colors.accent, fontSize: 18 },
   privacyRow: { paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.line },
   privacyTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
@@ -733,14 +827,15 @@ const styles = StyleSheet.create({
   dataMetric: { width: '31.7%', minHeight: 56, borderRadius: radius.md, backgroundColor: colors.bg, padding: 9, justifyContent: 'space-between' },
   dataLabel: { color: colors.subtle, fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 0.4 },
   dataValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
-  transferButton: { minHeight: 56, marginTop: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  transferButton: { minHeight: 56, marginTop: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  transferCopy: { flex: 1, minWidth: 0 },
   transferTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   transferText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
-  transferArrow: { color: colors.accent, fontSize: 18 },
+  transferArrow: { color: colors.accent, fontSize: 18, flexShrink: 0 },
   resetButton: { minHeight: 60, marginTop: 16, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', backgroundColor: 'rgba(255,161,145,0.04)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   resetTitle: { color: colors.danger, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   resetText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
-  resetArrow: { color: colors.danger, fontSize: 18 },
+  resetArrow: { color: colors.danger, fontSize: 18, flexShrink: 0 },
   bottomNote: { marginTop: 2, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: spacing.md },
   bottomNoteTitle: { color: colors.text, fontSize: 12.5, lineHeight: 17, fontWeight: '700' },
   bottomNoteText: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },

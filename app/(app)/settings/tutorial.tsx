@@ -162,6 +162,10 @@ export default function TutorialReplayScreen() {
               <Text style={styles.primaryArrow}>→</Text>
             </Pressable>
           </View>
+
+          <Text style={styles.readOnlyNote}>
+            Replay only — nothing here changes your study data or setup.
+          </Text>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -349,5 +353,12 @@ const styles = StyleSheet.create({
   },
   primaryText: { color: '#24120D', fontSize: 12, fontWeight: '900' },
   primaryArrow: { color: '#24120D', fontSize: 17, fontWeight: '800' },
+  readOnlyNote: {
+    color: colors.subtle,
+    fontSize: 10.5,
+    lineHeight: 15,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
   pressed: { opacity: 0.7 },
 });

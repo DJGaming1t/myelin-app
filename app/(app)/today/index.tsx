@@ -79,11 +79,12 @@ export default function TodayScreen() {
   }
 
   const currentWorkspace = workspace;
-  const next = plan.nextBlock;
-  const laterBlocks = plan.blocks
+  const currentPlan = plan;
+  const next = currentPlan.nextBlock;
+  const laterBlocks = currentPlan.blocks
     .filter((block) => !next || block.id !== next.id)
     .slice(0, 3);
-  const budgetFinished = plan.remainingBudgetMinutes <= 0;
+  const budgetFinished = currentPlan.remainingBudgetMinutes <= 0;
 
   function setBudget(minutes: number) {
     updateWorkspace((draft) => {
@@ -189,7 +190,7 @@ export default function TodayScreen() {
         topicId: block.topicId,
         ...(block.taskId ? { taskId: block.taskId } : {}),
         minutes: String(block.minutes),
-        breakMinutes: String(plan.breakMinutes),
+        breakMinutes: String(currentPlan.breakMinutes),
       },
     });
   }
@@ -385,14 +386,14 @@ export default function TodayScreen() {
               <ActionRow
                 icon="settings"
                 title="Adjust today"
-                detail={`${plan.remainingBudgetMinutes} min available · ${workspace.settings.energy === 'low' ? 'low' : 'normal'} energy`}
+                detail={`${currentPlan.remainingBudgetMinutes} min available · ${workspace.settings.energy === 'low' ? 'low' : 'normal'} energy`}
                 meta={showAdjust ? 'Hide' : 'Adjust'}
                 onPress={() => setShowAdjust((current) => !current)}
               />
-              {plan.inboxTaskCount > 0 ? (
+              {currentPlan.inboxTaskCount > 0 ? (
                 <ActionRow
                   icon="library"
-                  title={`${plan.inboxTaskCount} unscheduled ${plan.inboxTaskCount === 1 ? 'task' : 'tasks'}`}
+                  title={`${currentPlan.inboxTaskCount} unscheduled ${currentPlan.inboxTaskCount === 1 ? 'task' : 'tasks'}`}
                   detail="Captured, but not committed to today yet."
                   meta={showInbox ? 'Hide' : 'Open'}
                   onPress={() => setShowInbox((current) => !current)}
@@ -407,7 +408,7 @@ export default function TodayScreen() {
                 <View style={styles.adjustCopy}>
                   <Text style={styles.adjustTitle}>Available study time</Text>
                   <Text style={styles.adjustMeta}>
-                    {workspace.settings.dailyMinutes} min · {plan.remainingBudgetMinutes} min still open
+                    {workspace.settings.dailyMinutes} min · {currentPlan.remainingBudgetMinutes} min still open
                   </Text>
                 </View>
               </View>
@@ -444,7 +445,7 @@ export default function TodayScreen() {
             </View>
           ) : null}
 
-          {showInbox && plan.inboxTaskCount > 0 ? (
+          {showInbox && currentPlan.inboxTaskCount > 0 ? (
             <View style={styles.inboxWrap}>
               <StudyInboxCard />
             </View>

@@ -2,7 +2,7 @@ import { router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
-import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { colors, layout, space, type } from '@/src/theme/tokens';
 
 const ITEMS: {
@@ -19,7 +19,6 @@ const ITEMS: {
 
 export function AppNav() {
   const pathname = usePathname();
-  const reduceMotion = useReducedMotion();
 
   return (
     <View style={styles.shell}>
@@ -29,18 +28,16 @@ export function AppNav() {
         ))}
 
         <View style={styles.addSlot}>
-          <Pressable
+          <SpringPressable
             accessibilityRole="button"
             accessibilityLabel="Add to MYELIN"
             accessibilityHint="Add a topic, task, exam or fixed time"
             onPress={() => router.push('/(app)/quick-add')}
-            style={({ pressed }) => [
-              styles.addButton,
-              pressed && styles.pressed,
-              pressed && !reduceMotion && styles.addPressed,
-            ]}>
+            scaleTo={0.96}
+            lift={1}
+            style={styles.addButton}>
             <AppIcon name="add" size={24} color="#27130D" />
-          </Pressable>
+          </SpringPressable>
           <Text accessible={false} style={styles.addLabel}>Add</Text>
         </View>
 
@@ -147,5 +144,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pressed: { opacity: 0.62 },
-  addPressed: { transform: [{ scale: 0.95 }, { translateY: 1 }] },
 });

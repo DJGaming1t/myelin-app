@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
@@ -202,8 +201,7 @@ export default function SettingsScreen() {
         <ScreenHeader
           variant="compact"
           title="Settings"
-          actionLabel="Today"
-          onAction={() => router.push('/(app)/today')}
+          onBack={() => router.back()}
         />
 
         <ScrollView
@@ -485,7 +483,6 @@ export default function SettingsScreen() {
           </View>
         </ScrollView>
 
-        <AppNav />
       </View>
     </SafeAreaView>
   );
@@ -500,11 +497,25 @@ function Section({
   subtitle: string;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-      <View style={styles.sectionBody}>{children}</View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={title}
+        onPress={() => setOpen((current) => !current)}
+        style={({ pressed }) => [styles.sectionHeader, pressed && styles.pressed]}>
+        <View style={styles.sectionHeaderCopy}>
+          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={styles.sectionSubtitle} numberOfLines={open ? undefined : 1}>
+            {subtitle}
+          </Text>
+        </View>
+        <Text style={styles.sectionIndicator}>{open ? '−' : '+'}</Text>
+      </Pressable>
+      {open ? <View style={styles.sectionBody}>{children}</View> : null}
     </View>
   );
 }
@@ -676,11 +687,14 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 13, lineHeight: 18 },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 48 },
-  section: { marginBottom: spacing.xl },
-  sectionTitle: { color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: '700' },
-  sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 4 },
-  sectionBody: { marginTop: 10, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: 72 },
+  section: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  sectionHeader: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  sectionHeaderCopy: { flex: 1, minWidth: 0 },
+  sectionTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
+  sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
+  sectionIndicator: { color: colors.accent, fontSize: 22, lineHeight: 24, fontWeight: '400' },
+  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   settingBlock: { paddingVertical: 4, marginBottom: 13 },
   settingTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   settingLabel: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },

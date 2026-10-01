@@ -47,6 +47,8 @@ assert(states.includes('accessibilityLiveRegion'), 'Shared loading/error states 
 assert(nav.includes('accessibilityLabel={item.label}'), 'Bottom navigation labels are missing.');
 assert(nav.includes('minHeight: layout.minTouch'), 'Bottom navigation touch targets are too small.');
 assert(nav.includes('maxWidth: layout.contentMax'), 'Bottom navigation is not tablet/web bounded.');
+assert(nav.includes('if (active) return;'), 'Tapping the active tab should be a true no-op.');
+assert(!nav.includes('pressedMotion'), 'Bottom tabs should not scale on press.');
 assert(header.includes('accessibilityRole="header"'), 'Screen titles are not exposed as headers.');
 assert(header.includes('minHeight: layout.minTouch'), 'Header controls are too small.');
 assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tablet/web bounded.');
@@ -85,11 +87,15 @@ assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while
 assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
 assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
 
-assert(onboarding.includes('progressLabel: { color: colors.subtle, fontSize: 11'), 'Onboarding progress metadata is too small.');
-assert(onboarding.includes('capacityNote: { color: colors.muted, fontSize: 11.5'), 'Onboarding option detail is too small.');
+assert(onboarding.includes('Set a realistic study day.'), 'Onboarding should ask for one useful setup decision.');
+assert(!onboarding.includes('AnimatedProgress'), 'One-step onboarding should not show artificial multi-step progress.');
+assert(!onboarding.includes('TopicStep'), 'Onboarding should not require topic creation before entering the app.');
 assert(settings.includes('variant="compact"'), 'Settings should use the compact utility-screen header.');
 assert(settings.includes('sectionSubtitle: { color: colors.muted, fontSize: 12'), 'Settings section descriptions are too small.');
 assert(settings.includes('dataLabel: { color: colors.subtle, fontSize: 10'), 'Settings data labels regressed below the readability floor.');
+assert(settings.includes('accessibilityState={{ expanded: open }}'), 'Settings groups should use progressive disclosure.');
+assert(settings.includes("onBack={() => router.back()}"), 'Settings should behave like a secondary screen.');
+assert(!settings.includes('<AppNav />'), 'Settings should not duplicate top-level navigation.');
 assert(taskForm.includes('variant="compact"'), 'Task form should use the compact form header.');
 assert(taskForm.includes("chipText: { color: colors.muted, fontSize: 12"), 'Task form chip labels are too small.');
 assert(commitmentForm.includes('variant="compact"'), 'Fixed-time form should use the compact form header.');

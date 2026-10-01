@@ -130,12 +130,25 @@ function main() {
   const authIntro = read('app/(auth)/index.tsx');
   const authAccess = read('app/(auth)/access.tsx');
   const authScaffold = read('src/components/auth/AuthScaffold.tsx');
-  assert.ok(authIntro.includes('Know what to study. Then do it.'));
-  assert.ok(authAccess.includes('YOUR STUDY SYSTEM'));
+  assert.ok(authIntro.includes('Know what to study next.'));
+  assert.equal(authIntro.includes('<Signal'), false);
+  assert.equal(authIntro.includes('<LoopStep'), false);
+  assert.ok(authAccess.includes('Continue to MYELIN'));
+  assert.equal(authAccess.includes('PersonalityStep'), false);
   assert.ok(authScaffold.includes('<AmbientBackdrop />'));
+  assert.equal(authScaffold.includes('<Reveal'), false);
 
   const onboarding = read('app/(onboarding)/index.tsx');
-  assert.ok(onboarding.includes('of 2'));
+  assert.ok(onboarding.includes('Set a realistic study day.'));
+  assert.equal(onboarding.includes('TopicStep'), false);
+  assert.equal(onboarding.includes('AnimatedProgress'), false);
+
+  const settingsScreen = read('app/(app)/settings/index.tsx');
+  assert.ok(settingsScreen.includes('accessibilityState={{ expanded: open }}'));
+  assert.equal(settingsScreen.includes('<AppNav />'), false);
+
+  assert.ok(nav.includes('if (active) return;'));
+  assert.equal(nav.includes('pressedMotion'), false);
 
   console.log('✓ shared semantic design tokens are established');
   console.log('✓ navigation exposes four real destinations plus a separate Add action');

@@ -1,7 +1,6 @@
 import { PropsWithChildren } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,7 +9,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { Reveal } from '@/src/components/motion/Reveal';
 import { colors, layout, spacing } from '@/src/theme/tokens';
 
 type Props = PropsWithChildren<{
@@ -26,36 +24,27 @@ export function AuthScaffold({ eyebrow, title, description, compact, children }:
       <AmbientBackdrop />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}>
           <View style={styles.content}>
-            <Reveal distance={8}>
-              <View style={styles.brandRow}>
-                <View style={styles.brandMark}>
-                  <View style={styles.brandCore} />
-                </View>
-                <Text style={styles.brand}>MYELIN</Text>
-                <Text style={styles.brandDescriptor}>STUDY SYSTEM</Text>
-              </View>
-            </Reveal>
+            <View style={styles.brandRow}>
+              <View style={styles.brandMark}><View style={styles.brandCore} /></View>
+              <Text style={styles.brand}>MYELIN</Text>
+            </View>
 
-            <Reveal delay={35} distance={8}>
-              <View style={styles.heading}>
-                {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-                <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-                {description ? <Text style={styles.description}>{description}</Text> : null}
-              </View>
-            </Reveal>
+            <View style={styles.heading}>
+              {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+              <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+              {description ? <Text style={styles.description}>{description}</Text> : null}
+            </View>
 
-            <Reveal delay={70} distance={7}>
-              <View style={styles.body}>{children}</View>
-            </Reveal>
+            <View style={styles.body}>{children}</View>
 
             <Text style={styles.footer}>
-              Your study data stays local unless you explicitly enable a sync feature.
+              Study data stays on this device unless you enable sync.
             </Text>
           </View>
         </ScrollView>
@@ -79,7 +68,7 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: 520,
     alignSelf: 'center',
   },
   brandRow: {
@@ -97,40 +86,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.accentFaint,
   },
-  brandCore: {
-    width: 6,
-    height: 6,
-    borderRadius: 6,
-    backgroundColor: colors.accent,
-  },
+  brandCore: { width: 6, height: 6, borderRadius: 6, backgroundColor: colors.accent },
   brand: {
     color: colors.text,
     fontWeight: '900',
-    letterSpacing: 2.3,
-    fontSize: 11,
-  },
-  brandDescriptor: {
-    color: colors.subtle,
-    fontWeight: '800',
-    letterSpacing: 1.3,
-    fontSize: 7.5,
-    marginLeft: 2,
+    letterSpacing: 2.2,
+    fontSize: 12,
+    lineHeight: 16,
   },
   heading: { marginBottom: spacing.xl },
   eyebrow: {
     color: colors.accent,
-    fontSize: 9,
-    lineHeight: 13,
-    fontWeight: '900',
-    letterSpacing: 1.45,
-    marginBottom: 9,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    letterSpacing: 0.65,
+    marginBottom: 8,
   },
   title: {
     color: colors.text,
-    fontSize: 35,
-    lineHeight: 40,
+    fontSize: 34,
+    lineHeight: 39,
     fontWeight: '600',
-    letterSpacing: -1.1,
+    letterSpacing: -1,
     maxWidth: layout.readingMax,
   },
   description: {
@@ -140,15 +118,11 @@ const styles = StyleSheet.create({
     marginTop: 9,
     maxWidth: layout.readingMax,
   },
-  body: {
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    paddingTop: spacing.lg,
-  },
+  body: {},
   footer: {
     color: colors.subtle,
     textAlign: 'center',
-    fontSize: 10.5,
+    fontSize: 11.5,
     lineHeight: 16,
     marginTop: spacing.xl,
     paddingHorizontal: spacing.md,

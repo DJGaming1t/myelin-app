@@ -1,9 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import Animated, {
+  FadeInRight,
+  FadeOutLeft,
+  LinearTransition,
+} from 'react-native-reanimated';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type TutorialStep = 0 | 1 | 2;
@@ -46,6 +52,7 @@ const STEPS = [
 
 export default function TutorialReplayScreen() {
   const [step, setStep] = useState<TutorialStep>(0);
+  const reduceMotion = useReducedMotion();
   const current = STEPS[step];
 
   function back() {
@@ -91,6 +98,11 @@ export default function TutorialReplayScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
+          <Animated.View
+            key={step}
+            entering={reduceMotion ? undefined : FadeInRight.duration(190)}
+            exiting={reduceMotion ? undefined : FadeOutLeft.duration(130)}
+            layout={reduceMotion ? undefined : LinearTransition.duration(180)}>
           <Text style={styles.eyebrow}>{current.eyebrow}</Text>
           <Text accessibilityRole="header" style={styles.title}>{current.title}</Text>
           <Text style={styles.lead}>{current.lead}</Text>
@@ -113,6 +125,8 @@ export default function TutorialReplayScreen() {
             <Text style={styles.tipMark}>i</Text>
             <Text style={styles.tipText}>{current.tip}</Text>
           </View>
+
+          </Animated.View>
 
           <View style={styles.actions}>
             <Pressable

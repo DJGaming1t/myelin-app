@@ -159,10 +159,15 @@ export default function DayMapScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.capacity}>
-            <Metric label="FREE WINDOWS" value={String(map.free.length)} />
-            <Metric label="USABLE" value={Math.round(map.availableMinutes / 60 * 10) / 10 + 'h'} />
-            <Metric label="PLANNED" value={String(map.plannedStudyMinutes) + 'm'} />
+          <View style={styles.daySummary}>
+            <Text style={styles.daySummaryText}>
+              {map.plannedStudyMinutes}m planned
+              {' · '}
+              {Math.round(map.availableMinutes / 60 * 10) / 10}h open
+            </Text>
+            <Text style={[styles.daySummaryMeta, map.overloadMinutes > 0 && styles.daySummaryWarning]}>
+              {map.overloadMinutes > 0 ? `${map.overloadMinutes}m over capacity` : `${map.free.length} free ${map.free.length === 1 ? 'window' : 'windows'}`}
+            </Text>
           </View>
 
           {map.overloadMinutes > 0 ? (
@@ -177,18 +182,6 @@ export default function DayMapScreen() {
               </View>
             </View>
           ) : null}
-
-          <View style={styles.freeStrip}>
-            <Text style={styles.sectionLabel}>FREE WINDOWS</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.freeRow}>
-              {map.free.length ? map.free.slice(0, 6).map((window) => (
-                <View key={String(window.start)} style={styles.freePill}>
-                  <Text style={styles.freeTime}>{timeLabel(window.start)}</Text>
-                  <Text style={styles.freeMinutes}>{window.minutes}m</Text>
-                </View>
-              )) : <Text style={styles.emptyText}>No open gap remains in the mapped day.</Text>}
-            </ScrollView>
-          </View>
 
           {proposal ? (
             <View style={styles.proposal}>
@@ -333,6 +326,30 @@ export default function DayMapScreen() {
             </View>
           )}
 
+          <View style={styles.freeStrip}>
+            <View style={styles.fitHeader}>
+              <Text style={styles.sectionLabel}>WHERE STUDY CAN FIT</Text>
+              <Text style={styles.fitHint}>Open windows around the fixed timeline</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.freeRow}>
+              {map.free.length ? (
+                map.free.slice(0, 6).map((window) => (
+                  <View key={String(window.start)} style={styles.freePill}>
+                    <Text style={styles.freeTime}>{timeLabel(window.start)}</Text>
+                    <Text style={styles.freeMinutes}>
+                      {timeLabel(window.end)} · {window.minutes}m free
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>No open gap remains in the mapped day.</Text>
+              )}
+            </ScrollView>
+          </View>
+
           {flexible.length ? (
             <View style={styles.flexible}>
               <Text style={styles.sectionLabel}>FLEXIBLE TODAY</Text>
@@ -379,15 +396,6 @@ export default function DayMapScreen() {
         </ScrollView>
       </View>
     </SafeAreaView>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-    </View>
   );
 }
 
@@ -456,20 +464,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: 64,
   },
-  capacity: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
-  metric: { flex: 1, minHeight: 68, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 11, justifyContent: 'space-between' },
-  metricLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
-  metricValue: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  daySummary: {
+    minHeight: 48,
+    marginTop: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  daySummaryText: { color: colors.textDim, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
+  daySummaryMeta: { color: colors.muted, fontSize: 10.5, lineHeight: 15 },
+  daySummaryWarning: { color: colors.accent, fontWeight: '700' },
   overload: { marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: colors.accentFaint, padding: spacing.md },
   overloadLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   overloadTitle: { color: colors.text, fontSize: 12, lineHeight: 18, fontWeight: '700', marginTop: 5 },
   overloadActions: { flexDirection: 'row', gap: 8, marginTop: 11 },
-  freeStrip: { marginTop: spacing.xl },
-  sectionLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.3 },
-  freeRow: { gap: 7, paddingTop: 8 },
-  freePill: { minHeight: 48, minWidth: 94, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 11, justifyContent: 'center' },
-  freeTime: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  freeMinutes: { color: colors.subtle, fontSize: 8.5, marginTop: 2 },
+  freeStrip: { marginTop: spacing.xl, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
+  fitHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  fitHint: { color: colors.subtle, fontSize: 9.5, lineHeight: 14 },
+  sectionLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.25 },
+  freeRow: { gap: 8, paddingTop: 10 },
+  freePill: {
+    minHeight: 52,
+    minWidth: 142,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: 'rgba(16,16,19,0.72)',
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  freeTime: { color: colors.text, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
+  freeMinutes: { color: colors.muted, fontSize: 9.5, lineHeight: 14, marginTop: 2 },
   proposal: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: colors.panel, padding: spacing.md },
   proposalText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5, marginBottom: 8 },
   proposalRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: colors.line },
@@ -477,23 +506,42 @@ const styles = StyleSheet.create({
   proposalTitle: { flex: 1, color: colors.text, fontSize: 10.5, fontWeight: '700' },
   proposalDuration: { color: colors.subtle, fontSize: 9 },
   proposalActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  timelineHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: 6 },
+  timelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    marginBottom: 10,
+  },
   nowLabel: { color: colors.accent, fontSize: 9, fontWeight: '700' },
-  timelineRow: { minHeight: 84, flexDirection: 'row', alignItems: 'stretch' },
-  timeCol: { width: 62, paddingTop: 11 },
-  timeMain: { color: colors.text, fontSize: 10, fontWeight: '700' },
-  timeEnd: { color: colors.subtle, fontSize: 8.5, marginTop: 4 },
-  rail: { width: 20, alignItems: 'center' },
+  timelineRow: { minHeight: 88, flexDirection: 'row', alignItems: 'stretch' },
+  timeCol: { width: 68, paddingTop: 10 },
+  timeMain: { color: colors.textDim, fontSize: 11, lineHeight: 15, fontWeight: '700' },
+  timeEnd: { color: colors.subtle, fontSize: 9, lineHeight: 13, marginTop: 3 },
+  rail: { width: 22, alignItems: 'center' },
   railLine: { flex: 1, width: 1, backgroundColor: colors.lineStrong },
-  railDotFixed: { width: 7, height: 7, borderRadius: 7, backgroundColor: colors.muted, marginTop: 15 },
-  railDotStudy: { width: 7, height: 7, borderRadius: 7, backgroundColor: colors.accent, marginTop: 15 },
-  block: { flex: 1, marginBottom: 8, borderRadius: radius.md, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: colors.accentFaint, padding: 11 },
-  fixedBlock: { borderColor: colors.line, backgroundColor: colors.panel },
+  railDotFixed: { width: 7, height: 7, borderRadius: 7, backgroundColor: colors.muted, marginTop: 14 },
+  railDotStudy: { width: 8, height: 8, borderRadius: 8, backgroundColor: colors.accent, marginTop: 14 },
+  block: {
+    flex: 1,
+    marginBottom: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+    backgroundColor: colors.accentFaint,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  fixedBlock: {
+    borderLeftColor: colors.lineStrong,
+    backgroundColor: 'rgba(16,16,19,0.56)',
+  },
   missedBlock: { borderStyle: 'dashed' },
   blockCopy: { minHeight: 48 },
   blockKicker: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1 },
-  blockTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 4 },
-  blockMeta: { color: colors.muted, fontSize: 9, marginTop: 4 },
+  blockTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: 4 },
+  blockMeta: { color: colors.muted, fontSize: 9.5, lineHeight: 14, marginTop: 4 },
   passed: { opacity: 0.42 },
   blockActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
   missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },

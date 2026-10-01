@@ -85,6 +85,9 @@ function main() {
     );
   }
 
+  const appLayout = read('app/(app)/_layout.tsx');
+  assert.ok(appLayout.includes('<Stack.Screen name="topics" options={{ animation: \'none\' }} />'));
+
   const topicsLayout = read('app/(app)/topics/_layout.tsx');
   assert.ok(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'));
 

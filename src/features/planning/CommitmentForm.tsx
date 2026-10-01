@@ -170,9 +170,10 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <ScreenHeader
+        variant="compact"
         eyebrow="DAY MAP"
         title={existing ? 'Edit fixed block' : 'Add fixed time'}
-        subtitle="Fixed blocks tell MYELIN when study time is not actually available."
+        subtitle="Block time that is genuinely unavailable for study."
         onBack={() => router.back()}
       />
 
@@ -298,7 +299,8 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 12.5,
+    lineHeight: 17,
     fontWeight: '700',
     marginTop: spacing.md,
     marginBottom: 8,
@@ -311,7 +313,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panel,
     color: colors.text,
     paddingHorizontal: 13,
-    fontSize: 13,
+    fontSize: 14,
   },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
@@ -323,7 +325,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chipText: { color: colors.muted, fontSize: 10, fontWeight: '700' },
+  chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   active: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
   activeText: { color: colors.accent },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -339,7 +341,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  to: { color: colors.subtle, fontSize: 10 },
+  to: { color: colors.muted, fontSize: 12, lineHeight: 16 },
   days: { flexDirection: 'row', gap: 6 },
   day: {
     flex: 1,
@@ -350,9 +352,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayText: { color: colors.muted, fontSize: 10.5, fontWeight: '800' },
-  helper: { color: colors.subtle, fontSize: 9.5, lineHeight: 14, marginTop: 7 },
-  error: { color: colors.danger, fontSize: 10, marginTop: spacing.md },
+  dayText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  helper: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 7 },
+  error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: spacing.md },
   primary: {
     minHeight: 56,
     marginTop: spacing.xl,
@@ -361,13 +363,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: { color: '#25140e', fontSize: 12, fontWeight: '900' },
+  primaryText: { color: '#25140e', fontSize: 14, lineHeight: 19, fontWeight: '900' },
   delete: {
     minHeight: layout.minTouch,
     marginTop: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
+  deleteText: { color: colors.danger, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   pressed: { opacity: 0.67 },
 });

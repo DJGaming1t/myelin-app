@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { TopicStatus } from '@/src/data/schema';
@@ -62,6 +63,7 @@ export default function TopicsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <View style={styles.screen}>
       <ScreenHeader
         eyebrow="STUDY LIBRARY"

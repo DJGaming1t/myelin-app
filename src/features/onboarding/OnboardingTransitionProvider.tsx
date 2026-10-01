@@ -213,12 +213,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         await sleep(260);
         setActive(false);
       } catch (error) {
-        if (active) {
-          overlayOpacity.set(
-            withTiming(0, { duration: 140, easing: EASE_OUT }),
-          );
-          await sleep(150);
-        }
+        overlayOpacity.set(0);
         setActive(false);
         throw error;
       } finally {
@@ -227,7 +222,6 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       }
     },
     [
-      active,
       coreScale,
       gather,
       lift,

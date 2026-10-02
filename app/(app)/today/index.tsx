@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -70,11 +70,21 @@ export default function TodayScreen() {
     [workspace, now],
   );
 
-  useEffect(() => {
-    if (status !== 'ready' || !workspace || !plan) return;
-    const frame = requestAnimationFrame(() => notifyTransitionReady());
-    return () => cancelAnimationFrame(frame);
-  }, [notifyTransitionReady, plan, status, workspace]);
+  useFocusEffect(
+    useCallback(() => {
+      if (status !== 'ready' || !workspace || !plan) return;
+
+      let secondFrame = 0;
+      const firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => notifyTransitionReady());
+      });
+
+      return () => {
+        cancelAnimationFrame(firstFrame);
+        if (secondFrame) cancelAnimationFrame(secondFrame);
+      };
+    }, [notifyTransitionReady, plan, status, workspace]),
+  );
 
   if (status === 'loading' || status === 'idle' || !workspace || !plan) {
     return (

@@ -10,6 +10,7 @@ export type TransitionRoutingState = {
   localMode: boolean;
   workspaceOwnerKey: string | null;
   workspaceStatus: 'idle' | 'loading' | 'ready' | 'error';
+  workspacePresent: boolean;
   onboardingReady: boolean;
   shouldShowOnboarding: boolean;
 };
@@ -39,7 +40,11 @@ export function resolveEntryTransitionDestination(
     return '/(app)/today';
   }
 
-  if (state.workspaceStatus !== 'ready' || !state.onboardingReady) {
+  if (
+    state.workspaceStatus !== 'ready' ||
+    !state.workspacePresent ||
+    !state.onboardingReady
+  ) {
     return null;
   }
 

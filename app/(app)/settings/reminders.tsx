@@ -16,10 +16,13 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
+  ReminderDetail,
+  ReminderKind,
   ReminderVoice,
   buildReminderPlan,
   formatTimeMinutes,
   normalizeReminderSettings,
+  sampleReminderCopy,
 } from '@/src/features/notifications/reminder-engine';
 import { useReminders } from '@/src/features/notifications/ReminderProvider';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -34,6 +37,37 @@ const EXAM_PRESETS = [
   { label: 'Morning', value: 7 * 60 + 30 },
   { label: 'After school', value: 16 * 60 + 45 },
   { label: 'Evening', value: 18 * 60 + 30 },
+];
+
+const DETAIL_LEVELS: Array<{
+  id: ReminderDetail;
+  name: string;
+  description: string;
+}> = [
+  {
+    id: 'brief',
+    name: 'Brief',
+    description: 'Fast glance. Just the useful fact and the first move.',
+  },
+  {
+    id: 'guided',
+    name: 'Guided',
+    description: 'Balanced copy with one clear next step.',
+  },
+  {
+    id: 'context',
+    name: 'Context',
+    description: 'Adds queue, plan or duration detail when it helps.',
+  },
+];
+
+const PREVIEW_KINDS: Array<{
+  id: ReminderKind;
+  label: string;
+}> = [
+  { id: 'review', label: 'Review' },
+  { id: 'exam', label: 'Exam' },
+  { id: 'study', label: 'Study' },
 ];
 
 const VOICES: Array<{
@@ -88,6 +122,7 @@ export default function RemindersScreen() {
   } = useReminders();
 
   const [busy, setBusy] = useState('');
+  const [previewKind, setPreviewKind] = useState<ReminderKind>('review');
 
   const previewPlan = useMemo(() => {
     if (!workspace) return [];
@@ -99,6 +134,8 @@ export default function RemindersScreen() {
   }, [settings, workspace]);
 
   const voice = VOICES.find((item) => item.id === settings.voice)!;
+  const detail = DETAIL_LEVELS.find((item) => item.id === settings.detail)!;
+  const previewItem = previewPlan.find((item) => item.kind === previewKind);
   const disabled = !ready || status === 'scheduling' || Boolean(busy);
 
   async function run(name: string, action: () => Promise<unknown>) {
@@ -140,8 +177,8 @@ export default function RemindersScreen() {
       <AmbientBackdrop />
       <ScreenHeader
         eyebrow="NUDGES, NOT PRESSURE"
-        title="Reminders"
-        subtitle="Make study notifications feel useful enough to open and calm enough to ignore when life is busy."
+        title="Reminder Studio"
+        subtitle="Shape what MYELIN says, how much it says, and when it is allowed to interrupt."
         onBack={() => router.back()}
       />
 
@@ -153,9 +190,13 @@ export default function RemindersScreen() {
             <Text style={styles.heroOrbText}>{voice.mark}</Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroEyebrow}>CURRENT PERSONALITY</Text>
-            <Text style={styles.heroTitle}>{voice.name}</Text>
-            <Text style={styles.heroText}>{voice.description}</Text>
+            <Text style={styles.heroEyebrow}>CURRENT STYLE</Text>
+            <Text style={styles.heroTitle}>
+              {voice.name} · {detail.name}
+            </Text>
+            <Text style={styles.heroText}>
+              {voice.description} {detail.description}
+            </Text>
           </View>
           <View style={[styles.statusPill, settings.enabled && styles.statusPillOn]}>
             <Text
@@ -170,33 +211,84 @@ export default function RemindersScreen() {
 
         <View style={styles.previewShell}>
           <View style={styles.previewHeader}>
-            <Text style={styles.sectionEyebrow}>LIVE PREVIEW</Text>
-            <Text style={styles.previewMeta}>
-              {previewPlan.length
-                ? `${plannedCount} currently useful`
-                : 'Preview copy'}
-            </Text>
+            <View>
+              <Text style={styles.sectionEyebrow}>LIVE PREVIEW</Text>
+              <Text style={styles.previewMeta}>
+                {previewPlan.length
+                  ? `${plannedCount} currently useful`
+                  : 'Uses sample study data'}
+              </Text>
+            </View>
+            <View style={styles.previewBadge}>
+              <Text style={styles.previewBadgeText}>
+                {voice.name.toUpperCase()} · {detail.name.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.previewTabs}>
+            {PREVIEW_KINDS.map((kind) => {
+              const active = previewKind === kind.id;
+              return (
+                <Pressable
+                  key={kind.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setPreviewKind(kind.id)}
+                  style={({ pressed }) => [
+                    styles.previewTab,
+                    active && styles.previewTabActive,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.previewTabText,
+                      active && styles.previewTabTextActive,
+                    ]}>
+                    {kind.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <NotificationPreview
-            voice={settings.voice}
-            item={previewPlan[0]}
-            fallbackKind="review"
+            settings={settings}
+            item={previewItem}
+            kind={previewKind}
           />
 
-          <View style={styles.stackOffset}>
-            <NotificationPreview
-              voice={settings.voice}
-              item={previewPlan[1]}
-              fallbackKind="exam"
-              dimmed
-            />
-          </View>
+          {settings.enabled && permission === 'granted' ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled}
+              onPress={() =>
+                void run('preview', () => sendPreview(previewKind))
+              }
+              style={({ pressed }) => [
+                styles.previewButton,
+                disabled && styles.disabled,
+                pressed && !disabled && styles.pressed,
+              ]}>
+              <View style={styles.previewButtonCopy}>
+                <Text style={styles.previewButtonTitle}>
+                  {busy === 'preview'
+                    ? 'Sending…'
+                    : `Send ${previewKind} preview`}
+                </Text>
+                <Text style={styles.previewButtonText}>
+                  Uses this exact personality, detail level and sound choice
+                </Text>
+              </View>
+              <Text style={styles.previewGlyph}>{voice.mark}</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <Section
-          title="Choose a personality"
-          subtitle="The information stays factual. Only the tone changes.">
+          title="Make it yours"
+          subtitle="Personality changes the tone. Detail changes how much context MYELIN includes.">
+          <Text style={styles.microLabel}>PERSONALITY</Text>
           <View style={styles.voiceGrid}>
             {VOICES.map((item) => {
               const active = settings.voice === item.id;
@@ -224,6 +316,38 @@ export default function RemindersScreen() {
                   </View>
                   <Text style={styles.voiceName}>{item.name}</Text>
                   <Text style={styles.voiceText}>{item.description}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.microLabel}>DETAIL</Text>
+          <View style={styles.detailGrid}>
+            {DETAIL_LEVELS.map((item) => {
+              const active = settings.detail === item.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  disabled={disabled}
+                  onPress={() => void updateSettings({ detail: item.id })}
+                  style={({ pressed }) => [
+                    styles.detailCard,
+                    active && styles.detailCardActive,
+                    pressed && !disabled && styles.pressed,
+                  ]}>
+                  <View style={styles.detailTop}>
+                    <Text
+                      style={[
+                        styles.detailName,
+                        active && styles.detailNameActive,
+                      ]}>
+                      {item.name}
+                    </Text>
+                    {active ? <Text style={styles.selected}>ACTIVE</Text> : null}
+                  </View>
+                  <Text style={styles.detailText}>{item.description}</Text>
                 </Pressable>
               );
             })}
@@ -355,14 +479,12 @@ export default function RemindersScreen() {
           subtitle="Quiet hours always win. A reminder landing inside this window is moved to the end of quiet hours.">
           <View style={styles.quietGrid}>
             <TimeStepper
-              compact
               label="Starts"
               value={settings.quietStartMinutes}
               disabled={disabled}
               onChange={(value) => void updateSettings({ quietStartMinutes: value })}
             />
             <TimeStepper
-              compact
               label="Ends"
               value={settings.quietEndMinutes}
               disabled={disabled}
@@ -409,27 +531,7 @@ export default function RemindersScreen() {
             </Pressable>
           ) : null}
 
-          {settings.enabled && permission === 'granted' ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={disabled}
-              onPress={() => void run('preview', sendPreview)}
-              style={({ pressed }) => [
-                styles.previewButton,
-                disabled && styles.disabled,
-                pressed && !disabled && styles.pressed,
-              ]}>
-              <View style={styles.previewButtonCopy}>
-                <Text style={styles.previewButtonTitle}>
-                  {busy === 'preview' ? 'Sending…' : 'Send live preview'}
-                </Text>
-                <Text style={styles.previewButtonText}>
-                  See this personality as a real notification now
-                </Text>
-              </View>
-              <Text style={styles.previewGlyph}>✦</Text>
-            </Pressable>
-          ) : null}
+
         </Section>
 
         {message ? (

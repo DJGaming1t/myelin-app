@@ -14,7 +14,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withSequence,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -39,12 +38,12 @@ const OnboardingTransitionContext =
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
-const CORAL_COVER_MS = 300;
-const DARK_COVER_DELAY_MS = 205;
-const DARK_COVER_MS = 255;
-const EYE_CLOSE_MS = 125;
-const POST_COMMIT_HOLD_MS = 145;
-const REVEAL_MS = 360;
+const CORAL_COVER_MS = 330;
+const DARK_DELAY_MS = 170;
+const DARK_COVER_MS = 310;
+const FULL_COVER_HOLD_MS = 110;
+const POST_COMMIT_HOLD_MS = 150;
+const REVEAL_MS = 390;
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => {
@@ -68,9 +67,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const coralOpacity = useSharedValue(0);
   const darkProgress = useSharedValue(0);
   const darkOpacity = useSharedValue(0);
-  const eyeOpacity = useSharedValue(0);
-  const eyeOpen = useSharedValue(0.08);
-  const coreScale = useSharedValue(0.92);
+  const rimProgress = useSharedValue(0);
   const sceneOpacity = useSharedValue(1);
   const fade = useSharedValue(0);
 
@@ -79,20 +76,16 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     coralOpacity.set(0);
     darkProgress.set(0);
     darkOpacity.set(0);
-    eyeOpacity.set(0);
-    eyeOpen.set(0.08);
-    coreScale.set(0.92);
+    rimProgress.set(0);
     sceneOpacity.set(1);
     fade.set(0);
   }, [
     coralOpacity,
     coralProgress,
-    coreScale,
     darkOpacity,
     darkProgress,
-    eyeOpen,
-    eyeOpacity,
     fade,
+    rimProgress,
     sceneOpacity,
   ]);
 
@@ -113,113 +106,87 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      // 1. The outgoing screen stays still. A coral signal rises from below
-      //    and expands until it owns the whole frame.
+      // 1. A coral field rises from below and expands across the old screen.
       coralOpacity.set(1);
       coralProgress.set(
         withTiming(1, { duration: CORAL_COVER_MS, easing: EASE_IN_OUT }),
       );
 
-      // 2. Before coral has completely settled, the darker MYELIN field grows
-      //    through it. This creates a continuous morph rather than a cut.
+      // 2. A darker field follows from a different origin, carving a moving
+      //    coral crescent instead of introducing a separate logo/eye object.
       darkOpacity.set(
         withDelay(
-          DARK_COVER_DELAY_MS,
-          withTiming(1, { duration: 70, easing: EASE_OUT }),
+          DARK_DELAY_MS,
+          withTiming(1, { duration: 90, easing: EASE_OUT }),
         ),
       );
       darkProgress.set(
         withDelay(
-          DARK_COVER_DELAY_MS,
+          DARK_DELAY_MS,
           withTiming(1, { duration: DARK_COVER_MS, easing: EASE_IN_OUT }),
         ),
       );
 
-      // 3. The central aperture forms only once the transition already owns
-      //    most of the screen.
-      eyeOpacity.set(
-        withDelay(350, withTiming(1, { duration: 110, easing: EASE_OUT })),
-      );
-      eyeOpen.set(
-        withDelay(345, withTiming(1, { duration: 175, easing: EASE_OUT })),
-      );
-      coreScale.set(
+      // 3. A thin signal rim arrives after both surfaces are already moving.
+      //    It gives the morph depth without becoming a standalone focal icon.
+      rimProgress.set(
         withDelay(
-          355,
-          withSequence(
-            withTiming(1.07, { duration: 115, easing: EASE_OUT }),
-            withTiming(1, { duration: 75, easing: EASE_IN_OUT }),
-          ),
+          DARK_DELAY_MS + 60,
+          withTiming(1, { duration: 220, easing: EASE_OUT }),
         ),
       );
 
-      // Dark has fully replaced coral at this point.
-      await sleep(DARK_COVER_DELAY_MS + DARK_COVER_MS + 70);
-      coralOpacity.set(
-        withTiming(0, { duration: 100, easing: EASE_OUT }),
-      );
-
-      // 4. Close the aperture down to a line. The route change happens while
-      //    the screen is visually sealed — not while the destination is visible.
-      eyeOpen.set(
-        withTiming(0.08, { duration: EYE_CLOSE_MS, easing: EASE_IN_OUT }),
-      );
-      coreScale.set(
-        withTiming(0.78, { duration: EYE_CLOSE_MS, easing: EASE_IN_OUT }),
-      );
-      await sleep(EYE_CLOSE_MS + 35);
+      // The transition owns the full frame before navigation changes.
+      await sleep(DARK_DELAY_MS + DARK_COVER_MS + FULL_COVER_HOLD_MS);
 
       sceneOpacity.set(0);
-      await sleep(35);
+      await sleep(30);
       await commit();
       await nextFrame();
 
-      // 5. The destination gets time to mount and settle while still invisible.
+      // Let the destination settle entirely underneath the opaque fields.
       await sleep(POST_COMMIT_HOLD_MS);
       sceneOpacity.set(1);
 
-      // 6. Re-open the aperture first, then shrink the dark field away. The
-      //    destination is revealed from the outside inward, like the reference.
-      eyeOpen.set(
-        withTiming(1, { duration: 165, easing: EASE_OUT }),
-      );
-      coreScale.set(
-        withSequence(
-          withTiming(1.06, { duration: 125, easing: EASE_OUT }),
-          withTiming(1, { duration: 75, easing: EASE_IN_OUT }),
-        ),
-      );
-
-      await sleep(105);
-
+      // 4. Reveal by reversing the same layered surfaces in staggered timing.
+      //    The dark field peels away first, leaving a short coral after-image,
+      //    then coral follows. This is the actual screen reveal.
       darkProgress.set(
         withTiming(2, { duration: REVEAL_MS, easing: EASE_OUT }),
       );
-      eyeOpacity.set(
-        withDelay(
-          REVEAL_MS - 95,
-          withTiming(0, { duration: 105, easing: EASE_OUT }),
-        ),
+      rimProgress.set(
+        withTiming(2, { duration: 230, easing: EASE_OUT }),
       );
-      darkOpacity.set(
+      coralProgress.set(
         withDelay(
-          REVEAL_MS - 65,
-          withTiming(0, { duration: 85, easing: EASE_OUT }),
+          90,
+          withTiming(2, { duration: REVEAL_MS, easing: EASE_OUT }),
         ),
       );
 
-      await sleep(REVEAL_MS + 30);
+      darkOpacity.set(
+        withDelay(
+          REVEAL_MS - 80,
+          withTiming(0, { duration: 100, easing: EASE_OUT }),
+        ),
+      );
+      coralOpacity.set(
+        withDelay(
+          REVEAL_MS + 15,
+          withTiming(0, { duration: 110, easing: EASE_OUT }),
+        ),
+      );
+
+      await sleep(REVEAL_MS + 130);
     },
     [
       coralOpacity,
       coralProgress,
-      coreScale,
       darkOpacity,
       darkProgress,
-      eyeOpen,
-      eyeOpacity,
       fade,
       reduceMotion,
+      rimProgress,
       sceneOpacity,
     ],
   );
@@ -255,8 +222,8 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       resetVisualState();
 
       try {
-        // Keep native authentication completely separate from the visible
-        // transition. The animation starts only after the account picker returns.
+        // Native authentication finishes first. The visible transition begins
+        // only after control has returned from the account picker.
         await task();
 
         setActive(true);
@@ -296,9 +263,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
             coralOpacity={coralOpacity}
             darkProgress={darkProgress}
             darkOpacity={darkOpacity}
-            eyeOpacity={eyeOpacity}
-            eyeOpen={eyeOpen}
-            coreScale={coreScale}
+            rimProgress={rimProgress}
             fade={fade}
             reduceMotion={reduceMotion}
           />
@@ -313,9 +278,7 @@ function TransitionOverlay({
   coralOpacity,
   darkProgress,
   darkOpacity,
-  eyeOpacity,
-  eyeOpen,
-  coreScale,
+  rimProgress,
   fade,
   reduceMotion,
 }: {
@@ -323,34 +286,43 @@ function TransitionOverlay({
   coralOpacity: SharedValue<number>;
   darkProgress: SharedValue<number>;
   darkOpacity: SharedValue<number>;
-  eyeOpacity: SharedValue<number>;
-  eyeOpen: SharedValue<number>;
-  coreScale: SharedValue<number>;
+  rimProgress: SharedValue<number>;
   fade: SharedValue<number>;
   reduceMotion: boolean;
 }) {
   const { width, height } = useWindowDimensions();
-  const fullCoverScale = Math.max(width, height) * 1.75 / 280;
+  const fullCoverScale = (Math.max(width, height) * 1.9) / 320;
 
-  const coralStyle = useAnimatedStyle(() => ({
-    opacity: coralOpacity.get(),
-    transform: [
-      {
-        translateY: interpolate(
-          coralProgress.get(),
-          [0, 1],
-          [height * 0.62, 0],
-        ),
-      },
-      {
-        scale: interpolate(
-          coralProgress.get(),
-          [0, 1],
-          [0.72, fullCoverScale],
-        ),
-      },
-    ],
-  }));
+  const coralStyle = useAnimatedStyle(() => {
+    const progress = coralProgress.get();
+
+    return {
+      opacity: coralOpacity.get(),
+      transform: [
+        {
+          translateX: interpolate(
+            progress,
+            [0, 1, 2],
+            [-width * 0.1, 0, width * 0.08],
+          ),
+        },
+        {
+          translateY: interpolate(
+            progress,
+            [0, 1, 2],
+            [height * 0.62, 0, height * 0.58],
+          ),
+        },
+        {
+          scale: interpolate(
+            progress,
+            [0, 1, 2],
+            [0.74, fullCoverScale, 0.84],
+          ),
+        },
+      ],
+    };
+  });
 
   const darkStyle = useAnimatedStyle(() => {
     const progress = darkProgress.get();
@@ -359,48 +331,90 @@ function TransitionOverlay({
       opacity: darkOpacity.get(),
       transform: [
         {
-          translateY: interpolate(
+          translateX: interpolate(
             progress,
             [0, 1, 2],
-            [height * 0.48, 0, 0],
+            [width * 0.2, 0, width * 0.2],
           ),
         },
         {
-          scale: interpolate(
+          translateY: interpolate(
             progress,
             [0, 1, 2],
-            [0.68, fullCoverScale, 0.72],
+            [height * 0.48, 0, -height * 0.42],
+          ),
+        },
+        {
+          scaleX: interpolate(
+            progress,
+            [0, 1, 2],
+            [0.68, fullCoverScale * 1.03, 0.78],
+          ),
+        },
+        {
+          scaleY: interpolate(
+            progress,
+            [0, 1, 2],
+            [0.74, fullCoverScale, 0.72],
           ),
         },
       ],
     };
   });
 
-  const eyeStyle = useAnimatedStyle(() => ({
-    opacity: eyeOpacity.get(),
-    transform: [
-      {
-        scaleY: interpolate(
-          eyeOpen.get(),
-          [0.08, 1],
-          [0.08, 1],
-        ),
-      },
-    ],
-  }));
+  const rimStyle = useAnimatedStyle(() => {
+    const progress = rimProgress.get();
 
-  const traceStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(eyeOpen.get(), [0.08, 1], [0.12, 0.7]),
-    transform: [
-      {
-        scaleX: interpolate(eyeOpen.get(), [0.08, 1], [0.25, 1]),
-      },
-    ],
-  }));
+    return {
+      opacity: interpolate(progress, [0, 1, 2], [0, 0.42, 0]),
+      transform: [
+        {
+          translateX: interpolate(
+            progress,
+            [0, 1, 2],
+            [width * 0.15, 0, -width * 0.08],
+          ),
+        },
+        {
+          translateY: interpolate(
+            progress,
+            [0, 1, 2],
+            [height * 0.16, 0, -height * 0.18],
+          ),
+        },
+        {
+          scale: interpolate(progress, [0, 1, 2], [0.72, 1.08, 1.28]),
+        },
+      ],
+    };
+  });
 
-  const coreStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: coreScale.get() }],
-  }));
+  const rimEchoStyle = useAnimatedStyle(() => {
+    const progress = rimProgress.get();
+
+    return {
+      opacity: interpolate(progress, [0, 1, 2], [0, 0.16, 0]),
+      transform: [
+        {
+          translateX: interpolate(
+            progress,
+            [0, 1, 2],
+            [-width * 0.08, 0, width * 0.1],
+          ),
+        },
+        {
+          translateY: interpolate(
+            progress,
+            [0, 1, 2],
+            [height * 0.2, 0, height * 0.12],
+          ),
+        },
+        {
+          scale: interpolate(progress, [0, 1, 2], [0.66, 1.2, 1.34]),
+        },
+      ],
+    };
+  });
 
   const fadeStyle = useAnimatedStyle(() => ({
     opacity: fade.get(),
@@ -419,19 +433,11 @@ function TransitionOverlay({
           <Animated.View style={[styles.disc, styles.coralDisc, coralStyle]} />
           <Animated.View style={[styles.disc, styles.darkDisc, darkStyle]} />
 
-          <Animated.View style={[styles.eyeStage, eyeStyle]}>
-            <Animated.View style={[styles.eye, styles.eyeShell]}>
-              <Animated.View
-                style={[styles.trace, styles.traceLeft, traceStyle]}
-              />
-              <Animated.View
-                style={[styles.trace, styles.traceRight, traceStyle]}
-              />
-
-              <Animated.View style={[styles.core, coreStyle]}>
-                <View style={styles.coreInner} />
-              </Animated.View>
-            </Animated.View>
+          <Animated.View style={[styles.rimStage, rimStyle]}>
+            <View style={styles.rim} />
+          </Animated.View>
+          <Animated.View style={[styles.rimStage, rimEchoStyle]}>
+            <View style={styles.rimEcho} />
           </Animated.View>
         </>
       ) : null}
@@ -478,13 +484,13 @@ const styles = StyleSheet.create({
   },
   disc: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
     left: '50%',
     top: '50%',
-    marginLeft: -140,
-    marginTop: -140,
+    marginLeft: -160,
+    marginTop: -160,
   },
   coralDisc: {
     backgroundColor: colors.accent,
@@ -492,56 +498,29 @@ const styles = StyleSheet.create({
   darkDisc: {
     backgroundColor: colors.bgRaised,
   },
-  eyeStage: {
+  rimStage: {
     position: 'absolute',
+    width: 280,
+    height: 280,
     left: '50%',
     top: '50%',
-    width: 230,
-    height: 100,
-    marginLeft: -115,
-    marginTop: -50,
+    marginLeft: -140,
+    marginTop: -140,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  eye: {
-    width: 218,
-    height: 86,
-    borderRadius: 43,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+  rim: {
+    width: 242,
+    height: 242,
+    borderRadius: 121,
+    borderWidth: 2,
+    borderColor: colors.accentBright,
   },
-  eyeShell: {
+  rimEcho: {
+    width: 272,
+    height: 272,
+    borderRadius: 136,
     borderWidth: 1,
     borderColor: colors.accentLine,
-    backgroundColor: colors.panelRaised,
-  },
-  trace: {
-    position: 'absolute',
-    width: 70,
-    height: 1,
-    backgroundColor: colors.accentLine,
-  },
-  traceLeft: {
-    left: 18,
-  },
-  traceRight: {
-    right: 18,
-  },
-  core: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coreInner: {
-    width: 17,
-    height: 17,
-    borderRadius: 9,
-    backgroundColor: colors.accent,
   },
 });

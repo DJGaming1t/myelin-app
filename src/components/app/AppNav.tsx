@@ -1,5 +1,5 @@
 import { router, usePathname } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
@@ -59,7 +59,7 @@ function NavItem({
   active: boolean;
 }) {
   return (
-    <SpringPressable
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={item.label}
       accessibilityHint={active ? 'Current section' : `Open ${item.label}`}
@@ -68,14 +68,15 @@ function NavItem({
         if (active) return;
         router.replace(item.path);
       }}
-      scaleTo={active ? 1 : 0.965}
-      lift={0}
-      style={styles.item}>
+      style={({ pressed }) => [
+        styles.item,
+        pressed && !active && styles.pressed,
+      ]}>
       <View style={styles.iconBox}>
         <AppIcon name={item.icon} size={20} color={active ? colors.accent : colors.subtle} />
       </View>
       <Text accessible={false} style={[styles.label, active && styles.activeText]}>{item.label}</Text>
-    </SpringPressable>
+    </Pressable>
   );
 }
 
@@ -149,4 +150,5 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: '600',
   },
+  pressed: { opacity: 0.62 },
 });

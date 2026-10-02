@@ -2,7 +2,7 @@
   "expo": {
     "name": "MYELIN",
     "slug": "myelin",
-    "version": "0.2.4",
+    "version": "0.2.5",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "myelin",
@@ -15,7 +15,11 @@
       ],
       "versionCode": 4,
       "backgroundColor": "#070707",
-      "icon": "./assets/icon.png"
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#070707"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.djgaming1t.myelin",

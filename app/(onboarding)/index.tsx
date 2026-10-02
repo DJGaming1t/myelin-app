@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -41,10 +40,10 @@ export default function OnboardingScreen() {
     setError('');
 
     try {
-      await runTransition(async () => {
-        await finish('skipped');
-        router.replace('/(app)/today');
-      });
+      await runTransition(
+        () => finish('skipped'),
+        '/(app)/today',
+      );
     } catch {
       setError('Could not save this choice. Try again.');
       setFinishing(false);
@@ -69,10 +68,10 @@ export default function OnboardingScreen() {
 
     try {
       await waitForSaves();
-      await runTransition(async () => {
-        await finish('completed');
-        router.replace('/(app)/today');
-      });
+      await runTransition(
+        () => finish('completed'),
+        '/(app)/today',
+      );
     } catch {
       setError('Setup could not be finished on this device.');
       setFinishing(false);

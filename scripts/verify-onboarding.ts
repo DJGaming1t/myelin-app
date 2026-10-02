@@ -176,6 +176,17 @@ function main() {
   assert.ok(transitionSource.includes('setActive(true)'));
   assert.ok(transitionSource.includes('await commit()'));
   assert.ok(transitionSource.includes('accessibilityLabel="Opening MYELIN"'));
+  assert.ok(transitionSource.includes('sceneScale'));
+  assert.ok(transitionSource.includes('shutter.set(withTiming(1'));
+  assert.ok(transitionSource.includes('shutter.set(withTiming(2'));
+  assert.ok(transitionSource.includes('styles.topPanel'));
+  assert.ok(transitionSource.includes('styles.bottomPanel'));
+  assert.ok(transitionSource.includes('FOCUS, CONTINUED'));
+  assert.ok(
+    transitionSource.indexOf('await sleep(265)') <
+      transitionSource.indexOf('await commit()'),
+    'The route should commit only after the outgoing screen is fully covered.',
+  );
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);
   assert.equal(screenSource.includes('Create topic & enter MYELIN'), false);

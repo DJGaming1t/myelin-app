@@ -12,6 +12,8 @@ import {
   defaultReminderSettings,
   examReminderCopy,
   formatTimeMinutes,
+  sampleReminderCopy,
+  studyReminderCopy,
   isInQuietHours,
   moveOutOfQuietHours,
   normalizeReminderSettings,
@@ -69,6 +71,7 @@ function main() {
   assert.equal(defaults.sound, false);
   assert.equal(defaults.studyBlockEnabled, true);
   assert.equal(defaults.studyLeadMinutes, 10);
+  assert.equal(defaults.detail, 'guided');
   assert.equal(REVIEW_HORIZON_DAYS, 7);
 
   const settings = {
@@ -290,24 +293,52 @@ function main() {
 
   const forbidden = /streak|falling behind|behind|urgent|failure|guilt|lose your|missed your/i;
   for (const voice of ['calm', 'signal', 'spark'] as const) {
-    const reviewCopy = reviewReminderCopy(
-      { voice },
-      {
-        count: 3,
-        firstTopic: 'Refraction',
-        topicCount: 2,
-        hasMistake: true,
-      },
-    );
-    const examCopy = examReminderCopy(
-      { voice },
-      'Mathematics test',
-      3,
-    );
+    for (const detail of ['brief', 'guided', 'context'] as const) {
+      const reviewCopy = reviewReminderCopy(
+        { voice, detail },
+        {
+          count: 3,
+          firstTopic: 'Refraction',
+          topicCount: 2,
+          hasMistake: true,
+        },
+      );
+      const examCopy = examReminderCopy(
+        { voice, detail },
+        'Mathematics test',
+        3,
+      );
+      const studyCopy = studyReminderCopy(
+        { voice, detail },
+        'Finish Exercise 5.2',
+        'Mathematics',
+        35,
+      );
 
-    assert.equal(forbidden.test(`${reviewCopy.title} ${reviewCopy.body}`), false);
-    assert.equal(forbidden.test(`${examCopy.title} ${examCopy.body}`), false);
+      assert.equal(
+        forbidden.test(
+          `${reviewCopy.title} ${reviewCopy.body} ${examCopy.title} ${examCopy.body} ${studyCopy.title} ${studyCopy.body}`,
+        ),
+        false,
+      );
+    }
   }
+
+  const calmBrief = sampleReminderCopy(
+    { voice: 'calm', detail: 'brief' },
+    'review',
+  );
+  const signalContext = sampleReminderCopy(
+    { voice: 'signal', detail: 'context' },
+    'review',
+  );
+  const sparkStudy = sampleReminderCopy(
+    { voice: 'spark', detail: 'guided' },
+    'study',
+  );
+  assert.notDeepEqual(calmBrief, signalContext);
+  assert.ok(sparkStudy.title.includes('✦'));
+  assert.ok(signalContext.body.includes('Open Review'));
 
   const invalid = normalizeReminderSettings({
     reviewTimeMinutes: 99999,
@@ -317,6 +348,7 @@ function main() {
     examOffsets: [7, 7, 0, 31, 3],
     studyLeadMinutes: 999,
     voice: 'spark',
+    detail: 'invalid' as never,
   });
   assert.equal(invalid.reviewTimeMinutes, 1439);
   assert.equal(invalid.examTimeMinutes, 0);
@@ -325,6 +357,7 @@ function main() {
   assert.deepEqual(invalid.examOffsets, [7, 3]);
   assert.equal(invalid.studyLeadMinutes, 60);
   assert.equal(invalid.voice, 'spark');
+  assert.equal(invalid.detail, 'guided');
 
   const firstSignature = reminderPlanSignature(duePlan);
   const secondSignature = reminderPlanSignature(
@@ -351,6 +384,9 @@ function main() {
   );
   assert.equal(runtimeSource.includes('getExpoPushTokenAsync'), false);
   assert.equal(runtimeSource.includes('getDevicePushTokenAsync'), false);
+  assert.ok(runtimeSource.includes('sampleReminderCopy(settings, kind)'));
+  assert.ok(runtimeSource.includes('reminderSubtitle(settings, item.kind)'));
+  assert.ok(runtimeSource.includes('reminderColor(settings)'));
 
   console.log('✓ reminders default off and silent');
   const reminderEngineSource = fs.readFileSync(
@@ -374,7 +410,8 @@ function main() {
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');
-  console.log('✓ Calm, Signal and Spark copy avoid guilt/streak/urgency language');
+  console.log('✓ all personality/detail combinations avoid guilt/streak/urgency language');
+  console.log('✓ Review, Exam and Study previews share the production copy engine');
   console.log('✓ reminder settings are normalized and plan signatures detect copy changes');
 }
 
@@ -388,4 +425,20 @@ const notificationRuntimeSource = fs.readFileSync(
 assert.ok(
   notificationRuntimeSource.includes('clearLastNotificationResponseAsync'),
   'Handled notification taps should be consumed so they are not replayed on later launches.',
+);
+
+const reminderStudioSource = fs.readFileSync(
+  path.join(process.cwd(), 'app/(app)/settings/reminders.tsx'),
+  'utf8',
+);
+assert.ok(reminderStudioSource.includes('title="Reminder Studio"'));
+assert.ok(reminderStudioSource.includes('PREVIEW_KINDS'));
+assert.ok(reminderStudioSource.includes('DETAIL_LEVELS'));
+assert.ok(reminderStudioSource.includes('settings.detail'));
+assert.ok(reminderStudioSource.includes('sendPreview(previewKind)'));
+assert.ok(reminderStudioSource.includes('sampleReminderCopy(settings, kind)'));
+assert.equal(reminderStudioSource.includes('notificationDim'), true);
+assert.ok(
+  reminderStudioSource.includes("quietGrid: { gap: 1 }"),
+  'Quiet-hour controls should stack instead of squeezing two time steppers side-by-side.',
 );

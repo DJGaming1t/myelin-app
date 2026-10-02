@@ -26,11 +26,16 @@ assert(eas.build?.development?.developmentClient === true, 'Development client p
 assert(eas.build?.development?.distribution === 'internal', 'Development build is not internal.');
 assert(eas.build?.preview?.distribution === 'internal', 'Preview build is not internal distribution.');
 assert(eas.build?.preview?.android?.buildType === 'apk', 'Android preview does not explicitly build an APK.');
-assert(eas.build?.preview?.channel === 'preview', 'Preview channel is missing.');\nassert(eas.build?.preview?.autoIncrement === true, 'Preview APK versions should auto-increment so new builds install over older previews.');
+assert(eas.build?.preview?.channel === 'preview', 'Preview channel is missing.');
+assert(eas.build?.preview?.autoIncrement === true, 'Preview APK versions should auto-increment so new builds install over older previews.');
 assert(eas.build?.production?.channel === 'production', 'Production channel is missing.');
 assert(eas.build?.production?.autoIncrement === true, 'Production build numbers are not auto-incremented.');
 assert(eas.cli?.appVersionSource === 'remote', 'EAS version source should be remote.');
-assert(app.expo?.runtimeVersion?.policy === 'appVersion', 'Runtime version policy must protect native compatibility.');\nassert(app.expo?.icon === './assets/icon.png', 'MYELIN launcher icon must point to assets/icon.png.');\nassert(app.expo?.android?.icon === './assets/icon.png', 'Android launcher icon must use the MYELIN icon asset.');\nassert(app.expo?.web?.favicon === './assets/icon.png', 'Web favicon must use the MYELIN icon asset.');\nassert(fs.existsSync(path.join(process.cwd(), 'assets/icon.png')), 'Configured MYELIN icon asset is missing.');
+assert(app.expo?.runtimeVersion?.policy === 'appVersion', 'Runtime version policy must protect native compatibility.');
+assert(app.expo?.icon === './assets/icon.png', 'MYELIN launcher icon must point to assets/icon.png.');
+assert(app.expo?.android?.icon === './assets/icon.png', 'Android launcher icon must use the MYELIN icon asset.');
+assert(app.expo?.web?.favicon === './assets/icon.png', 'Web favicon must use the MYELIN icon asset.');
+assert(fs.existsSync(path.join(process.cwd(), 'assets/icon.png')), 'Configured MYELIN icon asset is missing.');
 assert(app.expo?.android?.package === 'com.djgaming1t.myelin', 'Android application ID changed unexpectedly.');
 assert(pkg.dependencies?.['expo-updates'], 'expo-updates is not installed.');
 assert(rootLayout.includes('<StartupUpdateGate>'), 'Root layout must run the compatible OTA refresh gate.');

@@ -63,12 +63,12 @@ export default function AppLayout() {
     <Stack
       screenOptions={({ route }) => ({
         headerShown: false,
-        // The four bottom-nav destinations are peers. They must never inherit
-        // a positional stack transition, including during router.replace().
-        // Deeper routes keep the hierarchy cue.
-        animation:
-          reduceMotion || PEER_ROUTE_NAMES.has(route.name)
-            ? 'none'
+        // Bottom-nav destinations are peers, so crossfade them instead of
+        // implying hierarchy with a slide. Deeper routes keep the hierarchy cue.
+        animation: reduceMotion
+          ? 'none'
+          : PEER_ROUTE_NAMES.has(route.name)
+            ? 'fade'
             : 'fade_from_bottom',
       })}>
       <Stack.Screen name="today/index" />

@@ -40,7 +40,6 @@ const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
 const COVER_MS = 380;
 const REVEAL_MS = 360;
-const DESTINATION_READY_TIMEOUT_MS = 2500;
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => {
@@ -70,18 +69,10 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 
   const armDestinationReady = useCallback(() => {
     return new Promise<void>((resolve) => {
-      let settled = false;
-
-      const settle = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
+      destinationReadyResolver.current = () => {
         destinationReadyResolver.current = null;
         resolve();
       };
-
-      const timeout = setTimeout(settle, DESTINATION_READY_TIMEOUT_MS);
-      destinationReadyResolver.current = settle;
     });
   }, []);
 
@@ -113,10 +104,9 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       await commit();
       await destinationReady;
 
-      // Let the mounted target paint before any part of it is revealed.
+      // The destination signals only after it is focused and painted.
+      // One final frame here keeps the first revealed pixels on the target.
       await nextFrame();
-      await nextFrame();
-      await sleep(45);
 
       if (reduceMotion) {
         fadeOpacity.set(withTiming(0, { duration: 190, easing: EASE_OUT }));

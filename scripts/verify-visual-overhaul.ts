@@ -170,19 +170,18 @@ assert.ok(authIntro.includes('StudyPathVisual'));
   assert.ok(onboardingShell.includes('signal.value'));
 
   const onboardingTransition = read('src/features/onboarding/OnboardingTransitionProvider.tsx');
-  assert.ok(onboardingTransition.includes('sceneScale'));
-  assert.ok(onboardingTransition.includes('coverDisc'));
-  assert.ok(onboardingTransition.includes('coverProgress'));
-  assert.ok(onboardingTransition.includes('lensStage'));
-  assert.ok(onboardingTransition.includes('aperture'));
-  assert.ok(onboardingTransition.includes('lensTravel'));
-  assert.ok(onboardingTransition.includes('landingY'));
-  assert.ok(onboardingTransition.includes('haloProgress'));
-  assert.ok(onboardingTransition.includes('haloOuter'));
+  assert.ok(onboardingTransition.includes('coralProgress'));
+  assert.ok(onboardingTransition.includes('darkProgress'));
+  assert.ok(onboardingTransition.includes('coralDisc'));
+  assert.ok(onboardingTransition.includes('darkDisc'));
+  assert.ok(onboardingTransition.includes('eyeStage'));
+  assert.ok(onboardingTransition.includes('eyeOpen'));
   assert.ok(onboardingTransition.includes('POST_COMMIT_HOLD_MS'));
-  assert.ok(onboardingTransition.includes('withDelay(125, withTiming(1'));
   assert.ok(onboardingTransition.includes('useWindowDimensions'));
   assert.ok(onboardingTransition.includes('useReducedMotion'));
+  assert.equal(onboardingTransition.includes('sceneScale'), false);
+  assert.equal(onboardingTransition.includes('haloProgress'), false);
+  assert.equal(onboardingTransition.includes('lensTravel'), false);
   assert.equal(onboardingTransition.includes('wordmark'), false);
 
   const onboarding = read('app/(onboarding)/index.tsx');

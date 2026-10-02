@@ -39,6 +39,11 @@ const OnboardingTransitionContext =
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
+const COVER_MS = 320;
+const PRE_COMMIT_HOLD_MS = 120;
+const POST_COMMIT_HOLD_MS = 170;
+const REVEAL_MS = 360;
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
@@ -65,6 +70,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const lensScale = useSharedValue(1);
   const lensTravel = useSharedValue(0);
   const coreScale = useSharedValue(0.92);
+  const haloProgress = useSharedValue(0);
   const sceneScale = useSharedValue(1);
   const sceneOpacity = useSharedValue(1);
   const fade = useSharedValue(0);
@@ -78,6 +84,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     lensScale.set(1);
     lensTravel.set(0);
     coreScale.set(0.92);
+    haloProgress.set(0);
     sceneScale.set(1);
     sceneOpacity.set(1);
     fade.set(0);
@@ -91,6 +98,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     lensOpacity,
     lensScale,
     lensTravel,
+    haloProgress,
     sceneOpacity,
     sceneScale,
   ]);
@@ -98,68 +106,94 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const playHandoff = useCallback(
     async (commit: TransitionTask) => {
       if (reduceMotion) {
-        fade.set(withTiming(1, { duration: 130, easing: EASE_OUT }));
-        await sleep(140);
+        fade.set(withTiming(1, { duration: 150, easing: EASE_OUT }));
+        await sleep(165);
+        sceneOpacity.set(0);
         await commit();
-        await sleep(45);
-        fade.set(withTiming(0, { duration: 170, easing: EASE_OUT }));
-        await sleep(180);
+        await nextFrame();
+        await sleep(120);
+        sceneOpacity.set(1);
+        fade.set(withTiming(0, { duration: 190, easing: EASE_OUT }));
+        await sleep(200);
         return;
       }
 
-      // The outgoing screen yields while one signal object grows to own the frame.
-      sceneScale.set(withTiming(0.986, { duration: 170, easing: EASE_OUT }));
-      sceneOpacity.set(withTiming(0.8, { duration: 170, easing: EASE_OUT }));
+      // Phase 1 — departure. The outgoing screen yields while the signal grows
+      // from the lower part of the interface until it fully owns the frame.
+      sceneScale.set(withTiming(0.98, { duration: 210, easing: EASE_OUT }));
+      sceneOpacity.set(withTiming(0.72, { duration: 210, easing: EASE_OUT }));
       coverOpacity.set(1);
       coverProgress.set(
-        withTiming(1, { duration: 230, easing: EASE_IN_OUT }),
+        withTiming(1, { duration: COVER_MS, easing: EASE_IN_OUT }),
       );
 
-      // Once the signal owns the frame it morphs into the MYELIN aperture.
+      // Phase 2 — morph. Keep the frame fully covered while the coral signal
+      // resolves into a darker MYELIN aperture with a quiet depth halo.
       fieldOpacity.set(
-        withDelay(165, withTiming(1, { duration: 85, easing: EASE_OUT })),
+        withDelay(210, withTiming(1, { duration: 120, easing: EASE_OUT })),
       );
       lensOpacity.set(
-        withDelay(185, withTiming(1, { duration: 95, easing: EASE_OUT })),
+        withDelay(235, withTiming(1, { duration: 120, easing: EASE_OUT })),
       );
       lensOpen.set(
-        withDelay(180, withTiming(1, { duration: 145, easing: EASE_OUT })),
+        withDelay(225, withTiming(1, { duration: 175, easing: EASE_OUT })),
+      );
+      haloProgress.set(
+        withDelay(245, withTiming(1, { duration: 180, easing: EASE_OUT })),
       );
       coreScale.set(
         withDelay(
-          185,
+          240,
           withSequence(
-            withTiming(1.08, { duration: 115, easing: EASE_OUT }),
-            withTiming(1, { duration: 70, easing: EASE_IN_OUT }),
+            withTiming(1.075, { duration: 135, easing: EASE_OUT }),
+            withTiming(1, { duration: 85, easing: EASE_IN_OUT }),
           ),
         ),
       );
 
-      // Route swap happens only after the old screen is completely obscured.
-      await sleep(285);
+      // Hide the routed scene itself before committing. This prevents the new
+      // page from flashing through even if React mounts it immediately.
+      sceneOpacity.set(
+        withDelay(
+          COVER_MS - 55,
+          withTiming(0, { duration: 70, easing: EASE_OUT }),
+        ),
+      );
+
+      // Deliberate hold: the transition owns the frame before the route swap.
+      await sleep(COVER_MS + PRE_COMMIT_HOLD_MS);
       await commit();
       await nextFrame();
-      await sleep(45);
 
-      // The same aperture now belongs to the destination: it contracts toward
-      // the bottom-center action while the new screen appears around it.
-      coverOpacity.set(withTiming(0, { duration: 80, easing: EASE_OUT }));
-      fieldOpacity.set(withTiming(0, { duration: 280, easing: EASE_OUT }));
+      // Keep the destination completely hidden while it settles underneath.
+      await sleep(POST_COMMIT_HOLD_MS);
+
+      // Phase 3 — arrival. Reveal the destination only after the hidden settle.
+      // The aperture contracts toward the bottom-center while the new page
+      // fades and scales into its final position behind it.
+      coverOpacity.set(withTiming(0, { duration: 110, easing: EASE_OUT }));
+      fieldOpacity.set(
+        withDelay(55, withTiming(0, { duration: 300, easing: EASE_OUT })),
+      );
+      haloProgress.set(
+        withTiming(0, { duration: 210, easing: EASE_OUT }),
+      );
+      lensTravel.set(withTiming(1, { duration: REVEAL_MS, easing: EASE_OUT }));
+      lensScale.set(withTiming(0.24, { duration: REVEAL_MS, easing: EASE_OUT }));
+      lensOpen.set(withTiming(0.28, { duration: 300, easing: EASE_IN_OUT }));
+      coreScale.set(withTiming(1.04, { duration: 285, easing: EASE_OUT }));
+
       sceneScale.set(
-        withDelay(20, withTiming(1, { duration: 235, easing: EASE_OUT })),
+        withDelay(95, withTiming(1, { duration: 265, easing: EASE_OUT })),
       );
       sceneOpacity.set(
-        withDelay(15, withTiming(1, { duration: 185, easing: EASE_OUT })),
+        withDelay(125, withTiming(1, { duration: 220, easing: EASE_OUT })),
       );
-      lensTravel.set(withTiming(1, { duration: 300, easing: EASE_OUT }));
-      lensScale.set(withTiming(0.27, { duration: 300, easing: EASE_OUT }));
-      lensOpen.set(withTiming(0.3, { duration: 245, easing: EASE_IN_OUT }));
-      coreScale.set(withTiming(1.08, { duration: 245, easing: EASE_OUT }));
       lensOpacity.set(
-        withDelay(225, withTiming(0, { duration: 90, easing: EASE_OUT })),
+        withDelay(275, withTiming(0, { duration: 95, easing: EASE_OUT })),
       );
 
-      await sleep(325);
+      await sleep(REVEAL_MS + 20);
     },
     [
       coreScale,
@@ -167,6 +201,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       coverProgress,
       fade,
       fieldOpacity,
+      haloProgress,
       lensOpen,
       lensOpacity,
       lensScale,
@@ -254,6 +289,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
             lensScale={lensScale}
             lensTravel={lensTravel}
             coreScale={coreScale}
+            haloProgress={haloProgress}
             fade={fade}
             reduceMotion={reduceMotion}
           />
@@ -272,6 +308,7 @@ function TransitionOverlay({
   lensScale,
   lensTravel,
   coreScale,
+  haloProgress,
   fade,
   reduceMotion,
 }: {
@@ -283,6 +320,7 @@ function TransitionOverlay({
   lensScale: SharedValue<number>;
   lensTravel: SharedValue<number>;
   coreScale: SharedValue<number>;
+  haloProgress: SharedValue<number>;
   fade: SharedValue<number>;
   reduceMotion: boolean;
 }) {
@@ -349,6 +387,24 @@ function TransitionOverlay({
     transform: [{ scale: coreScale.get() }],
   }));
 
+  const haloStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(haloProgress.get(), [0, 1], [0, 0.34]),
+    transform: [
+      {
+        scale: interpolate(haloProgress.get(), [0, 1], [0.78, 1.08]),
+      },
+    ],
+  }));
+
+  const outerHaloStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(haloProgress.get(), [0, 1], [0, 0.16]),
+    transform: [
+      {
+        scale: interpolate(haloProgress.get(), [0, 1], [0.62, 1.22]),
+      },
+    ],
+  }));
+
   const fadeStyle = useAnimatedStyle(() => ({
     opacity: fade.get(),
   }));
@@ -367,6 +423,8 @@ function TransitionOverlay({
           <Animated.View style={[styles.field, fieldStyle]} />
 
           <Animated.View style={[styles.lensStage, lensStyle]}>
+            <Animated.View style={[styles.haloOuter, outerHaloStyle]} />
+            <Animated.View style={[styles.halo, haloStyle]} />
             <Animated.View style={[styles.aperture, apertureStyle]}>
               <Animated.View style={[styles.trace, styles.traceLeft, traceStyle]} />
               <Animated.View style={[styles.trace, styles.traceRight, traceStyle]} />
@@ -448,6 +506,23 @@ const styles = StyleSheet.create({
     marginTop: -56,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  haloOuter: {
+    position: 'absolute',
+    width: 238,
+    height: 118,
+    borderRadius: 59,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+  },
+  halo: {
+    position: 'absolute',
+    width: 224,
+    height: 104,
+    borderRadius: 52,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
   },
   aperture: {
     width: 208,

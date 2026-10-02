@@ -2,7 +2,9 @@ import { Platform } from 'react-native';
 
 import {
   PlannedReminder,
+  ReminderKind,
   ReminderSettings,
+  sampleReminderCopy,
 } from './reminder-engine';
 
 export type ReminderPermission =
@@ -173,38 +175,38 @@ export async function scheduleReminderPlan(
   }
 }
 
-export async function sendReminderPreview(settings: ReminderSettings) {
+export async function sendReminderPreview(
+  settings: ReminderSettings,
+  kind: ReminderKind = 'review',
+) {
   if (Platform.OS === 'web') return;
 
   const Notifications = await module();
   const channelId = settings.sound ? SOUND_CHANNEL : GENTLE_CHANNEL;
-
-  const content =
-    settings.voice === 'signal'
-      ? {
-          title: '3 reviews ready',
-          body: 'Start with Refraction. One focused recall round is enough.',
-        }
-      : settings.voice === 'spark'
-        ? {
-            title: 'A small win is ready ✦',
-            body: 'Refraction + 2 more are waiting in your review queue.',
-          }
-        : {
-            title: 'A quiet review window',
-            body: '3 reviews are ready. Refraction can be your first stop.',
-          };
+  const content = sampleReminderCopy(settings, kind);
+  const href =
+    kind === 'review'
+      ? '/(app)/review'
+      : kind === 'exam'
+        ? '/(app)/exams'
+        : '/(app)/today/day-map';
 
   await Notifications.scheduleNotificationAsync({
     content: {
-      ...content,
-      subtitle: 'MYELIN PREVIEW',
+      title: content.title,
+      subtitle:
+        kind === 'review'
+          ? 'MYELIN REVIEW'
+          : kind === 'exam'
+            ? 'MYELIN EXAM'
+            : 'MYELIN STUDY',
+      body: content.body,
       sound: settings.sound ? 'default' : undefined,
       color: '#FF805B',
       data: {
         myelin: true,
-        kind: 'review',
-        href: '/(app)/review',
+        kind,
+        href,
         preview: true,
       },
     },

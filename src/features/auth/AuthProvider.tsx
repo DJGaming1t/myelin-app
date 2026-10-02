@@ -74,7 +74,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [localMode, setLocalMode] = useState(false);
   const [keepSignedIn, setKeepSignedInState] = useState(DEFAULT_KEEP_SIGNED_IN);
-  const [, forceRefresh] = useState(0);
+  const [authRevision, forceRefresh] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -265,7 +265,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setKeepSignedInState(value);
       },
     }),
-    [keepSignedIn, localMode, ready, user],
+    [authRevision, keepSignedIn, localMode, ready, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

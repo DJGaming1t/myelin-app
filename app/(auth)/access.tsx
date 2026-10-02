@@ -20,10 +20,7 @@ export default function AccessScreen() {
     setError('');
     setGoogleBusy(true);
     try {
-      await runEntryTransition(
-        () => signInGoogle(),
-        () => router.replace('/'),
-      );
+      await runEntryTransition(() => signInGoogle());
     } catch (err) {
       setError(authErrorMessage(err, 'google'));
     } finally {
@@ -34,9 +31,12 @@ export default function AccessScreen() {
   async function handleLocal() {
     setLocalBusy(true);
     try {
-      await runEntryTransition(
-        () => continueLocally(),
-        () => router.replace('/'),
+      await runEntryTransition(() => continueLocally());
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'MYELIN could not open the local workspace.',
       );
     } finally {
       setLocalBusy(false);

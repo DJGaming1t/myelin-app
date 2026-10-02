@@ -33,10 +33,7 @@ export default function SignUpScreen() {
     setError('');
     setGoogleBusy(true);
     try {
-      await runEntryTransition(
-        () => signInGoogle(keepSignedIn),
-        () => router.replace('/'),
-      );
+      await runEntryTransition(() => signInGoogle(keepSignedIn));
     } catch (err) {
       setError(authErrorMessage(err, 'google'));
     } finally {
@@ -64,9 +61,8 @@ export default function SignUpScreen() {
 
     setBusy(true);
     try {
-      await runEntryTransition(
-        () => signUpEmail(name, email, password, keepSignedIn),
-        () => router.replace('/'),
+      await runEntryTransition(() =>
+        signUpEmail(name, email, password, keepSignedIn),
       );
     } catch (err) {
       setError(authErrorMessage(err, 'signup'));

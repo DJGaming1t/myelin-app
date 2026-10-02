@@ -87,6 +87,11 @@ assert.ok(
   authProvider.includes('sendEmailVerification(credential.user).catch'),
   'A verification-email delivery failure must not masquerade as account-creation failure.',
 );
+assert.ok(
+  authProvider.includes('const [authRevision, forceRefresh] = useState(0)') &&
+    authProvider.includes('[authRevision, keepSignedIn, localMode, ready, user]'),
+  'Refreshing email verification must publish a new auth context value even if Firebase reuses the same User object.',
+);
 
 assert.ok(
   authIntro.includes('Know what to study') && authIntro.includes('next.'),
@@ -141,15 +146,15 @@ assert.ok(
     signInSource.includes('or sign in with email') &&
     signInSource.includes('runEntryTransition(') &&
     signInSource.includes('() => signInGoogle(keepSignedIn)') &&
-    signInSource.includes("() => router.replace('/')"),
-  'Sign-in should lead with Google, separate email clearly, and cover the route handoff.',
+    !signInSource.includes("router.replace('/')"),
+  'Sign-in should lead with Google and let the transition coordinator choose the final route.',
 );
 assert.ok(
   signUpSource.includes('variant="google"') &&
     signUpSource.includes('or create with email') &&
     signUpSource.includes('runEntryTransition(') &&
     signUpSource.includes('() => signInGoogle(keepSignedIn)') &&
-    signUpSource.includes('() => signUpEmail(name, email, password, keepSignedIn)'),
+    signUpSource.includes('signUpEmail(name, email, password, keepSignedIn)'),
   'Both Google and email account creation must use the same circle entry handoff.',
 );
 assert.ok(
@@ -161,15 +166,13 @@ assert.ok(
 assert.ok(
   verificationSource.includes('runEntryTransition(') &&
     verificationSource.includes('await refreshVerification()') &&
-    verificationSource.includes("notVerified.code = 'auth/email-not-verified-yet'") &&
-    verificationSource.includes("() => router.replace('/')") &&
-    verificationSource.includes("['(onboarding)', '(app)']"),
-  'A newly verified email account must wait for an actual post-verification route group.',
+    verificationSource.includes("notVerified.code = 'auth/email-not-verified-yet'"),
+  'A newly verified email account must let settled app state choose onboarding or Today.',
 );
 assert.ok(
-  verificationLayoutSource.includes('entryPending') &&
-    verificationLayoutSource.includes('!entryPending && user?.emailVerified'),
-  'Verification redirects must stay frozen while the new-user circle handoff is active.',
+  verificationLayoutSource.includes('transitionPending') &&
+    verificationLayoutSource.includes('!transitionPending && user?.emailVerified'),
+  'Verification redirects must stay frozen while any circle handoff is active.',
 );
 assert.equal(
   signInSource.includes('MYELIN REMEMBERS THE WORKFLOW') ||
@@ -182,9 +185,9 @@ assert.ok(
   'The auth native stack must keep a dark surface during route changes.',
 );
 assert.ok(
-  authLayoutSource.includes('entryPending') &&
-    authLayoutSource.includes('!entryPending && (localMode || user?.emailVerified)'),
-  'Firebase auth changes must not auto-redirect while the branded entry handoff is pending.',
+  authLayoutSource.includes('transitionPending') &&
+    authLayoutSource.includes('!transitionPending && (localMode || user?.emailVerified)'),
+  'Firebase auth changes must not auto-redirect while the circle handoff is pending.',
 );
 assert.ok(
   authButton.includes('backgroundColor: colors.panelRaised') &&
@@ -194,32 +197,37 @@ assert.ok(
 );
 assert.ok(
   entryTransitionSource.includes('runEntryTransition') &&
-    entryTransitionSource.includes('setEntryPending(true)') &&
+    entryTransitionSource.includes('setTransitionPending(true)') &&
     entryTransitionSource.includes('await task()') &&
-    entryTransitionSource.includes('playCircleHandoff(commit, destinationGroups)') &&
-    entryTransitionSource.includes('await commit()'),
-  'Auth entry must hold routing, finish authentication, then hand off through the circle transition.',
+    entryTransitionSource.includes('waitForEntryDestination()') &&
+    entryTransitionSource.includes('await cover()') &&
+    entryTransitionSource.includes('await navigateUnderCover(destination)'),
+  'Auth entry must freeze redirects, finish authentication, resolve settled state, then navigate under the circle.',
 );
 assert.ok(
   entryTransitionSource.includes('CircleTransitionOverlay') &&
     entryTransitionSource.includes('circleProgress') &&
     entryTransitionSource.includes('useSegments()') &&
-    entryTransitionSource.includes('armRouteReady') &&
-    entryTransitionSource.includes('routeReadyTargets'),
-  'Auth entry must use one circle overlay and resolve readiness from final Expo Router segments.',
+    entryTransitionSource.includes('resolveEntryTransitionDestination') &&
+    entryTransitionSource.includes('transitionSegmentsMatch') &&
+    entryTransitionSource.includes('workspaceOwnerKey') &&
+    entryTransitionSource.includes('STATE_READY_TIMEOUT_MS') &&
+    entryTransitionSource.includes('ROUTE_READY_TIMEOUT_MS'),
+  'Auth entry must coordinate one circle with settled auth/workspace/onboarding state and bounded route waits.',
 );
 const entryTransitionStart = entryTransitionSource.indexOf(
   'const runEntryTransition = useCallback',
 );
 assert.ok(entryTransitionStart >= 0, 'Entry transition implementation is missing.');
 const taskIndex = entryTransitionSource.indexOf('await task()', entryTransitionStart);
-const handoffIndex = entryTransitionSource.indexOf(
-  'await playCircleHandoff(commit, destinationGroups)',
-  taskIndex,
+const coverIndex = entryTransitionSource.indexOf('await cover()', taskIndex);
+const navigateIndex = entryTransitionSource.indexOf(
+  'await navigateUnderCover(destination)',
+  coverIndex,
 );
 assert.ok(
-  taskIndex >= 0 && handoffIndex > taskIndex,
-  'The Google picker must finish before the MYELIN circle transition begins.',
+  taskIndex >= 0 && coverIndex > taskIndex && navigateIndex > coverIndex,
+  'The Google picker must finish before MYELIN covers and navigates the app.',
 );
 assert.ok(
   rootLayoutSource.includes("animation: 'none'"),

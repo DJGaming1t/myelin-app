@@ -41,8 +41,6 @@ export default function VerifyEmailScreen() {
           notVerified.code = 'auth/email-not-verified-yet';
           throw notVerified;
         },
-        () => router.replace('/'),
-        ['(onboarding)', '(app)'],
       );
     } catch (err) {
       if (

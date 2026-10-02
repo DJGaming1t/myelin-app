@@ -562,8 +562,7 @@ export default function FocusScreen() {
                     </Pressable>
                   </View>
                 ))}
-              </View>
-            ) : null}
+            </AnimatedDisclosure>
           </View>
 
           <Pressable

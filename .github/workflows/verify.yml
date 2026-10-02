@@ -94,6 +94,9 @@ jobs:
       - name: First-run onboarding gates and setup
         run: npm run verify:onboarding
 
+      - name: Transition routing and circle handoff
+        run: npm run verify:transition
+
       - name: Product polish, accessibility and responsive shell
         run: npm run verify:polish
 

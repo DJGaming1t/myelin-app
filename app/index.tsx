@@ -1,42 +1,14 @@
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { useWorkspace } from '@/src/data/WorkspaceProvider';
-import { useAuth } from '@/src/features/auth/AuthProvider';
-import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useEntryDestination } from '@/src/features/onboarding/use-entry-destination';
 import { colors } from '@/src/theme/tokens';
 
 export default function IndexScreen() {
-  const { ready: authReady, user, localMode } = useAuth();
-  const { status: workspaceStatus } = useWorkspace();
-  const { ready: onboardingReady, shouldShow } = useOnboarding();
+  const destination = useEntryDestination();
 
-  if (!authReady) return <Loading />;
-
-  const hasWorkspaceAccess = localMode || Boolean(user?.emailVerified);
-  if (
-    hasWorkspaceAccess &&
-    workspaceStatus !== 'ready' &&
-    workspaceStatus !== 'error'
-  ) {
-    return <Loading />;
-  }
-
-  if (hasWorkspaceAccess && !onboardingReady) return <Loading />;
-
-  if (localMode) {
-    return <Redirect href={shouldShow ? '/(onboarding)' : '/(app)'} />;
-  }
-
-  if (user && !user.emailVerified) {
-    return <Redirect href="/(verification)/verify-email" />;
-  }
-
-  if (user) {
-    return <Redirect href={shouldShow ? '/(onboarding)' : '/(app)'} />;
-  }
-
-  return <Redirect href="/(auth)" />;
+  if (!destination) return <Loading />;
+  return <Redirect href={destination} />;
 }
 
 function Loading() {

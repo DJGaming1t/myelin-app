@@ -149,7 +149,7 @@ assert.ok(
     signUpSource.includes('or create with email') &&
     signUpSource.includes('runEntryTransition(') &&
     signUpSource.includes('() => signInGoogle(keepSignedIn)') &&
-    signUpSource.includes('() => signUpEmail(name, email, password, keepSignedIn)'),
+    signUpSource.includes('signUpEmail(name, email, password, keepSignedIn)'),
   'Both Google and email account creation must use the same circle entry handoff.',
 );
 assert.ok(

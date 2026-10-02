@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -23,6 +23,7 @@ import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
 import { postponeTask } from '@/src/features/planning/task-engine';
 import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { buildTodayPlan, nextLocalDayStart, PlanBlock } from '@/src/features/today/planner';
 import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
@@ -32,6 +33,7 @@ export default function TodayScreen() {
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
+  const { notifyTransitionReady } = useOnboardingTransition();
   const [showAdjust, setShowAdjust] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
@@ -67,6 +69,12 @@ export default function TodayScreen() {
     () => (workspace ? nearestUpcomingExam(workspace, now) : null),
     [workspace, now],
   );
+
+  useEffect(() => {
+    if (status !== 'ready' || !workspace || !plan) return;
+    const frame = requestAnimationFrame(() => notifyTransitionReady());
+    return () => cancelAnimationFrame(frame);
+  }, [notifyTransitionReady, plan, status, workspace]);
 
   if (status === 'loading' || status === 'idle' || !workspace || !plan) {
     return (

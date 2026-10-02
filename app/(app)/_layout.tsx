@@ -7,6 +7,17 @@ import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 
+const PEER_ROUTE_NAMES = new Set([
+  'today',
+  'today/index',
+  'topics',
+  'topics/index',
+  'review',
+  'review/index',
+  'progress',
+  'progress/index',
+]);
+
 export default function AppLayout() {
   const { ready: authReady, user, localMode } = useAuth();
   const { status, saveError, retryWorkspace } = useWorkspace();
@@ -50,14 +61,20 @@ export default function AppLayout() {
 
   return (
     <Stack
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
-        animation: reduceMotion ? 'none' : 'fade_from_bottom',
-      }}>
-      <Stack.Screen name="today/index" options={{ animation: 'none' }} />
-      <Stack.Screen name="topics" options={{ animation: 'none' }} />
-      <Stack.Screen name="review/index" options={{ animation: 'none' }} />
-      <Stack.Screen name="progress/index" options={{ animation: 'none' }} />
+        // The four bottom-nav destinations are peers. They must never inherit
+        // a positional stack transition, including during router.replace().
+        // Deeper routes keep the hierarchy cue.
+        animation:
+          reduceMotion || PEER_ROUTE_NAMES.has(route.name)
+            ? 'none'
+            : 'fade_from_bottom',
+      })}>
+      <Stack.Screen name="today/index" />
+      <Stack.Screen name="topics" />
+      <Stack.Screen name="review/index" />
+      <Stack.Screen name="progress/index" />
     </Stack>
   );
 }

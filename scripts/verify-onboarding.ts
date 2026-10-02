@@ -166,73 +166,27 @@ function main() {
   assert.ok(screenSource.includes('useOnboardingTransition'));
   assert.ok(screenSource.includes('runTransition(async () =>'));
   assert.ok(rootLayoutSource.includes('<OnboardingTransitionProvider>'));
-  assert.ok(transitionSource.includes('useReducedMotion()'));
-  assert.ok(transitionSource.includes('withTiming'));
-  assert.equal(transitionSource.includes('withSequence'), false);
   assert.ok(transitionSource.includes('await commit()'));
   assert.ok(transitionSource.includes('runEntryTransition'));
   assert.ok(transitionSource.includes('setEntryPending(true)'));
   assert.ok(transitionSource.includes('await task()'));
-  assert.ok(transitionSource.includes('setActive(true)'));
-  assert.ok(transitionSource.includes('await commit()'));
-  assert.ok(transitionSource.includes('accessibilityLabel="Opening MYELIN"'));
-  assert.ok(transitionSource.includes('coralProgress'));
-  assert.ok(transitionSource.includes('darkProgress'));
-  assert.ok(transitionSource.includes('coralSheet'));
-  assert.ok(transitionSource.includes('darkSheet'));
-  assert.ok(transitionSource.includes('edgeLine'));
-  assert.equal(transitionSource.includes('accentProgress'), false);
-  assert.equal(transitionSource.includes('accentRibbon'), false);
-  assert.equal(transitionSource.includes('rotateZ'), false);
-  assert.equal(transitionSource.includes('eyeStage'), false);
-  assert.equal(transitionSource.includes('eyeOpen'), false);
-  assert.equal(transitionSource.includes('coreScale'), false);
-  assert.equal(transitionSource.includes('rimProgress'), false);
-  assert.equal(transitionSource.includes('rimEcho'), false);
-  assert.equal(transitionSource.includes('coralDisc'), false);
-  assert.equal(transitionSource.includes('darkDisc'), false);
-  assert.equal(transitionSource.includes('sceneScale'), false);
-  assert.equal(transitionSource.includes('haloProgress'), false);
-  assert.equal(transitionSource.includes('lensTravel'), false);
-  assert.ok(transitionSource.includes('const CORAL_RISE_MS = 270'));
-  assert.ok(transitionSource.includes('const DARK_DELAY_MS = 80'));
-  assert.ok(transitionSource.includes('const DARK_RISE_MS = 300'));
-  assert.ok(transitionSource.includes('const FULL_COVER_HOLD_MS = 120'));
-  assert.ok(transitionSource.includes('const POST_COMMIT_HOLD_MS = 150'));
-  assert.ok(transitionSource.includes('const REVEAL_MS = 350'));
-  assert.ok(transitionSource.includes('sceneOpacity.set(0)'));
-  const fullCoverIndex = transitionSource.indexOf(
-    'await sleep(DARK_DELAY_MS + DARK_RISE_MS + FULL_COVER_HOLD_MS)',
-  );
-  const coveredCommitIndex = transitionSource.indexOf(
-    'await commit()',
-    fullCoverIndex,
-  );
-  const hiddenSettleIndex = transitionSource.indexOf(
-    'await sleep(POST_COMMIT_HOLD_MS)',
-    coveredCommitIndex,
-  );
-  const sceneRevealIndex = transitionSource.indexOf(
-    'sceneOpacity.set(1)',
-    hiddenSettleIndex,
-  );
-  const darkRevealIndex = transitionSource.indexOf(
-    'darkProgress.set(',
-    sceneRevealIndex,
-  );
-  const coralRevealIndex = transitionSource.indexOf(
-    'coralProgress.set(',
-    darkRevealIndex,
-  );
+  assert.ok(transitionSource.includes('await nextFrame()'));
+  assert.equal(transitionSource.includes('react-native-reanimated'), false);
+  assert.equal(transitionSource.includes('Animated'), false);
+  assert.equal(transitionSource.includes('StyleSheet'), false);
+  assert.equal(transitionSource.includes('TransitionOverlay'), false);
+  assert.equal(transitionSource.includes('coralProgress'), false);
+  assert.equal(transitionSource.includes('darkProgress'), false);
+  const taskIndex = transitionSource.indexOf('await task()');
+  const frameIndex = transitionSource.indexOf('await nextFrame()', taskIndex);
+  const entryCommitIndex = transitionSource.indexOf('await commit()', frameIndex);
   assert.ok(
-    fullCoverIndex >= 0 &&
-      coveredCommitIndex > fullCoverIndex &&
-      hiddenSettleIndex > coveredCommitIndex &&
-      sceneRevealIndex > hiddenSettleIndex &&
-      darkRevealIndex > sceneRevealIndex &&
-      coralRevealIndex > darkRevealIndex,
-    'The sheets must fully cover, commit hidden, then reveal in a staggered order.',
+    taskIndex >= 0 &&
+      frameIndex > taskIndex &&
+      entryCommitIndex > frameIndex,
+    'Entry navigation must wait for auth to finish and one protected frame before committing.',
   );
+  assert.ok(rootLayoutSource.includes("animation: reduceMotion ? 'none' : 'fade'"));
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);
   assert.equal(screenSource.includes('Create topic & enter MYELIN'), false);

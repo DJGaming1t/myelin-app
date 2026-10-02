@@ -24,6 +24,7 @@ const authButton = fs.readFileSync(
 const signInSource = fs.readFileSync(path.join(root, 'app/(auth)/sign-in.tsx'), 'utf8');
 const signUpSource = fs.readFileSync(path.join(root, 'app/(auth)/sign-up.tsx'), 'utf8');
 const authLayoutSource = fs.readFileSync(path.join(root, 'app/(auth)/_layout.tsx'), 'utf8');
+const rootLayoutSource = fs.readFileSync(path.join(root, 'app/_layout.tsx'), 'utf8');
 const entryTransitionSource = fs.readFileSync(
   path.join(root, 'src/features/onboarding/OnboardingTransitionProvider.tsx'),
   'utf8',
@@ -167,18 +168,31 @@ assert.ok(
   entryTransitionSource.includes('runEntryTransition') &&
     entryTransitionSource.includes('setEntryPending(true)') &&
     entryTransitionSource.includes('await task()') &&
-    entryTransitionSource.includes('setActive(true)') &&
+    entryTransitionSource.includes('await nextFrame()') &&
     entryTransitionSource.includes('await commit()'),
-  'Auth entry must hold routing invisibly, wait for authentication, then animate before committing navigation.',
+  'Auth entry must hold routing, wait for authentication, then commit navigation once.',
+);
+assert.equal(
+  entryTransitionSource.includes('setActive(true)') ||
+    entryTransitionSource.includes('TransitionOverlay') ||
+    entryTransitionSource.includes('react-native-reanimated'),
+  false,
+  'Auth entry should not layer a custom visual overlay on top of native stack motion.',
 );
 const entryTransitionStart = entryTransitionSource.indexOf(
   'const runEntryTransition = useCallback',
 );
 assert.ok(entryTransitionStart >= 0, 'Entry transition implementation is missing.');
+const taskIndex = entryTransitionSource.indexOf('await task()', entryTransitionStart);
+const frameIndex = entryTransitionSource.indexOf('await nextFrame()', taskIndex);
+const commitIndex = entryTransitionSource.indexOf('await commit()', frameIndex);
 assert.ok(
-  entryTransitionSource.indexOf('await task()', entryTransitionStart) <
-    entryTransitionSource.indexOf('setActive(true)', entryTransitionStart),
-  'The branded overlay must not appear while the Google account picker is still active.',
+  taskIndex >= 0 && frameIndex > taskIndex && commitIndex > frameIndex,
+  'The Google picker must finish before the protected frame and navigation commit.',
+);
+assert.ok(
+  rootLayoutSource.includes("animation: reduceMotion ? 'none' : 'fade'"),
+  'Visible auth/onboarding route motion should be owned by the native root stack.',
 );
 
 console.log('Authentication configuration and experience verification passed.');

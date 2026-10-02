@@ -6,16 +6,23 @@ import { AuthButton } from '@/src/components/auth/AuthButton';
 import { AuthScaffold } from '@/src/components/auth/AuthScaffold';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { colors, spacing } from '@/src/theme/tokens';
 import { maskEmail } from '@/src/utils/maskEmail';
 
 export default function VerifyEmailScreen() {
   const { user, resendVerification, refreshVerification, signOutUser } = useAuth();
+  const { notifyTransitionReady } = useOnboardingTransition();
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [cooldown, setCooldown] = useState(20);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => notifyTransitionReady());
+    return () => cancelAnimationFrame(frame);
+  }, [notifyTransitionReady]);
 
   useEffect(() => {
     if (cooldown <= 0) return;

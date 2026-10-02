@@ -205,6 +205,7 @@ assert.ok(
     entryTransitionSource.includes('circleProgress') &&
     entryTransitionSource.includes('useSegments()') &&
     entryTransitionSource.includes('resolveEntryTransitionDestination') &&
+    entryTransitionSource.includes('transitionSegmentsMatch') &&
     entryTransitionSource.includes('workspaceOwnerKey') &&
     entryTransitionSource.includes('STATE_READY_TIMEOUT_MS') &&
     entryTransitionSource.includes('ROUTE_READY_TIMEOUT_MS'),

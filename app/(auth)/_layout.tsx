@@ -7,7 +7,7 @@ import { colors } from '@/src/theme/tokens';
 
 export default function AuthLayout() {
   const { ready, user, localMode } = useAuth();
-  const { entryPending } = useOnboardingTransition();
+  const { transitionPending } = useOnboardingTransition();
 
   if (!ready) {
     return (
@@ -17,10 +17,10 @@ export default function AuthLayout() {
     );
   }
 
-  if (!entryPending && (localMode || user?.emailVerified)) {
+  if (!transitionPending && (localMode || user?.emailVerified)) {
     return <Redirect href="/(app)" />;
   }
-  if (!entryPending && user) {
+  if (!transitionPending && user) {
     return <Redirect href="/(verification)/verify-email" />;
   }
 

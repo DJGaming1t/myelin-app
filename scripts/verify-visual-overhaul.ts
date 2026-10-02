@@ -169,6 +169,15 @@ assert.ok(authIntro.includes('StudyPathVisual'));
   assert.ok(onboardingShell.includes('useReducedMotion'));
   assert.ok(onboardingShell.includes('signal.value'));
 
+  const onboardingTransition = read('src/features/onboarding/OnboardingTransitionProvider.tsx');
+  assert.ok(onboardingTransition.includes('sceneScale'));
+  assert.ok(onboardingTransition.includes('topPanel'));
+  assert.ok(onboardingTransition.includes('bottomPanel'));
+  assert.ok(onboardingTransition.includes('seamGlow'));
+  assert.ok(onboardingTransition.includes('shutter.set(withTiming(2'));
+  assert.ok(onboardingTransition.includes('useWindowDimensions'));
+  assert.ok(onboardingTransition.includes('useReducedMotion'));
+
   const onboarding = read('app/(onboarding)/index.tsx');
   assert.ok(onboarding.includes('How much focus fits in a normal day?'));
 assert.ok(onboarding.includes('OnboardingShell'));

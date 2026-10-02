@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 import {
   resolveEntryTransitionDestination,
-  transitionGroupForDestination,
+  transitionSegmentsMatch,
   type TransitionRoutingState,
 } from '../src/features/onboarding/transition-routing';
 
@@ -202,11 +202,31 @@ assert.equal(
   'Workspace failures should reveal the app error state instead of trapping the circle.',
 );
 
-assert.equal(transitionGroupForDestination('/(onboarding)'), '(onboarding)');
-assert.equal(transitionGroupForDestination('/(app)/today'), '(app)');
 assert.equal(
-  transitionGroupForDestination('/(verification)/verify-email'),
-  '(verification)',
+  transitionSegmentsMatch('/(onboarding)', ['(onboarding)']),
+  true,
+);
+assert.equal(
+  transitionSegmentsMatch('/(app)/today', ['(app)', 'today']),
+  true,
+);
+assert.equal(
+  transitionSegmentsMatch('/(app)/today', ['(app)', 'index']),
+  false,
+);
+assert.equal(
+  transitionSegmentsMatch(
+    '/(verification)/verify-email',
+    ['(verification)', 'verify-email'],
+  ),
+  true,
+);
+assert.equal(
+  transitionSegmentsMatch(
+    '/(verification)/verify-email',
+    ['(verification)'],
+  ),
+  false,
 );
 
 const provider = fs.readFileSync(
@@ -234,6 +254,8 @@ const appLayout = fs.readFileSync('app/(app)/_layout.tsx', 'utf8');
 assert.ok(provider.includes('resolveEntryTransitionDestination'));
 assert.ok(provider.includes('workspaceOwnerKey'));
 assert.ok(provider.includes('waitForEntryDestination'));
+assert.ok(provider.includes('waitForRouteDestination'));
+assert.ok(provider.includes('transitionSegmentsMatch'));
 assert.ok(provider.includes('router.replace(destination)'));
 assert.ok(provider.includes('STATE_READY_TIMEOUT_MS'));
 assert.ok(provider.includes('ROUTE_READY_TIMEOUT_MS'));
@@ -279,5 +301,6 @@ console.log('✓ fresh and returning local/account users resolve deterministical
 console.log('✓ unverified accounts route directly to verification');
 console.log('✓ animated entry never travels through the root redirect route');
 console.log('✓ layout guards cannot race an active circle transition');
+console.log('✓ reveal waits for the exact nested destination, not only its route group');
 console.log('✓ nested destination stacks do not layer a second entry fade');
 console.log('✓ transition timeouts prevent a permanent orange-screen deadlock');

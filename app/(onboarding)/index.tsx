@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -27,7 +27,12 @@ const CAPACITY_COPY: Record<number, string> = {
 export default function OnboardingScreen() {
   const { workspace, updateWorkspace, waitForSaves } = useWorkspace();
   const { finish } = useOnboarding();
-  const { runTransition } = useOnboardingTransition();
+  const { runTransition, notifyTransitionReady } = useOnboardingTransition();
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => notifyTransitionReady());
+    return () => cancelAnimationFrame(frame);
+  }, [notifyTransitionReady]);
 
   const [capacity, setCapacity] = useState(
     normalizeDailyCapacity(workspace?.settings.dailyMinutes ?? 90),

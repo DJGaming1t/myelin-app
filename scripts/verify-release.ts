@@ -15,10 +15,11 @@ function assert(condition: unknown, message: string): asserts condition {
 const eas = json('eas.json');
 const app = json('app.json');
 const require = createRequire(import.meta.url);
-const resolvedExpo = require(path.join(process.cwd(), 'app.config.js')).expo;
+const appConfig = require(path.join(process.cwd(), 'app.config.js'));
+const resolvedExpo = appConfig({ config: app.expo });
 const generatedIconPath = path.join(
   process.cwd(),
-  'assets/generated/myelin-icon.jpg',
+  'assets/generated/myelin-icon.png',
 );
 const pkg = json('package.json');
 const release = read('RELEASE.md');
@@ -40,17 +41,17 @@ assert(eas.build?.production?.autoIncrement === true, 'Production build numbers 
 assert(eas.cli?.appVersionSource === 'remote', 'EAS version source should be remote.');
 assert(app.expo?.runtimeVersion?.policy === 'appVersion', 'Runtime version policy must protect native compatibility.');
 assert(
-  resolvedExpo?.icon === './assets/generated/myelin-icon.jpg',
-  'Resolved MYELIN launcher icon must use the generated clean icon asset.',
+  resolvedExpo?.icon === './assets/generated/myelin-icon.png',
+  'Resolved MYELIN launcher icon must use the generated clean PNG asset.',
 );
 assert(
-  resolvedExpo?.android?.icon === './assets/generated/myelin-icon.jpg',
-  'Android launcher icon must use the generated clean icon asset.',
+  resolvedExpo?.android?.icon === './assets/generated/myelin-icon.png',
+  'Android launcher icon must use the generated clean PNG asset.',
 );
 assert(
   resolvedExpo?.android?.adaptiveIcon?.foregroundImage ===
-    './assets/generated/myelin-icon.jpg',
-  'Android adaptive icon must use the generated clean icon asset.',
+    './assets/generated/myelin-icon.png',
+  'Android adaptive icon must use the generated clean PNG asset.',
 );
 assert(
   resolvedExpo?.android?.adaptiveIcon?.backgroundColor === '#070707',
@@ -58,12 +59,24 @@ assert(
 );
 assert(fs.existsSync(generatedIconPath), 'Generated MYELIN icon asset is missing.');
 const generatedIconBytes = fs.readFileSync(generatedIconPath);
+const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 assert(
-  generatedIconBytes[0] === 0xff &&
-    generatedIconBytes[1] === 0xd8 &&
-    generatedIconBytes.at(-2) === 0xff &&
-    generatedIconBytes.at(-1) === 0xd9,
-  'Generated MYELIN icon is not a complete JPEG.',
+  generatedIconBytes.length > pngSignature.length &&
+    pngSignature.every(
+      (byte, index) => generatedIconBytes[index] === byte,
+    ),
+  'Generated MYELIN icon is not a valid PNG.',
+);
+const appConfigSource = read('app.config.js');
+assert(
+  appConfigSource.includes('module.exports = ({ config }) =>') &&
+    appConfigSource.includes('...config'),
+  'Dynamic Expo config must explicitly extend the incoming app.json config.',
+);
+assert(
+  appConfigSource.includes("scripts', 'generate-icon.cjs") &&
+    appConfigSource.includes('execFileSync'),
+  'Expo config must generate the PNG before resolving native icon fields.',
 );
 assert(
   gitignore.includes('assets/generated/'),

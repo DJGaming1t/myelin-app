@@ -162,8 +162,10 @@ assert.ok(
   verificationSource.includes('runEntryTransition(') &&
     verificationSource.includes('await refreshVerification()') &&
     verificationSource.includes("notVerified.code = 'auth/email-not-verified-yet'") &&
-    verificationSource.includes("() => router.replace('/')"),
-  'A newly verified email account must enter MYELIN through the circle handoff.',
+    verificationSource.includes("() => router.replace('/')") &&
+    verificationSource.includes('useFocusEffect') &&
+    verificationSource.includes('secondFrame = requestAnimationFrame'),
+  'A newly verified email account must enter MYELIN through a focus-aware circle handoff.',
 );
 assert.ok(
   verificationLayoutSource.includes('entryPending') &&

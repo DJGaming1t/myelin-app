@@ -172,13 +172,16 @@ function main() {
   assert.ok(transitionSource.includes('await task()'));
   assert.ok(transitionSource.includes('CircleTransitionOverlay'));
   assert.ok(transitionSource.includes('circleProgress'));
-  assert.ok(transitionSource.includes('notifyTransitionReady'));
-  assert.ok(transitionSource.includes('armDestinationReady'));
+  assert.ok(transitionSource.includes('useSegments()'));
+  assert.ok(transitionSource.includes('armRouteReady'));
+  assert.ok(transitionSource.includes('routeReadyTargets'));
+  assert.ok(transitionSource.includes("['(app)']"));
+  assert.equal(transitionSource.includes('notifyTransitionReady'), false);
+  assert.equal(transitionSource.includes('armDestinationReady'), false);
   assert.equal(transitionSource.includes('DESTINATION_READY_TIMEOUT_MS'), false);
-  assert.equal(transitionSource.includes('setTimeout(settle'), false);
-  const readyArmIndex = transitionSource.indexOf('const destinationReady = armDestinationReady()');
+  const readyArmIndex = transitionSource.indexOf('const routeReady = armRouteReady(destinationGroups)');
   const entryCommitIndex = transitionSource.indexOf('await commit()', readyArmIndex);
-  const readyWaitIndex = transitionSource.indexOf('await destinationReady', entryCommitIndex);
+  const readyWaitIndex = transitionSource.indexOf('await routeReady', entryCommitIndex);
   const revealIndex = transitionSource.indexOf(
     'withTiming(2, { duration: REVEAL_MS',
     readyWaitIndex,
@@ -188,16 +191,13 @@ function main() {
       entryCommitIndex > readyArmIndex &&
       readyWaitIndex > entryCommitIndex &&
       revealIndex > readyWaitIndex,
-    'The circle must stay fully covering the route swap until the mounted destination reports ready.',
+    'The circle must stay fully covering the redirect chain until Expo Router reaches a final route group.',
   );
-  assert.ok(screenSource.includes('notifyTransitionReady'));
-  assert.ok(screenSource.includes('useFocusEffect'));
-  assert.ok(screenSource.includes('secondFrame = requestAnimationFrame'));
+  assert.equal(screenSource.includes('notifyTransitionReady'), false);
+  assert.equal(screenSource.includes('useFocusEffect'), false);
   const todaySource = fs.readFileSync('app/(app)/today/index.tsx', 'utf8');
-  assert.ok(todaySource.includes('notifyTransitionReady'));
-  assert.ok(todaySource.includes('useFocusEffect'));
-  assert.ok(todaySource.includes("status !== 'ready'"));
-  assert.ok(todaySource.includes('secondFrame = requestAnimationFrame'));
+  assert.equal(todaySource.includes('notifyTransitionReady'), false);
+  assert.equal(todaySource.includes('useFocusEffect'), false);
   assert.ok(rootLayoutSource.includes("animation: 'none'"));
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);

@@ -1,29 +1,43 @@
 import { Redirect, Stack } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { useAuth } from '@/src/features/auth/AuthProvider';
+import { useEntryDestination } from '@/src/features/onboarding/use-entry-destination';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { colors } from '@/src/theme/tokens';
 
 export default function VerificationLayout() {
-  const { ready, user, localMode } = useAuth();
-  const { entryPending } = useOnboardingTransition();
+  const destination = useEntryDestination();
+  const { transitionPending } = useOnboardingTransition();
 
-  if (!ready) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.accent} />
-      </View>
-    );
+  if (!transitionPending && !destination) {
+    return <Loading />;
   }
 
-  if (!entryPending && localMode) return <Redirect href="/(app)" />;
-  if (!entryPending && !user) return <Redirect href="/(auth)" />;
-  if (!entryPending && user?.emailVerified) {
-    return <Redirect href="/(app)" />;
+  if (
+    !transitionPending &&
+    destination &&
+    destination !== '/(verification)/verify-email'
+  ) {
+    return <Redirect href={destination} />;
   }
 
-  return <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'none',
+        contentStyle: { backgroundColor: colors.bg },
+      }}
+    />
+  );
+}
+
+function Loading() {
+  return (
+    <View style={styles.loading}>
+      <ActivityIndicator color={colors.accent} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

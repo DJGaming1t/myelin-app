@@ -19,15 +19,12 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { useAuth } from '@/src/features/auth/AuthProvider';
-import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import {
   destinationSegments,
-  resolveEntryDestination,
   type EntryDestination,
 } from '@/src/features/onboarding/entry-destination';
+import { useEntryDestination } from '@/src/features/onboarding/use-entry-destination';
 import { colors } from '@/src/theme/tokens';
 
 type TransitionTask = () => Promise<void> | void;
@@ -92,12 +89,7 @@ function segmentsMatch(
 export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const reduceMotion = useReducedMotion();
   const segments = useSegments();
-  const { ready: authReady, user, localMode } = useAuth();
-  const { status: workspaceStatus } = useWorkspace();
-  const {
-    ready: onboardingReady,
-    shouldShow: shouldShowOnboarding,
-  } = useOnboarding();
+  const entryDestination = useEntryDestination();
 
   const [active, setActive] = useState(false);
   const [transitionPending, setTransitionPending] = useState(false);
@@ -109,15 +101,6 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const circleProgress = useSharedValue(0);
   const fadeOpacity = useSharedValue(0);
 
-  const entryDestination = resolveEntryDestination({
-    authReady,
-    localMode,
-    userPresent: Boolean(user),
-    emailVerified: Boolean(user?.emailVerified),
-    workspaceStatus,
-    onboardingReady,
-    shouldShowOnboarding,
-  });
   const entryDestinationRef = useRef<EntryDestination | null>(entryDestination);
   entryDestinationRef.current = entryDestination;
 

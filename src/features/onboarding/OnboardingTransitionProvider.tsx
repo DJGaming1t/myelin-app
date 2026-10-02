@@ -49,8 +49,8 @@ const OnboardingTransitionContext =
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
-const COVER_MS = 340;
-const REVEAL_MS = 330;
+const COVER_MS = 390;
+const REVEAL_MS = 320;
 const STATE_READY_TIMEOUT_MS = 5000;
 const ROUTE_READY_TIMEOUT_MS = 4000;
 
@@ -287,7 +287,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     }
 
     circleProgress.set(
-      withTiming(2, { duration: REVEAL_MS, easing: EASE_OUT }),
+      withTiming(2, { duration: REVEAL_MS, easing: EASE_IN_OUT }),
     );
     await sleep(REVEAL_MS + 20);
   }, [circleProgress, fadeOpacity, reduceMotion]);
@@ -409,29 +409,90 @@ function CircleTransitionOverlay({
   reduceMotion: boolean;
 }) {
   const { width, height } = useWindowDimensions();
-  const diameter = 220;
-  const fullCoverScale =
-    (Math.hypot(width, height) / diameter) * 1.12;
+
+  // The transition is one enormous surface moving on a single vertical path.
+  // It never scales, so it reads as a wipe travelling through the app instead
+  // of a logo or circle zooming toward the user.
+  const diameter = Math.hypot(width, height) * 1.08;
+  const radius = diameter / 2;
+  const travel = height / 2 + radius + 28;
 
   const circleStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(
+          progress.get(),
+          [0, 1, 2],
+          [travel, 0, -travel],
+        ),
+      },
+    ],
+  }));
+
+  const trailStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       progress.get(),
-      [0, 0.06, 1, 1.76, 2],
-      [0, 1, 1, 1, 0],
+      [0, 0.16, 0.78, 1, 1.22, 1.84, 2],
+      [0, 0.22, 0.12, 0, 0.1, 0.18, 0],
     ),
     transform: [
       {
         translateY: interpolate(
           progress.get(),
           [0, 1, 2],
-          [height * 0.32, 0, -height * 0.06],
+          [travel + 54, 44, -travel + 72],
         ),
       },
+    ],
+  }));
+
+  const sheenStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.get(),
+      [0, 0.22, 0.72, 1, 1.32, 1.82, 2],
+      [0, 0.22, 0.16, 0.1, 0.16, 0.2, 0],
+    ),
+    transform: [
+      { rotate: '-8deg' },
       {
-        scale: interpolate(
+        translateY: interpolate(
           progress.get(),
           [0, 1, 2],
-          [0.56, fullCoverScale, 0.62],
+          [diameter * 0.12, -diameter * 0.015, -diameter * 0.15],
+        ),
+      },
+    ],
+  }));
+
+  const contourOneStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.get(),
+      [0, 0.24, 0.84, 1, 1.18, 1.8, 2],
+      [0, 0.24, 0.16, 0.1, 0.13, 0.2, 0],
+    ),
+    transform: [
+      {
+        translateY: interpolate(
+          progress.get(),
+          [0, 1, 2],
+          [diameter * 0.045, 0, -diameter * 0.06],
+        ),
+      },
+    ],
+  }));
+
+  const contourTwoStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.get(),
+      [0, 0.3, 0.88, 1, 1.24, 1.74, 2],
+      [0, 0.18, 0.12, 0.07, 0.11, 0.16, 0],
+    ),
+    transform: [
+      {
+        translateY: interpolate(
+          progress.get(),
+          [0, 1, 2],
+          [diameter * 0.065, diameter * 0.012, -diameter * 0.075],
         ),
       },
     ],
@@ -450,7 +511,66 @@ function CircleTransitionOverlay({
       {reduceMotion ? (
         <Animated.View style={[styles.fadeLayer, fadeStyle]} />
       ) : (
-        <Animated.View style={[styles.circle, circleStyle]} />
+        <>
+          <Animated.View
+            style={[
+              styles.trail,
+              {
+                width: diameter + 44,
+                height: diameter + 44,
+                borderRadius: radius + 22,
+                marginLeft: -(radius + 22),
+                marginTop: -(radius + 22),
+              },
+              trailStyle,
+            ]}
+          />
+
+          <Animated.View
+            style={[
+              styles.circle,
+              {
+                width: diameter,
+                height: diameter,
+                borderRadius: radius,
+                marginLeft: -radius,
+                marginTop: -radius,
+              },
+              circleStyle,
+            ]}>
+            <Animated.View style={[styles.sheen, sheenStyle]} />
+
+            <Animated.View
+              style={[
+                styles.contour,
+                {
+                  width: diameter * 0.58,
+                  height: diameter * 0.58,
+                  borderRadius: diameter * 0.29,
+                  marginLeft: -(diameter * 0.29),
+                  marginTop: -(diameter * 0.29),
+                },
+                styles.contourOne,
+                contourOneStyle,
+              ]}
+            />
+
+            <Animated.View
+              style={[
+                styles.contour,
+                {
+                  width: diameter * 0.34,
+                  height: diameter * 0.34,
+                  borderRadius: diameter * 0.17,
+                  marginLeft: -(diameter * 0.17),
+                  marginTop: -(diameter * 0.17),
+                },
+                styles.contourTwo,
+                contourTwoStyle,
+              ]}
+            />
+          </Animated.View>
+        </>
       )}
     </View>
   );
@@ -489,15 +609,41 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: colors.bgRaised,
   },
-  circle: {
+  trail: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
     left: '50%',
     top: '50%',
-    marginLeft: -110,
-    marginTop: -110,
+    backgroundColor: colors.accentSoft,
+  },
+  circle: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
     backgroundColor: colors.accent,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  sheen: {
+    position: 'absolute',
+    width: '124%',
+    height: '18%',
+    left: '-12%',
+    top: '41%',
+    backgroundColor: 'rgba(255,255,255,0.055)',
+  },
+  contour: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    borderWidth: 1,
+  },
+  contourOne: {
+    borderColor: 'rgba(255,255,255,0.13)',
+  },
+  contourTwo: {
+    left: '54%',
+    top: '57%',
+    borderColor: 'rgba(255,255,255,0.17)',
   },
 });

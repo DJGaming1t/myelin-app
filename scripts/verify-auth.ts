@@ -196,7 +196,7 @@ assert.ok(
   entryTransitionSource.includes('runEntryTransition') &&
     entryTransitionSource.includes('setEntryPending(true)') &&
     entryTransitionSource.includes('await task()') &&
-    entryTransitionSource.includes('playCircleHandoff(commit)') &&
+    entryTransitionSource.includes('playCircleHandoff(commit, destinationGroups)') &&
     entryTransitionSource.includes('await commit()'),
   'Auth entry must hold routing, finish authentication, then hand off through the circle transition.',
 );
@@ -214,7 +214,7 @@ const entryTransitionStart = entryTransitionSource.indexOf(
 assert.ok(entryTransitionStart >= 0, 'Entry transition implementation is missing.');
 const taskIndex = entryTransitionSource.indexOf('await task()', entryTransitionStart);
 const handoffIndex = entryTransitionSource.indexOf(
-  'await playCircleHandoff(commit)',
+  'await playCircleHandoff(commit, destinationGroups)',
   taskIndex,
 );
 assert.ok(

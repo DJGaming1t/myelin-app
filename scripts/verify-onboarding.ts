@@ -183,14 +183,34 @@ function main() {
   assert.ok(transitionSource.includes('aperture'));
   assert.ok(transitionSource.includes('lensTravel'));
   assert.equal(transitionSource.includes('FOCUS, CONTINUED'), false);
-  const coverDelayIndex = transitionSource.indexOf('await sleep(285)');
+  assert.ok(transitionSource.includes('const COVER_MS = 320'));
+  assert.ok(transitionSource.includes('const PRE_COMMIT_HOLD_MS = 120'));
+  assert.ok(transitionSource.includes('const POST_COMMIT_HOLD_MS = 170'));
+  assert.ok(transitionSource.includes('const REVEAL_MS = 360'));
+  assert.ok(transitionSource.includes('sceneOpacity.set(0)'));
+  assert.ok(transitionSource.includes('haloProgress'));
+  assert.ok(transitionSource.includes('haloOuter'));
+  const coverDelayIndex = transitionSource.indexOf(
+    'await sleep(COVER_MS + PRE_COMMIT_HOLD_MS)',
+  );
   const coveredCommitIndex = transitionSource.indexOf(
     'await commit()',
     coverDelayIndex,
   );
+  const hiddenSettleIndex = transitionSource.indexOf(
+    'await sleep(POST_COMMIT_HOLD_MS)',
+    coveredCommitIndex,
+  );
+  const revealIndex = transitionSource.indexOf(
+    'sceneOpacity.set(',
+    hiddenSettleIndex,
+  );
   assert.ok(
-    coverDelayIndex >= 0 && coveredCommitIndex > coverDelayIndex,
-    'The route should commit only after the signal object fully owns the frame.',
+    coverDelayIndex >= 0 &&
+      coveredCommitIndex > coverDelayIndex &&
+      hiddenSettleIndex > coveredCommitIndex &&
+      revealIndex > hiddenSettleIndex,
+    'The destination must remain hidden until after the post-commit settle.',
   );
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);

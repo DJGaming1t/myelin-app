@@ -25,9 +25,8 @@ import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import {
   resolveEntryTransitionDestination,
-  transitionGroupForDestination,
+  transitionSegmentsMatch,
   type TransitionDestination,
-  type TransitionGroup,
   type TransitionRoutingState,
 } from '@/src/features/onboarding/transition-routing';
 import { colors } from '@/src/theme/tokens';
@@ -114,7 +113,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 
   const routeReadyResolver = useRef<(() => void) | null>(null);
   const routeReadyRejecter = useRef<((error: Error) => void) | null>(null);
-  const routeReadyTarget = useRef<TransitionGroup | null>(null);
+  const routeReadyTarget = useRef<TransitionDestination | null>(null);
   const routeReadyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const routeReadyFrames = useRef<number[]>([]);
   const routeReadyScheduled = useRef(false);
@@ -170,14 +169,13 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   ]);
 
   useEffect(() => {
-    const firstSegment = segments[0] as string | undefined;
     const target = routeReadyTarget.current;
     const resolver = routeReadyResolver.current;
 
     if (
       !resolver ||
       !target ||
-      firstSegment !== target ||
+      !transitionSegmentsMatch(target, segments as readonly string[]) ||
       routeReadyScheduled.current
     ) {
       return;
@@ -218,8 +216,8 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     });
   }, [clearEntryDestinationWait]);
 
-  const waitForRouteGroup = useCallback(
-    (target: TransitionGroup) => {
+  const waitForRouteDestination = useCallback(
+    (target: TransitionDestination) => {
       return new Promise<void>((resolve, reject) => {
         clearRouteReady();
         routeReadyTarget.current = target;
@@ -274,14 +272,13 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 
   const navigateUnderCover = useCallback(
     async (destination: TransitionDestination) => {
-      const targetGroup = transitionGroupForDestination(destination);
-      const routeReady = waitForRouteGroup(targetGroup);
+      const routeReady = waitForRouteDestination(destination);
 
       router.replace(destination);
       await routeReady;
       await reveal();
     },
-    [reveal, waitForRouteGroup],
+    [reveal, waitForRouteDestination],
   );
 
   const finishTransition = useCallback(() => {

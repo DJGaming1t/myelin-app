@@ -312,14 +312,20 @@ export default function RemindersScreen() {
                       ]}>
                       {item.mark}
                     </Text>
-                    {active ? <Text style={styles.selected}>SELECTED</Text> : null}
+                    {active ? <Text style={styles.selected}>ON</Text> : null}
                   </View>
-                  <Text style={styles.voiceName}>{item.name}</Text>
-                  <Text style={styles.voiceText}>{item.description}</Text>
+                  <Text
+                    style={[
+                      styles.voiceName,
+                      active && styles.voiceNameActive,
+                    ]}>
+                    {item.name}
+                  </Text>
                 </Pressable>
               );
             })}
           </View>
+          <Text style={styles.choiceDescription}>{voice.description}</Text>
 
           <Text style={styles.microLabel}>DETAIL</Text>
           <View style={styles.detailGrid}>
@@ -345,13 +351,13 @@ export default function RemindersScreen() {
                       ]}>
                       {item.name}
                     </Text>
-                    {active ? <Text style={styles.selected}>ACTIVE</Text> : null}
+                    {active ? <Text style={styles.selected}>ON</Text> : null}
                   </View>
-                  <Text style={styles.detailText}>{item.description}</Text>
                 </Pressable>
               );
             })}
           </View>
+          <Text style={styles.choiceDescription}>{detail.description}</Text>
         </Section>
 
         <Section
@@ -645,64 +651,56 @@ export default function RemindersScreen() {
 
 function NotificationPreview({
   item,
-  voice,
-  fallbackKind,
-  dimmed,
+  settings,
+  kind,
 }: {
   item?: ReturnType<typeof buildReminderPlan>[number];
-  voice: ReminderVoice;
-  fallbackKind: 'review' | 'exam';
-  dimmed?: boolean;
+  settings: { voice: ReminderVoice; detail: ReminderDetail };
+  kind: ReminderKind;
 }) {
-  const fallback =
-    fallbackKind === 'review'
-      ? voice === 'signal'
-        ? {
-            title: '3 reviews ready',
-            body: 'Start with Refraction. One focused recall round is enough.',
-          }
-        : voice === 'spark'
-          ? {
-              title: 'A small win is ready ✦',
-              body: 'Refraction + 2 more are waiting in your review queue.',
-            }
-          : {
-              title: 'A quiet review window',
-              body: '3 reviews are ready. Refraction can be your first stop.',
-            }
-      : voice === 'signal'
-        ? {
-            title: 'Mathematics exam • in 3 days',
-            body: 'Open the exam plan and choose one useful next step.',
-          }
-        : voice === 'spark'
-          ? {
-              title: 'Next-step spark ✦',
-              body: 'Mathematics exam is in 3 days. Pick one clean move for today.',
-            }
-          : {
-              title: 'A note for later',
-              body: 'Mathematics exam is in 3 days. A short check-in is enough today.',
-            };
+  const fallback = sampleReminderCopy(settings, kind);
+  const mark =
+    settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
+  const accent =
+    settings.voice === 'calm'
+      ? '#D88F78'
+      : settings.voice === 'spark'
+        ? '#FFAA68'
+        : colors.accent;
+  const kindLabel =
+    kind === 'review'
+      ? 'REVIEW'
+      : kind === 'exam'
+        ? 'EXAM'
+        : 'PLANNED STUDY';
+  const action =
+    kind === 'review'
+      ? 'Open Review →'
+      : kind === 'exam'
+        ? 'Open exam plan →'
+        : 'Open Day Map →';
 
   return (
-    <View style={[styles.notification, dimmed && styles.notificationDim]}>
+    <View style={[styles.notification, { borderLeftColor: accent }]}>
       <View style={styles.notificationTop}>
-        <View style={styles.appDot}>
-          <Text style={styles.appDotText}>M</Text>
+        <View style={[styles.appDot, { backgroundColor: accent }]}>
+          <Text style={styles.appDotText}>{mark}</Text>
         </View>
         <Text style={styles.notificationApp}>MYELIN</Text>
         <Text style={styles.notificationTime}>now</Text>
       </View>
+
+      <Text style={[styles.notificationSubtitle, { color: accent }]}>
+        {mark} {kindLabel}
+      </Text>
       <Text style={styles.notificationTitle}>{item?.title ?? fallback.title}</Text>
       <Text style={styles.notificationBody}>{item?.body ?? fallback.body}</Text>
+
       <View style={styles.notificationBottom}>
         <Text style={styles.notificationKind}>
-          {(item?.kind ?? fallbackKind).toUpperCase()}
+          {settings.voice.toUpperCase()} · {settings.detail.toUpperCase()}
         </Text>
-        <Text style={styles.notificationAction}>
-          {fallbackKind === 'review' ? 'Open recall →' : 'Open exam plan →'}
-        </Text>
+        <Text style={styles.notificationAction}>{action}</Text>
       </View>
     </View>
   );

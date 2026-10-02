@@ -1,5 +1,5 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthButton } from '@/src/components/auth/AuthButton';
@@ -12,26 +12,12 @@ import { maskEmail } from '@/src/utils/maskEmail';
 
 export default function VerifyEmailScreen() {
   const { user, resendVerification, refreshVerification, signOutUser } = useAuth();
-  const { notifyTransitionReady, runEntryTransition } = useOnboardingTransition();
+  const { runEntryTransition } = useOnboardingTransition();
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [cooldown, setCooldown] = useState(20);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-
-  useFocusEffect(
-    useCallback(() => {
-      let secondFrame = 0;
-      const firstFrame = requestAnimationFrame(() => {
-        secondFrame = requestAnimationFrame(() => notifyTransitionReady());
-      });
-
-      return () => {
-        cancelAnimationFrame(firstFrame);
-        if (secondFrame) cancelAnimationFrame(secondFrame);
-      };
-    }, [notifyTransitionReady]),
-  );
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -56,6 +42,7 @@ export default function VerifyEmailScreen() {
           throw notVerified;
         },
         () => router.replace('/'),
+        ['(onboarding)', '(app)'],
       );
     } catch (err) {
       if (

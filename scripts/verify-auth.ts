@@ -163,9 +163,8 @@ assert.ok(
     verificationSource.includes('await refreshVerification()') &&
     verificationSource.includes("notVerified.code = 'auth/email-not-verified-yet'") &&
     verificationSource.includes("() => router.replace('/')") &&
-    verificationSource.includes('useFocusEffect') &&
-    verificationSource.includes('secondFrame = requestAnimationFrame'),
-  'A newly verified email account must enter MYELIN through a focus-aware circle handoff.',
+    verificationSource.includes("['(onboarding)', '(app)']"),
+  'A newly verified email account must wait for an actual post-verification route group.',
 );
 assert.ok(
   verificationLayoutSource.includes('entryPending') &&
@@ -197,16 +196,17 @@ assert.ok(
   entryTransitionSource.includes('runEntryTransition') &&
     entryTransitionSource.includes('setEntryPending(true)') &&
     entryTransitionSource.includes('await task()') &&
-    entryTransitionSource.includes('playCircleHandoff(commit)') &&
+    entryTransitionSource.includes('playCircleHandoff(commit, destinationGroups)') &&
     entryTransitionSource.includes('await commit()'),
   'Auth entry must hold routing, finish authentication, then hand off through the circle transition.',
 );
 assert.ok(
   entryTransitionSource.includes('CircleTransitionOverlay') &&
     entryTransitionSource.includes('circleProgress') &&
-    entryTransitionSource.includes('notifyTransitionReady') &&
-    entryTransitionSource.includes('armDestinationReady'),
-  'Auth entry must use one circle overlay and a destination-ready handshake.',
+    entryTransitionSource.includes('useSegments()') &&
+    entryTransitionSource.includes('armRouteReady') &&
+    entryTransitionSource.includes('routeReadyTargets'),
+  'Auth entry must use one circle overlay and resolve readiness from final Expo Router segments.',
 );
 const entryTransitionStart = entryTransitionSource.indexOf(
   'const runEntryTransition = useCallback',
@@ -214,7 +214,7 @@ const entryTransitionStart = entryTransitionSource.indexOf(
 assert.ok(entryTransitionStart >= 0, 'Entry transition implementation is missing.');
 const taskIndex = entryTransitionSource.indexOf('await task()', entryTransitionStart);
 const handoffIndex = entryTransitionSource.indexOf(
-  'await playCircleHandoff(commit)',
+  'await playCircleHandoff(commit, destinationGroups)',
   taskIndex,
 );
 assert.ok(

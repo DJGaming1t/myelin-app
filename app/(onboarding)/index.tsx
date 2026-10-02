@@ -1,5 +1,5 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -27,21 +27,7 @@ const CAPACITY_COPY: Record<number, string> = {
 export default function OnboardingScreen() {
   const { workspace, updateWorkspace, waitForSaves } = useWorkspace();
   const { finish } = useOnboarding();
-  const { runTransition, notifyTransitionReady } = useOnboardingTransition();
-
-  useFocusEffect(
-    useCallback(() => {
-      let secondFrame = 0;
-      const firstFrame = requestAnimationFrame(() => {
-        secondFrame = requestAnimationFrame(() => notifyTransitionReady());
-      });
-
-      return () => {
-        cancelAnimationFrame(firstFrame);
-        if (secondFrame) cancelAnimationFrame(secondFrame);
-      };
-    }, [notifyTransitionReady]),
-  );
+  const { runTransition } = useOnboardingTransition();
 
   const [capacity, setCapacity] = useState(
     normalizeDailyCapacity(workspace?.settings.dailyMinutes ?? 90),

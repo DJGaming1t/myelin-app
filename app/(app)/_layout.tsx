@@ -4,9 +4,11 @@ import { ScreenState } from '@/src/components/app/ScreenState';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { useEntryDestination } from '@/src/features/onboarding/use-entry-destination';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 
 export default function AppLayout() {
   const destination = useEntryDestination();
+  const { transitionPending } = useOnboardingTransition();
   const { status, saveError, retryWorkspace } = useWorkspace();
   const reduceMotion = useReducedMotion();
 
@@ -21,7 +23,7 @@ export default function AppLayout() {
     );
   }
 
-  if (destination !== '/(app)/today') {
+  if (!transitionPending && destination !== '/(app)/today') {
     return <Redirect href={destination} />;
   }
 

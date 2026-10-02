@@ -11,10 +11,12 @@ import {
 } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -127,6 +129,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const routeReadyScheduled = useRef(false);
 
   const circleProgress = useSharedValue(0);
+  const fieldPhase = useSharedValue(0);
   const fadeOpacity = useSharedValue(0);
 
   const clearEntryDestinationWait = useCallback(() => {
@@ -258,9 +261,12 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   );
 
   const resetVisualState = useCallback(() => {
+    cancelAnimation(circleProgress);
+    cancelAnimation(fieldPhase);
     circleProgress.set(0);
+    fieldPhase.set(0);
     fadeOpacity.set(0);
-  }, [circleProgress, fadeOpacity]);
+  }, [circleProgress, fadeOpacity, fieldPhase]);
 
   const cover = useCallback(async () => {
     resetVisualState();
@@ -273,6 +279,13 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    fieldPhase.set(
+      withRepeat(
+        withTiming(1, { duration: 920, easing: EASE_IN_OUT }),
+        -1,
+        true,
+      ),
+    );
     circleProgress.set(
       withTiming(1, { duration: COVER_MS, easing: EASE_IN_OUT }),
     );
@@ -306,10 +319,12 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const finishTransition = useCallback(() => {
     clearEntryDestinationWait();
     clearRouteReady();
+    cancelAnimation(fieldPhase);
+    fieldPhase.set(0);
     setActive(false);
     setTransitionPending(false);
     running.current = false;
-  }, [clearEntryDestinationWait, clearRouteReady]);
+  }, [clearEntryDestinationWait, clearRouteReady, fieldPhase]);
 
   const runEntryTransition = useCallback(
     async (task: TransitionTask) => {
@@ -390,6 +405,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         {active ? (
           <CircleTransitionOverlay
             progress={circleProgress}
+            fieldPhase={fieldPhase}
             fadeOpacity={fadeOpacity}
             reduceMotion={reduceMotion}
           />
@@ -401,10 +417,12 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 
 function CircleTransitionOverlay({
   progress,
+  fieldPhase,
   fadeOpacity,
   reduceMotion,
 }: {
   progress: SharedValue<number>;
+  fieldPhase: SharedValue<number>;
   fadeOpacity: SharedValue<number>;
   reduceMotion: boolean;
 }) {
@@ -453,14 +471,16 @@ function CircleTransitionOverlay({
       [0, 0.22, 0.16, 0.1, 0.16, 0.2, 0],
     ),
     transform: [
-      { rotate: '-8deg' },
       {
-        translateY: interpolate(
-          progress.get(),
-          [0, 1, 2],
-          [diameter * 0.12, -diameter * 0.015, -diameter * 0.15],
-        ),
+        translateY:
+          interpolate(
+            progress.get(),
+            [0, 1, 2],
+            [diameter * 0.12, -diameter * 0.015, -diameter * 0.15],
+          ) +
+          interpolate(fieldPhase.get(), [0, 1], [-10, 10]),
       },
+      { rotate: '-8deg' },
     ],
   }));
 
@@ -472,11 +492,13 @@ function CircleTransitionOverlay({
     ),
     transform: [
       {
-        translateY: interpolate(
-          progress.get(),
-          [0, 1, 2],
-          [diameter * 0.045, 0, -diameter * 0.06],
-        ),
+        translateY:
+          interpolate(
+            progress.get(),
+            [0, 1, 2],
+            [diameter * 0.045, 0, -diameter * 0.06],
+          ) +
+          interpolate(fieldPhase.get(), [0, 1], [-7, 7]),
       },
     ],
   }));
@@ -489,11 +511,13 @@ function CircleTransitionOverlay({
     ),
     transform: [
       {
-        translateY: interpolate(
-          progress.get(),
-          [0, 1, 2],
-          [diameter * 0.065, diameter * 0.012, -diameter * 0.075],
-        ),
+        translateY:
+          interpolate(
+            progress.get(),
+            [0, 1, 2],
+            [diameter * 0.065, diameter * 0.012, -diameter * 0.075],
+          ) +
+          interpolate(fieldPhase.get(), [0, 1], [6, -6]),
       },
     ],
   }));

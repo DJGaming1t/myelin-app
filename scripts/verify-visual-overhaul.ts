@@ -28,6 +28,12 @@ function main() {
   assert.ok(disclosure.includes('FadeOutUp.duration(motion.pressMs + 20)'));
   assert.ok(disclosure.includes('useReducedMotion'));
 
+  const motionItem = read('src/components/motion/MotionItem.tsx');
+  assert.ok(motionItem.includes('FadeInDown'));
+  assert.ok(motionItem.includes('FadeOutUp'));
+  assert.ok(motionItem.includes('LinearTransition'));
+  assert.ok(motionItem.includes('useReducedMotion'));
+
   const progress = read('src/components/motion/AnimatedProgress.tsx');
   assert.ok(progress.includes('useReducedMotion'));
 
@@ -87,7 +93,7 @@ function main() {
 
   const appLayout = read('app/(app)/_layout.tsx');
   assert.ok(appLayout.includes('PEER_ROUTE_NAMES.has(route.name)'));
-  assert.ok(appLayout.includes("? 'none'"));
+  assert.ok(appLayout.includes("? 'fade'"));
   assert.ok(appLayout.includes(": 'fade_from_bottom'"));
   for (const routeName of [
     "'today'",

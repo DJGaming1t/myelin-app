@@ -18,6 +18,7 @@ function state(
     localMode: false,
     workspaceOwnerKey: null,
     workspaceStatus: 'idle',
+    workspacePresent: true,
     onboardingReady: false,
     shouldShowOnboarding: false,
     ...overrides,
@@ -60,6 +61,21 @@ assert.equal(
   ),
   null,
   'Local entry must stay covered while its workspace is loading.',
+);
+
+assert.equal(
+  resolveEntryTransitionDestination(
+    state({
+      localMode: true,
+      workspaceOwnerKey: 'local:device',
+      workspaceStatus: 'ready',
+      workspacePresent: false,
+      onboardingReady: true,
+      shouldShowOnboarding: true,
+    }),
+  ),
+  null,
+  'Local entry must not route from a stale ready status without a workspace object.',
 );
 
 assert.equal(

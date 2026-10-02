@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   ReminderDetail,
@@ -252,11 +254,15 @@ export default function RemindersScreen() {
             })}
           </View>
 
-          <NotificationPreview
-            settings={settings}
-            item={previewItem}
-            kind={previewKind}
-          />
+          <Reveal
+            key={`preview:${previewKind}:${settings.voice}:${settings.detail}`}
+            distance={6}>
+            <NotificationPreview
+              settings={settings}
+              item={previewItem}
+              kind={previewKind}
+            />
+          </Reveal>
 
           {settings.enabled && permission === 'granted' ? (
             <Pressable
@@ -540,26 +546,26 @@ export default function RemindersScreen() {
 
         </Section>
 
-        {message ? (
-          <View
+        <AnimatedDisclosure
+          visible={Boolean(message)}
+          style={[
+            styles.message,
+            status === 'error' || status === 'blocked'
+              ? styles.messageDanger
+              : null,
+          ]}>
+          <Text
             style={[
-              styles.message,
+              styles.messageText,
               status === 'error' || status === 'blocked'
-                ? styles.messageDanger
+                ? styles.messageDangerText
                 : null,
             ]}>
-            <Text
-              style={[
-                styles.messageText,
-                status === 'error' || status === 'blocked'
-                  ? styles.messageDangerText
-                  : null,
-              ]}>
-              {message}
-            </Text>
-          </View>
-        ) : null}
+            {message}
+          </Text>
+        </AnimatedDisclosure>
 
+        <Reveal key={`activation:${settings.enabled ? 'on' : 'off'}`} distance={6}>
         <View style={styles.activationCard}>
           <Text style={styles.activationEyebrow}>
             {settings.enabled ? 'REMINDERS ACTIVE' : 'YOUR CHOICE'}
@@ -636,6 +642,7 @@ export default function RemindersScreen() {
             </Pressable>
           ) : null}
         </View>
+        </Reveal>
 
         <View style={styles.ethics}>
           <Text style={styles.ethicsTitle}>What MYELIN will not do</Text>

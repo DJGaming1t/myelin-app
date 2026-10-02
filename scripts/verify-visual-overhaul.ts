@@ -172,17 +172,23 @@ assert.ok(authIntro.includes('StudyPathVisual'));
   const onboardingTransition = read('src/features/onboarding/OnboardingTransitionProvider.tsx');
   assert.ok(onboardingTransition.includes('entryPending'));
   assert.ok(onboardingTransition.includes('await task()'));
-  assert.ok(onboardingTransition.includes('await nextFrame()'));
   assert.ok(onboardingTransition.includes('await commit()'));
-  assert.equal(onboardingTransition.includes('react-native-reanimated'), false);
-  assert.equal(onboardingTransition.includes('Animated'), false);
-  assert.equal(onboardingTransition.includes('StyleSheet'), false);
-  assert.equal(onboardingTransition.includes('TransitionOverlay'), false);
-  assert.equal(onboardingTransition.includes('coralProgress'), false);
-  assert.equal(onboardingTransition.includes('darkProgress'), false);
+  assert.ok(onboardingTransition.includes('CircleTransitionOverlay'));
+  assert.ok(onboardingTransition.includes('circleProgress'));
+  assert.ok(onboardingTransition.includes('borderRadius: 120'));
+  assert.ok(onboardingTransition.includes('Math.hypot(width, height)'));
+  assert.ok(onboardingTransition.includes('notifyTransitionReady'));
+  assert.ok(onboardingTransition.includes('armDestinationReady'));
+  assert.equal(onboardingTransition.includes('coralSheet'), false);
+  assert.equal(onboardingTransition.includes('darkSheet'), false);
+  assert.equal(onboardingTransition.includes('accentRibbon'), false);
 
   const rootLayout = read('app/_layout.tsx');
-  assert.ok(rootLayout.includes("animation: reduceMotion ? 'none' : 'fade'"));
+  assert.ok(rootLayout.includes("animation: 'none'"));
+
+  const todayReady = read('app/(app)/today/index.tsx');
+  assert.ok(todayReady.includes('notifyTransitionReady'));
+  assert.ok(todayReady.includes("status !== 'ready'"));
 
   const onboarding = read('app/(onboarding)/index.tsx');
   assert.ok(onboarding.includes('How much focus fits in a normal day?'));

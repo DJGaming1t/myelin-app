@@ -51,7 +51,10 @@ assert(tokens.includes('releaseSpring:'), 'Shared release spring tokens are miss
 assert(tokens.includes('revealSpring:'), 'Shared reveal spring tokens are missing.');
 assert(motion.includes('AccessibilityInfo.isReduceMotionEnabled'), 'System reduced-motion preference is not read.');
 assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion'), 'User and system motion preferences are not combined.');
-assert(root.includes("animation: reduceMotion ? 'none' : 'fade'"), 'Root navigation ignores reduced motion.');
+assert(
+  root.includes("animation: 'none'"),
+  'Root group navigation must stay motion-free so reduced motion and the circle handoff are not layered with a second transition.',
+);
 assert(app.includes("animation: reduceMotion ? 'none' : 'fade_from_bottom'"), 'Hierarchical app navigation should animate unless reduced motion is enabled.');
 assert(app.includes('<Stack.Screen name="today/index" options={{ animation: \'none\' }} />'), 'Today peer navigation must stay instant.');
 assert(app.includes('<Stack.Screen name="topics" options={{ animation: \'none\' }} />'), 'Library parent route must stay instant.');

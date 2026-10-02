@@ -4,7 +4,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { WorkspaceProvider } from '@/src/data/WorkspaceProvider';
-import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { AuthProvider } from '@/src/features/auth/AuthProvider';
 import { CloudSyncProvider } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { FocusProvider } from '@/src/features/focus/FocusProvider';
@@ -44,8 +43,6 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const reduceMotion = useReducedMotion();
-
   return (
     <>
       <StatusBar style="light" />
@@ -53,7 +50,7 @@ function RootNavigator() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.bg },
-          animation: reduceMotion ? 'none' : 'fade',
+          animation: 'none',
         }}
       />
     </>

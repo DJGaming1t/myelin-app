@@ -168,31 +168,33 @@ assert.ok(
   entryTransitionSource.includes('runEntryTransition') &&
     entryTransitionSource.includes('setEntryPending(true)') &&
     entryTransitionSource.includes('await task()') &&
-    entryTransitionSource.includes('await nextFrame()') &&
+    entryTransitionSource.includes('playCircleHandoff(commit)') &&
     entryTransitionSource.includes('await commit()'),
-  'Auth entry must hold routing, wait for authentication, then commit navigation once.',
+  'Auth entry must hold routing, finish authentication, then hand off through the circle transition.',
 );
-assert.equal(
-  entryTransitionSource.includes('setActive(true)') ||
-    entryTransitionSource.includes('TransitionOverlay') ||
-    entryTransitionSource.includes('react-native-reanimated'),
-  false,
-  'Auth entry should not layer a custom visual overlay on top of native stack motion.',
+assert.ok(
+  entryTransitionSource.includes('CircleTransitionOverlay') &&
+    entryTransitionSource.includes('circleProgress') &&
+    entryTransitionSource.includes('notifyTransitionReady') &&
+    entryTransitionSource.includes('armDestinationReady'),
+  'Auth entry must use one circle overlay and a destination-ready handshake.',
 );
 const entryTransitionStart = entryTransitionSource.indexOf(
   'const runEntryTransition = useCallback',
 );
 assert.ok(entryTransitionStart >= 0, 'Entry transition implementation is missing.');
 const taskIndex = entryTransitionSource.indexOf('await task()', entryTransitionStart);
-const frameIndex = entryTransitionSource.indexOf('await nextFrame()', taskIndex);
-const commitIndex = entryTransitionSource.indexOf('await commit()', frameIndex);
-assert.ok(
-  taskIndex >= 0 && frameIndex > taskIndex && commitIndex > frameIndex,
-  'The Google picker must finish before the protected frame and navigation commit.',
+const handoffIndex = entryTransitionSource.indexOf(
+  'await playCircleHandoff(commit)',
+  taskIndex,
 );
 assert.ok(
-  rootLayoutSource.includes("animation: reduceMotion ? 'none' : 'fade'"),
-  'Visible auth/onboarding route motion should be owned by the native root stack.',
+  taskIndex >= 0 && handoffIndex > taskIndex,
+  'The Google picker must finish before the MYELIN circle transition begins.',
+);
+assert.ok(
+  rootLayoutSource.includes("animation: 'none'"),
+  'Top-level route groups must not run a second native transition underneath the circle.',
 );
 
 console.log('Authentication configuration and experience verification passed.');

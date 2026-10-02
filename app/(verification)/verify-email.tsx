@@ -12,7 +12,7 @@ import { maskEmail } from '@/src/utils/maskEmail';
 
 export default function VerifyEmailScreen() {
   const { user, resendVerification, refreshVerification, signOutUser } = useAuth();
-  const { notifyTransitionReady } = useOnboardingTransition();
+  const { notifyTransitionReady, runEntryTransition } = useOnboardingTransition();
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [cooldown, setCooldown] = useState(20);
@@ -35,11 +35,28 @@ export default function VerifyEmailScreen() {
     setMessage('');
     setBusy(true);
     try {
-      const verified = await refreshVerification();
-      if (verified) router.replace('/');
-      else setMessage('Not verified yet. Open the email link, then check again.');
+      await runEntryTransition(
+        async () => {
+          const verified = await refreshVerification();
+          if (verified) return;
+
+          const notVerified = new Error('Email is not verified yet') as Error & {
+            code: string;
+          };
+          notVerified.code = 'auth/email-not-verified-yet';
+          throw notVerified;
+        },
+        () => router.replace('/'),
+      );
     } catch (err) {
-      setError(authErrorMessage(err, 'signin'));
+      if (
+        (err as { code?: string } | undefined)?.code ===
+        'auth/email-not-verified-yet'
+      ) {
+        setMessage('Not verified yet. Open the email link, then check again.');
+      } else {
+        setError(authErrorMessage(err, 'signin'));
+      }
     } finally {
       setBusy(false);
     }

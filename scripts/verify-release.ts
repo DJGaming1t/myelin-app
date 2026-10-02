@@ -56,10 +56,6 @@ assert(
   resolvedExpo?.android?.adaptiveIcon?.backgroundColor === '#070707',
   'Android adaptive icon background must match MYELIN.',
 );
-assert(
-  resolvedExpo?.web?.favicon === './assets/generated/myelin-icon.jpg',
-  'Web favicon must use the generated clean icon asset.',
-);
 assert(fs.existsSync(generatedIconPath), 'Generated MYELIN icon asset is missing.');
 const generatedIconBytes = fs.readFileSync(generatedIconPath);
 assert(

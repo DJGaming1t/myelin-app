@@ -178,25 +178,29 @@ function main() {
   assert.ok(transitionSource.includes('accessibilityLabel="Opening MYELIN"'));
   assert.ok(transitionSource.includes('coralProgress'));
   assert.ok(transitionSource.includes('darkProgress'));
-  assert.ok(transitionSource.includes('rimProgress'));
-  assert.ok(transitionSource.includes('coralDisc'));
-  assert.ok(transitionSource.includes('darkDisc'));
-  assert.ok(transitionSource.includes('rimEcho'));
+  assert.ok(transitionSource.includes('accentProgress'));
+  assert.ok(transitionSource.includes('coralField'));
+  assert.ok(transitionSource.includes('darkField'));
+  assert.ok(transitionSource.includes('accentRibbon'));
+  assert.ok(transitionSource.includes("rotateZ: '-12deg'"));
   assert.equal(transitionSource.includes('eyeStage'), false);
   assert.equal(transitionSource.includes('eyeOpen'), false);
   assert.equal(transitionSource.includes('coreScale'), false);
+  assert.equal(transitionSource.includes('rimProgress'), false);
+  assert.equal(transitionSource.includes('rimEcho'), false);
+  assert.equal(transitionSource.includes('coralDisc'), false);
+  assert.equal(transitionSource.includes('darkDisc'), false);
   assert.equal(transitionSource.includes('sceneScale'), false);
   assert.equal(transitionSource.includes('haloProgress'), false);
   assert.equal(transitionSource.includes('lensTravel'), false);
-  assert.ok(transitionSource.includes('const CORAL_COVER_MS = 330'));
-  assert.ok(transitionSource.includes('const DARK_DELAY_MS = 170'));
-  assert.ok(transitionSource.includes('const DARK_COVER_MS = 310'));
+  assert.ok(transitionSource.includes('const LEAD_IN_MS = 280'));
+  assert.ok(transitionSource.includes('const COVER_IN_MS = 330'));
   assert.ok(transitionSource.includes('const FULL_COVER_HOLD_MS = 110'));
-  assert.ok(transitionSource.includes('const POST_COMMIT_HOLD_MS = 150'));
-  assert.ok(transitionSource.includes('const REVEAL_MS = 390'));
+  assert.ok(transitionSource.includes('const POST_COMMIT_HOLD_MS = 160'));
+  assert.ok(transitionSource.includes('const REVEAL_MS = 420'));
   assert.ok(transitionSource.includes('sceneOpacity.set(0)'));
   const fullCoverIndex = transitionSource.indexOf(
-    'await sleep(DARK_DELAY_MS + DARK_COVER_MS + FULL_COVER_HOLD_MS)',
+    'await sleep(85 + COVER_IN_MS + FULL_COVER_HOLD_MS)',
   );
   const coveredCommitIndex = transitionSource.indexOf(
     'await commit()',
@@ -225,7 +229,7 @@ function main() {
       sceneRevealIndex > hiddenSettleIndex &&
       darkRevealIndex > sceneRevealIndex &&
       coralRevealIndex > darkRevealIndex,
-    'The layered fields must fully cover, commit hidden, then reveal in a staggered order.',
+    'The diagonal fields must fully cover, commit hidden, then reveal in a staggered order.',
   );
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);

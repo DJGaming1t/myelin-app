@@ -15,7 +15,8 @@ function assert(condition: unknown, message: string): asserts condition {
 const eas = json('eas.json');
 const app = json('app.json');
 const require = createRequire(import.meta.url);
-const resolvedExpo = require(path.join(process.cwd(), 'app.config.js')).expo;
+const appConfig = require(path.join(process.cwd(), 'app.config.js'));
+const resolvedExpo = appConfig({ config: app.expo });
 const generatedIconPath = path.join(
   process.cwd(),
   'assets/generated/myelin-icon.png',

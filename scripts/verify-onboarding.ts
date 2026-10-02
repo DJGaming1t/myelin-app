@@ -175,13 +175,14 @@ function main() {
   assert.ok(transitionSource.includes('useSegments()'));
   assert.ok(transitionSource.includes('resolveEntryTransitionDestination'));
   assert.ok(transitionSource.includes('waitForEntryDestination'));
-  assert.ok(transitionSource.includes('waitForRouteGroup'));
+  assert.ok(transitionSource.includes('waitForRouteDestination'));
+  assert.ok(transitionSource.includes('transitionSegmentsMatch'));
   assert.ok(transitionSource.includes('router.replace(destination)'));
   assert.ok(transitionSource.includes('STATE_READY_TIMEOUT_MS'));
   assert.ok(transitionSource.includes('ROUTE_READY_TIMEOUT_MS'));
   assert.equal(transitionSource.includes("router.replace('/')"), false);
   const readyArmIndex = transitionSource.indexOf(
-    'const routeReady = waitForRouteGroup(targetGroup)',
+    'const routeReady = waitForRouteDestination(destination)',
   );
   const replaceIndex = transitionSource.indexOf(
     'router.replace(destination)',

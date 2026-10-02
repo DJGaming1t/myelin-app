@@ -87,6 +87,11 @@ assert.ok(
   authProvider.includes('sendEmailVerification(credential.user).catch'),
   'A verification-email delivery failure must not masquerade as account-creation failure.',
 );
+assert.ok(
+  authProvider.includes('const [authRevision, forceRefresh] = useState(0)') &&
+    authProvider.includes('[authRevision, keepSignedIn, localMode, ready, user]'),
+  'Refreshing email verification must publish a new auth context value even if Firebase reuses the same User object.',
+);
 
 assert.ok(
   authIntro.includes('Know what to study') && authIntro.includes('next.'),

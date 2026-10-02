@@ -15,6 +15,7 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { Confidence } from '@/src/data/schema';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -148,15 +149,13 @@ export default function ReviewScreen() {
           />
 
           <ScrollView contentContainerStyle={styles.dashboard} showsVerticalScrollIndicator={false}>
-            {completedNotice ? (
-              <View style={styles.completeNotice}>
-                <Text style={styles.completeMark}>✓</Text>
-                <View style={styles.completeCopy}>
-                  <Text style={styles.completeTitle}>Review queue complete.</Text>
-                  <Text style={styles.completeText}>Those cards are already rescheduled.</Text>
-                </View>
+            <AnimatedDisclosure visible={completedNotice} style={styles.completeNotice}>
+              <Text style={styles.completeMark}>✓</Text>
+              <View style={styles.completeCopy}>
+                <Text style={styles.completeTitle}>Review queue complete.</Text>
+                <Text style={styles.completeText}>Those cards are already rescheduled.</Text>
               </View>
-            ) : null}
+            </AnimatedDisclosure>
 
             {activeFocus || blockedByFocus ? (
               <Pressable

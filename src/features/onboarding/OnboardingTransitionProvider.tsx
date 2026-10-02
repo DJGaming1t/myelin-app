@@ -76,7 +76,11 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const reduceMotion = useReducedMotion();
   const segments = useSegments();
   const { ready: authReady, user, localMode } = useAuth();
-  const { status: workspaceStatus, ownerKey: workspaceOwnerKey } = useWorkspace();
+  const {
+    status: workspaceStatus,
+    ownerKey: workspaceOwnerKey,
+    workspace,
+  } = useWorkspace();
   const { ready: onboardingReady, shouldShow: shouldShowOnboarding } =
     useOnboarding();
 
@@ -91,6 +95,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     localMode,
     workspaceOwnerKey,
     workspaceStatus,
+    workspacePresent: Boolean(workspace),
     onboardingReady,
     shouldShowOnboarding,
   });
@@ -102,12 +107,15 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     localMode,
     workspaceOwnerKey,
     workspaceStatus,
+    workspacePresent: Boolean(workspace),
     onboardingReady,
     shouldShowOnboarding,
   };
 
   const entryDestinationResolver =
     useRef<((destination: TransitionDestination) => void) | null>(null);
+  const entryDestinationExpected =
+    useRef<TransitionDestination | null>(null);
   const entryDestinationRejecter = useRef<((error: Error) => void) | null>(null);
   const entryDestinationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -127,6 +135,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       entryDestinationTimer.current = null;
     }
     entryDestinationResolver.current = null;
+    entryDestinationExpected.current = null;
     entryDestinationRejecter.current = null;
   }, []);
 
@@ -152,7 +161,13 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     const destination = resolveEntryTransitionDestination(
       routingStateRef.current,
     );
-    if (!destination) return;
+    if (
+      !destination ||
+      (entryDestinationExpected.current &&
+        destination !== entryDestinationExpected.current)
+    ) {
+      return;
+    }
 
     clearEntryDestinationWait();
     resolver(destination);
@@ -166,6 +181,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     user?.uid,
     workspaceOwnerKey,
     workspaceStatus,
+    workspace,
   ]);
 
   useEffect(() => {
@@ -196,15 +212,19 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     routeReadyFrames.current.push(firstFrame);
   }, [clearRouteReady, segments]);
 
-  const waitForEntryDestination = useCallback(() => {
-    const immediate = resolveEntryTransitionDestination(
-      routingStateRef.current,
-    );
-    if (immediate) return Promise.resolve(immediate);
+  const waitForEntryDestination = useCallback(
+    (expected: TransitionDestination | null = null) => {
+      const immediate = resolveEntryTransitionDestination(
+        routingStateRef.current,
+      );
+      if (immediate && (!expected || immediate === expected)) {
+        return Promise.resolve(immediate);
+      }
 
-    return new Promise<TransitionDestination>((resolve, reject) => {
-      clearEntryDestinationWait();
-      entryDestinationResolver.current = resolve;
+      return new Promise<TransitionDestination>((resolve, reject) => {
+        clearEntryDestinationWait();
+        entryDestinationExpected.current = expected;
+        entryDestinationResolver.current = resolve;
       entryDestinationRejecter.current = reject;
       entryDestinationTimer.current = setTimeout(() => {
         const currentRejecter = entryDestinationRejecter.current;
@@ -212,9 +232,11 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         currentRejecter?.(
           timeoutError('MYELIN could not finish preparing the next screen.'),
         );
-      }, STATE_READY_TIMEOUT_MS);
-    });
-  }, [clearEntryDestinationWait]);
+        }, STATE_READY_TIMEOUT_MS);
+      });
+    },
+    [clearEntryDestinationWait],
+  );
 
   const waitForRouteDestination = useCallback(
     (target: TransitionDestination) => {
@@ -328,12 +350,21 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         // happen only after the circle is completely opaque.
         await cover();
         await task();
+
+        // Do not navigate until React has committed the state mutation that
+        // makes this destination valid (for example shouldShow=false).
+        await waitForEntryDestination(destination);
         await navigateUnderCover(destination);
       } finally {
         finishTransition();
       }
     },
-    [cover, finishTransition, navigateUnderCover],
+    [
+      cover,
+      finishTransition,
+      navigateUnderCover,
+      waitForEntryDestination,
+    ],
   );
 
   const value = useMemo(

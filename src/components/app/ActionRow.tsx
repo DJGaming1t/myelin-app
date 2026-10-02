@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { colors, layout, radius, space, type } from '@/src/theme/tokens';
 
 type Props = {
@@ -32,16 +33,15 @@ export function ActionRow({ icon, title, detail, meta, onPress, accent = false }
   if (!onPress) return <View style={styles.row}>{content}</View>;
 
   return (
-    <Pressable
+    <SpringPressable
       accessibilityRole="button"
       accessibilityLabel={[title, detail, meta].filter(Boolean).join('. ')}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        pressed && styles.pressed,
-      ]}>
+      scaleTo={0.985}
+      lift={0}
+      style={styles.row}>
       {content}
-    </Pressable>
+    </SpringPressable>
   );
 }
 
@@ -69,5 +69,4 @@ const styles = StyleSheet.create({
   detail: { color: colors.muted, ...type.meta, marginTop: 2 },
   meta: { color: colors.muted, ...type.meta, fontWeight: '600' },
   metaAccent: { color: colors.accent },
-  pressed: { opacity: 0.72, backgroundColor: colors.accentFaint },
 });

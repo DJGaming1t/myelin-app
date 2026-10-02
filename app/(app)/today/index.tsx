@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
@@ -32,6 +34,10 @@ export default function TodayScreen() {
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
+  const reduceMotion = useReducedMotion();
+  const heroProgress = useRef(new Animated.Value(1)).current;
+  const deferredNextId = useRef<string | null>(null);
+  const [deferAnimating, setDeferAnimating] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
@@ -67,6 +73,25 @@ export default function TodayScreen() {
     () => (workspace ? nearestUpcomingExam(workspace, now) : null),
     [workspace, now],
   );
+  const nextId = plan?.nextBlock?.id ?? null;
+
+  useEffect(() => {
+    if (!deferAnimating || deferredNextId.current === nextId) return;
+
+    deferredNextId.current = nextId;
+    if (reduceMotion) {
+      heroProgress.setValue(1);
+      setDeferAnimating(false);
+      return;
+    }
+
+    heroProgress.setValue(0);
+    Animated.spring(heroProgress, {
+      toValue: 1,
+      useNativeDriver: true,
+      ...motion.revealSpring,
+    }).start(() => setDeferAnimating(false));
+  }, [deferAnimating, heroProgress, nextId, reduceMotion]);
 
   if (status === 'loading' || status === 'idle' || !workspace || !plan) {
     return (
@@ -86,6 +111,14 @@ export default function TodayScreen() {
     .filter((block) => !next || block.id !== next.id)
     .slice(0, 3);
   const budgetFinished = currentPlan.remainingBudgetMinutes <= 0;
+  const heroTranslateY = heroProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [18, 0],
+  });
+  const heroScale = heroProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.975, 1],
+  });
 
   function setBudget(minutes: number) {
     updateWorkspace((draft) => {
@@ -133,6 +166,32 @@ export default function TodayScreen() {
       id: topic.id,
       name: topic.name,
       previousSnoozeUntil,
+    });
+  }
+
+  function deferWithTransition(block: PlanBlock) {
+    if (deferAnimating) return;
+
+    setShowWhy(false);
+    deferredNextId.current = block.id;
+
+    if (reduceMotion) {
+      deferForToday(block);
+      return;
+    }
+
+    setDeferAnimating(true);
+    Animated.timing(heroProgress, {
+      toValue: 0,
+      duration: motion.stateMs,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) {
+        heroProgress.setValue(1);
+        setDeferAnimating(false);
+        return;
+      }
+      deferForToday(block);
     });
   }
 
@@ -215,89 +274,99 @@ export default function TodayScreen() {
             {activeReview || activeFocus ? 'CONTINUE' : 'NEXT'}
           </Text>
 
-          {activeReview ? (
-            <View style={styles.hero}>
-              <Text style={styles.heroMeta}>REVIEW IN PROGRESS</Text>
-              <Text style={styles.heroTitle}>
-                {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
-              </Text>
-              <Text style={styles.heroReason}>Your place is saved.</Text>
-              <AppButton label="Resume review" onPress={() => router.push('/(app)/review')} />
-            </View>
-          ) : activeFocus ? (
-            <View style={styles.hero}>
-              <Text style={styles.heroMeta}>
-                {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
-              </Text>
-              <Text style={styles.heroTitle}>{activeFocus.topicName}</Text>
-              <Text style={styles.heroReason}>The timer stays intact while you are away.</Text>
-              <AppButton label="Resume focus" onPress={() => router.push('/(app)/focus')} />
-            </View>
-          ) : budgetFinished ? (
-            <View style={styles.heroQuiet}>
-              <Text style={styles.heroTitle}>You have used today’s study capacity.</Text>
-              <Text style={styles.heroReason}>
-                MYELIN will stay quiet unless your available time changes.
-              </Text>
-              <AppButton
-                label="Adjust today"
-                variant="secondary"
-                onPress={() => setShowAdjust(true)}
-              />
-            </View>
-          ) : next ? (
-            <View style={styles.hero}>
-              <View style={styles.heroTop}>
-                <Text style={styles.heroMeta}>{next.subject}</Text>
-                <Text style={styles.heroTime}>{next.minutes} min</Text>
+          <Animated.View
+            pointerEvents={deferAnimating ? 'none' : 'auto'}
+            style={{
+              opacity: heroProgress,
+              transform: [{ translateY: heroTranslateY }, { scale: heroScale }],
+            }}>
+            {activeReview ? (
+              <View style={styles.hero}>
+                <Text style={styles.heroMeta}>REVIEW IN PROGRESS</Text>
+                <Text style={styles.heroTitle}>
+                  {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
+                </Text>
+                <Text style={styles.heroReason}>Your place is saved.</Text>
+                <AppButton label="Resume review" onPress={() => router.push('/(app)/review')} />
               </View>
+            ) : activeFocus ? (
+              <View style={styles.hero}>
+                <Text style={styles.heroMeta}>
+                  {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
+                </Text>
+                <Text style={styles.heroTitle}>{activeFocus.topicName}</Text>
+                <Text style={styles.heroReason}>The timer stays intact while you are away.</Text>
+                <AppButton label="Resume focus" onPress={() => router.push('/(app)/focus')} />
+              </View>
+            ) : budgetFinished ? (
+              <View style={styles.heroQuiet}>
+                <Text style={styles.heroTitle}>You have used today’s study capacity.</Text>
+                <Text style={styles.heroReason}>
+                  MYELIN will stay quiet unless your available time changes.
+                </Text>
+                <AppButton
+                  label="Adjust today"
+                  variant="secondary"
+                  onPress={() => setShowAdjust(true)}
+                />
+              </View>
+            ) : next ? (
+              <View style={styles.hero}>
+                <View style={styles.heroTop}>
+                  <Text style={styles.heroMeta}>{next.subject}</Text>
+                  <Text style={styles.heroTime}>{next.minutes} min</Text>
+                </View>
 
-              <Text style={styles.heroTitle}>{next.topicName}</Text>
-              <Text style={styles.heroReason}>
-                {next.reasons[0] ?? (next.mode === 'review' ? 'Ready for recall' : 'Worth continuing')}
-              </Text>
+                <Text style={styles.heroTitle}>{next.topicName}</Text>
+                <Text style={styles.heroReason}>
+                  {next.reasons[0] ?? (next.mode === 'review' ? 'Ready for recall' : 'Worth continuing')}
+                </Text>
 
-              <AnimatedDisclosure visible={showWhy} style={styles.whyBox}>
+                <AnimatedDisclosure visible={showWhy} style={styles.whyBox}>
                   {next.reasons.map((reason) => (
                     <Text key={reason} style={styles.whyText}>• {sentenceCase(reason)}</Text>
                   ))}
-              </AnimatedDisclosure>
+                </AnimatedDisclosure>
 
-              <View style={styles.heroActions}>
-                <AppButton
-                  label={
-                    next.source === 'task' && !next.focusable
-                      ? 'Open task'
-                      : next.mode === 'review' && next.dueQuestionCount > 0
-                        ? 'Start recall'
-                        : 'Start focus'
-                  }
-                  onPress={() => startBlock(next)}
-                  style={styles.primaryAction}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={showWhy ? 'Hide recommendation reasons' : 'Why this recommendation'}
-                  onPress={() => setShowWhy((current) => !current)}
-                  style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
-                  <Text style={styles.textActionText}>{showWhy ? 'Hide why' : 'Why this?'}</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Move ${next.topicName} out of today`}
-                  onPress={() => deferForToday(next)}
-                  style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
-                  <Text style={styles.textActionMuted}>Not now</Text>
-                </Pressable>
+                <View style={styles.heroActions}>
+                  <AppButton
+                    label={
+                      next.source === 'task' && !next.focusable
+                        ? 'Open task'
+                        : next.mode === 'review' && next.dueQuestionCount > 0
+                          ? 'Start recall'
+                          : 'Start focus'
+                    }
+                    onPress={() => startBlock(next)}
+                    style={styles.primaryAction}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={showWhy ? 'Hide recommendation reasons' : 'Why this recommendation'}
+                    onPress={() => setShowWhy((current) => !current)}
+                    style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
+                    <Text style={styles.textActionText}>{showWhy ? 'Hide why' : 'Why this?'}</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Show the next recommendation instead of ${next.topicName}`}
+                    onPress={() => deferWithTransition(next)}
+                    disabled={deferAnimating}
+                    style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
+                    <Text style={styles.textActionMuted}>Not now</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          ) : (
-            <View style={styles.heroQuiet}>
-              <Text style={styles.heroTitle}>Nothing needs your attention yet.</Text>
-              <Text style={styles.heroReason}>Add one thing and MYELIN can turn it into a next move.</Text>
-              <AppButton label="Add something" onPress={() => router.push('/(app)/quick-add')} />
-            </View>
-          )}
+            ) : (
+              <View style={styles.heroQuiet}>
+                <Text style={styles.heroTitle}>Nothing urgent right now.</Text>
+                <Text style={styles.heroReason}>
+                  You can add something new or come back when the next study item is ready.
+                </Text>
+                <AppButton label="Add something" onPress={() => router.push('/(app)/quick-add')} />
+              </View>
+            )}
+          </Animated.View>
 
           {lastDeferred ? (
             <View style={styles.undoRow}>

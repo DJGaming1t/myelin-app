@@ -233,6 +233,7 @@ function main() {
   const todayScreen = read('app/(app)/today/index.tsx');
   const planCard = read('src/features/today/PlanBlockCard.tsx');
   const springPressable = read('src/components/motion/SpringPressable.tsx');
+  const inboxCard = read('src/features/planning/StudyInboxCard.tsx');
   assert.ok(todayScreen.includes('min available'), 'Today does not expose remaining capacity when requested.');
   assert.ok(todayScreen.includes('showAdjust'), 'Today capacity controls are not progressively disclosed.');
   assert.ok(todayScreen.includes('maxWidth: layout.contentMax'), 'Today is not bounded responsively.');
@@ -246,15 +247,45 @@ function main() {
     springPressable.includes('if (reduceMotion)'),
     'Shared press motion is not gated when reduced motion is enabled.',
   );
-  assert.ok(todayScreen.includes('deferForToday(next)'), 'Today is missing the defer-for-today action.');
+  assert.ok(
+    todayScreen.includes('deferWithTransition(next)'),
+    'Today is missing the animated Not now handoff.',
+  );
+  assert.ok(
+    todayScreen.includes('Animated.timing(heroProgress') &&
+      todayScreen.includes('Animated.spring(heroProgress'),
+    'Today does not animate the current recommendation out and the next recommendation in.',
+  );
+  assert.ok(
+    todayScreen.includes('useReducedMotion()'),
+    'Today recommendation handoff ignores reduced-motion preference.',
+  );
   assert.ok(todayScreen.includes('undoDefer'), 'Today defer action is missing undo.');
   assert.ok(todayScreen.includes('nextLocalDayStart(Date.now())'), 'Today does not defer until the next local day.');
+  assert.ok(
+    todayScreen.includes('Nothing urgent right now.'),
+    'Today is missing a calm fallback card after the recommendation queue is exhausted.',
+  );
+  assert.ok(
+    inboxCard.includes('label="Schedule"') && inboxCard.includes('openScheduler(task.id)'),
+    'Inbox scheduling must open a chooser instead of immediately committing the task.',
+  );
+  assert.ok(
+    inboxCard.includes('scheduleTask(target, start, end)'),
+    'Inbox scheduling does not persist the selected time as a real scheduled task.',
+  );
+  assert.equal(
+    inboxCard.includes('if (!slot)') && inboxCard.includes('moveToday(taskId)'),
+    false,
+    'Inbox Schedule still falls back to Today when no suggestion exists.',
+  );
 
   console.log('✓ small real topics remain schedulable');
   console.log('✓ Today keeps capacity available without making it the primary hierarchy');
   console.log('✓ Today choices meet the 44-point touch target');
   console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
-  console.log('✓ recommended blocks can be deferred for today and undone');
+  console.log('✓ Not now animates to the next recommendation or a calm fallback and remains undoable');
+  console.log('✓ unscheduled work opens a real scheduling chooser and never auto-falls back to Today');
 }
 
 main();

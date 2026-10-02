@@ -2,13 +2,20 @@
 
 Feature 13 uses local notifications only. It does not register an Expo/FCM/APNs push token or send reminder content to a notification server.
 
-## Reminder personalities
+## Reminder Studio
 
-- **Calm** — quiet, low-pressure copy.
-- **Signal** — compact, information-first copy.
-- **Spark** — warmer/playful copy without streaks, guilt or fake urgency.
+Reminder copy has two independent controls:
 
-The Reminder Studio shows live notification previews before the user enables anything.
+- **Personality**
+  - **Calm** — quiet, low-pressure copy.
+  - **Signal** — compact, information-first copy.
+  - **Spark** — warmer/playful copy without streaks, guilt or fake urgency.
+- **Detail**
+  - **Brief** — the fastest useful glance.
+  - **Guided** — balanced copy with one clear next step.
+  - **Context** — adds queue, plan or duration detail when it helps.
+
+Review, Exam and Study previews all use the same copy generator as scheduled notifications. The Studio can send the currently selected preview kind to the device, so the preview cannot drift away from production copy.
 
 ## Scheduling rules
 

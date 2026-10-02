@@ -14,14 +14,16 @@
         "android.permission.USE_EXACT_ALARM"
       ],
       "versionCode": 2,
-      "backgroundColor": "#070707"
+      "backgroundColor": "#070707",
+      "icon": "./assets/icon.png"
     },
     "ios": {
       "bundleIdentifier": "com.djgaming1t.myelin",
       "buildNumber": "1"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",
@@ -48,6 +50,7 @@
       "eas": {
         "projectId": "2171936c-83f9-459f-9bb6-dddc4768484e"
       }
-    }
+    },
+    "icon": "./assets/icon.png"
   }
 }

@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   addLocalDays,
@@ -159,7 +160,7 @@ export default function DayMapScreen() {
             </Text>
           </View>
 
-          {map.overloadMinutes > 0 ? (
+          <AnimatedDisclosure visible={map.overloadMinutes > 0}>
             <View style={styles.overload}>
               <Text style={styles.overloadLabel}>TODAY IS OVERLOADED</Text>
               <Text style={styles.overloadTitle}>
@@ -170,9 +171,10 @@ export default function DayMapScreen() {
                 <Action label="Keep it" onPress={() => setProposal(null)} />
               </View>
             </View>
-          ) : null}
+          </AnimatedDisclosure>
 
-          {proposal ? (
+          <AnimatedDisclosure visible={Boolean(proposal)}>
+            {proposal ? (
             <View style={styles.proposal}>
               <Text style={styles.sectionLabel}>REBUILD EVENING · PREVIEW</Text>
               <Text style={styles.proposalText}>
@@ -195,7 +197,8 @@ export default function DayMapScreen() {
                 <Action label="Cancel" onPress={() => setProposal(null)} />
               </View>
             </View>
-          ) : null}
+            ) : null}
+          </AnimatedDisclosure>
 
           <View style={styles.timelineHeader}>
             <Text style={styles.sectionLabel}>TIMELINE</Text>
@@ -208,8 +211,8 @@ export default function DayMapScreen() {
               if (entry.kind === 'commitment') {
                 const sourceId = entry.id.replace('commitment:', '');
                 return (
+                  <MotionItem key={entry.id}>
                   <Pressable
-                    key={entry.id}
                     accessibilityRole="button"
                     accessibilityLabel={'Edit fixed block ' + entry.title}
                     onPress={() =>
@@ -237,13 +240,15 @@ export default function DayMapScreen() {
                       <Text style={styles.blockMeta}>{durationLabel(entry.start, entry.end)} · fixed</Text>
                     </View>
                   </Pressable>
+                  </MotionItem>
                 );
               }
 
               const task = workspace.tasks.find((item) => item.id === entry.taskId);
               if (!task) return null;
               return (
-                <View key={entry.id} style={[styles.timelineRow, passed && !entry.missed && styles.passed]}>
+                <MotionItem key={entry.id}>
+                <View style={[styles.timelineRow, passed && !entry.missed && styles.passed]}>
                   <View style={styles.timeCol}>
                     <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
                     <Text style={styles.timeEnd}>{timeLabel(entry.end)}</Text>
@@ -304,6 +309,7 @@ export default function DayMapScreen() {
                     ) : null}
                   </View>
                 </View>
+                </MotionItem>
               );
             })
           ) : (
@@ -360,8 +366,8 @@ export default function DayMapScreen() {
               <Text style={styles.flexibleIntro}>
                 These are part of today without being forced onto a clock.
               </Text>
-              {flexible.map((task) => (
-                <View key={task.id} style={styles.flexibleTask}>
+              {flexible.map((task, index) => (
+                <MotionItem key={task.id} delay={Math.min(index * 30, 90)} style={styles.flexibleTask}>
                   <Pressable
                     accessibilityRole="button"
                     onPress={() =>
@@ -377,7 +383,7 @@ export default function DayMapScreen() {
                     </Text>
                   </Pressable>
                   <Action label="Plan next gap" onPress={() => moveTask(task.id)} accent />
-                </View>
+                </MotionItem>
               ))}
             </View>
           ) : null}

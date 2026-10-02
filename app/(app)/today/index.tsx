@@ -17,6 +17,7 @@ import { AppButton } from '@/src/components/app/AppButton';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
@@ -215,6 +216,32 @@ export default function TodayScreen() {
     setLastDeferred(null);
   }
 
+  function undoWithTransition() {
+    if (!lastDeferred || deferAnimating) return;
+
+    setShowWhy(false);
+    deferredNextId.current = nextId;
+
+    if (reduceMotion) {
+      undoDefer();
+      return;
+    }
+
+    setDeferAnimating(true);
+    Animated.timing(heroProgress, {
+      toValue: 0,
+      duration: motion.stateMs,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) {
+        heroProgress.setValue(1);
+        setDeferAnimating(false);
+        return;
+      }
+      undoDefer();
+    });
+  }
+
   function startBlock(block: PlanBlock) {
     if (activeReview) {
       router.push('/(app)/review');
@@ -369,7 +396,7 @@ export default function TodayScreen() {
           </Animated.View>
 
           {lastDeferred ? (
-            <View style={styles.undoRow}>
+            <MotionItem key={`undo:${lastDeferred.source}:${lastDeferred.id}`} style={styles.undoRow}>
               <View style={styles.undoCopy}>
                 <Text style={styles.undoTitle}>Moved out of today</Text>
                 <Text numberOfLines={1} style={styles.undoText}>{lastDeferred.name}</Text>
@@ -377,11 +404,12 @@ export default function TodayScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Undo moving ${lastDeferred.name} out of today`}
-                onPress={undoDefer}
+                onPress={undoWithTransition}
+                disabled={deferAnimating}
                 style={({ pressed }) => [styles.undoButton, pressed && styles.pressed]}>
                 <Text style={styles.undoButtonText}>Undo</Text>
               </Pressable>
-            </View>
+            </MotionItem>
           ) : null}
 
           {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
@@ -390,9 +418,9 @@ export default function TodayScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Later today</Text>
               <View style={styles.flatList}>
-                {laterBlocks.map((block) => (
+                {laterBlocks.map((block, index) => (
+                  <MotionItem key={block.id} delay={Math.min(index * 35, 90)}>
                   <Pressable
-                    key={block.id}
                     accessibilityRole="button"
                     accessibilityLabel={`${block.topicName}. ${block.minutes} minutes.`}
                     onPress={() => startBlock(block)}
@@ -405,6 +433,7 @@ export default function TodayScreen() {
                     </View>
                     <Text style={styles.laterTime}>{block.minutes}m</Text>
                   </Pressable>
+                  </MotionItem>
                 ))}
               </View>
             </View>

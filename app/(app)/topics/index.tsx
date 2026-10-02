@@ -17,6 +17,7 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { TopicStatus } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
@@ -206,7 +207,8 @@ export default function TopicsScreen() {
           data={topics}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.list, topics.length === 0 && styles.listEmpty]}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
+            <MotionItem delay={Math.min(index * 30, 120)}>
             <TopicCard
               topic={item}
               onPress={() =>
@@ -216,6 +218,7 @@ export default function TopicsScreen() {
                 })
               }
             />
+            </MotionItem>
           )}
           ListEmptyComponent={
             <View style={styles.empty}>

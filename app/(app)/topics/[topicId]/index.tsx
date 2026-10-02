@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { buildReviewQueue } from '@/src/features/review/review-engine';
@@ -204,7 +206,7 @@ export default function TopicDetailScreen() {
           <Text style={styles.detailsToggleMark}>{showDetails ? '−' : '+'}</Text>
         </Pressable>
 
-        {showDetails ? (
+        <AnimatedDisclosure visible={showDetails}>
         <View style={styles.stateStrip}>
           <StateMetric
             label="STATE"
@@ -221,7 +223,7 @@ export default function TopicDetailScreen() {
           <View style={styles.stateDivider} />
           <StateMetric label="RECALL" value={String(topic.cards.length)} />
         </View>
-        ) : null}
+        </AnimatedDisclosure>
 
         <SectionHeader
           title="Notes"
@@ -258,8 +260,8 @@ export default function TopicDetailScreen() {
             {topic.cards.map((question, index) => {
               const due = question.dueAt > 0 && question.dueAt <= Date.now();
               return (
+                <MotionItem key={question.id} delay={Math.min(index * 30, 120)}>
                 <Pressable
-                  key={question.id}
                   accessibilityRole="button"
                   onPress={() =>
                     router.push({
@@ -291,6 +293,7 @@ export default function TopicDetailScreen() {
                     <Text style={styles.deleteMiniText}>×</Text>
                   </Pressable>
                 </Pressable>
+                </MotionItem>
               );
             })}
           </View>
@@ -316,7 +319,7 @@ export default function TopicDetailScreen() {
 
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
-        {showDetails ? (
+        <AnimatedDisclosure visible={showDetails}>
         <View style={styles.dangerZone}>
           <Text style={styles.dangerTitle}>Delete topic</Text>
           <Text style={styles.dangerText}>
@@ -329,8 +332,7 @@ export default function TopicDetailScreen() {
             <Text style={styles.deleteButtonText}>Delete topic</Text>
           </Pressable>
         </View>
-
-        ) : null}
+        </AnimatedDisclosure>
       </ScrollView>
     </SafeAreaView>
   );

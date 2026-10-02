@@ -17,6 +17,7 @@ const header = read('src/components/app/ScreenHeader.tsx');
 const appButton = read('src/components/app/AppButton.tsx');
 const actionRow = read('src/components/app/ActionRow.tsx');
 const disclosure = read('src/components/motion/AnimatedDisclosure.tsx');
+const motionItem = read('src/components/motion/MotionItem.tsx');
 const topicsLayout = read('app/(app)/topics/_layout.tsx');
 const states = read('src/components/app/ScreenState.tsx');
 const focus = read('app/(app)/focus/index.tsx');
@@ -57,9 +58,9 @@ assert(
 );
 assert(
   app.includes('PEER_ROUTE_NAMES.has(route.name)') &&
-    app.includes("? 'none'") &&
+    app.includes("? 'fade'") &&
     app.includes(": 'fade_from_bottom'"),
-  'Peer tabs must resolve to no positional transition while deeper routes keep hierarchy motion.',
+  'Peer tabs must crossfade without positional motion while deeper routes keep hierarchy motion.',
 );
 for (const routeName of [
   "'today'",
@@ -96,11 +97,15 @@ assert(nav.includes('addButtonFrame'), 'Quick Add needs an explicit centered fra
 assert(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'), 'Library nested index should not add a second transition.');
 assert(appButton.includes('<SpringPressable'), 'Shared buttons should use the same spring press primitive.');
 assert(header.includes('<SpringPressable'), 'Header controls should use the shared spring press primitive.');
-assert(!actionRow.includes('pressedMotion'), 'Full-width action rows should highlight rather than scale.');
-assert(actionRow.includes('backgroundColor: colors.accentFaint'), 'Action rows need consistent pressed highlighting.');
+assert(actionRow.includes('<SpringPressable'), 'Shared action rows should use spring press feedback.');
+assert(actionRow.includes('scaleTo={0.985}'), 'Action-row spring feedback should remain subtle.');
 assert(disclosure.includes('FadeInDown.duration(motion.stateMs)'), 'Disclosures must share the same enter timing.');
 assert(disclosure.includes('FadeOutUp.duration(motion.pressMs + 20)'), 'Disclosures must share the same exit timing.');
 assert(disclosure.includes('useReducedMotion()'), 'Shared disclosure motion must respect reduced motion.');
+assert(motionItem.includes('FadeInDown'), 'Motion items need an enter transition.');
+assert(motionItem.includes('FadeOutUp'), 'Motion items need an exit transition.');
+assert(motionItem.includes('LinearTransition'), 'Motion items need layout reflow animation.');
+assert(motionItem.includes('useReducedMotion()'), 'Motion-item transitions must respect reduced motion.');
 assert(header.includes('accessibilityRole="header"'), 'Screen titles are not exposed as headers.');
 assert(header.includes('minHeight: layout.minTouch'), 'Header controls are too small.');
 assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tablet/web bounded.');

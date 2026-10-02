@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
@@ -327,30 +329,32 @@ export default function FocusScreen() {
               Stand up, get water, look away from the screen. You do not need to earn the break.
             </Text>
 
-            {timerDone ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={finishBreak}
-                style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
-                <Text style={styles.primaryText}>Finish break</Text>
-                <Text style={styles.buttonArrow}>→</Text>
-              </Pressable>
-            ) : (
-              <View style={styles.timerActions}>
+            <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6}>
+              {timerDone ? (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={session.runningSince ? pause : resume}
-                  style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-                  <Text style={styles.secondaryText}>{session.runningSince ? 'Pause' : 'Resume'}</Text>
+                  onPress={finishBreak}
+                  style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                  <Text style={styles.primaryText}>Finish break</Text>
+                  <Text style={styles.buttonArrow}>→</Text>
                 </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={leaveBreak}
-                  style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-                  <Text style={styles.secondaryText}>End break</Text>
-                </Pressable>
-              </View>
-            )}
+              ) : (
+                <View style={styles.timerActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={session.runningSince ? pause : resume}
+                    style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                    <Text style={styles.secondaryText}>{session.runningSince ? 'Pause' : 'Resume'}</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={leaveBreak}
+                    style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                    <Text style={styles.secondaryText}>End break</Text>
+                  </Pressable>
+                </View>
+              )}
+            </Reveal>
           </View>
         </View>
       </SafeAreaView>
@@ -407,6 +411,15 @@ export default function FocusScreen() {
             />
           </View>
 
+          <Reveal
+            key={
+              canExtend
+                ? 'extend'
+                : finishing || timerDone
+                  ? 'finish'
+                  : 'running'
+            }
+            distance={6}>
           {canExtend ? (
             <View style={styles.finishPanel}>
               <Text style={styles.finishTitle}>You started. Keep the momentum?</Text>
@@ -493,6 +506,7 @@ export default function FocusScreen() {
               </Pressable>
             </View>
           )}
+          </Reveal>
 
           <View style={styles.parkingShell}>
             <Pressable
@@ -512,8 +526,7 @@ export default function FocusScreen() {
               <Text style={styles.parkingToggleMark}>{showParking ? '−' : '+'}</Text>
             </Pressable>
 
-            {showParking ? (
-              <View style={styles.parking}>
+            <AnimatedDisclosure visible={showParking} style={styles.parking}>
                 <View style={styles.parkInputRow}>
                   <TextInput
                     accessibilityLabel="Park a distraction"
@@ -540,8 +553,8 @@ export default function FocusScreen() {
                   </Pressable>
                 </View>
 
-                {session.distractions.map((item) => (
-                  <View key={item.id} style={styles.parkedItem}>
+                {session.distractions.map((item, index) => (
+                  <MotionItem key={item.id} delay={Math.min(index * 25, 75)} style={styles.parkedItem}>
                     <View style={styles.parkDot} />
                     <Text style={styles.parkedText}>{item.text}</Text>
                     <Pressable
@@ -551,10 +564,9 @@ export default function FocusScreen() {
                       onPress={() => removeParked(item.id)}>
                       <Text style={styles.parkRemove}>×</Text>
                     </Pressable>
-                  </View>
+                  </MotionItem>
                 ))}
-              </View>
-            ) : null}
+            </AnimatedDisclosure>
           </View>
 
           <Pressable

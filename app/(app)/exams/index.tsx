@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   examStatus,
@@ -111,11 +112,12 @@ export default function ExamsScreen() {
           data={exams}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.list, exams.length === 0 && styles.listEmpty]}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const status = examStatus(item.date, now);
             const affected = examTopics(item, workspace.topics);
 
             return (
+              <MotionItem delay={Math.min(index * 35, 140)}>
               <Pressable
                 accessibilityRole="button"
                 onPress={() =>
@@ -155,6 +157,7 @@ export default function ExamsScreen() {
                   </Text>
                 </View>
               </Pressable>
+              </MotionItem>
             );
           }}
           ListEmptyComponent={

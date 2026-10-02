@@ -199,8 +199,8 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 
     routeReadyScheduled.current = true;
 
-    // The group has actually changed. Give the destination two paint frames
-    // before the circle exposes any of it.
+    // The exact destination is active. Give it two paint frames before the
+    // circle exposes any of it.
     const firstFrame = requestAnimationFrame(() => {
       const secondFrame = requestAnimationFrame(() => {
         const currentResolver = routeReadyResolver.current;
@@ -225,13 +225,13 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         clearEntryDestinationWait();
         entryDestinationExpected.current = expected;
         entryDestinationResolver.current = resolve;
-      entryDestinationRejecter.current = reject;
-      entryDestinationTimer.current = setTimeout(() => {
-        const currentRejecter = entryDestinationRejecter.current;
-        clearEntryDestinationWait();
-        currentRejecter?.(
-          timeoutError('MYELIN could not finish preparing the next screen.'),
-        );
+        entryDestinationRejecter.current = reject;
+        entryDestinationTimer.current = setTimeout(() => {
+          const currentRejecter = entryDestinationRejecter.current;
+          clearEntryDestinationWait();
+          currentRejecter?.(
+            timeoutError('MYELIN could not finish preparing the next screen.'),
+          );
         }, STATE_READY_TIMEOUT_MS);
       });
     },

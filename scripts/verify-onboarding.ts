@@ -164,34 +164,40 @@ function main() {
   assert.ok(screenSource.includes('Enter MYELIN'));
   assert.ok(screenSource.includes('How much focus fits in a normal day?'));
   assert.ok(screenSource.includes('useOnboardingTransition'));
-  assert.ok(screenSource.includes('runTransition(async () =>'));
+  assert.ok(screenSource.includes('runTransition('));
+  assert.ok(screenSource.includes("'/(app)/today'"));
   assert.ok(rootLayoutSource.includes('<OnboardingTransitionProvider>'));
-  assert.ok(transitionSource.includes('await commit()'));
   assert.ok(transitionSource.includes('runEntryTransition'));
-  assert.ok(transitionSource.includes('setEntryPending(true)'));
+  assert.ok(transitionSource.includes('setTransitionPending(true)'));
   assert.ok(transitionSource.includes('await task()'));
   assert.ok(transitionSource.includes('CircleTransitionOverlay'));
   assert.ok(transitionSource.includes('circleProgress'));
   assert.ok(transitionSource.includes('useSegments()'));
-  assert.ok(transitionSource.includes('armRouteReady'));
-  assert.ok(transitionSource.includes('routeReadyTargets'));
-  assert.ok(transitionSource.includes("['(app)']"));
-  assert.equal(transitionSource.includes('notifyTransitionReady'), false);
-  assert.equal(transitionSource.includes('armDestinationReady'), false);
-  assert.equal(transitionSource.includes('DESTINATION_READY_TIMEOUT_MS'), false);
-  const readyArmIndex = transitionSource.indexOf('const routeReady = armRouteReady(destinationGroups)');
-  const entryCommitIndex = transitionSource.indexOf('await commit()', readyArmIndex);
-  const readyWaitIndex = transitionSource.indexOf('await routeReady', entryCommitIndex);
-  const revealIndex = transitionSource.indexOf(
-    'withTiming(2, { duration: REVEAL_MS',
-    readyWaitIndex,
+  assert.ok(transitionSource.includes('resolveEntryTransitionDestination'));
+  assert.ok(transitionSource.includes('waitForEntryDestination'));
+  assert.ok(transitionSource.includes('waitForRouteGroup'));
+  assert.ok(transitionSource.includes('router.replace(destination)'));
+  assert.ok(transitionSource.includes('STATE_READY_TIMEOUT_MS'));
+  assert.ok(transitionSource.includes('ROUTE_READY_TIMEOUT_MS'));
+  assert.equal(transitionSource.includes("router.replace('/')"), false);
+  const readyArmIndex = transitionSource.indexOf(
+    'const routeReady = waitForRouteGroup(targetGroup)',
   );
+  const replaceIndex = transitionSource.indexOf(
+    'router.replace(destination)',
+    readyArmIndex,
+  );
+  const readyWaitIndex = transitionSource.indexOf(
+    'await routeReady',
+    replaceIndex,
+  );
+  const revealIndex = transitionSource.indexOf('await reveal()', readyWaitIndex);
   assert.ok(
     readyArmIndex >= 0 &&
-      entryCommitIndex > readyArmIndex &&
-      readyWaitIndex > entryCommitIndex &&
+      replaceIndex > readyArmIndex &&
+      readyWaitIndex > replaceIndex &&
       revealIndex > readyWaitIndex,
-    'The circle must stay fully covering the redirect chain until Expo Router reaches a final route group.',
+    'The circle must stay fully covering the direct route change until the destination group has painted.',
   );
   assert.equal(screenSource.includes('notifyTransitionReady'), false);
   assert.equal(screenSource.includes('useFocusEffect'), false);

@@ -179,6 +179,7 @@ assert.ok(authIntro.includes('StudyPathVisual'));
   assert.ok(onboardingTransition.includes('Math.hypot(width, height)'));
   assert.ok(onboardingTransition.includes('notifyTransitionReady'));
   assert.ok(onboardingTransition.includes('armDestinationReady'));
+  assert.equal(onboardingTransition.includes('DESTINATION_READY_TIMEOUT_MS'), false);
   assert.equal(onboardingTransition.includes('coralSheet'), false);
   assert.equal(onboardingTransition.includes('darkSheet'), false);
   assert.equal(onboardingTransition.includes('accentRibbon'), false);
@@ -188,9 +189,13 @@ assert.ok(authIntro.includes('StudyPathVisual'));
 
   const todayReady = read('app/(app)/today/index.tsx');
   assert.ok(todayReady.includes('notifyTransitionReady'));
+  assert.ok(todayReady.includes('useFocusEffect'));
   assert.ok(todayReady.includes("status !== 'ready'"));
+  assert.ok(todayReady.includes('secondFrame = requestAnimationFrame'));
 
   const onboarding = read('app/(onboarding)/index.tsx');
+  assert.ok(onboarding.includes('useFocusEffect'));
+  assert.ok(onboarding.includes('secondFrame = requestAnimationFrame'));
   assert.ok(onboarding.includes('How much focus fits in a normal day?'));
 assert.ok(onboarding.includes('OnboardingShell'));
   assert.equal(onboarding.includes('TopicStep'), false);

@@ -64,8 +64,10 @@ export default function SignUpScreen() {
 
     setBusy(true);
     try {
-      await signUpEmail(name, email, password, keepSignedIn);
-      router.replace('/');
+      await runEntryTransition(
+        () => signUpEmail(name, email, password, keepSignedIn),
+        () => router.replace('/'),
+      );
     } catch (err) {
       setError(authErrorMessage(err, 'signup'));
     } finally {

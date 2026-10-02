@@ -174,7 +174,8 @@ function main() {
   assert.ok(transitionSource.includes('circleProgress'));
   assert.ok(transitionSource.includes('notifyTransitionReady'));
   assert.ok(transitionSource.includes('armDestinationReady'));
-  assert.ok(transitionSource.includes('DESTINATION_READY_TIMEOUT_MS = 2500'));
+  assert.equal(transitionSource.includes('DESTINATION_READY_TIMEOUT_MS'), false);
+  assert.equal(transitionSource.includes('setTimeout(settle'), false);
   const readyArmIndex = transitionSource.indexOf('const destinationReady = armDestinationReady()');
   const entryCommitIndex = transitionSource.indexOf('await commit()', readyArmIndex);
   const readyWaitIndex = transitionSource.indexOf('await destinationReady', entryCommitIndex);
@@ -190,8 +191,13 @@ function main() {
     'The circle must stay fully covering the route swap until the mounted destination reports ready.',
   );
   assert.ok(screenSource.includes('notifyTransitionReady'));
+  assert.ok(screenSource.includes('useFocusEffect'));
+  assert.ok(screenSource.includes('secondFrame = requestAnimationFrame'));
   const todaySource = fs.readFileSync('app/(app)/today/index.tsx', 'utf8');
   assert.ok(todaySource.includes('notifyTransitionReady'));
+  assert.ok(todaySource.includes('useFocusEffect'));
+  assert.ok(todaySource.includes("status !== 'ready'"));
+  assert.ok(todaySource.includes('secondFrame = requestAnimationFrame'));
   assert.ok(rootLayoutSource.includes("animation: 'none'"));
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);

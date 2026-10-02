@@ -387,7 +387,8 @@ export default function FocusScreen() {
               <View style={styles.stepCard}>
                 <Text style={styles.stepLabel}>FIRST TINY STEP</Text>
                 <Text style={styles.stepText}>{session.tinyStep}</Text>
-            </AnimatedDisclosure>
+              </View>
+            ) : null}
           </View>
 
           <TimerDial

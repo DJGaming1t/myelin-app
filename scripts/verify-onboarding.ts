@@ -177,19 +177,20 @@ function main() {
   assert.ok(transitionSource.includes('await commit()'));
   assert.ok(transitionSource.includes('accessibilityLabel="Opening MYELIN"'));
   assert.ok(transitionSource.includes('sceneScale'));
-  assert.ok(transitionSource.includes('shutter.set(withTiming(1'));
-  assert.ok(transitionSource.includes('shutter.set(withTiming(2'));
-  assert.ok(transitionSource.includes('styles.topPanel'));
-  assert.ok(transitionSource.includes('styles.bottomPanel'));
-  assert.ok(transitionSource.includes('FOCUS, CONTINUED'));
-  const coverDelayIndex = transitionSource.indexOf('await sleep(265)');
+  assert.ok(transitionSource.includes('coverProgress'));
+  assert.ok(transitionSource.includes('coverDisc'));
+  assert.ok(transitionSource.includes('lensStage'));
+  assert.ok(transitionSource.includes('aperture'));
+  assert.ok(transitionSource.includes('lensTravel'));
+  assert.equal(transitionSource.includes('FOCUS, CONTINUED'), false);
+  const coverDelayIndex = transitionSource.indexOf('await sleep(285)');
   const coveredCommitIndex = transitionSource.indexOf(
     'await commit()',
     coverDelayIndex,
   );
   assert.ok(
     coverDelayIndex >= 0 && coveredCommitIndex > coverDelayIndex,
-    'The route should commit only after the outgoing screen is fully covered.',
+    'The route should commit only after the signal object fully owns the frame.',
   );
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);

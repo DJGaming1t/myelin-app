@@ -1,4 +1,4 @@
-import { useSegments } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import {
   PropsWithChildren,
   createContext,
@@ -19,23 +19,44 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { useAuth } from '@/src/features/auth/AuthProvider';
+import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import {
+  destinationSegments,
+  resolveEntryDestination,
+  type EntryDestination,
+} from '@/src/features/onboarding/entry-destination';
 import { colors } from '@/src/theme/tokens';
 
 type TransitionTask = () => Promise<void> | void;
-type TransitionGroup = '(onboarding)' | '(app)' | '(verification)';
+type FinalEntryDestination = Exclude<EntryDestination, '/(auth)'>;
 
 type OnboardingTransitionContextValue = {
   runTransition: (
-    commit: TransitionTask,
-    destinationGroups?: TransitionGroup[],
+    task: TransitionTask,
+    destination?: FinalEntryDestination,
   ) => Promise<void>;
   runEntryTransition: (
     task: TransitionTask,
-    commit: TransitionTask,
-    destinationGroups?: TransitionGroup[],
+    allowedDestinations?: FinalEntryDestination[],
   ) => Promise<void>;
+  transitionPending: boolean;
   entryPending: boolean;
+};
+
+type EntryWaiter = {
+  allowed: Set<FinalEntryDestination>;
+  resolve: (destination: FinalEntryDestination) => void;
+};
+
+type RouteWaiter = {
+  expected: readonly string[];
+  resolve: () => void;
+  reject: (error: Error) => void;
+  timeout: ReturnType<typeof setTimeout>;
+  scheduled: boolean;
 };
 
 const OnboardingTransitionContext =
@@ -44,8 +65,9 @@ const OnboardingTransitionContext =
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
-const COVER_MS = 380;
-const REVEAL_MS = 360;
+const COVER_MS = 320;
+const REVEAL_MS = 290;
+const ROUTE_WATCHDOG_MS = 1800;
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => {
@@ -59,61 +81,146 @@ function nextFrame() {
   });
 }
 
+function segmentsMatch(
+  current: readonly string[],
+  expected: readonly string[],
+) {
+  if (current.length < expected.length) return false;
+  return expected.every((segment, index) => current[index] === segment);
+}
+
 export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const reduceMotion = useReducedMotion();
   const segments = useSegments();
+  const { ready: authReady, user, localMode } = useAuth();
+  const { status: workspaceStatus } = useWorkspace();
+  const {
+    ready: onboardingReady,
+    shouldShow: shouldShowOnboarding,
+  } = useOnboarding();
+
   const [active, setActive] = useState(false);
-  const [entryPending, setEntryPending] = useState(false);
+  const [transitionPending, setTransitionPending] = useState(false);
   const running = useRef(false);
-  const routeReadyResolver = useRef<(() => void) | null>(null);
-  const routeReadyTargets = useRef<Set<TransitionGroup> | null>(null);
-  const routeReadyScheduled = useRef(false);
+
+  const entryWaiter = useRef<EntryWaiter | null>(null);
+  const routeWaiter = useRef<RouteWaiter | null>(null);
 
   const circleProgress = useSharedValue(0);
   const fadeOpacity = useSharedValue(0);
 
-  useEffect(() => {
-    const firstSegment = segments[0] as string | undefined;
-    const resolver = routeReadyResolver.current;
-    const targets = routeReadyTargets.current;
+  const entryDestination = resolveEntryDestination({
+    authReady,
+    localMode,
+    userPresent: Boolean(user),
+    emailVerified: Boolean(user?.emailVerified),
+    workspaceStatus,
+    onboardingReady,
+    shouldShowOnboarding,
+  });
+  const entryDestinationRef = useRef<EntryDestination | null>(entryDestination);
+  entryDestinationRef.current = entryDestination;
 
+  useEffect(() => {
+    const waiter = entryWaiter.current;
     if (
-      !resolver ||
-      !targets ||
-      !firstSegment ||
-      !targets.has(firstSegment as TransitionGroup) ||
-      routeReadyScheduled.current
+      !waiter ||
+      !entryDestination ||
+      entryDestination === '/(auth)' ||
+      !waiter.allowed.has(entryDestination)
     ) {
       return;
     }
 
-    routeReadyScheduled.current = true;
+    entryWaiter.current = null;
+    waiter.resolve(entryDestination);
+  }, [entryDestination]);
 
-    // Expo Router has reached the final route group. Give React Native two
-    // frames to commit and paint that route before exposing any pixels.
+  useEffect(() => {
+    const waiter = routeWaiter.current;
+    if (
+      !waiter ||
+      waiter.scheduled ||
+      !segmentsMatch(segments as readonly string[], waiter.expected)
+    ) {
+      return;
+    }
+
+    waiter.scheduled = true;
+    clearTimeout(waiter.timeout);
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const currentResolver = routeReadyResolver.current;
-        routeReadyResolver.current = null;
-        routeReadyTargets.current = null;
-        routeReadyScheduled.current = false;
-        currentResolver?.();
+        const current = routeWaiter.current;
+        if (current !== waiter) return;
+        routeWaiter.current = null;
+        waiter.resolve();
       });
     });
   }, [segments]);
 
-  const armRouteReady = useCallback((destinationGroups: TransitionGroup[]) => {
-    return new Promise<void>((resolve) => {
-      routeReadyTargets.current = new Set(destinationGroups);
-      routeReadyResolver.current = resolve;
-      routeReadyScheduled.current = false;
-    });
-  }, []);
+  const waitForEntryDestination = useCallback(
+    (allowedDestinations: FinalEntryDestination[]) => {
+      const current = entryDestinationRef.current;
+      if (
+        current &&
+        current !== '/(auth)' &&
+        allowedDestinations.includes(current)
+      ) {
+        return Promise.resolve(current);
+      }
 
-  const clearRouteReady = useCallback(() => {
-    routeReadyResolver.current = null;
-    routeReadyTargets.current = null;
-    routeReadyScheduled.current = false;
+      return new Promise<FinalEntryDestination>((resolve) => {
+        entryWaiter.current = {
+          allowed: new Set(allowedDestinations),
+          resolve,
+        };
+      });
+    },
+    [],
+  );
+
+  const waitForRoute = useCallback(
+    (destination: FinalEntryDestination) => {
+      const expected = destinationSegments(destination);
+      if (segmentsMatch(segments as readonly string[], expected)) {
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          const current = routeWaiter.current;
+          if (!current || current.expected !== expected) {
+            return;
+          }
+
+          routeWaiter.current = null;
+          reject(
+            new Error(
+              `Navigation did not reach ${destination} during the transition.`,
+            ),
+          );
+        }, ROUTE_WATCHDOG_MS);
+
+        routeWaiter.current = {
+          expected,
+          resolve,
+          reject,
+          timeout,
+          scheduled: false,
+        };
+      });
+    },
+    [segments],
+  );
+
+  const clearWaiters = useCallback(() => {
+    entryWaiter.current = null;
+
+    if (routeWaiter.current) {
+      clearTimeout(routeWaiter.current.timeout);
+      routeWaiter.current = null;
+    }
   }, []);
 
   const resetVisualState = useCallback(() => {
@@ -121,105 +228,112 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
     fadeOpacity.set(0);
   }, [circleProgress, fadeOpacity]);
 
-  const playCircleHandoff = useCallback(
-    async (
-      commit: TransitionTask,
-      destinationGroups: TransitionGroup[],
-    ) => {
+  const playCircleTo = useCallback(
+    async (destination: FinalEntryDestination) => {
       resetVisualState();
       setActive(true);
       await nextFrame();
 
       if (reduceMotion) {
-        fadeOpacity.set(withTiming(1, { duration: 150, easing: EASE_OUT }));
-        await sleep(165);
+        fadeOpacity.set(withTiming(1, { duration: 120, easing: EASE_OUT }));
+        await sleep(135);
       } else {
         circleProgress.set(
           withTiming(1, { duration: COVER_MS, easing: EASE_IN_OUT }),
         );
-        await sleep(COVER_MS + 20);
+        await sleep(COVER_MS + 10);
       }
 
-      // Arm before navigation so even a fast redirect chain cannot beat us.
-      const routeReady = armRouteReady(destinationGroups);
-
-      await commit();
+      // The next screen is already known before the circle starts. Navigation is
+      // therefore one direct replace, not a redirect chain under the overlay.
+      const routeReady = waitForRoute(destination);
+      router.replace(destination);
       await routeReady;
 
       if (reduceMotion) {
-        fadeOpacity.set(withTiming(0, { duration: 190, easing: EASE_OUT }));
-        await sleep(205);
+        fadeOpacity.set(withTiming(0, { duration: 170, easing: EASE_OUT }));
+        await sleep(185);
       } else {
         circleProgress.set(
           withTiming(2, { duration: REVEAL_MS, easing: EASE_OUT }),
         );
-        await sleep(REVEAL_MS + 20);
+        await sleep(REVEAL_MS + 15);
       }
     },
     [
-      armRouteReady,
       circleProgress,
       fadeOpacity,
       reduceMotion,
       resetVisualState,
+      waitForRoute,
     ],
   );
 
   const runTransition = useCallback(
     async (
-      commit: TransitionTask,
-      destinationGroups: TransitionGroup[] = ['(app)'],
+      task: TransitionTask,
+      destination: FinalEntryDestination = '/(app)/today',
     ) => {
       if (running.current) return;
 
       running.current = true;
+      setTransitionPending(true);
+
       try {
-        await playCircleHandoff(commit, destinationGroups);
+        // Finish/save state first while the current page remains visible.
+        // This keeps storage latency out of the visible circle animation.
+        await task();
+        await playCircleTo(destination);
       } finally {
-        clearRouteReady();
+        clearWaiters();
         setActive(false);
+        setTransitionPending(false);
         running.current = false;
       }
     },
-    [clearRouteReady, playCircleHandoff],
+    [clearWaiters, playCircleTo],
   );
 
   const runEntryTransition = useCallback(
     async (
       task: TransitionTask,
-      commit: TransitionTask,
-      destinationGroups: TransitionGroup[] = [
-        '(onboarding)',
-        '(app)',
-        '(verification)',
+      allowedDestinations: FinalEntryDestination[] = [
+        '/(verification)/verify-email',
+        '/(onboarding)',
+        '/(app)/today',
       ],
     ) => {
       if (running.current) return;
 
       running.current = true;
-      setEntryPending(true);
+      setTransitionPending(true);
 
       try {
-        // Native auth/account selection finishes before any MYELIN animation.
+        // Native authentication/account selection finishes first. Then wait for
+        // Auth -> Workspace -> Onboarding state to settle before showing the
+        // circle, so the circle is never used as a loading screen.
         await task();
-        await playCircleHandoff(commit, destinationGroups);
+        const destination = await waitForEntryDestination(allowedDestinations);
+        await playCircleTo(destination);
       } finally {
-        clearRouteReady();
+        clearWaiters();
         setActive(false);
-        setEntryPending(false);
+        setTransitionPending(false);
         running.current = false;
       }
     },
-    [clearRouteReady, playCircleHandoff],
+    [clearWaiters, playCircleTo, waitForEntryDestination],
   );
 
   const value = useMemo(
     () => ({
       runTransition,
       runEntryTransition,
-      entryPending,
+      transitionPending,
+      // Temporary alias for callers/tests while the routing guards migrate.
+      entryPending: transitionPending,
     }),
-    [entryPending, runEntryTransition, runTransition],
+    [runEntryTransition, runTransition, transitionPending],
   );
 
   return (
@@ -250,13 +364,12 @@ function CircleTransitionOverlay({
 }) {
   const { width, height } = useWindowDimensions();
   const diameter = 240;
-  const fullCoverScale =
-    (Math.hypot(width, height) / diameter) * 1.12;
+  const fullCoverScale = (Math.hypot(width, height) / diameter) * 1.14;
 
   const circleStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       progress.get(),
-      [0, 0.08, 1, 1.72, 2],
+      [0, 0.06, 1, 1.76, 2],
       [0, 1, 1, 1, 0],
     ),
     transform: [
@@ -264,14 +377,14 @@ function CircleTransitionOverlay({
         translateY: interpolate(
           progress.get(),
           [0, 1, 2],
-          [height * 0.34, 0, -height * 0.08],
+          [height * 0.32, 0, -height * 0.05],
         ),
       },
       {
         scale: interpolate(
           progress.get(),
           [0, 1, 2],
-          [0.42, fullCoverScale, 0.74],
+          [0.46, fullCoverScale, 0.82],
         ),
       },
     ],

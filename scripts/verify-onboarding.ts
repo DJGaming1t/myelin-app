@@ -176,41 +176,47 @@ function main() {
   assert.ok(transitionSource.includes('setActive(true)'));
   assert.ok(transitionSource.includes('await commit()'));
   assert.ok(transitionSource.includes('accessibilityLabel="Opening MYELIN"'));
-  assert.ok(transitionSource.includes('sceneScale'));
-  assert.ok(transitionSource.includes('coverProgress'));
-  assert.ok(transitionSource.includes('coverDisc'));
-  assert.ok(transitionSource.includes('lensStage'));
-  assert.ok(transitionSource.includes('aperture'));
-  assert.ok(transitionSource.includes('lensTravel'));
-  assert.equal(transitionSource.includes('FOCUS, CONTINUED'), false);
-  assert.ok(transitionSource.includes('const COVER_MS = 320'));
-  assert.ok(transitionSource.includes('const PRE_COMMIT_HOLD_MS = 120'));
-  assert.ok(transitionSource.includes('const POST_COMMIT_HOLD_MS = 170'));
+  assert.ok(transitionSource.includes('coralProgress'));
+  assert.ok(transitionSource.includes('darkProgress'));
+  assert.ok(transitionSource.includes('coralDisc'));
+  assert.ok(transitionSource.includes('darkDisc'));
+  assert.ok(transitionSource.includes('eyeStage'));
+  assert.ok(transitionSource.includes('eyeOpen'));
+  assert.equal(transitionSource.includes('sceneScale'), false);
+  assert.equal(transitionSource.includes('haloProgress'), false);
+  assert.equal(transitionSource.includes('lensTravel'), false);
+  assert.ok(transitionSource.includes('const CORAL_COVER_MS = 300'));
+  assert.ok(transitionSource.includes('const DARK_COVER_DELAY_MS = 205'));
+  assert.ok(transitionSource.includes('const DARK_COVER_MS = 255'));
+  assert.ok(transitionSource.includes('const POST_COMMIT_HOLD_MS = 145'));
   assert.ok(transitionSource.includes('const REVEAL_MS = 360'));
   assert.ok(transitionSource.includes('sceneOpacity.set(0)'));
-  assert.ok(transitionSource.includes('haloProgress'));
-  assert.ok(transitionSource.includes('haloOuter'));
-  const coverDelayIndex = transitionSource.indexOf(
-    'await sleep(COVER_MS + PRE_COMMIT_HOLD_MS)',
+  const closeIndex = transitionSource.indexOf(
+    'withTiming(0.08, { duration: EYE_CLOSE_MS',
   );
   const coveredCommitIndex = transitionSource.indexOf(
     'await commit()',
-    coverDelayIndex,
+    closeIndex,
   );
   const hiddenSettleIndex = transitionSource.indexOf(
     'await sleep(POST_COMMIT_HOLD_MS)',
     coveredCommitIndex,
   );
-  const revealIndex = transitionSource.indexOf(
-    'sceneOpacity.set(',
+  const sceneRevealIndex = transitionSource.indexOf(
+    'sceneOpacity.set(1)',
     hiddenSettleIndex,
   );
+  const darkRevealIndex = transitionSource.indexOf(
+    'darkProgress.set(',
+    sceneRevealIndex,
+  );
   assert.ok(
-    coverDelayIndex >= 0 &&
-      coveredCommitIndex > coverDelayIndex &&
+    closeIndex >= 0 &&
+      coveredCommitIndex > closeIndex &&
       hiddenSettleIndex > coveredCommitIndex &&
-      revealIndex > hiddenSettleIndex,
-    'The destination must remain hidden until after the post-commit settle.',
+      sceneRevealIndex > hiddenSettleIndex &&
+      darkRevealIndex > sceneRevealIndex,
+    'The destination must stay hidden until the aperture has sealed, committed, and settled.',
   );
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);

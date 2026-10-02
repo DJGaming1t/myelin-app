@@ -170,23 +170,29 @@ function main() {
   assert.ok(transitionSource.includes('runEntryTransition'));
   assert.ok(transitionSource.includes('setEntryPending(true)'));
   assert.ok(transitionSource.includes('await task()'));
-  assert.ok(transitionSource.includes('await nextFrame()'));
-  assert.equal(transitionSource.includes('react-native-reanimated'), false);
-  assert.equal(transitionSource.includes('Animated'), false);
-  assert.equal(transitionSource.includes('StyleSheet'), false);
-  assert.equal(transitionSource.includes('TransitionOverlay'), false);
-  assert.equal(transitionSource.includes('coralProgress'), false);
-  assert.equal(transitionSource.includes('darkProgress'), false);
-  const taskIndex = transitionSource.indexOf('await task()');
-  const frameIndex = transitionSource.indexOf('await nextFrame()', taskIndex);
-  const entryCommitIndex = transitionSource.indexOf('await commit()', frameIndex);
-  assert.ok(
-    taskIndex >= 0 &&
-      frameIndex > taskIndex &&
-      entryCommitIndex > frameIndex,
-    'Entry navigation must wait for auth to finish and one protected frame before committing.',
+  assert.ok(transitionSource.includes('CircleTransitionOverlay'));
+  assert.ok(transitionSource.includes('circleProgress'));
+  assert.ok(transitionSource.includes('notifyTransitionReady'));
+  assert.ok(transitionSource.includes('armDestinationReady'));
+  assert.ok(transitionSource.includes('DESTINATION_READY_TIMEOUT_MS = 2500'));
+  const readyArmIndex = transitionSource.indexOf('const destinationReady = armDestinationReady()');
+  const entryCommitIndex = transitionSource.indexOf('await commit()', readyArmIndex);
+  const readyWaitIndex = transitionSource.indexOf('await destinationReady', entryCommitIndex);
+  const revealIndex = transitionSource.indexOf(
+    'withTiming(2, { duration: REVEAL_MS',
+    readyWaitIndex,
   );
-  assert.ok(rootLayoutSource.includes("animation: reduceMotion ? 'none' : 'fade'"));
+  assert.ok(
+    readyArmIndex >= 0 &&
+      entryCommitIndex > readyArmIndex &&
+      readyWaitIndex > entryCommitIndex &&
+      revealIndex > readyWaitIndex,
+    'The circle must stay fully covering the route swap until the mounted destination reports ready.',
+  );
+  assert.ok(screenSource.includes('notifyTransitionReady'));
+  const todaySource = fs.readFileSync('app/(app)/today/index.tsx', 'utf8');
+  assert.ok(todaySource.includes('notifyTransitionReady'));
+  assert.ok(rootLayoutSource.includes("animation: 'none'"));
 assert.ok(screenSource.includes('OnboardingShell'));
   assert.equal(screenSource.includes('TopicStep'), false);
   assert.equal(screenSource.includes('Create topic & enter MYELIN'), false);

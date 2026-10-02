@@ -64,6 +64,7 @@ const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
 const COVER_MS = 320;
 const REVEAL_MS = 290;
+const ENTRY_STATE_WATCHDOG_MS = 8000;
 const ROUTE_WATCHDOG_MS = 1800;
 
 function sleep(ms: number) {
@@ -153,10 +154,23 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         return Promise.resolve(current);
       }
 
-      return new Promise<FinalEntryDestination>((resolve) => {
+      return new Promise<FinalEntryDestination>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          if (!entryWaiter.current) return;
+          entryWaiter.current = null;
+          reject(
+            new Error(
+              'MYELIN could not finish preparing the next screen. Try again.',
+            ),
+          );
+        }, ENTRY_STATE_WATCHDOG_MS);
+
         entryWaiter.current = {
           allowed: new Set(allowedDestinations),
-          resolve,
+          resolve: (destination) => {
+            clearTimeout(timeout);
+            resolve(destination);
+          },
         };
       });
     },

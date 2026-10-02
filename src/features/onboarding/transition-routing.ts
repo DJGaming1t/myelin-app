@@ -3,8 +3,6 @@ export type TransitionDestination =
   | '/(app)/today'
   | '/(verification)/verify-email';
 
-export type TransitionGroup = '(onboarding)' | '(app)' | '(verification)';
-
 export type TransitionRoutingState = {
   authReady: boolean;
   userUid: string | null;
@@ -48,10 +46,20 @@ export function resolveEntryTransitionDestination(
   return state.shouldShowOnboarding ? '/(onboarding)' : '/(app)/today';
 }
 
-export function transitionGroupForDestination(
+export function transitionSegmentsMatch(
   destination: TransitionDestination,
-): TransitionGroup {
-  if (destination.startsWith('/(onboarding)')) return '(onboarding)';
-  if (destination.startsWith('/(verification)')) return '(verification)';
-  return '(app)';
+  segments: readonly string[],
+) {
+  if (destination === '/(onboarding)') {
+    return segments[0] === '(onboarding)';
+  }
+
+  if (destination === '/(verification)/verify-email') {
+    return (
+      segments[0] === '(verification)' &&
+      segments[1] === 'verify-email'
+    );
+  }
+
+  return segments[0] === '(app)' && segments[1] === 'today';
 }

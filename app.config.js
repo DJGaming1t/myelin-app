@@ -130,9 +130,5 @@ module.exports = {
         backgroundColor: '#070707',
       },
     },
-    web: {
-      ...base.web,
-      favicon: './assets/generated/myelin-icon.jpg',
-    },
   },
 };

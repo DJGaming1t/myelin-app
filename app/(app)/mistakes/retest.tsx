@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   applyMistakeRetest,
@@ -92,7 +94,7 @@ export default function MistakeRetestScreen() {
           <View style={styles.topSpacer} />
         </View>
 
-        <View style={styles.done}>
+        <Reveal distance={10} style={styles.done}>
           <Text style={styles.doneMark}>✓</Text>
           <Text style={styles.doneTitle}>No mistakes are due right now.</Text>
           <Text style={styles.doneText}>
@@ -104,7 +106,7 @@ export default function MistakeRetestScreen() {
             style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
             <Text style={styles.primaryText}>Back to notebook</Text>
           </Pressable>
-        </View>
+        </Reveal>
       </SafeAreaView>
     );
   }
@@ -126,12 +128,11 @@ export default function MistakeRetestScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        {notice ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{notice}</Text>
-          </View>
-        ) : null}
+        <AnimatedDisclosure visible={Boolean(notice)} style={styles.notice}>
+          <Text style={styles.noticeText}>{notice}</Text>
+        </AnimatedDisclosure>
 
+        <Reveal key={`${current.id}:${revealed ? 'revealed' : 'attempt'}`} distance={8}>
         <Text style={styles.subject}>{topic.subject.toUpperCase()} · {topic.name}</Text>
         <Text style={styles.prompt}>{current.prompt}</Text>
 
@@ -205,6 +206,7 @@ export default function MistakeRetestScreen() {
             </View>
           </>
         )}
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );

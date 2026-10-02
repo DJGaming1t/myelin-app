@@ -261,6 +261,15 @@ function main() {
     'Today recommendation handoff ignores reduced-motion preference.',
   );
   assert.ok(todayScreen.includes('undoDefer'), 'Today defer action is missing undo.');
+  assert.ok(
+    todayScreen.includes('undoWithTransition') &&
+      todayScreen.includes('onPress={undoWithTransition}'),
+    'Undo should animate the recommendation handoff instead of snapping back.',
+  );
+  assert.ok(
+    todayScreen.includes('<MotionItem key={`undo:'),
+    'Undo feedback should animate in and out.',
+  );
   assert.ok(todayScreen.includes('nextLocalDayStart(Date.now())'), 'Today does not defer until the next local day.');
   assert.ok(
     todayScreen.includes('Nothing urgent right now.'),

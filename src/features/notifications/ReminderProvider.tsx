@@ -24,6 +24,7 @@ import {
   subscribeToReminderResponses,
 } from './notification-runtime';
 import {
+  ReminderKind,
   ReminderSettings,
   buildReminderPlan,
   defaultReminderSettings,
@@ -57,7 +58,7 @@ type ReminderContextValue = {
   enable: () => Promise<boolean>;
   disable: () => Promise<void>;
   reschedule: () => Promise<void>;
-  sendPreview: () => Promise<void>;
+  sendPreview: (kind?: ReminderKind) => Promise<void>;
   refreshPermission: () => Promise<ReminderPermission>;
 };
 
@@ -416,7 +417,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     setMessage('Reminders are off. Your reminder style and times are still saved.');
   }, [persist]);
 
-  const sendPreview = useCallback(async () => {
+  const sendPreview = useCallback(async (kind: ReminderKind = 'review') => {
     if (Platform.OS === 'web') return;
 
     const nextPermission = await getReminderPermission();
@@ -429,8 +430,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
     try {
       await configureNotificationRuntime();
-      await sendReminderPreview(stateRef.current.settings);
-      setMessage('Preview sent. It uses your current reminder personality and sound choice.');
+      await sendReminderPreview(stateRef.current.settings, kind);
+      setMessage(
+        `${kind === 'review' ? 'Review' : kind === 'exam' ? 'Exam' : 'Study'} preview sent with your current personality, detail and sound.`,
+      );
     } catch (error) {
       setStatus('error');
       setMessage(runtimeError(error));

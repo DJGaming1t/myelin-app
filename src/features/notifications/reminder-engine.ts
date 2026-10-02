@@ -3,6 +3,7 @@ import { examCalendarDaysUntil } from '@/src/features/exams/exam-engine';
 import { isCardReady } from '@/src/features/review/review-engine';
 
 export type ReminderVoice = 'calm' | 'signal' | 'spark';
+export type ReminderDetail = 'brief' | 'guided' | 'context';
 export type ReminderKind = 'review' | 'exam' | 'study';
 
 export type ReminderSettings = {
@@ -12,6 +13,7 @@ export type ReminderSettings = {
   studyBlockEnabled: boolean;
   studyLeadMinutes: number;
   voice: ReminderVoice;
+  detail: ReminderDetail;
   sound: boolean;
   reviewTimeMinutes: number;
   examTimeMinutes: number;
@@ -42,6 +44,7 @@ export const defaultReminderSettings = (): ReminderSettings => ({
   studyBlockEnabled: true,
   studyLeadMinutes: 10,
   voice: 'calm',
+  detail: 'guided',
   sound: false,
   reviewTimeMinutes: 19 * 60 + 15,
   examTimeMinutes: 18 * 60 + 30,
@@ -64,6 +67,13 @@ export function normalizeReminderSettings(
       ? value.voice
       : defaults.voice;
 
+  const detail: ReminderDetail =
+    value?.detail === 'brief' ||
+    value?.detail === 'context' ||
+    value?.detail === 'guided'
+      ? value.detail
+      : defaults.detail;
+
   const examOffsets = Array.from(
     new Set(
       (Array.isArray(value?.examOffsets) ? value!.examOffsets : defaults.examOffsets)
@@ -84,6 +94,7 @@ export function normalizeReminderSettings(
       Math.min(60, Math.round(value?.studyLeadMinutes ?? defaults.studyLeadMinutes)),
     ),
     voice,
+    detail,
     sound: value?.sound === true,
     reviewTimeMinutes: clampTimeMinutes(
       value?.reviewTimeMinutes ?? defaults.reviewTimeMinutes,
@@ -248,12 +259,69 @@ function dueReviewSummary(workspace: WorkspaceState, at: number) {
 }
 
 export function reviewReminderCopy(
-  settings: Pick<ReminderSettings, 'voice'>,
+  settings: Pick<ReminderSettings, 'voice' | 'detail'>,
   summary: ReturnType<typeof dueReviewSummary>,
 ) {
   const count = summary.count;
   const noun = count === 1 ? 'review' : 'reviews';
   const topic = summary.firstTopic || 'your recall queue';
+  const topicLabel =
+    summary.topicCount === 1 ? '1 topic' : `${summary.topicCount} topics`;
+  const mistakeNote = summary.hasMistake ? ' · includes a mistake revisit' : '';
+
+  if (settings.detail === 'brief') {
+    if (settings.voice === 'signal') {
+      return {
+        title: `${count} ${noun} ready`,
+        body: `${topic} first.`,
+        accent: 'signal' as const,
+      };
+    }
+
+    if (settings.voice === 'spark') {
+      return {
+        title: 'Quick recall ✦',
+        body: `${count} ready · ${topic}`,
+        accent: 'spark' as const,
+      };
+    }
+
+    return {
+      title: 'Review window',
+      body: `${count} ready · ${topic}`,
+      accent: 'warm' as const,
+    };
+  }
+
+  if (settings.detail === 'context') {
+    if (settings.voice === 'signal') {
+      return {
+        title: `${count} ${noun} · ${topicLabel}`,
+        body: `${topic} first${mistakeNote}. Open Review when you're ready.`,
+        accent: 'signal' as const,
+      };
+    }
+
+    if (settings.voice === 'spark') {
+      return {
+        title: 'Your recall queue is ready ✦',
+        body:
+          count === 1
+            ? `${topic} is ready${mistakeNote}. One clean recall is enough.`
+            : `${topic} leads a ${count}-item queue${mistakeNote}.`,
+        accent: 'spark' as const,
+      };
+    }
+
+    return {
+      title: 'A quiet review window',
+      body:
+        count === 1
+          ? `${topic} is ready${mistakeNote}. Open it when you have a clear minute.`
+          : `${count} reviews across ${topicLabel}. ${topic} can be your first stop${mistakeNote}.`,
+      accent: 'warm' as const,
+    };
+  }
 
   if (settings.voice === 'signal') {
     return {
@@ -288,11 +356,57 @@ export function reviewReminderCopy(
 }
 
 export function examReminderCopy(
-  settings: Pick<ReminderSettings, 'voice'>,
+  settings: Pick<ReminderSettings, 'voice' | 'detail'>,
   examName: string,
   days: number,
 ) {
   const distance = days === 1 ? 'tomorrow' : `in ${days} days`;
+
+  if (settings.detail === 'brief') {
+    if (settings.voice === 'spark') {
+      return {
+        title: 'Exam check-in ✦',
+        body: `${examName} · ${distance}`,
+        accent: 'spark' as const,
+      };
+    }
+
+    return {
+      title:
+        settings.voice === 'signal'
+          ? `${examName} • ${distance}`
+          : 'Exam check-in',
+      body:
+        settings.voice === 'signal'
+          ? 'Plan one next step.'
+          : `${examName} · ${distance}`,
+      accent: settings.voice === 'signal' ? ('signal' as const) : ('warm' as const),
+    };
+  }
+
+  if (settings.detail === 'context') {
+    if (settings.voice === 'signal') {
+      return {
+        title: `${examName} • ${distance}`,
+        body: 'Open the exam plan, check the scope, and choose one useful next step.',
+        accent: 'signal' as const,
+      };
+    }
+
+    if (settings.voice === 'spark') {
+      return {
+        title: 'Next-step spark ✦',
+        body: `${examName} is ${distance}. Pick one clean move from the exam plan for today.`,
+        accent: 'spark' as const,
+      };
+    }
+
+    return {
+      title: 'A note for later',
+      body: `${examName} is ${distance}. A short look at the exam plan is enough for today.`,
+      accent: 'warm' as const,
+    };
+  }
 
   if (settings.voice === 'signal') {
     return {
@@ -315,6 +429,109 @@ export function examReminderCopy(
     body: `${examName} is ${distance}. A short check-in is enough today.`,
     accent: 'warm' as const,
   };
+}
+
+export function studyReminderCopy(
+  settings: Pick<ReminderSettings, 'voice' | 'detail'>,
+  taskTitle: string,
+  subject: string,
+  durationMinutes: number,
+) {
+  const subjectLabel = subject ? `${subject} · ` : '';
+  const duration = `${durationMinutes} min planned`;
+
+  if (settings.detail === 'brief') {
+    if (settings.voice === 'spark') {
+      return {
+        title: 'Study block incoming ✦',
+        body: taskTitle,
+        accent: 'spark' as const,
+      };
+    }
+
+    return {
+      title:
+        settings.voice === 'signal'
+          ? `Coming up: ${taskTitle}`
+          : 'Planned study',
+      body:
+        settings.voice === 'signal'
+          ? duration
+          : `${taskTitle} · ${durationMinutes} min`,
+      accent: settings.voice === 'signal' ? ('signal' as const) : ('warm' as const),
+    };
+  }
+
+  if (settings.detail === 'context') {
+    if (settings.voice === 'signal') {
+      return {
+        title: `Coming up: ${taskTitle}`,
+        body: `${subjectLabel}${duration}. Open Day Map for the exact block.`,
+        accent: 'signal' as const,
+      };
+    }
+
+    if (settings.voice === 'spark') {
+      return {
+        title: 'Your next block is lined up ✦',
+        body: `${taskTitle} · ${subjectLabel}${duration}. Day Map has the rest.`,
+        accent: 'spark' as const,
+      };
+    }
+
+    return {
+      title: 'Your next study block',
+      body: `${taskTitle} · ${subjectLabel}${duration}. Start when the block fits.`,
+      accent: 'warm' as const,
+    };
+  }
+
+  if (settings.voice === 'signal') {
+    return {
+      title: `Coming up: ${taskTitle}`,
+      body: `${subjectLabel}${duration}. Open Day Map when you're ready.`,
+      accent: 'signal' as const,
+    };
+  }
+
+  if (settings.voice === 'spark') {
+    return {
+      title: 'Study block ready ✦',
+      body: `${taskTitle} · ${durationMinutes} min. Your plan is waiting in Day Map.`,
+      accent: 'spark' as const,
+    };
+  }
+
+  return {
+    title: 'A study block is coming up',
+    body: `${taskTitle} · ${durationMinutes} min. Open Day Map when you're ready.`,
+    accent: 'warm' as const,
+  };
+}
+
+export function sampleReminderCopy(
+  settings: Pick<ReminderSettings, 'voice' | 'detail'>,
+  kind: ReminderKind,
+) {
+  if (kind === 'exam') {
+    return examReminderCopy(settings, 'Mathematics test', 3);
+  }
+
+  if (kind === 'study') {
+    return studyReminderCopy(
+      settings,
+      'Finish Exercise 5.2',
+      'Mathematics',
+      35,
+    );
+  }
+
+  return reviewReminderCopy(settings, {
+    count: 3,
+    firstTopic: 'Refraction',
+    topicCount: 2,
+    hasMistake: true,
+  });
 }
 
 function buildReviewReminders(
@@ -456,16 +673,21 @@ function buildStudyBlockReminders(
         task.estimatedMinutes ||
         25,
     );
-    const subject = task.subject ? task.subject + ' · ' : '';
+    const copy = studyReminderCopy(
+      settings,
+      task.title,
+      task.subject,
+      duration,
+    );
 
     reminders.push({
       key: `study:${task.id}:${task.scheduledStart}`,
       kind: 'study',
       at,
-      title: `Coming up: ${task.title}`,
-      body: `${subject}${duration} min planned. Open Day Map when you're ready.`,
+      title: copy.title,
+      body: copy.body,
       href: '/(app)/today/day-map',
-      accent: 'warm',
+      accent: copy.accent,
       data: {
         taskId: task.id,
         scheduledStart: task.scheduledStart,

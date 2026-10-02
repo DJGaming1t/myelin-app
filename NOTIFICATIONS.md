@@ -2,13 +2,14 @@
 
 Feature 13 uses **local device notifications only**. It does not register a device token, an Expo push token, or a remote notification service.
 
-## Reminder personalities
+## Reminder style
 
 - **Calm** — quiet, low-pressure language.
 - **Signal** — concise, information-first language.
 - **Spark** — a little more personality without guilt, streaks, or fake urgency.
+- **Brief / Guided / Context** controls how much useful detail the notification includes.
 
-The personality changes wording only. It does not increase notification frequency.
+These choices affect wording, subtitle treatment and Android accent tint, not notification frequency or urgency. Review, Exam and Study previews share the same production copy engine.
 
 ## Scheduling rules
 

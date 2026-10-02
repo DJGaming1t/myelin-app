@@ -16,10 +16,13 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
+  ReminderDetail,
+  ReminderKind,
   ReminderVoice,
   buildReminderPlan,
   formatTimeMinutes,
   normalizeReminderSettings,
+  sampleReminderCopy,
 } from '@/src/features/notifications/reminder-engine';
 import { useReminders } from '@/src/features/notifications/ReminderProvider';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -34,6 +37,37 @@ const EXAM_PRESETS = [
   { label: 'Morning', value: 7 * 60 + 30 },
   { label: 'After school', value: 16 * 60 + 45 },
   { label: 'Evening', value: 18 * 60 + 30 },
+];
+
+const DETAIL_LEVELS: Array<{
+  id: ReminderDetail;
+  name: string;
+  description: string;
+}> = [
+  {
+    id: 'brief',
+    name: 'Brief',
+    description: 'Fast glance. Just the useful fact and the first move.',
+  },
+  {
+    id: 'guided',
+    name: 'Guided',
+    description: 'Balanced copy with one clear next step.',
+  },
+  {
+    id: 'context',
+    name: 'Context',
+    description: 'Adds queue, plan or duration detail when it helps.',
+  },
+];
+
+const PREVIEW_KINDS: Array<{
+  id: ReminderKind;
+  label: string;
+}> = [
+  { id: 'review', label: 'Review' },
+  { id: 'exam', label: 'Exam' },
+  { id: 'study', label: 'Study' },
 ];
 
 const VOICES: Array<{
@@ -88,6 +122,7 @@ export default function RemindersScreen() {
   } = useReminders();
 
   const [busy, setBusy] = useState('');
+  const [previewKind, setPreviewKind] = useState<ReminderKind>('review');
 
   const previewPlan = useMemo(() => {
     if (!workspace) return [];
@@ -99,6 +134,8 @@ export default function RemindersScreen() {
   }, [settings, workspace]);
 
   const voice = VOICES.find((item) => item.id === settings.voice)!;
+  const detail = DETAIL_LEVELS.find((item) => item.id === settings.detail)!;
+  const previewItem = previewPlan.find((item) => item.kind === previewKind);
   const disabled = !ready || status === 'scheduling' || Boolean(busy);
 
   async function run(name: string, action: () => Promise<unknown>) {
@@ -140,8 +177,8 @@ export default function RemindersScreen() {
       <AmbientBackdrop />
       <ScreenHeader
         eyebrow="NUDGES, NOT PRESSURE"
-        title="Reminders"
-        subtitle="Make study notifications feel useful enough to open and calm enough to ignore when life is busy."
+        title="Reminder Studio"
+        subtitle="Shape what MYELIN says, how much it says, and when it is allowed to interrupt."
         onBack={() => router.back()}
       />
 
@@ -153,9 +190,13 @@ export default function RemindersScreen() {
             <Text style={styles.heroOrbText}>{voice.mark}</Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroEyebrow}>CURRENT PERSONALITY</Text>
-            <Text style={styles.heroTitle}>{voice.name}</Text>
-            <Text style={styles.heroText}>{voice.description}</Text>
+            <Text style={styles.heroEyebrow}>CURRENT STYLE</Text>
+            <Text style={styles.heroTitle}>
+              {voice.name} · {detail.name}
+            </Text>
+            <Text style={styles.heroText}>
+              {voice.description} {detail.description}
+            </Text>
           </View>
           <View style={[styles.statusPill, settings.enabled && styles.statusPillOn]}>
             <Text
@@ -170,33 +211,84 @@ export default function RemindersScreen() {
 
         <View style={styles.previewShell}>
           <View style={styles.previewHeader}>
-            <Text style={styles.sectionEyebrow}>LIVE PREVIEW</Text>
-            <Text style={styles.previewMeta}>
-              {previewPlan.length
-                ? `${plannedCount} currently useful`
-                : 'Preview copy'}
-            </Text>
+            <View>
+              <Text style={styles.sectionEyebrow}>LIVE PREVIEW</Text>
+              <Text style={styles.previewMeta}>
+                {previewPlan.length
+                  ? `${plannedCount} currently useful`
+                  : 'Uses sample study data'}
+              </Text>
+            </View>
+            <View style={styles.previewBadge}>
+              <Text style={styles.previewBadgeText}>
+                {voice.name.toUpperCase()} · {detail.name.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.previewTabs}>
+            {PREVIEW_KINDS.map((kind) => {
+              const active = previewKind === kind.id;
+              return (
+                <Pressable
+                  key={kind.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setPreviewKind(kind.id)}
+                  style={({ pressed }) => [
+                    styles.previewTab,
+                    active && styles.previewTabActive,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.previewTabText,
+                      active && styles.previewTabTextActive,
+                    ]}>
+                    {kind.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <NotificationPreview
-            voice={settings.voice}
-            item={previewPlan[0]}
-            fallbackKind="review"
+            settings={settings}
+            item={previewItem}
+            kind={previewKind}
           />
 
-          <View style={styles.stackOffset}>
-            <NotificationPreview
-              voice={settings.voice}
-              item={previewPlan[1]}
-              fallbackKind="exam"
-              dimmed
-            />
-          </View>
+          {settings.enabled && permission === 'granted' ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled}
+              onPress={() =>
+                void run('preview', () => sendPreview(previewKind))
+              }
+              style={({ pressed }) => [
+                styles.previewButton,
+                disabled && styles.disabled,
+                pressed && !disabled && styles.pressed,
+              ]}>
+              <View style={styles.previewButtonCopy}>
+                <Text style={styles.previewButtonTitle}>
+                  {busy === 'preview'
+                    ? 'Sending…'
+                    : `Send ${previewKind} preview`}
+                </Text>
+                <Text style={styles.previewButtonText}>
+                  Uses this exact personality, detail level and sound choice
+                </Text>
+              </View>
+              <Text style={styles.previewGlyph}>{voice.mark}</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <Section
-          title="Choose a personality"
-          subtitle="The information stays factual. Only the tone changes.">
+          title="Make it yours"
+          subtitle="Personality changes the tone. Detail changes how much context MYELIN includes.">
+          <Text style={styles.microLabel}>PERSONALITY</Text>
           <View style={styles.voiceGrid}>
             {VOICES.map((item) => {
               const active = settings.voice === item.id;
@@ -220,14 +312,52 @@ export default function RemindersScreen() {
                       ]}>
                       {item.mark}
                     </Text>
-                    {active ? <Text style={styles.selected}>SELECTED</Text> : null}
+                    {active ? <Text style={styles.selected}>ON</Text> : null}
                   </View>
-                  <Text style={styles.voiceName}>{item.name}</Text>
-                  <Text style={styles.voiceText}>{item.description}</Text>
+                  <Text
+                    style={[
+                      styles.voiceName,
+                      active && styles.voiceNameActive,
+                    ]}>
+                    {item.name}
+                  </Text>
                 </Pressable>
               );
             })}
           </View>
+          <Text style={styles.choiceDescription}>{voice.description}</Text>
+
+          <Text style={styles.microLabel}>DETAIL</Text>
+          <View style={styles.detailGrid}>
+            {DETAIL_LEVELS.map((item) => {
+              const active = settings.detail === item.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  disabled={disabled}
+                  onPress={() => void updateSettings({ detail: item.id })}
+                  style={({ pressed }) => [
+                    styles.detailCard,
+                    active && styles.detailCardActive,
+                    pressed && !disabled && styles.pressed,
+                  ]}>
+                  <View style={styles.detailTop}>
+                    <Text
+                      style={[
+                        styles.detailName,
+                        active && styles.detailNameActive,
+                      ]}>
+                      {item.name}
+                    </Text>
+                    {active ? <Text style={styles.selected}>ON</Text> : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.choiceDescription}>{detail.description}</Text>
         </Section>
 
         <Section
@@ -355,14 +485,12 @@ export default function RemindersScreen() {
           subtitle="Quiet hours always win. A reminder landing inside this window is moved to the end of quiet hours.">
           <View style={styles.quietGrid}>
             <TimeStepper
-              compact
               label="Starts"
               value={settings.quietStartMinutes}
               disabled={disabled}
               onChange={(value) => void updateSettings({ quietStartMinutes: value })}
             />
             <TimeStepper
-              compact
               label="Ends"
               value={settings.quietEndMinutes}
               disabled={disabled}
@@ -409,27 +537,7 @@ export default function RemindersScreen() {
             </Pressable>
           ) : null}
 
-          {settings.enabled && permission === 'granted' ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={disabled}
-              onPress={() => void run('preview', sendPreview)}
-              style={({ pressed }) => [
-                styles.previewButton,
-                disabled && styles.disabled,
-                pressed && !disabled && styles.pressed,
-              ]}>
-              <View style={styles.previewButtonCopy}>
-                <Text style={styles.previewButtonTitle}>
-                  {busy === 'preview' ? 'Sending…' : 'Send live preview'}
-                </Text>
-                <Text style={styles.previewButtonText}>
-                  See this personality as a real notification now
-                </Text>
-              </View>
-              <Text style={styles.previewGlyph}>✦</Text>
-            </Pressable>
-          ) : null}
+
         </Section>
 
         {message ? (
@@ -543,64 +651,56 @@ export default function RemindersScreen() {
 
 function NotificationPreview({
   item,
-  voice,
-  fallbackKind,
-  dimmed,
+  settings,
+  kind,
 }: {
   item?: ReturnType<typeof buildReminderPlan>[number];
-  voice: ReminderVoice;
-  fallbackKind: 'review' | 'exam';
-  dimmed?: boolean;
+  settings: { voice: ReminderVoice; detail: ReminderDetail };
+  kind: ReminderKind;
 }) {
-  const fallback =
-    fallbackKind === 'review'
-      ? voice === 'signal'
-        ? {
-            title: '3 reviews ready',
-            body: 'Start with Refraction. One focused recall round is enough.',
-          }
-        : voice === 'spark'
-          ? {
-              title: 'A small win is ready ✦',
-              body: 'Refraction + 2 more are waiting in your review queue.',
-            }
-          : {
-              title: 'A quiet review window',
-              body: '3 reviews are ready. Refraction can be your first stop.',
-            }
-      : voice === 'signal'
-        ? {
-            title: 'Mathematics exam • in 3 days',
-            body: 'Open the exam plan and choose one useful next step.',
-          }
-        : voice === 'spark'
-          ? {
-              title: 'Next-step spark ✦',
-              body: 'Mathematics exam is in 3 days. Pick one clean move for today.',
-            }
-          : {
-              title: 'A note for later',
-              body: 'Mathematics exam is in 3 days. A short check-in is enough today.',
-            };
+  const fallback = sampleReminderCopy(settings, kind);
+  const mark =
+    settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
+  const accent =
+    settings.voice === 'calm'
+      ? '#D88F78'
+      : settings.voice === 'spark'
+        ? '#FFAA68'
+        : colors.accent;
+  const kindLabel =
+    kind === 'review'
+      ? 'REVIEW'
+      : kind === 'exam'
+        ? 'EXAM'
+        : 'PLANNED STUDY';
+  const action =
+    kind === 'review'
+      ? 'Open Review →'
+      : kind === 'exam'
+        ? 'Open exam plan →'
+        : 'Open Day Map →';
 
   return (
-    <View style={[styles.notification, dimmed && styles.notificationDim]}>
+    <View style={[styles.notification, { borderLeftColor: accent }]}>
       <View style={styles.notificationTop}>
-        <View style={styles.appDot}>
-          <Text style={styles.appDotText}>M</Text>
+        <View style={[styles.appDot, { backgroundColor: accent }]}>
+          <Text style={styles.appDotText}>{mark}</Text>
         </View>
         <Text style={styles.notificationApp}>MYELIN</Text>
         <Text style={styles.notificationTime}>now</Text>
       </View>
+
+      <Text style={[styles.notificationSubtitle, { color: accent }]}>
+        {mark} {kindLabel}
+      </Text>
       <Text style={styles.notificationTitle}>{item?.title ?? fallback.title}</Text>
       <Text style={styles.notificationBody}>{item?.body ?? fallback.body}</Text>
+
       <View style={styles.notificationBottom}>
         <Text style={styles.notificationKind}>
-          {(item?.kind ?? fallbackKind).toUpperCase()}
+          {settings.voice.toUpperCase()} · {settings.detail.toUpperCase()}
         </Text>
-        <Text style={styles.notificationAction}>
-          {fallbackKind === 'review' ? 'Open recall →' : 'Open exam plan →'}
-        </Text>
+        <Text style={styles.notificationAction}>{action}</Text>
       </View>
     </View>
   );
@@ -821,10 +921,10 @@ const styles = StyleSheet.create({
   previewShell: { marginTop: spacing.xl },
   previewHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   sectionEyebrow: {
     color: colors.subtle,
@@ -832,10 +932,50 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.1,
   },
-  previewMeta: { color: colors.muted, fontSize: 10.5 },
+  previewMeta: { color: colors.muted, fontSize: 10.5, marginTop: 3 },
+  previewBadge: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.24)',
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  previewBadgeText: {
+    color: colors.accent,
+    fontSize: 7.4,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+  },
+  previewTabs: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
+  },
+  previewTab: {
+    flex: 1,
+    minHeight: layout.minTouch,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewTabActive: {
+    borderColor: 'rgba(255,128,91,0.34)',
+    backgroundColor: colors.accentSoft,
+  },
+  previewTabText: {
+    color: colors.muted,
+    fontSize: 10.4,
+    fontWeight: '700',
+  },
+  previewTabTextActive: { color: colors.accent },
   notification: {
     borderRadius: 18,
     borderWidth: 1,
+    borderLeftWidth: 2,
     borderColor: 'rgba(255,255,255,0.105)',
     backgroundColor: '#171719',
     padding: 13,
@@ -865,7 +1005,13 @@ const styles = StyleSheet.create({
     marginLeft: 7,
   },
   notificationTime: { color: colors.subtle, fontSize: 10, marginLeft: 'auto' },
-  notificationTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 9 },
+  notificationSubtitle: {
+    fontSize: 8.8,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginTop: 10,
+  },
+  notificationTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 5 },
   notificationBody: { color: colors.muted, fontSize: 11.2, lineHeight: 16, marginTop: 3 },
   notificationBottom: {
     flexDirection: 'row',
@@ -891,9 +1037,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panel,
     padding: spacing.md,
   },
-  voiceGrid: { gap: 8 },
+  voiceGrid: { flexDirection: 'row', gap: 7 },
   voiceCard: {
-    minHeight: 92,
+    flex: 1,
+    minHeight: 68,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
@@ -914,7 +1061,36 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   voiceName: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 5 },
-  voiceText: { color: colors.subtle, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  voiceNameActive: { color: colors.accent },
+  choiceDescription: {
+    color: colors.subtle,
+    fontSize: 10.8,
+    lineHeight: 15.5,
+    marginTop: 7,
+  },
+  detailGrid: { flexDirection: 'row', gap: 7 },
+  detailCard: {
+    flex: 1,
+    minHeight: 54,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.bg,
+    padding: 10,
+    justifyContent: 'center',
+  },
+  detailCardActive: {
+    borderColor: 'rgba(255,128,91,0.35)',
+    backgroundColor: colors.accentSoft,
+  },
+  detailTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 5,
+  },
+  detailName: { color: colors.text, fontSize: 10.7, fontWeight: '700' },
+  detailNameActive: { color: colors.accent },
   toggleRow: { minHeight: 69, flexDirection: 'row', alignItems: 'center', gap: 12 },
   toggleCopy: { flex: 1 },
   toggleLabel: { color: colors.text, fontSize: 11, fontWeight: '700' },
@@ -986,7 +1162,7 @@ const styles = StyleSheet.create({
   },
   offsetText: { color: colors.muted, fontSize: 10.8, fontWeight: '700' },
   offsetTextActive: { color: colors.accent },
-  quietGrid: { flexDirection: 'row', gap: 13 },
+  quietGrid: { gap: 1 },
   statusLine: {
     minHeight: 39,
     borderTopWidth: 1,

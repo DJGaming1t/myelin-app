@@ -2,7 +2,9 @@ import { Platform } from 'react-native';
 
 import {
   PlannedReminder,
+  ReminderKind,
   ReminderSettings,
+  sampleReminderCopy,
 } from './reminder-engine';
 
 export type ReminderPermission =
@@ -20,6 +22,37 @@ type NotificationPermissionsStatus =
 
 async function module(): Promise<ExpoNotificationsModule> {
   return import('expo-notifications');
+}
+
+function reminderSubtitle(settings: ReminderSettings, kind: ReminderKind) {
+  const mark =
+    settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
+  const label =
+    kind === 'review'
+      ? settings.voice === 'signal'
+        ? 'REVIEW READY'
+        : settings.voice === 'spark'
+          ? 'REVIEW SPARK'
+          : 'REVIEW WINDOW'
+      : kind === 'exam'
+        ? settings.voice === 'signal'
+          ? 'EXAM SIGNAL'
+          : settings.voice === 'spark'
+            ? 'EXAM SPARK'
+            : 'EXAM CHECK-IN'
+        : settings.voice === 'signal'
+          ? 'STUDY BLOCK'
+          : settings.voice === 'spark'
+            ? 'STUDY SPARK'
+            : 'PLANNED STUDY';
+
+  return `${mark} ${label}`;
+}
+
+function reminderColor(settings: ReminderSettings) {
+  if (settings.voice === 'calm') return '#D88F78';
+  if (settings.voice === 'spark') return '#FFAA68';
+  return '#FF805B';
 }
 
 export async function configureNotificationRuntime() {
@@ -140,15 +173,10 @@ export async function scheduleReminderPlan(
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: item.title,
-          subtitle:
-            item.kind === 'review'
-              ? 'REVIEW WINDOW'
-              : item.kind === 'exam'
-                ? 'EXAM CHECK-IN'
-                : 'PLANNED STUDY',
+          subtitle: reminderSubtitle(settings, item.kind),
           body: item.body,
           sound: settings.sound ? 'default' : undefined,
-          color: '#FF805B',
+          color: reminderColor(settings),
           data: {
             myelin: true,
             kind: item.kind,
@@ -173,38 +201,33 @@ export async function scheduleReminderPlan(
   }
 }
 
-export async function sendReminderPreview(settings: ReminderSettings) {
+export async function sendReminderPreview(
+  settings: ReminderSettings,
+  kind: ReminderKind = 'review',
+) {
   if (Platform.OS === 'web') return;
 
   const Notifications = await module();
   const channelId = settings.sound ? SOUND_CHANNEL : GENTLE_CHANNEL;
-
-  const content =
-    settings.voice === 'signal'
-      ? {
-          title: '3 reviews ready',
-          body: 'Start with Refraction. One focused recall round is enough.',
-        }
-      : settings.voice === 'spark'
-        ? {
-            title: 'A small win is ready ✦',
-            body: 'Refraction + 2 more are waiting in your review queue.',
-          }
-        : {
-            title: 'A quiet review window',
-            body: '3 reviews are ready. Refraction can be your first stop.',
-          };
+  const content = sampleReminderCopy(settings, kind);
+  const href =
+    kind === 'review'
+      ? '/(app)/review'
+      : kind === 'exam'
+        ? '/(app)/exams'
+        : '/(app)/today/day-map';
 
   await Notifications.scheduleNotificationAsync({
     content: {
-      ...content,
-      subtitle: 'MYELIN PREVIEW',
+      title: content.title,
+      subtitle: reminderSubtitle(settings, kind),
+      body: content.body,
       sound: settings.sound ? 'default' : undefined,
-      color: '#FF805B',
+      color: reminderColor(settings),
       data: {
         myelin: true,
-        kind: 'review',
-        href: '/(app)/review',
+        kind,
+        href,
         preview: true,
       },
     },

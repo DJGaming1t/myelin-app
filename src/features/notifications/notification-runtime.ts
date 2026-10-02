@@ -24,6 +24,37 @@ async function module(): Promise<ExpoNotificationsModule> {
   return import('expo-notifications');
 }
 
+function reminderSubtitle(settings: ReminderSettings, kind: ReminderKind) {
+  const mark =
+    settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
+  const label =
+    kind === 'review'
+      ? settings.voice === 'signal'
+        ? 'REVIEW READY'
+        : settings.voice === 'spark'
+          ? 'REVIEW SPARK'
+          : 'REVIEW WINDOW'
+      : kind === 'exam'
+        ? settings.voice === 'signal'
+          ? 'EXAM SIGNAL'
+          : settings.voice === 'spark'
+            ? 'EXAM SPARK'
+            : 'EXAM CHECK-IN'
+        : settings.voice === 'signal'
+          ? 'STUDY BLOCK'
+          : settings.voice === 'spark'
+            ? 'STUDY SPARK'
+            : 'PLANNED STUDY';
+
+  return `${mark} ${label}`;
+}
+
+function reminderColor(settings: ReminderSettings) {
+  if (settings.voice === 'calm') return '#D88F78';
+  if (settings.voice === 'spark') return '#FFAA68';
+  return '#FF805B';
+}
+
 export async function configureNotificationRuntime() {
   if (Platform.OS === 'web') return;
 
@@ -142,15 +173,10 @@ export async function scheduleReminderPlan(
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: item.title,
-          subtitle:
-            item.kind === 'review'
-              ? 'REVIEW WINDOW'
-              : item.kind === 'exam'
-                ? 'EXAM CHECK-IN'
-                : 'PLANNED STUDY',
+          subtitle: reminderSubtitle(settings, item.kind),
           body: item.body,
           sound: settings.sound ? 'default' : undefined,
-          color: '#FF805B',
+          color: reminderColor(settings),
           data: {
             myelin: true,
             kind: item.kind,
@@ -194,15 +220,10 @@ export async function sendReminderPreview(
   await Notifications.scheduleNotificationAsync({
     content: {
       title: content.title,
-      subtitle:
-        kind === 'review'
-          ? 'MYELIN REVIEW'
-          : kind === 'exam'
-            ? 'MYELIN EXAM'
-            : 'MYELIN STUDY',
+      subtitle: reminderSubtitle(settings, kind),
       body: content.body,
       sound: settings.sound ? 'default' : undefined,
-      color: '#FF805B',
+      color: reminderColor(settings),
       data: {
         myelin: true,
         kind,

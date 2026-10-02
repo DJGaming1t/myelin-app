@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthButton } from '@/src/components/auth/AuthButton';
@@ -19,10 +19,19 @@ export default function VerifyEmailScreen() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => notifyTransitionReady());
-    return () => cancelAnimationFrame(frame);
-  }, [notifyTransitionReady]);
+  useFocusEffect(
+    useCallback(() => {
+      let secondFrame = 0;
+      const firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => notifyTransitionReady());
+      });
+
+      return () => {
+        cancelAnimationFrame(firstFrame);
+        if (secondFrame) cancelAnimationFrame(secondFrame);
+      };
+    }, [notifyTransitionReady]),
+  );
 
   useEffect(() => {
     if (cooldown <= 0) return;

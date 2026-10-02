@@ -1,8 +1,10 @@
+import { useSegments } from 'expo-router';
 import {
   PropsWithChildren,
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -21,14 +23,18 @@ import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion'
 import { colors } from '@/src/theme/tokens';
 
 type TransitionTask = () => Promise<void> | void;
+type TransitionGroup = '(onboarding)' | '(app)' | '(verification)';
 
 type OnboardingTransitionContextValue = {
-  runTransition: (commit: TransitionTask) => Promise<void>;
+  runTransition: (
+    commit: TransitionTask,
+    destinationGroups?: TransitionGroup[],
+  ) => Promise<void>;
   runEntryTransition: (
     task: TransitionTask,
     commit: TransitionTask,
+    destinationGroups?: TransitionGroup[],
   ) => Promise<void>;
-  notifyTransitionReady: () => void;
   entryPending: boolean;
 };
 
@@ -55,25 +61,59 @@ function nextFrame() {
 
 export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const reduceMotion = useReducedMotion();
+  const segments = useSegments();
   const [active, setActive] = useState(false);
   const [entryPending, setEntryPending] = useState(false);
   const running = useRef(false);
-  const destinationReadyResolver = useRef<(() => void) | null>(null);
+  const routeReadyResolver = useRef<(() => void) | null>(null);
+  const routeReadyTargets = useRef<Set<TransitionGroup> | null>(null);
+  const routeReadyScheduled = useRef(false);
 
   const circleProgress = useSharedValue(0);
   const fadeOpacity = useSharedValue(0);
 
-  const notifyTransitionReady = useCallback(() => {
-    destinationReadyResolver.current?.();
+  useEffect(() => {
+    const firstSegment = segments[0] as string | undefined;
+    const resolver = routeReadyResolver.current;
+    const targets = routeReadyTargets.current;
+
+    if (
+      !resolver ||
+      !targets ||
+      !firstSegment ||
+      !targets.has(firstSegment as TransitionGroup) ||
+      routeReadyScheduled.current
+    ) {
+      return;
+    }
+
+    routeReadyScheduled.current = true;
+
+    // Expo Router has reached the final route group. Give React Native two
+    // frames to commit and paint that route before exposing any pixels.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const currentResolver = routeReadyResolver.current;
+        routeReadyResolver.current = null;
+        routeReadyTargets.current = null;
+        routeReadyScheduled.current = false;
+        currentResolver?.();
+      });
+    });
+  }, [segments]);
+
+  const armRouteReady = useCallback((destinationGroups: TransitionGroup[]) => {
+    return new Promise<void>((resolve) => {
+      routeReadyTargets.current = new Set(destinationGroups);
+      routeReadyResolver.current = resolve;
+      routeReadyScheduled.current = false;
+    });
   }, []);
 
-  const armDestinationReady = useCallback(() => {
-    return new Promise<void>((resolve) => {
-      destinationReadyResolver.current = () => {
-        destinationReadyResolver.current = null;
-        resolve();
-      };
-    });
+  const clearRouteReady = useCallback(() => {
+    routeReadyResolver.current = null;
+    routeReadyTargets.current = null;
+    routeReadyScheduled.current = false;
   }, []);
 
   const resetVisualState = useCallback(() => {
@@ -82,7 +122,10 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   }, [circleProgress, fadeOpacity]);
 
   const playCircleHandoff = useCallback(
-    async (commit: TransitionTask) => {
+    async (
+      commit: TransitionTask,
+      destinationGroups: TransitionGroup[],
+    ) => {
       resetVisualState();
       setActive(true);
       await nextFrame();
@@ -97,16 +140,11 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
         await sleep(COVER_MS + 20);
       }
 
-      // Arm the destination handshake before navigation so a fast mount cannot
-      // beat us and expose the previous screen or a black intermediate frame.
-      const destinationReady = armDestinationReady();
+      // Arm before navigation so even a fast redirect chain cannot beat us.
+      const routeReady = armRouteReady(destinationGroups);
 
       await commit();
-      await destinationReady;
-
-      // The destination signals only after it is focused and painted.
-      // One final frame here keeps the first revealed pixels on the target.
-      await nextFrame();
+      await routeReady;
 
       if (reduceMotion) {
         fadeOpacity.set(withTiming(0, { duration: 190, easing: EASE_OUT }));
@@ -119,7 +157,7 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       }
     },
     [
-      armDestinationReady,
+      armRouteReady,
       circleProgress,
       fadeOpacity,
       reduceMotion,
@@ -128,23 +166,34 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   );
 
   const runTransition = useCallback(
-    async (commit: TransitionTask) => {
+    async (
+      commit: TransitionTask,
+      destinationGroups: TransitionGroup[] = ['(app)'],
+    ) => {
       if (running.current) return;
 
       running.current = true;
       try {
-        await playCircleHandoff(commit);
+        await playCircleHandoff(commit, destinationGroups);
       } finally {
-        destinationReadyResolver.current = null;
+        clearRouteReady();
         setActive(false);
         running.current = false;
       }
     },
-    [playCircleHandoff],
+    [clearRouteReady, playCircleHandoff],
   );
 
   const runEntryTransition = useCallback(
-    async (task: TransitionTask, commit: TransitionTask) => {
+    async (
+      task: TransitionTask,
+      commit: TransitionTask,
+      destinationGroups: TransitionGroup[] = [
+        '(onboarding)',
+        '(app)',
+        '(verification)',
+      ],
+    ) => {
       if (running.current) return;
 
       running.current = true;
@@ -153,30 +202,24 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       try {
         // Native auth/account selection finishes before any MYELIN animation.
         await task();
-        await playCircleHandoff(commit);
+        await playCircleHandoff(commit, destinationGroups);
       } finally {
-        destinationReadyResolver.current = null;
+        clearRouteReady();
         setActive(false);
         setEntryPending(false);
         running.current = false;
       }
     },
-    [playCircleHandoff],
+    [clearRouteReady, playCircleHandoff],
   );
 
   const value = useMemo(
     () => ({
       runTransition,
       runEntryTransition,
-      notifyTransitionReady,
       entryPending,
     }),
-    [
-      entryPending,
-      notifyTransitionReady,
-      runEntryTransition,
-      runTransition,
-    ],
+    [entryPending, runEntryTransition, runTransition],
   );
 
   return (

@@ -7,7 +7,7 @@ import { colors } from '@/src/theme/tokens';
 
 export default function VerificationLayout() {
   const { ready, user, localMode } = useAuth();
-  const { entryPending } = useOnboardingTransition();
+  const { transitionPending } = useOnboardingTransition();
 
   if (!ready) {
     return (
@@ -17,13 +17,13 @@ export default function VerificationLayout() {
     );
   }
 
-  if (!entryPending && localMode) return <Redirect href="/(app)" />;
-  if (!entryPending && !user) return <Redirect href="/(auth)" />;
-  if (!entryPending && user?.emailVerified) {
+  if (!transitionPending && localMode) return <Redirect href="/(app)" />;
+  if (!transitionPending && !user) return <Redirect href="/(auth)" />;
+  if (!transitionPending && user?.emailVerified) {
     return <Redirect href="/(app)" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />;
+  return <Stack screenOptions={{ headerShown: false, animation: 'none' }} />;
 }
 
 const styles = StyleSheet.create({

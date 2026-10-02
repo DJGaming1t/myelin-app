@@ -32,6 +32,7 @@ import { useReminders } from '@/src/features/notifications/ReminderProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import {
   applyStudyDefaults,
   providerLabels,
@@ -65,6 +66,7 @@ export default function SettingsScreen() {
   const { discard: discardFocus, session: focusSession } = useFocus();
   const { discardReview, session: reviewSession } = useReview();
   const { restart: restartOnboarding } = useOnboarding();
+  const { runTransition } = useOnboardingTransition();
   const {
     deleteAccountAndCloud,
     releaseEnabled: cloudSyncAvailable,
@@ -246,10 +248,11 @@ export default function SettingsScreen() {
                 focusSession ? discardFocus() : Promise.resolve(),
                 reviewSession ? discardReview() : Promise.resolve(),
               ]);
-              await waitForSaves();
-              await resetWorkspace();
-              await restartOnboarding();
-              router.replace('/(onboarding)');
+              await runTransition(async () => {
+                await waitForSaves();
+                await resetWorkspace();
+                await restartOnboarding();
+              }, '/(onboarding)');
             } finally {
               setResetBusy(false);
             }

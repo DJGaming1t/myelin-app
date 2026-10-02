@@ -276,6 +276,13 @@ assert.ok(provider.includes('router.replace(destination)'));
 assert.ok(provider.includes('STATE_READY_TIMEOUT_MS'));
 assert.ok(provider.includes('ROUTE_READY_TIMEOUT_MS'));
 assert.ok(provider.includes('transitionPending'));
+assert.ok(provider.includes('[travel, 0, -travel]'));
+assert.equal(provider.includes('scale: interpolate('), false);
+assert.ok(provider.includes('styles.trail'));
+assert.ok(provider.includes('styles.sheen'));
+assert.ok(provider.includes('styles.contourOne'));
+assert.ok(provider.includes('styles.contourTwo'));
+assert.ok(provider.includes('withRepeat('));
 assert.equal(provider.includes("router.replace('/')"), false);
 
 for (const [label, source] of [
@@ -320,3 +327,4 @@ console.log('✓ layout guards cannot race an active circle transition');
 console.log('✓ reveal waits for the exact nested destination, not only its route group');
 console.log('✓ nested destination stacks do not layer a second entry fade');
 console.log('✓ transition timeouts prevent a permanent orange-screen deadlock');
+console.log('✓ the transition is a translate-only rising field, not a zoom');

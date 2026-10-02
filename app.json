@@ -2,7 +2,7 @@
   "expo": {
     "name": "MYELIN",
     "slug": "myelin",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "myelin",
@@ -13,7 +13,7 @@
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM"
       ],
-      "versionCode": 3,
+      "versionCode": 4,
       "backgroundColor": "#070707",
       "icon": "./assets/icon.png"
     },

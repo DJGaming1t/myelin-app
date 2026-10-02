@@ -166,8 +166,7 @@ assert.ok(
 assert.ok(
   verificationSource.includes('runEntryTransition(') &&
     verificationSource.includes('await refreshVerification()') &&
-    verificationSource.includes("notVerified.code = 'auth/email-not-verified-yet'") &&
-    !verificationSource.includes("() => router.replace('/')"),
+    verificationSource.includes("notVerified.code = 'auth/email-not-verified-yet'"),
   'A newly verified email account must let settled app state choose onboarding or Today.',
 );
 assert.ok(

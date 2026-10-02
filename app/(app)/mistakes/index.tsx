@@ -16,6 +16,7 @@ import { AppIcon } from '@/src/components/app/AppIcon';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import {
   buildMistakeRetestQueue,
@@ -172,11 +173,12 @@ export default function MistakesScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.list, items.length === 0 && styles.listEmpty]}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const topic = workspace.topics.find((candidate) => candidate.id === item.topicId);
             const status = item.resolvedAt ? 'Resolved' : item.wins ? `${item.wins}/2 wins` : 'Needs proof';
 
             return (
+              <MotionItem delay={Math.min(index * 30, 120)}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${item.prompt}. ${status}`}
@@ -201,6 +203,7 @@ export default function MistakesScreen() {
                   <AppIcon name="chevron" size={15} color={colors.subtle} />
                 </View>
               </Pressable>
+              </MotionItem>
             );
           }}
           ListEmptyComponent={

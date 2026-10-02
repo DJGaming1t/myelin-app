@@ -172,6 +172,9 @@ function main() {
   assert.ok(transitionSource.includes('await task()'));
   assert.ok(transitionSource.includes('CircleTransitionOverlay'));
   assert.ok(transitionSource.includes('circleProgress'));
+  assert.ok(transitionSource.includes('fieldPhase'));
+  assert.ok(transitionSource.includes('[travel, 0, -travel]'));
+  assert.equal(transitionSource.includes('scale: interpolate('), false);
   assert.ok(transitionSource.includes('useSegments()'));
   assert.ok(transitionSource.includes('resolveEntryTransitionDestination'));
   assert.ok(transitionSource.includes('waitForEntryDestination'));
@@ -198,7 +201,7 @@ function main() {
       replaceIndex > readyArmIndex &&
       readyWaitIndex > replaceIndex &&
       revealIndex > readyWaitIndex,
-    'The circle must stay fully covering the direct route change until the destination group has painted.',
+    'The rising circle must stay fully covering the direct route change until the exact destination has painted.',
   );
   assert.equal(screenSource.includes('notifyTransitionReady'), false);
   assert.equal(screenSource.includes('useFocusEffect'), false);

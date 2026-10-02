@@ -24,6 +24,14 @@ const authButton = fs.readFileSync(
 const signInSource = fs.readFileSync(path.join(root, 'app/(auth)/sign-in.tsx'), 'utf8');
 const signUpSource = fs.readFileSync(path.join(root, 'app/(auth)/sign-up.tsx'), 'utf8');
 const authLayoutSource = fs.readFileSync(path.join(root, 'app/(auth)/_layout.tsx'), 'utf8');
+const verificationSource = fs.readFileSync(
+  path.join(root, 'app/(verification)/verify-email.tsx'),
+  'utf8',
+);
+const verificationLayoutSource = fs.readFileSync(
+  path.join(root, 'app/(verification)/_layout.tsx'),
+  'utf8',
+);
 const rootLayoutSource = fs.readFileSync(path.join(root, 'app/_layout.tsx'), 'utf8');
 const entryTransitionSource = fs.readFileSync(
   path.join(root, 'src/features/onboarding/OnboardingTransitionProvider.tsx'),
@@ -140,8 +148,27 @@ assert.ok(
   signUpSource.includes('variant="google"') &&
     signUpSource.includes('or create with email') &&
     signUpSource.includes('runEntryTransition(') &&
-    signUpSource.includes('() => signInGoogle(keepSignedIn)'),
-  'Account creation should offer the same polished Google-first entry path.',
+    signUpSource.includes('() => signInGoogle(keepSignedIn)') &&
+    signUpSource.includes('() => signUpEmail(name, email, password, keepSignedIn)'),
+  'Both Google and email account creation must use the same circle entry handoff.',
+);
+assert.ok(
+  authAccess.includes('runEntryTransition(') &&
+    authAccess.includes('() => signInGoogle()') &&
+    authAccess.includes('() => continueLocally()'),
+  'First-time Google and local-only access must both use the circle entry handoff.',
+);
+assert.ok(
+  verificationSource.includes('runEntryTransition(') &&
+    verificationSource.includes('await refreshVerification()') &&
+    verificationSource.includes("notVerified.code = 'auth/email-not-verified-yet'") &&
+    verificationSource.includes("() => router.replace('/')"),
+  'A newly verified email account must enter MYELIN through the circle handoff.',
+);
+assert.ok(
+  verificationLayoutSource.includes('entryPending') &&
+    verificationLayoutSource.includes('!entryPending && user?.emailVerified'),
+  'Verification redirects must stay frozen while the new-user circle handoff is active.',
 );
 assert.equal(
   signInSource.includes('MYELIN REMEMBERS THE WORKFLOW') ||

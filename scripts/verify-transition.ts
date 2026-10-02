@@ -285,7 +285,7 @@ for (const [label, source] of [
   ['verification', verification],
 ] as const) {
   assert.equal(
-    source.includes("router.replace('/')") &&
+    source.includes("() => router.replace('/')") &&
       source.includes('runEntryTransition'),
     false,
     `${label} must not animate through the root redirect route.`,

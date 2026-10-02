@@ -55,11 +55,32 @@ assert(
   root.includes("animation: 'none'"),
   'Root group navigation must stay motion-free so reduced motion and the circle handoff are not layered with a second transition.',
 );
-assert(app.includes("animation: reduceMotion ? 'none' : 'fade_from_bottom'"), 'Hierarchical app navigation should animate unless reduced motion is enabled.');
-assert(app.includes('<Stack.Screen name="today/index" options={{ animation: \'none\' }} />'), 'Today peer navigation must stay instant.');
-assert(app.includes('<Stack.Screen name="topics" options={{ animation: \'none\' }} />'), 'Library parent route must stay instant.');
-assert(app.includes('<Stack.Screen name="review/index" options={{ animation: \'none\' }} />'), 'Review peer navigation must stay instant.');
-assert(app.includes('<Stack.Screen name="progress/index" options={{ animation: \'none\' }} />'), 'Progress peer navigation must stay instant.');
+assert(
+  app.includes('PEER_ROUTE_NAMES.has(route.name)') &&
+    app.includes("? 'none'") &&
+    app.includes(": 'fade_from_bottom'"),
+  'Peer tabs must resolve to no positional transition while deeper routes keep hierarchy motion.',
+);
+for (const routeName of [
+  "'today'",
+  "'today/index'",
+  "'topics'",
+  "'topics/index'",
+  "'review'",
+  "'review/index'",
+  "'progress'",
+  "'progress/index'",
+]) {
+  assert(
+    app.includes(routeName),
+    `Peer-route transition guard is missing ${routeName}.`,
+  );
+}
+assert(
+  app.includes('<Stack.Screen name="today/index" />') &&
+    app.includes('<Stack.Screen name="progress/index" />'),
+  'Today and Progress should stay explicit peer destinations in the app stack.',
+);
 assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
 assert(app.includes('actionLabel="Try again"'), 'Workspace error state is missing a retry action.');
 assert(app.includes('retryWorkspace()'), 'Workspace retry action is not wired to the provider.');

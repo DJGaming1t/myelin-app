@@ -86,7 +86,21 @@ function main() {
   }
 
   const appLayout = read('app/(app)/_layout.tsx');
-  assert.ok(appLayout.includes('<Stack.Screen name="topics" options={{ animation: \'none\' }} />'));
+  assert.ok(appLayout.includes('PEER_ROUTE_NAMES.has(route.name)'));
+  assert.ok(appLayout.includes("? 'none'"));
+  assert.ok(appLayout.includes(": 'fade_from_bottom'"));
+  for (const routeName of [
+    "'today'",
+    "'today/index'",
+    "'topics'",
+    "'topics/index'",
+    "'review'",
+    "'review/index'",
+    "'progress'",
+    "'progress/index'",
+  ]) {
+    assert.ok(appLayout.includes(routeName));
+  }
 
   const topicsLayout = read('app/(app)/topics/_layout.tsx');
   assert.ok(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'));

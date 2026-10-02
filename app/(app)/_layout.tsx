@@ -4,12 +4,14 @@ import { ScreenState } from '@/src/components/app/ScreenState';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 
 export default function AppLayout() {
   const { ready: authReady, user, localMode } = useAuth();
   const { status, saveError, retryWorkspace } = useWorkspace();
   const { ready: onboardingReady, shouldShow } = useOnboarding();
+  const { transitionPending } = useOnboardingTransition();
   const reduceMotion = useReducedMotion();
 
   if (!authReady) {
@@ -42,7 +44,9 @@ export default function AppLayout() {
     return <ScreenState kind="loading" title="Finishing setup" message="Restoring your first-run state…" fill />;
   }
 
-  if (shouldShow) return <Redirect href="/(onboarding)" />;
+  if (!transitionPending && shouldShow) {
+    return <Redirect href="/(onboarding)" />;
+  }
 
   return (
     <Stack

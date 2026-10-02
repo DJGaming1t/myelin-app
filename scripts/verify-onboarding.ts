@@ -182,9 +182,13 @@ function main() {
   assert.ok(transitionSource.includes('styles.topPanel'));
   assert.ok(transitionSource.includes('styles.bottomPanel'));
   assert.ok(transitionSource.includes('FOCUS, CONTINUED'));
+  const coverDelayIndex = transitionSource.indexOf('await sleep(265)');
+  const coveredCommitIndex = transitionSource.indexOf(
+    'await commit()',
+    coverDelayIndex,
+  );
   assert.ok(
-    transitionSource.indexOf('await sleep(265)') <
-      transitionSource.indexOf('await commit()'),
+    coverDelayIndex >= 0 && coveredCommitIndex > coverDelayIndex,
     'The route should commit only after the outgoing screen is fully covered.',
   );
 assert.ok(screenSource.includes('OnboardingShell'));

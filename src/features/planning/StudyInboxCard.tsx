@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { suggestTaskSlots } from '@/src/features/planning/day-engine';
 import {
@@ -232,8 +233,8 @@ export function StudyInboxCard() {
       </View>
 
       {tasks.length ? (
-        tasks.slice(0, 4).map((task) => (
-          <View key={task.id} style={styles.task}>
+        tasks.slice(0, 4).map((task, index) => (
+          <MotionItem key={task.id} delay={Math.min(index * 35, 105)} style={styles.task}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={'Edit ' + task.title}
@@ -262,7 +263,7 @@ export function StudyInboxCard() {
               <Mini label="Schedule" onPress={() => openScheduler(task.id)} accent />
               <Mini label="Done" onPress={() => done(task.id)} />
             </View>
-          </View>
+          </MotionItem>
         ))
       ) : (
         <Text style={styles.empty}>

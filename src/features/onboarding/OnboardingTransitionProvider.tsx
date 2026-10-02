@@ -39,9 +39,11 @@ const OnboardingTransitionContext =
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
-const COVER_MS = 320;
-const PRE_COMMIT_HOLD_MS = 120;
-const POST_COMMIT_HOLD_MS = 170;
+const CORAL_COVER_MS = 300;
+const DARK_COVER_DELAY_MS = 205;
+const DARK_COVER_MS = 255;
+const EYE_CLOSE_MS = 125;
+const POST_COMMIT_HOLD_MS = 145;
 const REVEAL_MS = 360;
 
 function sleep(ms: number) {
@@ -62,153 +64,163 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
   const [entryPending, setEntryPending] = useState(false);
   const running = useRef(false);
 
-  const coverProgress = useSharedValue(0);
-  const coverOpacity = useSharedValue(0);
-  const fieldOpacity = useSharedValue(0);
-  const lensOpacity = useSharedValue(0);
-  const lensOpen = useSharedValue(0.12);
-  const lensScale = useSharedValue(1);
-  const lensTravel = useSharedValue(0);
+  const coralProgress = useSharedValue(0);
+  const coralOpacity = useSharedValue(0);
+  const darkProgress = useSharedValue(0);
+  const darkOpacity = useSharedValue(0);
+  const eyeOpacity = useSharedValue(0);
+  const eyeOpen = useSharedValue(0.08);
   const coreScale = useSharedValue(0.92);
-  const haloProgress = useSharedValue(0);
-  const sceneScale = useSharedValue(1);
   const sceneOpacity = useSharedValue(1);
   const fade = useSharedValue(0);
 
   const resetVisualState = useCallback(() => {
-    coverProgress.set(0);
-    coverOpacity.set(0);
-    fieldOpacity.set(0);
-    lensOpacity.set(0);
-    lensOpen.set(0.12);
-    lensScale.set(1);
-    lensTravel.set(0);
+    coralProgress.set(0);
+    coralOpacity.set(0);
+    darkProgress.set(0);
+    darkOpacity.set(0);
+    eyeOpacity.set(0);
+    eyeOpen.set(0.08);
     coreScale.set(0.92);
-    haloProgress.set(0);
-    sceneScale.set(1);
     sceneOpacity.set(1);
     fade.set(0);
   }, [
+    coralOpacity,
+    coralProgress,
     coreScale,
-    coverOpacity,
-    coverProgress,
+    darkOpacity,
+    darkProgress,
+    eyeOpen,
+    eyeOpacity,
     fade,
-    fieldOpacity,
-    lensOpen,
-    lensOpacity,
-    lensScale,
-    lensTravel,
-    haloProgress,
     sceneOpacity,
-    sceneScale,
   ]);
 
   const playHandoff = useCallback(
     async (commit: TransitionTask) => {
       if (reduceMotion) {
-        fade.set(withTiming(1, { duration: 150, easing: EASE_OUT }));
-        await sleep(165);
+        fade.set(withTiming(1, { duration: 160, easing: EASE_OUT }));
+        await sleep(175);
+
         sceneOpacity.set(0);
         await commit();
         await nextFrame();
-        await sleep(120);
+        await sleep(POST_COMMIT_HOLD_MS);
+
         sceneOpacity.set(1);
-        fade.set(withTiming(0, { duration: 190, easing: EASE_OUT }));
-        await sleep(200);
+        fade.set(withTiming(0, { duration: 210, easing: EASE_OUT }));
+        await sleep(220);
         return;
       }
 
-      // Phase 1 — departure. The outgoing screen yields while the signal grows
-      // from the lower part of the interface until it fully owns the frame.
-      sceneScale.set(withTiming(0.98, { duration: 210, easing: EASE_OUT }));
-      sceneOpacity.set(withTiming(0.72, { duration: 210, easing: EASE_OUT }));
-      coverOpacity.set(1);
-      coverProgress.set(
-        withTiming(1, { duration: COVER_MS, easing: EASE_IN_OUT }),
+      // 1. The outgoing screen stays still. A coral signal rises from below
+      //    and expands until it owns the whole frame.
+      coralOpacity.set(1);
+      coralProgress.set(
+        withTiming(1, { duration: CORAL_COVER_MS, easing: EASE_IN_OUT }),
       );
 
-      // Phase 2 — morph. Keep the frame fully covered while the coral signal
-      // resolves into a darker MYELIN aperture with a quiet depth halo.
-      fieldOpacity.set(
-        withDelay(210, withTiming(1, { duration: 120, easing: EASE_OUT })),
+      // 2. Before coral has completely settled, the darker MYELIN field grows
+      //    through it. This creates a continuous morph rather than a cut.
+      darkOpacity.set(
+        withDelay(
+          DARK_COVER_DELAY_MS,
+          withTiming(1, { duration: 70, easing: EASE_OUT }),
+        ),
       );
-      lensOpacity.set(
-        withDelay(235, withTiming(1, { duration: 120, easing: EASE_OUT })),
+      darkProgress.set(
+        withDelay(
+          DARK_COVER_DELAY_MS,
+          withTiming(1, { duration: DARK_COVER_MS, easing: EASE_IN_OUT }),
+        ),
       );
-      lensOpen.set(
-        withDelay(225, withTiming(1, { duration: 175, easing: EASE_OUT })),
+
+      // 3. The central aperture forms only once the transition already owns
+      //    most of the screen.
+      eyeOpacity.set(
+        withDelay(350, withTiming(1, { duration: 110, easing: EASE_OUT })),
       );
-      haloProgress.set(
-        withDelay(245, withTiming(1, { duration: 180, easing: EASE_OUT })),
+      eyeOpen.set(
+        withDelay(345, withTiming(1, { duration: 175, easing: EASE_OUT })),
       );
       coreScale.set(
         withDelay(
-          240,
+          355,
           withSequence(
-            withTiming(1.075, { duration: 135, easing: EASE_OUT }),
-            withTiming(1, { duration: 85, easing: EASE_IN_OUT }),
+            withTiming(1.07, { duration: 115, easing: EASE_OUT }),
+            withTiming(1, { duration: 75, easing: EASE_IN_OUT }),
           ),
         ),
       );
 
-      // Hide the routed scene itself before committing. This prevents the new
-      // page from flashing through even if React mounts it immediately.
-      sceneOpacity.set(
-        withDelay(
-          COVER_MS - 55,
-          withTiming(0, { duration: 70, easing: EASE_OUT }),
-        ),
+      // Dark has fully replaced coral at this point.
+      await sleep(DARK_COVER_DELAY_MS + DARK_COVER_MS + 70);
+      coralOpacity.set(
+        withTiming(0, { duration: 100, easing: EASE_OUT }),
       );
 
-      // Deliberate hold: the transition owns the frame before the route swap.
-      await sleep(COVER_MS + PRE_COMMIT_HOLD_MS);
+      // 4. Close the aperture down to a line. The route change happens while
+      //    the screen is visually sealed — not while the destination is visible.
+      eyeOpen.set(
+        withTiming(0.08, { duration: EYE_CLOSE_MS, easing: EASE_IN_OUT }),
+      );
+      coreScale.set(
+        withTiming(0.78, { duration: EYE_CLOSE_MS, easing: EASE_IN_OUT }),
+      );
+      await sleep(EYE_CLOSE_MS + 35);
+
+      sceneOpacity.set(0);
+      await sleep(35);
       await commit();
       await nextFrame();
 
-      // Keep the destination completely hidden while it settles underneath.
+      // 5. The destination gets time to mount and settle while still invisible.
       await sleep(POST_COMMIT_HOLD_MS);
+      sceneOpacity.set(1);
 
-      // Phase 3 — arrival. Reveal the destination only after the hidden settle.
-      // The aperture contracts toward the bottom-center while the new page
-      // fades and scales into its final position behind it.
-      coverOpacity.set(withTiming(0, { duration: 110, easing: EASE_OUT }));
-      fieldOpacity.set(
-        withDelay(55, withTiming(0, { duration: 300, easing: EASE_OUT })),
+      // 6. Re-open the aperture first, then shrink the dark field away. The
+      //    destination is revealed from the outside inward, like the reference.
+      eyeOpen.set(
+        withTiming(1, { duration: 165, easing: EASE_OUT }),
       );
-      haloProgress.set(
-        withTiming(0, { duration: 210, easing: EASE_OUT }),
-      );
-      lensTravel.set(withTiming(1, { duration: REVEAL_MS, easing: EASE_OUT }));
-      lensScale.set(withTiming(0.24, { duration: REVEAL_MS, easing: EASE_OUT }));
-      lensOpen.set(withTiming(0.28, { duration: 300, easing: EASE_IN_OUT }));
-      coreScale.set(withTiming(1.04, { duration: 285, easing: EASE_OUT }));
-
-      sceneScale.set(
-        withDelay(95, withTiming(1, { duration: 265, easing: EASE_OUT })),
-      );
-      sceneOpacity.set(
-        withDelay(125, withTiming(1, { duration: 220, easing: EASE_OUT })),
-      );
-      lensOpacity.set(
-        withDelay(275, withTiming(0, { duration: 95, easing: EASE_OUT })),
+      coreScale.set(
+        withSequence(
+          withTiming(1.06, { duration: 125, easing: EASE_OUT }),
+          withTiming(1, { duration: 75, easing: EASE_IN_OUT }),
+        ),
       );
 
-      await sleep(REVEAL_MS + 20);
+      await sleep(105);
+
+      darkProgress.set(
+        withTiming(2, { duration: REVEAL_MS, easing: EASE_OUT }),
+      );
+      eyeOpacity.set(
+        withDelay(
+          REVEAL_MS - 95,
+          withTiming(0, { duration: 105, easing: EASE_OUT }),
+        ),
+      );
+      darkOpacity.set(
+        withDelay(
+          REVEAL_MS - 65,
+          withTiming(0, { duration: 85, easing: EASE_OUT }),
+        ),
+      );
+
+      await sleep(REVEAL_MS + 30);
     },
     [
+      coralOpacity,
+      coralProgress,
       coreScale,
-      coverOpacity,
-      coverProgress,
+      darkOpacity,
+      darkProgress,
+      eyeOpen,
+      eyeOpacity,
       fade,
-      fieldOpacity,
-      haloProgress,
-      lensOpen,
-      lensOpacity,
-      lensScale,
-      lensTravel,
       reduceMotion,
       sceneOpacity,
-      sceneScale,
     ],
   );
 
@@ -243,8 +255,8 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
       resetVisualState();
 
       try {
-        // The native account picker finishes first. The visible handoff starts
-        // only after authentication has succeeded and React is back on screen.
+        // Keep native authentication completely separate from the visible
+        // transition. The animation starts only after the account picker returns.
         await task();
 
         setActive(true);
@@ -264,7 +276,6 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 
   const sceneStyle = useAnimatedStyle(() => ({
     opacity: sceneOpacity.get(),
-    transform: reduceMotion ? [] : [{ scale: sceneScale.get() }],
   }));
 
   const value = useMemo(
@@ -281,15 +292,13 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 
         {active ? (
           <TransitionOverlay
-            coverProgress={coverProgress}
-            coverOpacity={coverOpacity}
-            fieldOpacity={fieldOpacity}
-            lensOpacity={lensOpacity}
-            lensOpen={lensOpen}
-            lensScale={lensScale}
-            lensTravel={lensTravel}
+            coralProgress={coralProgress}
+            coralOpacity={coralOpacity}
+            darkProgress={darkProgress}
+            darkOpacity={darkOpacity}
+            eyeOpacity={eyeOpacity}
+            eyeOpen={eyeOpen}
             coreScale={coreScale}
-            haloProgress={haloProgress}
             fade={fade}
             reduceMotion={reduceMotion}
           />
@@ -300,109 +309,97 @@ export function OnboardingTransitionProvider({ children }: PropsWithChildren) {
 }
 
 function TransitionOverlay({
-  coverProgress,
-  coverOpacity,
-  fieldOpacity,
-  lensOpacity,
-  lensOpen,
-  lensScale,
-  lensTravel,
+  coralProgress,
+  coralOpacity,
+  darkProgress,
+  darkOpacity,
+  eyeOpacity,
+  eyeOpen,
   coreScale,
-  haloProgress,
   fade,
   reduceMotion,
 }: {
-  coverProgress: SharedValue<number>;
-  coverOpacity: SharedValue<number>;
-  fieldOpacity: SharedValue<number>;
-  lensOpacity: SharedValue<number>;
-  lensOpen: SharedValue<number>;
-  lensScale: SharedValue<number>;
-  lensTravel: SharedValue<number>;
+  coralProgress: SharedValue<number>;
+  coralOpacity: SharedValue<number>;
+  darkProgress: SharedValue<number>;
+  darkOpacity: SharedValue<number>;
+  eyeOpacity: SharedValue<number>;
+  eyeOpen: SharedValue<number>;
   coreScale: SharedValue<number>;
-  haloProgress: SharedValue<number>;
   fade: SharedValue<number>;
   reduceMotion: boolean;
 }) {
   const { width, height } = useWindowDimensions();
-  const coverScale = Math.max(width, height) * 1.7 / 260;
-  const landingY = Math.max(190, height * 0.38);
+  const fullCoverScale = Math.max(width, height) * 1.75 / 280;
 
-  const coverStyle = useAnimatedStyle(() => ({
-    opacity: coverOpacity.get(),
+  const coralStyle = useAnimatedStyle(() => ({
+    opacity: coralOpacity.get(),
     transform: [
       {
         translateY: interpolate(
-          coverProgress.get(),
+          coralProgress.get(),
           [0, 1],
-          [height * 0.5, 0],
+          [height * 0.62, 0],
         ),
       },
       {
         scale: interpolate(
-          coverProgress.get(),
+          coralProgress.get(),
           [0, 1],
-          [0.78, coverScale],
+          [0.72, fullCoverScale],
         ),
       },
     ],
   }));
 
-  const fieldStyle = useAnimatedStyle(() => ({
-    opacity: fieldOpacity.get(),
-  }));
+  const darkStyle = useAnimatedStyle(() => {
+    const progress = darkProgress.get();
 
-  const lensStyle = useAnimatedStyle(() => ({
-    opacity: lensOpacity.get(),
+    return {
+      opacity: darkOpacity.get(),
+      transform: [
+        {
+          translateY: interpolate(
+            progress,
+            [0, 1, 2],
+            [height * 0.48, 0, 0],
+          ),
+        },
+        {
+          scale: interpolate(
+            progress,
+            [0, 1, 2],
+            [0.68, fullCoverScale, 0.72],
+          ),
+        },
+      ],
+    };
+  });
+
+  const eyeStyle = useAnimatedStyle(() => ({
+    opacity: eyeOpacity.get(),
     transform: [
       {
-        translateY: interpolate(
-          lensTravel.get(),
-          [0, 1],
-          [0, landingY],
+        scaleY: interpolate(
+          eyeOpen.get(),
+          [0.08, 1],
+          [0.08, 1],
         ),
-      },
-      { scale: lensScale.get() },
-    ],
-  }));
-
-  const apertureStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        scaleX: interpolate(lensOpen.get(), [0.12, 1], [0.18, 1]),
       },
     ],
   }));
 
   const traceStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(lensOpen.get(), [0.12, 1], [0.08, 0.7]),
+    opacity: interpolate(eyeOpen.get(), [0.08, 1], [0.12, 0.7]),
     transform: [
       {
-        scaleX: interpolate(lensOpen.get(), [0.12, 1], [0.25, 1]),
+        scaleX: interpolate(eyeOpen.get(), [0.08, 1], [0.25, 1]),
       },
     ],
   }));
 
   const coreStyle = useAnimatedStyle(() => ({
     transform: [{ scale: coreScale.get() }],
-  }));
-
-  const haloStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(haloProgress.get(), [0, 1], [0, 0.34]),
-    transform: [
-      {
-        scale: interpolate(haloProgress.get(), [0, 1], [0.78, 1.08]),
-      },
-    ],
-  }));
-
-  const outerHaloStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(haloProgress.get(), [0, 1], [0, 0.16]),
-    transform: [
-      {
-        scale: interpolate(haloProgress.get(), [0, 1], [0.62, 1.22]),
-      },
-    ],
   }));
 
   const fadeStyle = useAnimatedStyle(() => ({
@@ -419,15 +416,17 @@ function TransitionOverlay({
 
       {!reduceMotion ? (
         <>
-          <Animated.View style={[styles.coverDisc, coverStyle]} />
-          <Animated.View style={[styles.field, fieldStyle]} />
+          <Animated.View style={[styles.disc, styles.coralDisc, coralStyle]} />
+          <Animated.View style={[styles.disc, styles.darkDisc, darkStyle]} />
 
-          <Animated.View style={[styles.lensStage, lensStyle]}>
-            <Animated.View style={[styles.haloOuter, outerHaloStyle]} />
-            <Animated.View style={[styles.halo, haloStyle]} />
-            <Animated.View style={[styles.aperture, apertureStyle]}>
-              <Animated.View style={[styles.trace, styles.traceLeft, traceStyle]} />
-              <Animated.View style={[styles.trace, styles.traceRight, traceStyle]} />
+          <Animated.View style={[styles.eyeStage, eyeStyle]}>
+            <Animated.View style={[styles.eye, styles.eyeShell]}>
+              <Animated.View
+                style={[styles.trace, styles.traceLeft, traceStyle]}
+              />
+              <Animated.View
+                style={[styles.trace, styles.traceRight, traceStyle]}
+              />
 
               <Animated.View style={[styles.core, coreStyle]}>
                 <View style={styles.coreInner} />
@@ -477,72 +476,49 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: colors.bg,
   },
-  coverDisc: {
+  disc: {
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
     left: '50%',
     top: '50%',
-    marginLeft: -130,
-    marginTop: -130,
+    marginLeft: -140,
+    marginTop: -140,
+  },
+  coralDisc: {
     backgroundColor: colors.accent,
   },
-  field: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    bottom: -4,
-    left: -4,
+  darkDisc: {
     backgroundColor: colors.bgRaised,
   },
-  lensStage: {
+  eyeStage: {
     position: 'absolute',
     left: '50%',
     top: '50%',
-    width: 216,
-    height: 112,
-    marginLeft: -108,
-    marginTop: -56,
+    width: 230,
+    height: 100,
+    marginLeft: -115,
+    marginTop: -50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  haloOuter: {
-    position: 'absolute',
-    width: 238,
-    height: 118,
-    borderRadius: 59,
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-    backgroundColor: colors.accentFaint,
-  },
-  halo: {
-    position: 'absolute',
-    width: 224,
-    height: 104,
-    borderRadius: 52,
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-  },
-  aperture: {
-    width: 208,
-    height: 92,
-    borderRadius: 46,
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-    backgroundColor: colors.panelRaised,
+  eye: {
+    width: 218,
+    height: 86,
+    borderRadius: 43,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: colors.accent,
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
+  },
+  eyeShell: {
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panelRaised,
   },
   trace: {
     position: 'absolute',
-    width: 66,
+    width: 70,
     height: 1,
     backgroundColor: colors.accentLine,
   },
@@ -553,9 +529,9 @@ const styles = StyleSheet.create({
     right: 18,
   },
   core: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 1,
     borderColor: colors.accentLine,
     backgroundColor: colors.accentSoft,

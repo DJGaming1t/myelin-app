@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
 function read(relative: string) {
   return fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
@@ -13,6 +14,12 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const eas = json('eas.json');
 const app = json('app.json');
+const require = createRequire(import.meta.url);
+const resolvedExpo = require(path.join(process.cwd(), 'app.config.js')).expo;
+const generatedIconPath = path.join(
+  process.cwd(),
+  'assets/generated/myelin-icon.jpg',
+);
 const pkg = json('package.json');
 const release = read('RELEASE.md');
 const gitignore = read('.gitignore');
@@ -32,10 +39,40 @@ assert(eas.build?.production?.channel === 'production', 'Production channel is m
 assert(eas.build?.production?.autoIncrement === true, 'Production build numbers are not auto-incremented.');
 assert(eas.cli?.appVersionSource === 'remote', 'EAS version source should be remote.');
 assert(app.expo?.runtimeVersion?.policy === 'appVersion', 'Runtime version policy must protect native compatibility.');
-assert(app.expo?.icon === './assets/icon.png', 'MYELIN launcher icon must point to assets/icon.png.');
-assert(app.expo?.android?.icon === './assets/icon.png', 'Android launcher icon must use the MYELIN icon asset.');
-assert(app.expo?.web?.favicon === './assets/icon.png', 'Web favicon must use the MYELIN icon asset.');
-assert(fs.existsSync(path.join(process.cwd(), 'assets/icon.png')), 'Configured MYELIN icon asset is missing.');
+assert(
+  resolvedExpo?.icon === './assets/generated/myelin-icon.jpg',
+  'Resolved MYELIN launcher icon must use the generated clean icon asset.',
+);
+assert(
+  resolvedExpo?.android?.icon === './assets/generated/myelin-icon.jpg',
+  'Android launcher icon must use the generated clean icon asset.',
+);
+assert(
+  resolvedExpo?.android?.adaptiveIcon?.foregroundImage ===
+    './assets/generated/myelin-icon.jpg',
+  'Android adaptive icon must use the generated clean icon asset.',
+);
+assert(
+  resolvedExpo?.android?.adaptiveIcon?.backgroundColor === '#070707',
+  'Android adaptive icon background must match MYELIN.',
+);
+assert(
+  resolvedExpo?.web?.favicon === './assets/generated/myelin-icon.jpg',
+  'Web favicon must use the generated clean icon asset.',
+);
+assert(fs.existsSync(generatedIconPath), 'Generated MYELIN icon asset is missing.');
+const generatedIconBytes = fs.readFileSync(generatedIconPath);
+assert(
+  generatedIconBytes[0] === 0xff &&
+    generatedIconBytes[1] === 0xd8 &&
+    generatedIconBytes.at(-2) === 0xff &&
+    generatedIconBytes.at(-1) === 0xd9,
+  'Generated MYELIN icon is not a complete JPEG.',
+);
+assert(
+  gitignore.includes('assets/generated/'),
+  'Generated launcher assets must stay out of Git.',
+);
 assert(app.expo?.android?.package === 'com.djgaming1t.myelin', 'Android application ID changed unexpectedly.');
 assert(pkg.dependencies?.['expo-updates'], 'expo-updates is not installed.');
 assert(rootLayout.includes('<StartupUpdateGate>'), 'Root layout must run the compatible OTA refresh gate.');

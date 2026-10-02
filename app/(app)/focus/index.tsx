@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -383,8 +384,7 @@ export default function FocusScreen() {
               <View style={styles.stepCard}>
                 <Text style={styles.stepLabel}>FIRST TINY STEP</Text>
                 <Text style={styles.stepText}>{session.tinyStep}</Text>
-              </View>
-            ) : null}
+            </AnimatedDisclosure>
           </View>
 
           <TimerDial
@@ -407,6 +407,15 @@ export default function FocusScreen() {
             />
           </View>
 
+          <Reveal
+            key={
+              canExtend
+                ? 'extend'
+                : finishing || timerDone
+                  ? 'finish'
+                  : 'running'
+            }
+            distance={6}>
           {canExtend ? (
             <View style={styles.finishPanel}>
               <Text style={styles.finishTitle}>You started. Keep the momentum?</Text>
@@ -493,6 +502,7 @@ export default function FocusScreen() {
               </Pressable>
             </View>
           )}
+          </Reveal>
 
           <View style={styles.parkingShell}>
             <Pressable
@@ -512,8 +522,7 @@ export default function FocusScreen() {
               <Text style={styles.parkingToggleMark}>{showParking ? '−' : '+'}</Text>
             </Pressable>
 
-            {showParking ? (
-              <View style={styles.parking}>
+            <AnimatedDisclosure visible={showParking} style={styles.parking}>
                 <View style={styles.parkInputRow}>
                   <TextInput
                     accessibilityLabel="Park a distraction"

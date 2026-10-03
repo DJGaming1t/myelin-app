@@ -33,6 +33,7 @@ export type StudyTask = {
   createdAt: number;
   updatedAt: number;
   completedAt: number;
+  lastFocusSessionId?: string;
 };
 
 export type Commitment = {

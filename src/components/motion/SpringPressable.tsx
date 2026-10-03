@@ -1,4 +1,4 @@
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect } from 'react';
 import {
   Pressable,
   PressableProps,
@@ -24,6 +24,8 @@ type Props = PropsWithChildren<
   }
 >;
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function SpringPressable({
   children,
   style,
@@ -31,16 +33,26 @@ export function SpringPressable({
   lift = 1,
   onPressIn,
   onPressOut,
+  disabled,
   ...props
 }: Props) {
   const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
   const translateY = useSharedValue(0);
 
+  useEffect(() => {
+    if (disabled || reduceMotion) {
+      cancelAnimation(scale);
+      cancelAnimation(translateY);
+      scale.set(1);
+      translateY.set(0);
+    }
+  }, [disabled, reduceMotion, scale, translateY]);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: translateY.value },
-      { scale: scale.value },
+      { translateY: translateY.get() },
+      { scale: scale.get() },
     ],
   }));
 
@@ -49,19 +61,20 @@ export function SpringPressable({
     cancelAnimation(translateY);
 
     if (reduceMotion) {
-      scale.value = 1;
-      translateY.value = 0;
+      scale.set(1);
+      translateY.set(0);
       return;
     }
 
     const spring = pressed ? motion.pressSpring : motion.releaseSpring;
-    scale.value = withSpring(pressed ? scaleTo : 1, { ...spring });
-    translateY.value = withSpring(pressed ? lift : 0, { ...spring });
+    scale.set(withSpring(pressed ? scaleTo : 1, { ...spring }));
+    translateY.set(withSpring(pressed ? lift : 0, { ...spring }));
   }
 
   return (
-    <Pressable
+    <AnimatedPressable
       {...props}
+      disabled={disabled}
       onPressIn={(event) => {
         animate(true);
         onPressIn?.(event);
@@ -70,11 +83,9 @@ export function SpringPressable({
         animate(false);
         onPressOut?.(event);
       }}
-      style={styles.pressable}>
-      <Animated.View style={[style, animatedStyle]}>
-        {children}
-      </Animated.View>
-    </Pressable>
+      style={[styles.pressable, style, animatedStyle]}>
+      {children}
+    </AnimatedPressable>
   );
 }
 

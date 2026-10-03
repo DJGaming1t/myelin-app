@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '@/src/components/app/AppIcon';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { Topic } from '@/src/data/schema';
+import { isCardReady } from '@/src/features/review/review-engine';
 import { colors, space, type } from '@/src/theme/tokens';
 
 const STATUS_LABEL: Record<Topic['status'], string> = {
@@ -11,9 +12,9 @@ const STATUS_LABEL: Record<Topic['status'], string> = {
   review: 'Review',
 };
 
-export function TopicCard({ topic, onPress }: { topic: Topic; onPress: () => void }) {
+export function TopicCard({ topic, onPress, now = Date.now() }: { topic: Topic; onPress: () => void; now?: number }) {
   const dueCount = topic.cards.filter(
-    (card) => card.dueAt > 0 && card.dueAt <= Date.now(),
+    (card) => isCardReady(topic, card, now),
   ).length;
 
   const rightMeta =
@@ -42,7 +43,7 @@ export function TopicCard({ topic, onPress }: { topic: Topic; onPress: () => voi
       />
 
       <View style={styles.copy}>
-        <Text style={styles.name} numberOfLines={1}>{topic.name}</Text>
+        <Text style={styles.name} numberOfLines={2}>{topic.name}</Text>
         <Text style={styles.meta} numberOfLines={1}>
           {topic.subject} · {STATUS_LABEL[topic.status]}
           {topic.cards.length ? ` · ${topic.cards.length} recall` : ''}
@@ -94,6 +95,9 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   rightMeta: {
+    maxWidth: '26%',
+    flexShrink: 1,
+    textAlign: 'right',
     color: colors.subtle,
     ...type.meta,
     fontWeight: '600',

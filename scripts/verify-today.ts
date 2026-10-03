@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { shortSession } from '../src/features/today/short-session';
 import { createEmptyWorkspace, Topic } from '../src/data/schema';
 import {
   buildTodayPlan,
@@ -230,7 +231,21 @@ function main() {
   console.log('✓ already-used time reduces remaining capacity');
   console.log('✓ snoozed topics stay out');
   console.log('✓ exhausted budget adds no fake work');
+  const snapshot = JSON.stringify(plan);
+  const quick = shortSession(plan);
+  assert.equal(quick?.minutes, 10, 'Short session should cap a longer block at ten minutes.');
+  assert.equal(quick?.topicId, plan.nextBlock?.topicId);
+  assert.equal(quick?.mode, 'study');
+  assert.equal(JSON.stringify(plan), snapshot, 'Short session must not change the daily plan.');
+  assert.equal(shortSession({ ...plan, remainingBudgetMinutes: 4 }), null);
+  assert.equal(shortSession({ ...plan, blocks: [] }), null);
+  assert.equal(shortSession({ ...plan, remainingBudgetMinutes: 7 })?.minutes, 7);
+  assert.equal(shortSession({ ...plan, blocks: [{ ...plan.blocks[0]!, minutes: 5 }] })?.minutes, 5);
+  assert.equal(shortSession({ ...plan, blocks: [{ ...plan.blocks[0]!, topicId: null, focusable: false }] }), null);
+  console.log('✓ short sessions fit real capacity and leave the daily plan unchanged');
+
   const todayScreen = read('app/(app)/today/index.tsx');
+  const recommendationMotion = read('src/features/today/useRecommendationMotion.ts');
   const planCard = read('src/features/today/PlanBlockCard.tsx');
   const springPressable = read('src/components/motion/SpringPressable.tsx');
   const inboxCard = read('src/features/planning/StudyInboxCard.tsx');
@@ -252,12 +267,12 @@ function main() {
     'Today is missing the animated Not now handoff.',
   );
   assert.ok(
-    todayScreen.includes('Animated.timing(heroProgress') &&
-      todayScreen.includes('Animated.spring(heroProgress'),
+    todayScreen.includes('useRecommendationMotion()') &&
+      recommendationMotion.includes('withTiming') && recommendationMotion.includes('scheduleOnRN'),
     'Today does not animate the current recommendation out and the next recommendation in.',
   );
   assert.ok(
-    todayScreen.includes('useReducedMotion()'),
+    recommendationMotion.includes('useReducedMotion()'),
     'Today recommendation handoff ignores reduced-motion preference.',
   );
   assert.ok(todayScreen.includes('undoDefer'), 'Today defer action is missing undo.');

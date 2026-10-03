@@ -4,7 +4,11 @@ import { colors } from '@/src/theme/tokens';
 
 export function AmbientBackdrop() {
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[StyleSheet.absoluteFill, styles.clip]}>
       <View style={styles.base} />
       <View style={styles.grid}>
         {Array.from({ length: 5 }, (_, index) => (
@@ -21,6 +25,7 @@ export function AmbientBackdrop() {
 }
 
 const styles = StyleSheet.create({
+  clip: { overflow: 'hidden' },
   base: {
     position: 'absolute',
     top: 0,

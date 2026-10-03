@@ -44,6 +44,7 @@ export type Commitment = {
   startMinutes: number;
   endMinutes: number;
   recurrenceDays: number[];
+  skippedDates?: string[];
   createdAt: number;
   updatedAt: number;
 };

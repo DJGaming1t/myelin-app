@@ -4,7 +4,17 @@ import { taskRemainingMinutes } from './task-engine';
 
 export type DayWindow = { start: number; end: number; minutes: number };
 export type DayMapEntry =
-  | { id: string; kind: 'commitment'; start: number; end: number; title: string; label: string }
+  | {
+      id: string;
+      kind: 'commitment';
+      commitmentId: string;
+      occurrenceDateKey: string;
+      recurring: boolean;
+      start: number;
+      end: number;
+      title: string;
+      label: string;
+    }
   | { id: string; kind: 'task'; start: number; end: number; title: string; label: string; taskId: string; missed: boolean };
 
 export type TaskSlot = { start: number; end: number; minutes: number };
@@ -18,6 +28,15 @@ export function startOfLocalDay(timestamp: number) {
 export function addLocalDays(timestamp: number, days: number) {
   const date = new Date(timestamp);
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days).getTime();
+}
+
+export function localDayKey(timestamp: number) {
+  const date = new Date(timestamp);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
 }
 
 function localAtMinutes(day: number, minutes: number) {
@@ -62,24 +81,41 @@ function overlaps(start: number, end: number, rangeStart: number, rangeEnd: numb
 export function commitmentOccurrencesForDay(
   commitments: Commitment[],
   dayTimestamp: number,
-): Array<{ id: string; title: string; kind: Commitment['kind']; start: number; end: number }> {
+): Array<{
+  id: string;
+  commitmentId: string;
+  occurrenceDateKey: string;
+  recurring: boolean;
+  title: string;
+  kind: Commitment['kind'];
+  start: number;
+  end: number;
+}> {
   const day = startOfLocalDay(dayTimestamp);
   const next = addLocalDays(day, 1);
   const weekday = new Date(day).getDay();
   const previousDay = addLocalDays(day, -1);
   const previousWeekday = new Date(previousDay).getDay();
+  const dayKey = localDayKey(day);
+  const previousDayKey = localDayKey(previousDay);
 
   return commitments.flatMap((item) => {
     if (item.recurrenceDays.length) {
       const occurrences: Array<{
         id: string;
+        commitmentId: string;
+        occurrenceDateKey: string;
+        recurring: boolean;
         title: string;
         kind: Commitment['kind'];
         start: number;
         end: number;
       }> = [];
 
-      if (item.recurrenceDays.includes(weekday)) {
+      if (
+        item.recurrenceDays.includes(weekday) &&
+        !(item.skippedDates ?? []).includes(dayKey)
+      ) {
         const rawStart = localAtMinutes(day, item.startMinutes);
         let rawEnd = localAtMinutes(day, item.endMinutes);
         if (rawEnd <= rawStart) {
@@ -88,6 +124,9 @@ export function commitmentOccurrencesForDay(
         if (overlaps(rawStart, rawEnd, day, next)) {
           occurrences.push({
             id: item.id,
+            commitmentId: item.id,
+            occurrenceDateKey: dayKey,
+            recurring: true,
             title: item.title,
             kind: item.kind,
             start: Math.max(day, rawStart),
@@ -97,8 +136,12 @@ export function commitmentOccurrencesForDay(
       }
 
       // Recurring commitments that started yesterday and cross midnight must
-      // still block the early hours of the current day.
-      if (item.recurrenceDays.includes(previousWeekday)) {
+      // still block the early hours of the current day. A skip belongs to the
+      // calendar date on which that occurrence started.
+      if (
+        item.recurrenceDays.includes(previousWeekday) &&
+        !(item.skippedDates ?? []).includes(previousDayKey)
+      ) {
         const previousStart = localAtMinutes(previousDay, item.startMinutes);
         let previousEnd = localAtMinutes(previousDay, item.endMinutes);
         if (previousEnd <= previousStart) {
@@ -107,6 +150,9 @@ export function commitmentOccurrencesForDay(
         if (previousEnd > day) {
           occurrences.push({
             id: item.id + ':carry',
+            commitmentId: item.id,
+            occurrenceDateKey: previousDayKey,
+            recurring: true,
             title: item.title,
             kind: item.kind,
             start: day,
@@ -121,6 +167,9 @@ export function commitmentOccurrencesForDay(
     if (!overlaps(item.startAt, item.endAt, day, next)) return [];
     return [{
       id: item.id,
+      commitmentId: item.id,
+      occurrenceDateKey: localDayKey(item.startAt),
+      recurring: false,
       title: item.title,
       kind: item.kind,
       start: Math.max(day, item.startAt),
@@ -273,6 +322,9 @@ export function buildDayMap(workspace: WorkspaceState, now = Date.now()) {
     (item) => ({
       id: `commitment:${item.id}`,
       kind: 'commitment',
+      commitmentId: item.commitmentId,
+      occurrenceDateKey: item.occurrenceDateKey,
+      recurring: item.recurring,
       start: item.start,
       end: item.end,
       title: item.title,

@@ -14,7 +14,7 @@ export type FocusSessionState = {
   format: typeof FOCUS_SESSION_FORMAT;
   version: typeof FOCUS_SESSION_VERSION;
   id: string;
-  topicId: string;
+  topicId?: string;
   taskId?: string;
   topicName: string;
   subject: string;

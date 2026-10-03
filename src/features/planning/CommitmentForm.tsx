@@ -138,6 +138,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
           startMinutes,
           endMinutes,
           recurrenceDays: days,
+          skippedDates: [],
           createdAt: now,
           updatedAt: now,
         });

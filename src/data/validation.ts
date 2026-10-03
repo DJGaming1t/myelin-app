@@ -304,6 +304,17 @@ function commitment(raw: unknown): Commitment {
       ),
     ),
   ).sort((a, b) => a - b);
+  const skippedDates = Array.from(
+    new Set(
+      array(c.skippedDates ?? [], 'commitment skipped dates', 366).map((value) => {
+        const date = string(value, 'commitment skipped date', 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          throw new Error('Invalid commitment skipped date.');
+        }
+        return date;
+      }),
+    ),
+  ).sort();
 
   if (recurrenceDays.length) {
     if (startMinutes === endMinutes) {
@@ -326,6 +337,7 @@ function commitment(raw: unknown): Commitment {
     startMinutes,
     endMinutes,
     recurrenceDays,
+    skippedDates,
     createdAt: number(c.createdAt, 'commitment creation date', 1),
     updatedAt: number(c.updatedAt ?? c.createdAt, 'commitment update date', 1),
   };

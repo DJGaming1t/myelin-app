@@ -63,8 +63,14 @@ export default function FocusScreen() {
 
   const topicId = param(params.topicId);
   const taskId = param(params.taskId);
-  const topic = workspace ? findTopic(workspace, topicId) : null;
   const task = workspace && taskId ? workspace.tasks.find((item) => item.id === taskId) ?? null : null;
+  const topic = workspace
+    ? topicId
+      ? findTopic(workspace, topicId)
+      : task?.topicId
+        ? findTopic(workspace, task.topicId)
+        : null
+    : null;
   const plannedMinutes = Math.max(
     5,
     Math.min(240, intParam(params.minutes, workspace?.settings.focusMinutes ?? 45)),
@@ -104,10 +110,10 @@ export default function FocusScreen() {
     : 0;
 
   async function begin(launchMode: 'full' | 'five-minute') {
-    if (!topic) return;
+    if (!topic && !task) return;
 
     const next = await start({
-      topicId: topic.id,
+      ...(topic ? { topicId: topic.id } : {}),
       ...(task ? { taskId: task.id } : {}),
       plannedMinutes,
       breakMinutes,
@@ -136,7 +142,7 @@ export default function FocusScreen() {
   function requestDiscard() {
     Alert.alert(
       'Discard this focus session?',
-      'The timer and parked distractions will be removed. No study time will be added to history.',
+      'The timer and parked distractions will be removed. No study time will be recorded.',
       [
         { text: 'Keep session', style: 'cancel' },
         {
@@ -202,16 +208,16 @@ export default function FocusScreen() {
   }
 
   if (!session) {
-    if (!topic) {
+    if (!topic && !task) {
       return (
         <SafeAreaView style={styles.safe}>
           <AmbientBackdrop />
           <View style={styles.setupPage}>
             <TopBar label="Focus" onBack={() => router.replace('/(app)/today')} />
             <View style={styles.missing}>
-              <Text style={styles.missingTitle}>Choose a topic first.</Text>
+              <Text style={styles.missingTitle}>Choose something to focus on first.</Text>
               <Text style={styles.missingText}>
-                Start Focus from Today or from a topic so MYELIN knows what the block belongs to.
+                Start Focus from Today, a study task, or a topic so MYELIN knows what the timer belongs to.
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -235,10 +241,14 @@ export default function FocusScreen() {
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.setupContent}
             showsVerticalScrollIndicator={false}>
-            <Text style={styles.eyebrow}>{topic.subject.toUpperCase()}</Text>
-            <Text style={styles.setupTitle}>{task?.title || topic.name}</Text>
+            <Text style={styles.eyebrow}>
+              {(task?.subject || topic?.subject || task?.type || 'Study task').toUpperCase()}
+            </Text>
+            <Text style={styles.setupTitle}>{task?.title || topic?.name || 'Focus'}</Text>
             {task ? (
-              <Text style={styles.taskContext}>Linked topic · {topic.name}</Text>
+              <Text style={styles.taskContext}>
+                {topic ? `Linked topic · ${topic.name}` : 'Task focus · time counts toward this task'}
+              </Text>
             ) : null}
             <Text style={styles.setupSubtitle}>
               Choose the first action, then let the timer disappear into the background.

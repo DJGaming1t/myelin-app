@@ -66,12 +66,16 @@ export function validateFocusSession(raw: unknown): FocusSessionState {
     throw new Error('Invalid distraction list.');
   }
 
+  const topicId = session.topicId == null ? undefined : text(session.topicId, 'topic id', 120);
+  const taskId = session.taskId == null ? undefined : text(session.taskId, 'task id', 120);
+  if (!topicId && !taskId) throw new Error('Focus session has no target.');
+
   return {
     format: FOCUS_SESSION_FORMAT,
     version: FOCUS_SESSION_VERSION,
     id: text(session.id, 'focus id', 120),
-    topicId: text(session.topicId, 'topic id', 120),
-    ...(session.taskId == null ? {} : { taskId: text(session.taskId, 'task id', 120) }),
+    ...(topicId ? { topicId } : {}),
+    ...(taskId ? { taskId } : {}),
     topicName: text(session.topicName, 'topic name', 300),
     subject: text(session.subject, 'subject', 120),
     phase,

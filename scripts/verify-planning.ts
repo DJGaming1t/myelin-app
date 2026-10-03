@@ -8,6 +8,7 @@ import {
   buildDayMap,
   commitmentOccurrencesForDay,
   freeStudyWindows,
+  localDayKey,
   rebuildRemainingDay,
   suggestTaskSlots,
 } from '../src/features/planning/day-engine';
@@ -171,6 +172,21 @@ function main() {
   assert.equal(new Date(tuitionOccurrence.start).getHours(), 16);
   assert.equal(new Date(tuitionOccurrence.end).getHours(), 18);
 
+  const tuition = workspace.commitments.find((item) => item.id === 'tuition')!;
+  tuition.skippedDates = [localDayKey(now)];
+  assert.equal(
+    commitmentOccurrencesForDay(workspace.commitments, now).some((item) => item.id === 'tuition'),
+    false,
+    'A recurring commitment should support skipping only this calendar occurrence.',
+  );
+  tuition.skippedDates = [];
+  assert.ok(
+    commitmentOccurrencesForDay(workspace.commitments, addLocalDays(now, 7)).some(
+      (item) => item.id === 'tuition',
+    ),
+    'Skipping one occurrence must not remove future weekly repeats.',
+  );
+
   workspace.commitments.push({
     id: 'sleep',
     title: 'Sleep',
@@ -263,6 +279,17 @@ function main() {
   assert.equal(validated.tasks[0]!.examId, null);
   assert.equal(validated.tasks[0]!.dueAt, 0);
   assert.equal(validated.tasks[0]!.estimatedMinutes, 0);
+  const standalonePlan = buildTodayPlan(edge, now);
+  assert.equal(
+    standalonePlan.nextBlock?.taskId,
+    noLinks.id,
+    'A standalone task should still appear as concrete work in Today.',
+  );
+  assert.equal(
+    standalonePlan.nextBlock?.focusable,
+    true,
+    'A standalone task should be launchable in Focus without inventing a Topic.',
+  );
 
   const missingLinks = structuredClone(workspace);
   missingLinks.topics = [];
@@ -275,11 +302,13 @@ function main() {
   console.log('✓ task create, schedule, unschedule, partial completion, completion and reopen');
   console.log('✓ postponed tasks stay out of Today');
   console.log('✓ recurring, overlapping and overnight commitments produce deterministic free windows');
+  console.log('✓ one recurring occurrence can be skipped without breaking future repeats');
   console.log('✓ slot suggestions fit the task duration without duplicating the task');
   console.log('✓ Day Map projects one scheduled block per task');
   console.log('✓ overload detection is calm and deterministic');
   console.log('✓ rebuild proposals avoid fixed commitments');
   console.log('✓ tasks feed the existing Today engine and suppress duplicate linked Topic work');
+  console.log('✓ standalone tasks remain focusable without a Topic');
   console.log('✓ optional task subject, due date, estimate, Topic and Exam are valid');
   console.log('✓ deleted Topic/Exam links degrade to null instead of crashing');
 }

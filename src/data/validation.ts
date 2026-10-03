@@ -274,6 +274,9 @@ function task(raw: unknown, topicIds: Set<string>, examIds: Set<string>): StudyT
     createdAt: number(t.createdAt, 'task creation date', 1),
     updatedAt: number(t.updatedAt ?? t.createdAt, 'task update date', 1),
     completedAt: number(t.completedAt ?? 0, 'task completion date'),
+    ...(t.lastFocusSessionId == null
+      ? {}
+      : { lastFocusSessionId: id(t.lastFocusSessionId) }),
   };
 }
 
@@ -304,6 +307,17 @@ function commitment(raw: unknown): Commitment {
       ),
     ),
   ).sort((a, b) => a - b);
+  const skippedDates = Array.from(
+    new Set(
+      array(c.skippedDates ?? [], 'commitment skipped dates', 366).map((value) => {
+        const date = string(value, 'commitment skipped date', 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          throw new Error('Invalid commitment skipped date.');
+        }
+        return date;
+      }),
+    ),
+  ).sort();
 
   if (recurrenceDays.length) {
     if (startMinutes === endMinutes) {
@@ -326,6 +340,7 @@ function commitment(raw: unknown): Commitment {
     startMinutes,
     endMinutes,
     recurrenceDays,
+    skippedDates,
     createdAt: number(c.createdAt, 'commitment creation date', 1),
     updatedAt: number(c.updatedAt ?? c.createdAt, 'commitment update date', 1),
   };

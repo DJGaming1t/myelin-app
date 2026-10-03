@@ -13,11 +13,12 @@ import {
 import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { suggestTaskSlots } from '@/src/features/planning/day-engine';
+import { TaskCompletionFeedback } from '@/src/features/planning/TaskCompletionFeedback';
 import {
-  completeTask,
   scheduleTask,
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
+import { useTaskCompletion } from '@/src/features/planning/useTaskCompletion';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function dayKey(timestamp: number) {
@@ -30,6 +31,8 @@ function dueLabel(dueAt: number) {
   const due = new Date(dueAt);
   const today = new Date();
   if (dayKey(dueAt) === dayKey(today.getTime())) return 'Due today';
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  if (dueAt < todayStart) return 'Overdue';
   const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
   if (dayKey(dueAt) === dayKey(tomorrow.getTime())) return 'Due tomorrow';
   return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(due);
@@ -115,6 +118,12 @@ export function StudyInboxCard() {
   const [customDate, setCustomDate] = useState('');
   const [customTime, setCustomTime] = useState('');
   const [scheduleError, setScheduleError] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  const {
+    lastCompleted,
+    complete: completeWithFeedback,
+    undo: undoComplete,
+  } = useTaskCompletion();
 
   if (!workspace) return null;
   const currentWorkspace = workspace;
@@ -133,6 +142,8 @@ export function StudyInboxCard() {
       if (b.priority !== a.priority) return b.priority - a.priority;
       return a.createdAt - b.createdAt;
     });
+
+  const visibleTasks = showAll ? tasks : tasks.slice(0, 4);
 
   const schedulerTask = schedulerTaskId
     ? currentWorkspace.tasks.find((item) => item.id === schedulerTaskId) ?? null
@@ -205,10 +216,23 @@ export function StudyInboxCard() {
     applySchedule(schedulerTask.id, start, start + Math.max(5, minutes) * 60000);
   }
 
-  function done(taskId: string) {
-    updateWorkspace((draft) => {
-      const task = draft.tasks.find((item) => item.id === taskId);
-      if (task) completeTask(task);
+  function startFocus(taskId: string) {
+    const task = currentWorkspace.tasks.find((item) => item.id === taskId);
+    if (!task) return;
+
+    const minutes =
+      taskRemainingMinutes(task) ||
+      task.estimatedMinutes ||
+      currentWorkspace.settings.focusMinutes;
+
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        taskId: task.id,
+        ...(task.topicId ? { topicId: task.topicId } : {}),
+        minutes: String(Math.max(5, Math.min(240, minutes))),
+        breakMinutes: String(currentWorkspace.settings.breakMinutes),
+      },
     });
   }
 
@@ -233,8 +257,13 @@ export function StudyInboxCard() {
       </View>
 
       {tasks.length ? (
-        tasks.slice(0, 4).map((task, index) => (
-          <MotionItem key={task.id} delay={Math.min(index * 35, 105)} style={styles.task}>
+        visibleTasks.map((task, index) => {
+          const overdue = dueLabel(task.dueAt) === 'Overdue';
+          return (
+          <MotionItem
+            key={task.id}
+            delay={Math.min(index * 35, 105)}
+            style={[styles.task, overdue && styles.taskOverdue]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={'Edit ' + task.title}
@@ -248,7 +277,7 @@ export function StudyInboxCard() {
               <Text style={styles.taskTitle} numberOfLines={2}>
                 {task.title}
               </Text>
-              <Text style={styles.taskMeta}>
+              <Text style={[styles.taskMeta, overdue && styles.taskMetaOverdue]}>
                 {[
                   task.subject || task.type,
                   dueLabel(task.dueAt),
@@ -259,20 +288,37 @@ export function StudyInboxCard() {
               </Text>
             </Pressable>
             <View style={styles.actions}>
+              <Mini label="Focus" onPress={() => startFocus(task.id)} accent />
+              <Mini label="Done" onPress={() => completeWithFeedback(task.id)} />
               <Mini label="Today" onPress={() => moveToday(task.id)} />
-              <Mini label="Schedule" onPress={() => openScheduler(task.id)} accent />
-              <Mini label="Done" onPress={() => done(task.id)} />
+              <Mini label="Schedule" onPress={() => openScheduler(task.id)} />
             </View>
           </MotionItem>
-        ))
+          );
+        })
       ) : (
         <Text style={styles.empty}>
           Drop homework or study work here without deciding an exact time.
         </Text>
       )}
 
+      {lastCompleted ? (
+        <TaskCompletionFeedback
+          name={lastCompleted.title}
+          onUndo={undoComplete}
+        />
+      ) : null}
+
       {tasks.length > 4 ? (
-        <Text style={styles.more}>+ {tasks.length - 4} more in Inbox</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showAll }}
+          onPress={() => setShowAll((value) => !value)}
+          style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}>
+          <Text style={styles.more}>
+            {showAll ? 'Show fewer tasks' : `Show ${tasks.length - 4} more in Inbox`}
+          </Text>
+        </Pressable>
       ) : null}
 
       <Modal
@@ -465,12 +511,19 @@ const styles = StyleSheet.create({
     paddingTop: 11,
     marginTop: 11,
   },
+  taskOverdue: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+    paddingLeft: 10,
+  },
   taskCopy: { minHeight: layout.minTouch, justifyContent: 'center' },
   taskTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   taskMeta: { color: colors.subtle, fontSize: 9, lineHeight: 14, marginTop: 4 },
-  actions: { flexDirection: 'row', gap: 7, marginTop: 7 },
+  taskMetaOverdue: { color: colors.accent, fontWeight: '700' },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 7 },
   mini: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '46%',
     minHeight: layout.minTouch,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -485,7 +538,8 @@ const styles = StyleSheet.create({
   miniText: { color: colors.muted, fontSize: 9.5, fontWeight: '700' },
   miniTextAccent: { color: colors.accent },
   empty: { color: colors.subtle, fontSize: 10, lineHeight: 15, marginTop: 12 },
-  more: { color: colors.subtle, fontSize: 9, marginTop: 10 },
+  moreButton: { minHeight: layout.minTouch, justifyContent: 'center' },
+  more: { color: colors.accent, fontSize: 10.5, fontWeight: '700', marginTop: 6 },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',

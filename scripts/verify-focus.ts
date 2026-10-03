@@ -83,6 +83,20 @@ async function main() {
   session = removeParkedDistraction(session, distractionId);
   assert.equal(session.distractions.length, 0);
 
+  const standaloneTask = createFocusSession({
+    taskId: 'task_homework',
+    topicName: 'Finish worksheet',
+    subject: 'Mathematics',
+    plannedMinutes: 25,
+    breakMinutes: 8,
+    launchMode: 'full',
+    tinyStep: 'Start question 1',
+    now,
+    id: 'focus_task',
+  });
+  assert.equal(standaloneTask.topicId, undefined);
+  assert.equal(standaloneTask.taskId, 'task_homework');
+
   const five = createFocusSession({
     topicId: 'topic_chem',
     topicName: 'Metals',
@@ -135,6 +149,10 @@ async function main() {
 
   await storage.save('user:A', five);
   assert.equal((await storage.load('user:A'))?.topicId, 'topic_chem');
+  await storage.save('user:TASK', standaloneTask);
+  const restoredTask = await storage.load('user:TASK');
+  assert.equal(restoredTask?.taskId, 'task_homework');
+  assert.equal(restoredTask?.topicId, undefined);
   assert.equal(await storage.load('user:B'), null, 'Active focus state must be isolated by owner.');
 
   const restored = await storage.load('user:A');
@@ -201,6 +219,7 @@ async function main() {
   console.log('✓ five-minute launch can extend into the full block');
   console.log('✓ distraction parking stays in active-session state');
   console.log('✓ break timing and partial duration are measurable');
+  console.log('✓ standalone task timers persist without a fake Topic');
   console.log('✓ active sessions are isolated per workspace owner');
   console.log('✓ invalid active-session state fails safely');
   console.log('✓ planned-vs-actual focus metadata survives workspace validation');
@@ -233,6 +252,11 @@ assert.ok(
 assert.ok(
   focusProviderIdempotencySource.includes('draft.history.some((entry) => entry.id === stableHistoryId)'),
   'Focus completion should detect an already-applied in-memory history record.',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('task.lastFocusSessionId === current.id') &&
+    focusProviderIdempotencySource.includes('task.lastFocusSessionId = current.id'),
+  'Standalone task focus completion should be idempotent across recovery retries.',
 );
 assert.ok(
   focusProviderIdempotencySource.includes('const stableBreakAt = current.phaseStartedAt'),

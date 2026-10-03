@@ -33,6 +33,7 @@ export type StudyTask = {
   createdAt: number;
   updatedAt: number;
   completedAt: number;
+  lastFocusSessionId?: string;
 };
 
 export type Commitment = {
@@ -44,6 +45,7 @@ export type Commitment = {
   startMinutes: number;
   endMinutes: number;
   recurrenceDays: number[];
+  skippedDates?: string[];
   createdAt: number;
   updatedAt: number;
 };

@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   iconWrap: {
+    flexShrink: 0,
     width: 40,
     height: 40,
     borderRadius: radius.md,
@@ -67,6 +68,6 @@ const styles = StyleSheet.create({
   copy: { flex: 1, minWidth: 0 },
   title: { color: colors.text, ...type.bodyStrong },
   detail: { color: colors.muted, ...type.meta, marginTop: 2 },
-  meta: { color: colors.muted, ...type.meta, fontWeight: '600' },
+  meta: { color: colors.muted, ...type.meta, fontWeight: '600', maxWidth: '25%', flexShrink: 1, textAlign: 'right' },
   metaAccent: { color: colors.accent },
 });

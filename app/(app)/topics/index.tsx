@@ -18,6 +18,7 @@ import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { MotionItem } from '@/src/components/motion/MotionItem';
+import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { TopicStatus } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
@@ -40,7 +41,7 @@ export default function TopicsScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const now = Date.now();
+  const now = useScreenClock();
 
   const subjects = useMemo(() => topicSubjects(workspace?.topics ?? []), [workspace?.topics]);
   const nextExam = useMemo(
@@ -126,6 +127,7 @@ export default function TopicsScreen() {
             selectionColor={colors.accent}
             style={styles.search}
             returnKeyType="search"
+            autoCorrect={false}
           />
           {query ? (
             <Pressable
@@ -203,6 +205,8 @@ export default function TopicsScreen() {
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
         <FlatList
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           style={styles.listView}
           data={topics}
           keyExtractor={(item) => item.id}
@@ -211,6 +215,7 @@ export default function TopicsScreen() {
             <MotionItem delay={Math.min(index * 30, 120)}>
             <TopicCard
               topic={item}
+              now={now}
               onPress={() =>
                 router.push({
                   pathname: '/(app)/topics/[topicId]',

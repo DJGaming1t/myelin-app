@@ -138,7 +138,7 @@ assert(springPressable.includes("from 'react-native-reanimated'"), 'Shared press
 assert(springPressable.includes('withSpring'), 'Shared spring press primitive is missing.');
 assert(springPressable.includes('useReducedMotion()'), 'Shared press motion ignores reduced motion.');
 assert(springPressable.includes('motion.pressSpring'), 'Shared press feedback is not driven by theme motion tokens.');
-assert(springPressable.includes('{ translateY: translateY.value }'), 'Press transform should translate before scaling.');
+assert(springPressable.includes('{ translateY: translateY.get() }'), 'Press transform should translate before scaling.');
 assert(nav.includes('<SpringPressable'), 'Quick Add should use the shared press-motion primitive.');
 assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
 assert(today.includes('Later today'), 'Today is missing the reduced later-today hierarchy.');

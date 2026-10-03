@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { shortSession } from '../src/features/today/short-session';
 import { createEmptyWorkspace, Topic } from '../src/data/schema';
+import { createStudyTask } from '../src/features/planning/task-engine';
 import {
   buildTodayPlan,
   minutesUsedToday,
@@ -176,6 +177,29 @@ function main() {
   used.breaks.push({ at: todayStart + 2 * 60 * 60 * 1000, minutes: 10 });
 
   assert.equal(minutesUsedToday(used, now), 40);
+
+  const standaloneFocused = createEmptyWorkspace(now - DAY);
+  standaloneFocused.settings.dailyMinutes = 90;
+  const focusedTask = createStudyTask({
+    title: 'Standalone homework',
+    estimatedMinutes: 45,
+    planState: 'today',
+    now: todayStart + 1000,
+  });
+  focusedTask.focusDayKey = [
+    new Date(now).getFullYear(),
+    String(new Date(now).getMonth() + 1).padStart(2, '0'),
+    String(new Date(now).getDate()).padStart(2, '0'),
+  ].join('-');
+  focusedTask.focusMinutesForDay = 20;
+  standaloneFocused.tasks.push(focusedTask);
+  assert.equal(
+    minutesUsedToday(standaloneFocused, now),
+    20,
+    'Standalone task focus minutes should reduce today capacity.',
+  );
+  assert.equal(buildTodayPlan(standaloneFocused, now).remainingBudgetMinutes, 70);
+
   const usedPlan = buildTodayPlan(used, now);
   assert.equal(usedPlan.remainingBudgetMinutes, 50);
   assert.ok(usedPlan.plannedTotalMinutes <= 50);
@@ -229,6 +253,7 @@ function main() {
   console.log('✓ low-energy block shortening');
   console.log('✓ breaks fit inside the time budget');
   console.log('✓ already-used time reduces remaining capacity');
+  console.log('✓ standalone task focus reduces remaining capacity');
   console.log('✓ snoozed topics stay out');
   console.log('✓ exhausted budget adds no fake work');
   const snapshot = JSON.stringify(plan);

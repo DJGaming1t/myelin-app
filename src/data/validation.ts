@@ -274,6 +274,9 @@ function task(raw: unknown, topicIds: Set<string>, examIds: Set<string>): StudyT
     createdAt: number(t.createdAt, 'task creation date', 1),
     updatedAt: number(t.updatedAt ?? t.createdAt, 'task update date', 1),
     completedAt: number(t.completedAt ?? 0, 'task completion date'),
+    ...(t.lastFocusSessionId == null
+      ? {}
+      : { lastFocusSessionId: id(t.lastFocusSessionId) }),
   };
 }
 

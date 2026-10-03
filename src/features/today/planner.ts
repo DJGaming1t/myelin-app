@@ -6,6 +6,7 @@ import {
 } from '@/src/features/exams/exam-engine';
 import {
   freeStudyWindows,
+  localDayKey,
   taskPlanningScore,
 } from '@/src/features/planning/day-engine';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
@@ -94,7 +95,15 @@ export function minutesUsedToday(workspace: WorkspaceState, now: number) {
   const breaks = workspace.breaks
     .filter((entry) => entry.at >= start && entry.at <= now)
     .reduce((sum, entry) => sum + entry.minutes, 0);
-  return Math.round(study + breaks);
+  const todayKey = localDayKey(now);
+  const standaloneTaskFocus = workspace.tasks.reduce(
+    (sum, task) =>
+      task.focusDayKey === todayKey
+        ? sum + (task.focusMinutesForDay ?? 0)
+        : sum,
+    0,
+  );
+  return Math.round(study + breaks + standaloneTaskFocus);
 }
 
 function nearestExamForTopic(workspace: WorkspaceState, topic: Topic, now: number) {

@@ -273,6 +273,18 @@ export function FocusProvider({ children }: PropsWithChildren) {
             if (task.status === 'open') {
               recordTaskMinutes(task, actualMinutes, now);
             }
+
+            const focusDate = new Date(now);
+            const focusDayKey = [
+              focusDate.getFullYear(),
+              String(focusDate.getMonth() + 1).padStart(2, '0'),
+              String(focusDate.getDate()).padStart(2, '0'),
+            ].join('-');
+            task.focusMinutesForDay =
+              task.focusDayKey === focusDayKey
+                ? Math.min(1440, (task.focusMinutesForDay ?? 0) + actualMinutes)
+                : Math.min(1440, actualMinutes);
+            task.focusDayKey = focusDayKey;
             task.lastFocusSessionId = current.id;
             task.updatedAt = now;
             completionApplied = true;

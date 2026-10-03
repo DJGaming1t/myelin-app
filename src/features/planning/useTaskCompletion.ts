@@ -39,11 +39,9 @@ export function useTaskCompletion() {
         if (task?.status === 'open') completeTask(task);
       });
 
-      if (updated !== false) {
-        setLastCompleted(snapshot);
-        return true;
-      }
-      return false;
+      if (!updated) return false;
+      setLastCompleted(snapshot);
+      return true;
     },
     [updateWorkspace, workspace],
   );

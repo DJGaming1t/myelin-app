@@ -259,6 +259,11 @@ assert.ok(
   'Standalone task focus completion should be idempotent across recovery retries.',
 );
 assert.ok(
+  focusProviderIdempotencySource.includes('task.focusMinutesForDay') &&
+    focusProviderIdempotencySource.includes('task.focusDayKey'),
+  'Standalone task focus should contribute to daily capacity accounting.',
+);
+assert.ok(
   focusProviderIdempotencySource.includes('const stableBreakAt = current.phaseStartedAt'),
   'Break logging should use a stable timestamp so retries remain idempotent.',
 );

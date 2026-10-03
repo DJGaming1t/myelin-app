@@ -416,7 +416,9 @@ export function buildTodayPlan(
       reasons: chosen.candidate.reasons.slice(0, 3),
       dueQuestionCount: chosen.candidate.dueQuestionCount,
       examDays: chosen.candidate.examDays,
-      focusable: Boolean(chosen.candidate.topic),
+      focusable:
+        chosen.candidate.source === 'task' ||
+        Boolean(chosen.candidate.topic),
     });
 
     used += minutes;

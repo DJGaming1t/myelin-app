@@ -34,6 +34,8 @@ export type StudyTask = {
   updatedAt: number;
   completedAt: number;
   lastFocusSessionId?: string;
+  focusDayKey?: string;
+  focusMinutesForDay?: number;
 };
 
 export type Commitment = {

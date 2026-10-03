@@ -28,7 +28,7 @@ import { focusStorage } from './focus-storage';
 import { FocusLaunchMode, FocusSessionState } from './types';
 
 type StartInput = {
-  topicId: string;
+  topicId?: string;
   taskId?: string;
   plannedMinutes: number;
   breakMinutes: number;
@@ -106,9 +106,17 @@ export function FocusProvider({ children }: PropsWithChildren) {
       .then(async (stored) => {
         if (cancelled || ownerRef.current !== ownerKey) return;
 
-        if (stored && !findTopic(workspace, stored.topicId)) {
-          await focusStorage.clear(ownerKey);
-          stored = null;
+        if (stored) {
+          const missingTopic = stored.topicId
+            ? !findTopic(workspace, stored.topicId)
+            : false;
+          const missingTask = stored.taskId
+            ? !taskById(workspace, stored.taskId)
+            : false;
+          if ((!stored.topicId && !stored.taskId) || missingTopic || missingTask) {
+            await focusStorage.clear(ownerKey);
+            stored = null;
+          }
         }
 
         sessionRef.current = stored;
@@ -130,30 +138,45 @@ export function FocusProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const current = sessionRef.current;
     if (!current || !workspace) return;
-    if (findTopic(workspace, current.topicId)) return;
+
+    const missingTopic = current.topicId
+      ? !findTopic(workspace, current.topicId)
+      : false;
+    const missingTask = current.taskId
+      ? !taskById(workspace, current.taskId)
+      : false;
+    if (!missingTopic && !missingTask && (current.topicId || current.taskId)) return;
 
     void commitSession(null);
-  }, [commitSession, session?.topicId, workspace?.topics.length]);
+  }, [
+    commitSession,
+    session?.topicId,
+    session?.taskId,
+    workspace?.topics.length,
+    workspace?.tasks.length,
+  ]);
 
   const start = useCallback(
     async (input: StartInput) => {
       if (!workspace || !ownerRef.current || sessionRef.current) return null;
-      const topic = findTopic(workspace, input.topicId);
-      if (!topic) return null;
 
       const task = input.taskId ? taskById(workspace, input.taskId) : null;
-      if (
-        input.taskId &&
-        (!task || task.status !== 'open' || (task.topicId && task.topicId !== topic.id))
-      ) {
-        return null;
-      }
+      if (input.taskId && (!task || task.status !== 'open')) return null;
+
+      const requestedTopic = input.topicId ? findTopic(workspace, input.topicId) : null;
+      if (input.topicId && !requestedTopic) return null;
+      if (task?.topicId && input.topicId && task.topicId !== input.topicId) return null;
+
+      const topic =
+        requestedTopic ??
+        (task?.topicId ? findTopic(workspace, task.topicId) : null);
+      if (!topic && !task) return null;
 
       const next = createFocusSession({
-        topicId: topic.id,
+        ...(topic ? { topicId: topic.id } : {}),
         ...(task ? { taskId: task.id } : {}),
-        topicName: task?.title || topic.name,
-        subject: task?.subject || topic.subject,
+        topicName: task?.title || topic!.name,
+        subject: task?.subject || topic?.subject || 'Study task',
         plannedMinutes: input.plannedMinutes,
         breakMinutes: input.breakMinutes,
         launchMode: input.launchMode,
@@ -195,54 +218,75 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
         const actualMinutes = focusActualMinutes(current, now);
 
-        let historyWritten = false;
+        let completionApplied = false;
         const updated = updateWorkspace((draft) => {
-          const stableHistoryId = historyId(current.id);
-          if (draft.history.some((entry) => entry.id === stableHistoryId)) {
-            historyWritten = true;
+          if (current.topicId) {
+            const stableHistoryId = historyId(current.id);
+            if (draft.history.some((entry) => entry.id === stableHistoryId)) {
+              completionApplied = true;
+              return;
+            }
+
+            const topic = findTopic(draft, current.topicId);
+            if (!topic) return;
+
+            if (topic.status === 'new') topic.status = 'learning';
+
+            draft.history.push({
+              id: stableHistoryId,
+              topicId: current.topicId,
+              at: now,
+              kind: 'study',
+              minutes: actualMinutes,
+              grade: 0,
+              effort,
+              prompt: '',
+              response: '',
+              confidence: 'unsure',
+              plannedMinutes: current.plannedFocusMinutes,
+              startedAt: current.startedAt,
+              endedAt: now,
+              launchMode: current.launchMode,
+              tinyStep: current.tinyStep,
+            });
+
+            if (current.taskId) {
+              const task = taskById(draft, current.taskId);
+              if (task && task.status === 'open') {
+                recordTaskMinutes(task, actualMinutes, now);
+              }
+            }
+
+            completionApplied = true;
             return;
           }
 
-          const topic = findTopic(draft, current.topicId);
-          if (!topic) return;
-
-          if (topic.status === 'new') topic.status = 'learning';
-
-          draft.history.push({
-            id: stableHistoryId,
-            topicId: current.topicId,
-            at: now,
-            kind: 'study',
-            minutes: actualMinutes,
-            grade: 0,
-            effort,
-            prompt: '',
-            response: '',
-            confidence: 'unsure',
-            plannedMinutes: current.plannedFocusMinutes,
-            startedAt: current.startedAt,
-            endedAt: now,
-            launchMode: current.launchMode,
-            tinyStep: current.tinyStep,
-          });
           if (current.taskId) {
             const task = taskById(draft, current.taskId);
-            if (task && task.status === 'open') {
+            if (!task) return;
+
+            if (task.lastFocusSessionId === current.id) {
+              completionApplied = true;
+              return;
+            }
+
+            if (task.status === 'open') {
               recordTaskMinutes(task, actualMinutes, now);
             }
+            task.lastFocusSessionId = current.id;
+            task.updatedAt = now;
+            completionApplied = true;
           }
-
-          historyWritten = true;
         });
 
-        if (!updated || !historyWritten) {
+        if (!updated || !completionApplied) {
           await commitSession(null);
           return;
         }
 
-        // The durable history write must win before the recoverable focus
-        // session advances to break. Otherwise a process kill can leave the
-        // session marked logged while the study record never reached storage.
+        // The durable workspace write must win before the recoverable focus
+        // session advances to break. Topic sessions write history; standalone
+        // task sessions update task minutes with an idempotency marker.
         await waitForSaves();
         await commitSession(beginBreak(current, actualMinutes, now));
       },

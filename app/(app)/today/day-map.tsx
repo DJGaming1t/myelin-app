@@ -1,3 +1,6 @@
+import { localDateKey } from '@/src/features/planning/commitment-dates';
+import { useScreenClock } from '@/src/features/planning/useScreenClock';
+import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -22,13 +25,11 @@ import {
   startOfLocalDay,
   suggestTaskSlots,
 } from '@/src/features/planning/day-engine';
-import { TaskCompletionFeedback } from '@/src/features/planning/TaskCompletionFeedback';
 import {
   postponeTask,
   scheduleTask,
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
-import { useTaskCompletion } from '@/src/features/planning/useTaskCompletion';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function timeLabel(timestamp: number) {
@@ -44,14 +45,11 @@ function durationLabel(start: number, end: number) {
 
 export default function DayMapScreen() {
   const { workspace, updateWorkspace } = useWorkspace();
-  const [now, setNow] = useState(Date.now());
+  const clock = useScreenClock();
+  const [refresh, setNow] = useState(Date.now());
+  const now = Math.max(clock, refresh);
   const [proposal, setProposal] = useState<ReturnType<typeof rebuildRemainingDay> | null>(null);
   const [showPlanning, setShowPlanning] = useState(false);
-  const {
-    lastCompleted,
-    complete: completeTaskWithFeedback,
-    undo: undoTaskComplete,
-  } = useTaskCompletion();
 
   const map = useMemo(
     () => (workspace ? buildDayMap(workspace, now) : null),
@@ -69,24 +67,12 @@ export default function DayMapScreen() {
     )
     .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
 
-  function startTask(taskId: string) {
-    const task = workspace!.tasks.find((item) => item.id === taskId);
-    if (!task) return;
-
-    const planned =
-      taskRemainingMinutes(task) ||
-      task.estimatedMinutes ||
-      Math.max(5, Math.round((task.scheduledEnd - task.scheduledStart) / 60000)) ||
-      workspace!.settings.focusMinutes;
-
-    router.push({
-      pathname: '/(app)/focus',
-      params: {
-        ...(task.topicId ? { topicId: task.topicId } : {}),
-        taskId: task.id,
-        minutes: String(Math.max(5, Math.min(240, planned))),
-        breakMinutes: String(workspace!.settings.breakMinutes),
-      },
+  function skipOccurrence(id: string, date: string, restore = false) {
+    updateWorkspace(draft => {
+      const item = draft.commitments.find(item => item.id === id);
+      if (!item || !item.recurrenceDays.length) return;
+      item.skippedDates = restore ? (item.skippedDates ?? []).filter(value => value !== date) : [...new Set([...(item.skippedDates ?? []), date])];
+      item.updatedAt = Date.now();
     });
   }
 
@@ -98,22 +84,6 @@ export default function DayMapScreen() {
     updateWorkspace((draft) => {
       const target = draft.tasks.find((item) => item.id === taskId);
       if (target) scheduleTask(target, slot.start, slot.end);
-    });
-    setNow(Date.now());
-  }
-
-  function markDone(taskId: string) {
-    if (completeTaskWithFeedback(taskId)) setNow(Date.now());
-  }
-
-  function skipCommitmentOccurrence(commitmentId: string, dateKey: string) {
-    updateWorkspace((draft) => {
-      const commitment = draft.commitments.find((item) => item.id === commitmentId);
-      if (!commitment || !commitment.recurrenceDays.length) return;
-      commitment.skippedDates = Array.from(
-        new Set([...(commitment.skippedDates ?? []), dateKey]),
-      ).sort();
-      commitment.updatedAt = Date.now();
     });
     setNow(Date.now());
   }
@@ -180,16 +150,6 @@ export default function DayMapScreen() {
             </View>
           </AnimatedDisclosure>
 
-          {lastCompleted ? (
-            <TaskCompletionFeedback
-              name={lastCompleted.title}
-              onUndo={() => {
-                undoTaskComplete();
-                setNow(Date.now());
-              }}
-            />
-          ) : null}
-
           <AnimatedDisclosure visible={Boolean(proposal)}>
             {proposal ? (
             <View style={styles.proposal}>
@@ -226,58 +186,25 @@ export default function DayMapScreen() {
             map.entries.map((entry) => {
               const passed = entry.end < now;
               if (entry.kind === 'commitment') {
+                const sourceId = entry.commitmentId;
                 return (
                   <MotionItem key={entry.id}>
-                    <View style={[styles.timelineRow, passed && styles.passed]}>
-                      <View style={styles.timeCol}>
-                        <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
-                        <Text style={styles.timeEnd}>{timeLabel(entry.end)}</Text>
-                      </View>
-                      <View style={styles.rail}>
-                        <View style={styles.railDotFixed} />
-                        <View style={styles.railLine} />
-                      </View>
-                      <View style={[styles.block, styles.fixedBlock]}>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={'Edit fixed block ' + entry.title}
-                          onPress={() =>
-                            router.push({
-                              pathname: '/(app)/today/commitment/[commitmentId]',
-                              params: { commitmentId: entry.commitmentId },
-                            })
-                          }
-                          style={({ pressed }) => [styles.blockCopy, pressed && styles.pressed]}>
-                          <Text style={styles.blockKicker}>{entry.label.toUpperCase()}</Text>
-                          <Text style={styles.blockTitle}>{entry.title}</Text>
-                          <Text style={styles.blockMeta}>
-                            {durationLabel(entry.start, entry.end)} · {entry.recurring ? 'repeats' : 'fixed'}
-                          </Text>
-                        </Pressable>
-                        {entry.recurring && !passed ? (
-                          <View style={styles.blockActions}>
-                            <Mini
-                              label="Skip this day"
-                              onPress={() =>
-                                skipCommitmentOccurrence(
-                                  entry.commitmentId,
-                                  entry.occurrenceDateKey,
-                                )
-                              }
-                            />
-                            <Mini
-                              label="Edit repeat"
-                              onPress={() =>
-                                router.push({
-                                  pathname: '/(app)/today/commitment/[commitmentId]',
-                                  params: { commitmentId: entry.commitmentId },
-                                })
-                              }
-                            />
-                          </View>
-                        ) : null}
-                      </View>
+                  <View style={[styles.timelineRow, passed && styles.passed]}>
+                    <View style={styles.timeCol}>
+                      <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
+                      <Text style={styles.timeEnd}>{timeLabel(entry.end)}</Text>
                     </View>
+                    <View style={styles.rail}><View style={styles.railDotFixed} /><View style={styles.railLine} /></View>
+                    <View style={[styles.block, styles.fixedBlock]}>
+                      <Pressable accessibilityRole="button" accessibilityLabel={'Edit fixed block ' + entry.title}
+                        onPress={() => router.push({ pathname: '/(app)/today/commitment/[commitmentId]', params: { commitmentId: sourceId } })} style={styles.blockCopy}>
+                        <Text style={styles.blockKicker}>{entry.label.toUpperCase()}</Text>
+                        <Text style={styles.blockTitle}>{entry.title}</Text>
+                        <Text style={styles.blockMeta}>{durationLabel(entry.start, entry.end)} · fixed</Text>
+                      </Pressable>
+                      {workspace.commitments.find(item => item.id === sourceId)?.recurrenceDays.length ? <Mini label="Skip this occurrence" onPress={() => skipOccurrence(sourceId, entry.occurrenceDateKey)} /> : null}
+                    </View>
+                  </View>
                   </MotionItem>
                 );
               }
@@ -313,24 +240,12 @@ export default function DayMapScreen() {
                       </Text>
                     </Pressable>
 
-                    <View style={styles.blockActions}>
-                      <Mini label="Start Focus" onPress={() => startTask(task.id)} />
-                      <Mini label="Done" onPress={() => markDone(task.id)} />
-                      <Mini
-                        label="Edit"
-                        onPress={() =>
-                          router.push({
-                            pathname: '/(app)/today/task/[taskId]',
-                            params: { taskId: task.id },
-                          })
-                        }
-                      />
-                    </View>
+                    <TaskDueLabel task={task} now={now} />
+                    <TaskQuickActions task={task} />
 
                     {entry.missed ? (
                       <View style={styles.missedActions}>
                         <Mini label="Move" onPress={() => moveTask(task.id)} />
-                        <Mini label="Done" onPress={() => markDone(task.id)} />
                         <Mini
                           label="Did some"
                           onPress={() =>
@@ -357,12 +272,19 @@ export default function DayMapScreen() {
             </View>
           )}
 
+          {workspace.commitments.flatMap(item => (item.skippedDates ?? [])
+            .filter(date => date === localDateKey(now) || (item.endMinutes < item.startMinutes && date === localDateKey(addLocalDays(now, -1))))
+            .map(date => <View key={`${item.id}:${date}`} style={{ paddingVertical: 12 }}>
+              <Text style={styles.blockMeta}>{item.title} · skipped {date}</Text>
+              <Mini label="Restore occurrence" onPress={() => skipOccurrence(item.id, date, true)} />
+            </View>))}
+
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ expanded: showPlanning }}
             onPress={() => setShowPlanning((current) => !current)}
             style={({ pressed }) => [styles.planningToggle, pressed && styles.pressed]}>
-            <View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.planningToggleTitle}>Planning options</Text>
               <Text style={styles.planningToggleMeta}>
                 Free windows · flexible tasks · rebuild evening
@@ -414,20 +336,13 @@ export default function DayMapScreen() {
                     }
                     style={styles.flexibleCopy}>
                     <Text style={styles.flexibleTitle}>{task.title}</Text>
-                    <Text
-                      style={[
-                        styles.flexibleMeta,
-                        task.dueAt > 0 && task.dueAt < startOfLocalDay(now) && styles.overdueText,
-                      ]}>
+                    <Text style={styles.flexibleMeta}>
                       {taskRemainingMinutes(task) || task.estimatedMinutes || 25}m · {task.subject || task.type}
-                      {task.dueAt > 0 && task.dueAt < startOfLocalDay(now) ? ' · Overdue' : ''}
                     </Text>
                   </Pressable>
-                  <View style={styles.flexibleActions}>
-                    <Mini label="Focus" onPress={() => startTask(task.id)} />
-                    <Mini label="Done" onPress={() => markDone(task.id)} />
-                    <Mini label="Plan" onPress={() => moveTask(task.id)} />
-                  </View>
+                  <TaskDueLabel task={task} now={now} />
+                  <TaskQuickActions task={task} />
+                  <Action label="Plan next gap" onPress={() => moveTask(task.id)} accent />
                 </MotionItem>
               ))}
             </View>
@@ -442,7 +357,7 @@ export default function DayMapScreen() {
             accessibilityRole="button"
             onPress={buildProposal}
             style={({ pressed }) => [styles.rebuild, pressed && styles.pressed]}>
-            <View style={styles.rebuildCopy}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.rebuildTitle}>Rebuild my evening</Text>
               <Text style={styles.rebuildText}>Preview a calmer arrangement of unfinished Today work.</Text>
             </View>
@@ -543,8 +458,8 @@ const styles = StyleSheet.create({
   planningToggleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
   planningToggleMark: { color: colors.accent, fontSize: 22, lineHeight: 24 },
   freeStrip: { marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
-  fitHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
-  fitHint: { color: colors.muted, fontSize: 11.5, lineHeight: 16, flexShrink: 1, maxWidth: '62%' },
+  fitHeader: { gap: 5 },
+  fitHint: { color: colors.muted, fontSize: 11.5, lineHeight: 16 },
   sectionLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.55 },
   freeRow: { gap: 8, paddingTop: 10 },
   freePill: {
@@ -612,19 +527,16 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
   flexible: { marginTop: spacing.xl },
   flexibleIntro: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 5, marginBottom: 8 },
-  flexibleTask: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 9, gap: 8 },
-  flexibleCopy: { minHeight: layout.minTouch, justifyContent: 'center' },
-  flexibleActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  flexibleTask: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 12, gap: 8 },
+  flexibleCopy: { flex: 1, minHeight: layout.minTouch, justifyContent: 'center' },
   flexibleTitle: { color: colors.text, fontSize: 11, fontWeight: '700' },
   flexibleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
-  overdueText: { color: colors.accent, fontWeight: '700' },
   addRow: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
   action: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   actionAccent: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
   actionText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
   actionTextAccent: { color: colors.accent },
   rebuild: { minHeight: 68, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  rebuildCopy: { flex: 1, minWidth: 0 },
   rebuildTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   rebuildText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   rebuildArrow: { color: colors.accent, fontSize: 18 },

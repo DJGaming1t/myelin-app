@@ -1,3 +1,5 @@
+import { taskUrgency } from '@/src/features/planning/task-urgency';
+import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -28,9 +30,7 @@ import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engin
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
-import { TaskCompletionFeedback } from '@/src/features/planning/TaskCompletionFeedback';
 import { postponeTask } from '@/src/features/planning/task-engine';
-import { useTaskCompletion } from '@/src/features/planning/useTaskCompletion';
 import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { buildTodayPlan, nextLocalDayStart, PlanBlock } from '@/src/features/today/planner';
@@ -43,13 +43,9 @@ export default function TodayScreen() {
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
   const { style: heroMotion, busy: deferAnimating, transition } = useRecommendationMotion();
-  const {
-    lastCompleted,
-    complete: completeTaskWithFeedback,
-    undo: undoTaskComplete,
-  } = useTaskCompletion();
   const [showAdjust, setShowAdjust] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
+  const [showOverdue, setShowOverdue] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [lastDeferred, setLastDeferred] = useState<
     | {
@@ -194,14 +190,6 @@ export default function TodayScreen() {
       return;
     }
 
-    if (block.source === 'task' && block.taskId && !block.focusable) {
-      router.push({
-        pathname: '/(app)/today/task/[taskId]',
-        params: { taskId: block.taskId },
-      });
-      return;
-    }
-
     if (!focusOnly && block.mode === 'review' && block.dueQuestionCount > 0 && block.topicId) {
       router.push({
         pathname: '/(app)/review',
@@ -245,6 +233,18 @@ export default function TodayScreen() {
             <Text style={styles.todayDate}>{new Date(now).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
           </View>
 
+          {currentWorkspace.tasks.some(task => taskUrgency(task, now)?.overdue) ? <Pressable
+            accessibilityRole="button" accessibilityLabel="Show overdue tasks"
+            onPress={() => setShowOverdue(value => !value)}
+            style={{ padding: 12, borderLeftWidth: 3, borderLeftColor: colors.danger, backgroundColor: colors.panel, marginBottom: 14 }}>
+            <Text style={{ color: colors.danger, fontSize: 13, fontWeight: '800' }}>
+              {currentWorkspace.tasks.filter(task => taskUrgency(task, now)?.overdue).length} overdue · take one small step
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>{showOverdue ? 'Hide overdue tasks ↑' : 'Choose a task to finish or focus on ↓'}</Text>
+          </Pressable> : null}
+
+          <AnimatedDisclosure visible={showOverdue}><StudyInboxCard overdueOnly /></AnimatedDisclosure>
+
           <Animated.View
             pointerEvents={deferAnimating ? 'none' : 'auto'}
             accessibilityElementsHidden={deferAnimating}
@@ -286,21 +286,16 @@ export default function TodayScreen() {
                   <View style={styles.heroIdentity}>
                     <Text style={styles.heroMeta}>{next.subject}</Text>
                     <Text style={styles.heroTime}>
-                      {next.source === 'task'
-                        ? next.reasons.includes('overdue')
-                          ? 'Overdue task'
-                          : 'Task focus'
-                        : next.mode === 'review' && next.dueQuestionCount > 0
-                          ? 'Active recall'
-                          : 'Focus session'} · {next.minutes} min
+                      {next.source === 'task' && !next.focusable ? 'Task' : next.mode === 'review' && next.dueQuestionCount > 0 ? 'Active recall' : 'Focus session'} · {next.minutes} min
                     </Text>
                   </View>
                   <StudySignal identity={next.id} />
                 </View>
 
                 <Text style={styles.heroTitle}>{next.topicName}</Text>
+                {next.taskId ? <TaskDueLabel task={currentWorkspace.tasks.find(task => task.id === next.taskId)!} now={now} /> : null}
                 <Text style={styles.heroReason}>
-                  {next.reasons[0] ?? (next.mode === 'review' ? 'Ready for recall' : 'Worth continuing')}
+                  {next.reasons[0] === 'overdue' ? 'A short session can help you catch up.' : next.reasons[0] ?? (next.mode === 'review' ? 'Ready for recall' : 'Worth continuing')}
                 </Text>
 
                 <AnimatedDisclosure visible={showWhy} style={styles.whyBox}>
@@ -310,7 +305,7 @@ export default function TodayScreen() {
                 </AnimatedDisclosure>
 
                 <View style={styles.heroActions}>
-                  <AppButton
+                  {next.taskId ? <TaskQuickActions task={currentWorkspace.tasks.find(task => task.id === next.taskId)!} /> : <AppButton
                     label={
                       next.source === 'task' && !next.focusable
                         ? 'Open task'
@@ -320,7 +315,7 @@ export default function TodayScreen() {
                     }
                     onPress={() => startBlock(next)}
                     style={styles.primaryAction}
-                  />
+                  />}
                   <View style={styles.heroSecondary}>
                   <Pressable
                     accessibilityRole="button"
@@ -330,16 +325,6 @@ export default function TodayScreen() {
                     style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
                     <Text style={styles.textActionText}>{showWhy ? 'Hide why' : 'Why this?'}</Text>
                   </Pressable>
-                  {next.source === 'task' && next.taskId ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Mark ${next.topicName} complete`}
-                      onPress={() => completeTaskWithFeedback(next.taskId!)}
-                      disabled={deferAnimating}
-                      style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
-                      <Text style={styles.textActionText}>Done</Text>
-                    </Pressable>
-                  ) : null}
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Show the next recommendation instead of ${next.topicName}`}
@@ -361,13 +346,6 @@ export default function TodayScreen() {
               </View>
             )}
           </Animated.View>
-
-          {lastCompleted ? (
-            <TaskCompletionFeedback
-              name={lastCompleted.title}
-              onUndo={undoTaskComplete}
-            />
-          ) : null}
 
           {lastDeferred ? (
             <MotionItem key={`undo:${lastDeferred.source}:${lastDeferred.id}`} style={styles.undoRow}>
@@ -484,29 +462,20 @@ export default function TodayScreen() {
               <View style={styles.flatList}>
                 {laterBlocks.map((block, index) => (
                   <MotionItem key={block.id} delay={Math.min(index * 35, 90)}>
-                  <View style={styles.laterRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`${block.topicName}. ${block.minutes} minutes.`}
-                      onPress={() => startBlock(block)}
-                      style={({ pressed }) => [styles.laterCopy, pressed && styles.pressed]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${block.topicName}. ${block.minutes} minutes.`}
+                    onPress={() => startBlock(block)}
+                    style={({ pressed }) => [styles.laterRow, pressed && styles.pressed]}>
+                    <View style={styles.laterCopy}>
                       <Text style={styles.laterTitle}>{block.topicName}</Text>
                       <Text style={styles.laterMeta}>
                         {block.subject} · {block.mode === 'review' ? 'Recall' : 'Focus'}
                       </Text>
-                    </Pressable>
+                    </View>
                     <Text style={styles.laterTime}>{block.minutes}m</Text>
-                    {block.source === 'task' && block.taskId ? (
-                      <SpringPressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Mark ${block.topicName} complete`}
-                        onPress={() => completeTaskWithFeedback(block.taskId!)}
-                        lift={0}
-                        style={styles.laterDone}>
-                        <Text style={styles.laterDoneText}>✓</Text>
-                      </SpringPressable>
-                    ) : null}
-                  </View>
+                  </Pressable>
+                  {block.taskId ? <View style={{ paddingBottom: 12 }}><TaskDueLabel task={currentWorkspace.tasks.find(task => task.id === block.taskId)!} now={now} /><TaskQuickActions task={currentWorkspace.tasks.find(task => task.id === block.taskId)!} /></View> : null}
                   </MotionItem>
                 ))}
               </View>
@@ -554,11 +523,11 @@ export default function TodayScreen() {
                 detail="See when study fits around the rest of your day."
                 onPress={() => router.push('/(app)/today/day-map')}
               />
-              {currentPlan.inboxTaskCount > 0 ? (
+              {currentWorkspace.tasks.some(task => task.status === 'open') ? (
                 <ActionRow
                   icon="library"
-                  title={`${currentPlan.inboxTaskCount} unscheduled ${currentPlan.inboxTaskCount === 1 ? 'task' : 'tasks'}`}
-                  detail="Captured, but not committed to today yet."
+                  title="Study tasks"
+                  detail="All open work · focus, finish or schedule."
                   meta={showInbox ? 'Hide' : 'Open'}
                   onPress={() => setShowInbox((current) => !current)}
                 />
@@ -568,7 +537,7 @@ export default function TodayScreen() {
 
 
           <AnimatedDisclosure
-            visible={showInbox && currentPlan.inboxTaskCount > 0}
+            visible={showInbox}
             style={styles.inboxWrap}>
             <StudyInboxCard />
           </AnimatedDisclosure>
@@ -743,12 +712,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  laterCopy: { flex: 1, minWidth: 0, minHeight: layout.minTouch, justifyContent: 'center' },
+  laterCopy: { flex: 1 },
   laterTitle: { color: colors.text, ...type.bodyStrong },
   laterMeta: { color: colors.muted, ...type.meta, marginTop: 2 },
   laterTime: { color: colors.textDim, ...type.meta, fontWeight: '600' },
-  laterDone: { width: layout.minTouch, height: layout.minTouch, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
-  laterDoneText: { color: colors.accent, ...type.bodyStrong },
 
   adjustPanel: {
     marginTop: space.sm,

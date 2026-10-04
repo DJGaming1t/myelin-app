@@ -245,7 +245,7 @@ function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number):
 
   if (task.dueAt > 0) {
     const days = calendarDaysBetween(now, task.dueAt);
-    if (days < 0) reasons.push('overdue');
+    if (task.dueAt < now) reasons.push('overdue');
     else if (days === 0) reasons.push('due today');
     else if (days === 1) reasons.push('due tomorrow');
     else if (days <= 7) reasons.push(`due in ${days} days`);

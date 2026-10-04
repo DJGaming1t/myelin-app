@@ -486,6 +486,9 @@ export default function RemindersScreen() {
           </View>
         </Section>
 
+        <Section title="Adaptive timing" subtitle="Use open schedule windows and recent successful focus times. Sleep protection in Settings always applies.">
+          <ToggleRow label="Adapt to my study rhythm" helper="After three saved focus blocks around a similar time, review nudges can move there. Avoid fixed commitments and skip review nudges on days you already reviewed." value={settings.adaptive !== false} disabled={disabled} onChange={value => void updateSettings({ adaptive: value })} />
+        </Section>
         <Section
           title="Quiet hours"
           subtitle="Quiet hours always win. A reminder landing inside this window is moved to the end of quiet hours.">

@@ -16,6 +16,7 @@ export type TopicInput = {
 };
 
 export type QuestionInput = {
+  confusionGroup?: string;
   prompt: string;
   answer: string;
   hint: string;
@@ -66,6 +67,7 @@ export function createQuestion(
   return {
     id: id ?? makeRecordId('card', now),
     prompt: clean(input.prompt),
+    confusionGroup: (input.confusionGroup ?? '').trim().slice(0, 80),
     answer: input.answer.trim(),
     hint: input.hint.trim(),
     dueAt: 0,
@@ -78,6 +80,7 @@ export function createQuestion(
 
 export function applyQuestionInput(question: RecallQuestion, input: QuestionInput) {
   question.prompt = clean(input.prompt);
+  question.confusionGroup = (input.confusionGroup ?? '').trim().slice(0, 80);
   question.answer = input.answer.trim();
   question.hint = input.hint.trim();
 }

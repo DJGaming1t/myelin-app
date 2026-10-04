@@ -328,7 +328,7 @@ main();
   assert.equal(next.length, 1, 'Skipping Thursday removes its Friday carry but keeps Friday night.');
   assert.equal(next[0]!.occurrenceDateKey, '2026-10-02');
   assert.equal(next[0]!.commitmentId, 'night');
-  assert.equal(freeStudyWindows(w, local(2026, 10, 2, 12))[0]!.start, local(2026, 10, 2, 6));
+  assert.equal(freeStudyWindows(w, local(2026, 10, 2, 12))[0]!.start, local(2026, 10, 2, 7));
   fixed.skippedDates = [];
   const restored = commitmentOccurrencesForDay(w.commitments, local(2026, 10, 2, 12));
   assert.equal(restored.length, 2);

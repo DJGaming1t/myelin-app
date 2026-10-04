@@ -1,3 +1,4 @@
+import { sleepWindows } from '@/src/features/adaptive/sleep-engine';
 import { Commitment, StudyTask, WorkspaceState } from '@/src/data/schema';
 import { examCalendarDaysUntil } from '@/src/features/exams/exam-engine';
 import { taskRemainingMinutes } from './task-engine';
@@ -223,7 +224,7 @@ export function freeStudyWindows(
         end: task.scheduledEnd,
       }));
 
-  const busy = mergeBusy([...fixed, ...scheduled].map((item) => ({
+  const busy = mergeBusy([...fixed, ...scheduled, ...sleepWindows(workspace.settings, day)].map((item) => ({
     start: Math.max(from, item.start),
     end: Math.min(dayEnd, item.end),
   })));
@@ -263,7 +264,7 @@ function taskExamDays(workspace: WorkspaceState, task: StudyTask, now: number) {
 }
 
 export function taskPlanningScore(workspace: WorkspaceState, task: StudyTask, now = Date.now()) {
-  let score = task.priority * 12;
+  let score = task.priority * 12 + Math.min(24, (task.postponements ?? 0) * 6);
   if (task.planState === 'today') score += 28;
   if (task.planState === 'scheduled') score += 34;
 
@@ -293,7 +294,7 @@ export function suggestTaskSlots(
   now = Date.now(),
   limit = 4,
 ): TaskSlot[] {
-  const needed = Math.max(5, taskRemainingMinutes(task) || task.estimatedMinutes || 25);
+  const needed = Math.max(5, Math.min(workspace.settings.focusMinutes, taskRemainingMinutes(task) || task.estimatedMinutes || 25));
   const slots: TaskSlot[] = [];
   const shadow: WorkspaceState = JSON.parse(JSON.stringify(workspace));
   const current = shadow.tasks.find((item) => item.id === task.id);
@@ -306,10 +307,18 @@ export function suggestTaskSlots(
   for (let offset = 0; offset < 3 && slots.length < limit; offset += 1) {
     const day = addLocalDays(startOfLocalDay(now), offset);
     const from = offset === 0 ? now : day;
+    const end = addLocalDays(day, 1);
+    const recorded = workspace.history.filter(h => h.at >= day && h.at < end).reduce((sum, h) => sum + h.minutes, 0)
+      + workspace.breaks.filter(b => b.at >= day && b.at < end).reduce((sum, b) => sum + b.minutes, 0)
+      + (workspace.focusOutcomes ?? []).filter(o => o.taskOnly && o.status === 'finished' && o.endedAt >= day && o.endedAt < end).reduce((sum, o) => sum + o.minutes, 0);
+    const scheduled = scheduledTasksForDay(shadow.tasks, day).reduce((sum, t) => sum + Math.max(0, (Math.min(end, t.scheduledEnd) - Math.max(day, t.scheduledStart, from)) / 60000) + workspace.settings.breakMinutes, 0);
+    const capacity = Math.max(0, workspace.settings.dailyMinutes - recorded - scheduled);
+    const blockMinutes = Math.min(needed, Math.floor(capacity - workspace.settings.breakMinutes));
+    if (blockMinutes < 5) continue;
     const windows = freeStudyWindows(shadow, day, { from, minMinutes: 5 });
     for (const window of windows) {
-      if (window.minutes < needed) continue;
-      slots.push({ start: window.start, end: window.start + needed * 60000, minutes: needed });
+      if (window.minutes < blockMinutes + workspace.settings.breakMinutes) continue;
+      slots.push({ start: window.start, end: window.start + blockMinutes * 60000, minutes: blockMinutes });
       if (slots.length >= limit) break;
     }
   }

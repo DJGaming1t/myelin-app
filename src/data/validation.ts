@@ -3,6 +3,8 @@ import {
   BreakLog,
   Commitment,
   CommitmentKind,
+  FocusOutcome,
+  MemoryState,
   Confidence,
   CURRENT_SCHEMA_VERSION,
   Exam,
@@ -79,10 +81,33 @@ function uniqueIds<T extends { id: string }>(items: T[], label: string) {
   }
 }
 
+function memory(raw: unknown): MemoryState {
+  const m = object(raw, 'question memory');
+  return { version: integer(m.version, 'memory version', 1, 1) as 1,
+    stability: number(m.stability, 'memory stability', 0.01, 3650),
+    difficulty: number(m.difficulty, 'memory difficulty', 1, 10),
+    lapses: integer(m.lapses, 'memory lapses', 0, 1_000_000) };
+}
+
+function outcome(raw: unknown): FocusOutcome {
+  const o = object(raw, 'focus outcome');
+  const startedAt = number(o.startedAt, 'outcome start', 1);
+  const endedAt = number(o.endedAt, 'outcome end');
+  const status = oneOf(o.status, ['started', 'finished', 'abandoned'] as const, 'outcome status');
+  if ((status === 'started' && endedAt !== 0) || (status !== 'started' && endedAt < startedAt)) throw new Error('Invalid outcome timing.');
+  return { id: id(o.id), startedAt, endedAt, status,
+    plannedMinutes: number(o.plannedMinutes, 'outcome planned minutes', 5, 240),
+    minutes: number(o.minutes, 'outcome minutes', 0, 240),
+    launchMode: oneOf(o.launchMode, ['full', 'five-minute'] as const, 'outcome launch'),
+    taskOnly: o.taskOnly === true, overdue: o.overdue === true };
+}
+
 function question(raw: unknown): RecallQuestion {
   const q = object(raw, 'question');
   return {
     id: id(q.id),
+    ...(q.memory == null ? {} : { memory: memory(q.memory) }),
+    ...(q.confusionGroup == null ? {} : { confusionGroup: string(q.confusionGroup, 'confusion group', 80).trim() }),
     prompt: nonEmpty(q.prompt, 'question', 6000),
     answer: string(q.answer ?? '', 'answer', 16000),
     hint: string(q.hint ?? '', 'hint', 4000),
@@ -113,6 +138,7 @@ function topic(raw: unknown): Topic {
     lastGrade: integer(t.lastGrade ?? 0, 'topic grade', 0, 3) as ReviewGrade,
     lastReviewed: number(t.lastReviewed ?? 0, 'topic review date'),
     snoozeUntil: number(t.snoozeUntil ?? 0, 'topic snooze date'),
+    ...(t.postponements == null ? {} : { postponements: integer(t.postponements, 'topic postponements', 0, 100000) }),
     cards,
   };
 }
@@ -215,6 +241,8 @@ function session(raw: unknown, topicIds: Set<string>, cardIds: Set<string>, mist
     if (typeof s.hintUsed !== 'boolean') throw new Error('Invalid hint-used flag.');
     result.hintUsed = s.hintUsed;
   }
+  if (s.elapsedDays != null) result.elapsedDays = number(s.elapsedDays, 'elapsed review days', 0, 100000);
+  if (s.predictedRecall != null) result.predictedRecall = number(s.predictedRecall, 'predicted recall', 0, 1);
   if (s.reviewAttemptId != null) {
     result.reviewAttemptId = id(s.reviewAttemptId);
   }
@@ -246,6 +274,14 @@ function task(raw: unknown, topicIds: Set<string>, examIds: Set<string>): StudyT
   return {
     id: id(t.id),
     title: nonEmpty(t.title, 'task title', 500),
+    postponements: integer(t.postponements ?? 0, 'task postponements', 0, 100000),
+    lastPostponedAt: number(t.lastPostponedAt ?? 0, 'last postponement'),
+    steps: array(t.steps ?? [], 'task steps', 12).map(value => nonEmpty(value, 'task step', 500)),
+    ...(t.launchTrial == null ? {} : { launchTrial: (() => {
+      const trial = object(t.launchTrial, 'launch trial');
+      return { variant: oneOf(trial.variant, ['five-minute', 'standard'] as const, 'launch variant'),
+        offeredAt: number(trial.offeredAt, 'launch offered', 1), startedAt: number(trial.startedAt, 'launch started') };
+    })() }),
     subject: string(t.subject ?? '', 'task subject', 120),
     topicId: rawTopicId && topicIds.has(rawTopicId) ? rawTopicId : null,
     examId: rawExamId && examIds.has(rawExamId) ? rawExamId : null,
@@ -377,6 +413,10 @@ function settings(raw: unknown): WorkspaceSettings {
     breakMinutes: integer(s.breakMinutes ?? 10, 'break minutes', 1, 30),
     energy: oneOf(s.energy ?? 'normal', ['low', 'normal'] as const, 'energy'),
     reduceMotion: s.reduceMotion === true,
+    sleepEnabled: s.sleepEnabled !== false,
+    sleepStartMinutes: integer(s.sleepStartMinutes ?? 1350, 'bedtime', 0, 1439),
+    wakeMinutes: integer(s.wakeMinutes ?? 420, 'wake time', 0, 1439),
+    launchExperiment: s.launchExperiment === true,
   };
 }
 
@@ -417,6 +457,9 @@ export function validateWorkspaceV2(raw: unknown): WorkspaceState {
   const commitments = array(root.commitments ?? [], 'commitments', 3000).map(commitment);
   uniqueIds(commitments, 'commitment');
 
+  const focusOutcomes = array(root.focusOutcomes ?? [], 'focus outcomes', 2000).map(outcome);
+  uniqueIds(focusOutcomes, 'focus outcome');
+
   return {
     format: WORKSPACE_FORMAT,
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -429,6 +472,7 @@ export function validateWorkspaceV2(raw: unknown): WorkspaceState {
     breaks,
     tasks,
     commitments,
+    focusOutcomes,
     settings: settings(root.settings),
   };
 }

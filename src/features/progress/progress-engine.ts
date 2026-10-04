@@ -125,6 +125,15 @@ function median(values: number[]) {
   return ((ordered[middle - 1] ?? 0) + (ordered[middle] ?? 0)) / 2;
 }
 
+function allStudySessions(workspace: WorkspaceState): StudySession[] {
+  const standalone = (workspace.focusOutcomes ?? []).filter(o => o.taskOnly && o.status === 'finished');
+  return [...workspace.history, ...standalone.map(o => ({
+    id: `outcome_${o.id}`, topicId: '', at: o.endedAt, kind: 'study' as const,
+    minutes: o.minutes, grade: 0 as const, effort: 3 as const, prompt: '', response: '',
+    confidence: 'unsure' as const, plannedMinutes: o.plannedMinutes,
+  }))];
+}
+
 function reviewSessions(workspace: WorkspaceState) {
   return workspace.history.filter((session) => session.kind === 'review' && session.grade > 0);
 }
@@ -178,7 +187,7 @@ export function buildDailyStudyHistory(
     result.push({
       day: dayKey(start),
       label: dayLabel(start),
-      minutes: sumMinutes(sessionsInRange(workspace.history, start, end)),
+      minutes: sumMinutes(sessionsInRange(allStudySessions(workspace), start, end)),
     });
   }
 
@@ -186,7 +195,7 @@ export function buildDailyStudyHistory(
 }
 
 export function buildTimeCalibration(workspace: WorkspaceState): TimeCalibration {
-  const sessions = workspace.history.filter(
+  const sessions = allStudySessions(workspace).filter(
     (session) =>
       session.kind === 'study' &&
       typeof session.plannedMinutes === 'number' &&
@@ -353,10 +362,10 @@ export function buildProgressSnapshot(
   const previous7Start = addLocalDays(last7Start, -7);
   const last30Start = addLocalDays(today, -29);
 
-  const todaySessions = sessionsInRange(workspace.history, today, tomorrow);
-  const last7Sessions = sessionsInRange(workspace.history, last7Start, tomorrow);
-  const previous7Sessions = sessionsInRange(workspace.history, previous7Start, last7Start);
-  const last30Sessions = sessionsInRange(workspace.history, last30Start, tomorrow);
+  const todaySessions = sessionsInRange(allStudySessions(workspace), today, tomorrow);
+  const last7Sessions = sessionsInRange(allStudySessions(workspace), last7Start, tomorrow);
+  const previous7Sessions = sessionsInRange(allStudySessions(workspace), previous7Start, last7Start);
+  const last30Sessions = sessionsInRange(allStudySessions(workspace), last30Start, tomorrow);
   const reviews = reviewSessions(workspace);
   const last30Reviews = sessionsInRange(reviews, last30Start, tomorrow);
   const last7Days = buildDailyStudyHistory(workspace, now, 7);

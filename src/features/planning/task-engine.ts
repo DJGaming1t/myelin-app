@@ -72,6 +72,8 @@ export function unscheduleTask(task: StudyTask, state: 'inbox' | 'today' = 'toda
 }
 
 export function postponeTask(task: StudyTask, until: number, now = Date.now()) {
+  task.postponements = Math.min(100000, (task.postponements ?? 0) + 1);
+  task.lastPostponedAt = now;
   task.planState = 'postponed';
   task.postponedUntil = Math.max(until, now);
   task.scheduledStart = 0;
@@ -107,6 +109,7 @@ export function reopenTask(task: StudyTask, now = Date.now()) {
 
 export function recordTaskMinutes(task: StudyTask, minutes: number, now = Date.now()) {
   task.actualMinutes = Math.max(0, Math.round(task.actualMinutes + Math.max(0, minutes)));
+  if (minutes >= 5) task.postponements = 0;
   if (task.status === 'open' && task.estimatedMinutes > 0 && task.actualMinutes >= task.estimatedMinutes) {
     completeTask(task, now);
   } else {

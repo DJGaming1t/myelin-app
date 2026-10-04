@@ -25,6 +25,7 @@ export function QuestionForm({ initial, submitLabel, onCancel, onSubmit }: Props
   const [prompt, setPrompt] = useState(initial?.prompt ?? '');
   const [answer, setAnswer] = useState(initial?.answer ?? '');
   const [hint, setHint] = useState(initial?.hint ?? '');
+  const [confusionGroup, setConfusionGroup] = useState(initial?.confusionGroup ?? '');
   const [error, setError] = useState('');
 
   function submit() {
@@ -34,7 +35,7 @@ export function QuestionForm({ initial, submitLabel, onCancel, onSubmit }: Props
     }
 
     setError('');
-    onSubmit({ prompt, answer, hint });
+    onSubmit({ prompt, answer, hint, confusionGroup });
   }
 
   return (
@@ -76,6 +77,9 @@ export function QuestionForm({ initial, submitLabel, onCancel, onSubmit }: Props
           minHeight={90}
         />
 
+        <Field label="Confusion group (optional)" value={confusionGroup} onChangeText={setConfusionGroup}
+          placeholder="e.g. Mitosis vs meiosis" maxLength={80} minHeight={52} />
+        <Text style={styles.helper}>Give questions you mix up the same group name. Mixed recall will bring those concepts together to practise telling them apart.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.actions}>
@@ -110,6 +114,7 @@ function Field({
       <Text style={styles.label}>{label}</Text>
       <TextInput
         {...props}
+        accessibilityLabel={label}
         multiline
         textAlignVertical="top"
         placeholderTextColor={colors.subtle}

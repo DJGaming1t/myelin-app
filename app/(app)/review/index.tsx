@@ -389,6 +389,8 @@ export default function ReviewScreen() {
             {session.stage === 'attempt' ? 'RECALL BEFORE YOU CHECK' : 'COMPARE, THEN GRADE'}
           </Text>
           <Text style={styles.topicKicker}>{currentTopic.name.toUpperCase()}</Text>
+          {session.hintUsed ? <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>A hinted Good answer keeps Practising spacing until you recall it unaided.</Text> : null}
+          {currentCard.confusionGroup ? <Text style={{ color: colors.accent, fontSize: 13, lineHeight: 20, marginBottom: 12 }}>Contrast practice · {currentCard.confusionGroup}. What distinguishes this concept?</Text> : null}
           <Text style={styles.prompt}>{currentCard.prompt}</Text>
 
           {session.stage === 'attempt' ? (
@@ -497,7 +499,7 @@ export default function ReviewScreen() {
                   <ReviewChoiceButton
                     key={choice}
                     choice={choice}
-                    schedule={scheduleReview(currentCard, choice)}
+                    schedule={scheduleReview(currentCard, choice, Date.now(), { hintUsed: session.hintUsed })}
                     onPress={() => void grade(choice)}
                   />
                 ))}

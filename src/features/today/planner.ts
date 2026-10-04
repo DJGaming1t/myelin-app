@@ -1,3 +1,5 @@
+import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
+import { forgettingPressure } from '@/src/features/adaptive/memory-engine';
 import { StudyTask, Topic, WorkspaceState } from '@/src/data/schema';
 import {
   examAppliesToTopic,
@@ -152,7 +154,7 @@ function dueQuestions(topic: Topic, now: number) {
 function topicCandidate(workspace: WorkspaceState, topic: Topic, now: number): Candidate | null {
   if (topic.snoozeUntil > now) return null;
 
-  let score = topic.priority * 12;
+  let score = topic.priority * 12 + Math.min(24, (topic.postponements ?? 0) * 6);
   const reasons: string[] = [];
 
   if (topic.priority === 3) reasons.push('high priority');
@@ -180,6 +182,11 @@ function topicCandidate(workspace: WorkspaceState, topic: Topic, now: number): C
       `${questionCount} recall ${questionCount === 1 ? 'question is' : 'questions are'} ready`,
     );
   }
+
+  const risk = forgettingPressure(topic.cards, now);
+  score += Math.min(40, risk * 100);
+  if (risk >= 0.1) reasons.unshift('recall may be fading');
+  if ((topic.postponements ?? 0) >= 2) reasons.unshift('try a five-minute first step');
 
   const nearestExam = nearestExamForTopic(workspace, topic, now);
   const examDays = nearestExam ? Math.max(0, examCalendarDaysUntil(nearestExam.date, now)) : null;
@@ -242,6 +249,12 @@ function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number):
     : null;
   const reasons: string[] = [];
   let score = taskPlanningScore(workspace, task, now);
+  if (linkedTopic) {
+    const risk = forgettingPressure(linkedTopic.cards, now);
+    score += Math.min(40, risk * 100);
+    if (risk >= 0.1) reasons.push('recall may be fading');
+  }
+  if ((task.postponements ?? 0) >= 2) reasons.push('try a five-minute first step');
 
   if (task.dueAt > 0) {
     const days = calendarDaysBetween(now, task.dueAt);
@@ -309,7 +322,7 @@ export function buildTodayPlan(
     from: now,
     minMinutes: 5,
   });
-  const futureFreeMinutes = freeWindows.reduce((sum, window) => sum + window.minutes, 0);
+  const futureFreeMinutes = sleepingAt(workspace.settings, now) ? 0 : freeWindows.reduce((sum, window) => sum + window.minutes, 0);
   const budgetMinutes = Math.max(
     0,
     Math.min(configuredBudgetMinutes, rawUsedMinutes + futureFreeMinutes),
@@ -355,7 +368,6 @@ export function buildTodayPlan(
   const allocatedMinutes = new Map<string, number>();
   const windowRemaining = freeWindows.map((window) => window.minutes);
   let used = 0;
-  let lastSubject = '';
   let lastKey = '';
   const minimumUsefulBlock = 5;
 
@@ -363,7 +375,7 @@ export function buildTodayPlan(
     const breakCost = blocks.length ? breakMinutes : 0;
     const budgetAvailable = remainingBudgetMinutes - used - breakCost;
     const largestWindow = windowRemaining.length ? Math.max(...windowRemaining) : 0;
-    const availableForStudy = Math.min(budgetAvailable, largestWindow);
+    const availableForStudy = Math.min(budgetAvailable, largestWindow - breakCost);
     if (availableForStudy < minimumUsefulBlock) break;
 
     const ranked = deduped
@@ -371,7 +383,8 @@ export function buildTodayPlan(
         const repeat = repeats.get(candidate.key) ?? 0;
         let adjusted = candidate.baseScore - repeat * 15;
 
-        if (lastSubject && candidate.subject === lastSubject) adjusted -= 13;
+        // Prefer work that fits this opening. A postponed task still needs a gentle start.
+        if (candidate.remainingMinutes <= availableForStudy) adjusted += 8;
         if (candidate.key === lastKey) adjusted -= 30;
 
         return { candidate, repeat, adjusted };
@@ -402,7 +415,7 @@ export function buildTodayPlan(
 
     if (breakCost) used += breakCost;
 
-    const windowIndex = windowRemaining.findIndex((minutesLeft) => minutesLeft >= minutes);
+    const windowIndex = windowRemaining.findIndex((minutesLeft) => minutesLeft >= minutes + breakCost);
     if (windowIndex < 0) {
       deduped.splice(deduped.indexOf(chosen.candidate), 1);
       continue;
@@ -436,7 +449,6 @@ export function buildTodayPlan(
       chosen.candidate.key,
       alreadyAllocated + minutes,
     );
-    lastSubject = chosen.candidate.subject;
     lastKey = chosen.candidate.key;
 
     const fullyAllocated =

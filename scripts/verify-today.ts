@@ -139,8 +139,8 @@ function main() {
   assert.equal(interleavedPlan.blocks[0]?.topicId, 'math_a');
   assert.equal(
     interleavedPlan.blocks[1]?.topicId,
-    'chem_a',
-    'A useful different subject should beat immediate same-subject repetition.',
+    'math_b',
+    'Subject changes alone should not override the higher-priority next task.',
   );
 
   const lowEnergy = createEmptyWorkspace(now - DAY);
@@ -249,7 +249,7 @@ function main() {
 
   console.log('✓ exam-aware priority');
   console.log('✓ due-review priority');
-  console.log('✓ subject interleaving');
+  console.log('✓ meaningful priority instead of arbitrary subject alternation');
   console.log('✓ low-energy block shortening');
   console.log('✓ breaks fit inside the time budget');
   console.log('✓ already-used time reduces remaining capacity');

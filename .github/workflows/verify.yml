@@ -66,6 +66,9 @@ jobs:
       - name: Active recall queue and scheduling
         run: npm run verify:review
 
+      - name: Adaptive memory, sleep, outcomes and confusion practice
+        run: npx tsx scripts/verify-adaptive.ts
+
       - name: Mistake notebook capture and retest loop
         run: npm run verify:mistakes
 

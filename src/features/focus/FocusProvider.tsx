@@ -1,3 +1,4 @@
+import { recordFocusOutcome } from '@/src/features/adaptive/outcome-engine';
 import {
   PropsWithChildren,
   createContext,
@@ -186,9 +187,10 @@ export function FocusProvider({ children }: PropsWithChildren) {
       });
 
       await commitSession(next);
+      updateWorkspace(draft => recordFocusOutcome(draft, next, 'started'));
       return next;
     },
-    [commitSession, workspace],
+    [commitSession, workspace, updateWorkspace],
   );
 
   const transform = useCallback(
@@ -222,6 +224,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
         let completionApplied = false;
         const updated = updateWorkspace((draft) => {
+          recordFocusOutcome(draft, current, 'finished', actualMinutes, now);
           if (current.topicId) {
             const stableHistoryId = historyId(current.id);
             if (draft.history.some((entry) => entry.id === stableHistoryId)) {
@@ -233,6 +236,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
             if (!topic) return;
 
             if (topic.status === 'new') topic.status = 'learning';
+            if (actualMinutes >= 5) topic.postponements = 0;
 
             draft.history.push({
               id: stableHistoryId,
@@ -346,6 +350,8 @@ export function FocusProvider({ children }: PropsWithChildren) {
       },
 
       async discard() {
+        const current = sessionRef.current;
+        if (current?.phase === 'focus') updateWorkspace(draft => recordFocusOutcome(draft, current, 'abandoned'));
         await commitSession(null);
       },
     }),

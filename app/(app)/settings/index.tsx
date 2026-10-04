@@ -1,3 +1,4 @@
+import { AdaptiveSettings } from '@/src/features/adaptive/AdaptiveSettings';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import Animated, {
@@ -277,6 +278,7 @@ export default function SettingsScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
+          <AdaptiveSettings />
           <Section
             title="Study defaults"
             subtitle="Today can still override available time and energy for a specific day.">

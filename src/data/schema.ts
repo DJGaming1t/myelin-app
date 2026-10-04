@@ -33,6 +33,10 @@ export type StudyTask = {
   createdAt: number;
   updatedAt: number;
   completedAt: number;
+  postponements?: number;
+  lastPostponedAt?: number;
+  steps?: string[];
+  launchTrial?: { variant: 'five-minute' | 'standard'; offeredAt: number; startedAt: number };
   lastFocusSessionId?: string;
   focusDayKey?: string;
   focusMinutesForDay?: number;
@@ -52,7 +56,24 @@ export type Commitment = {
   updatedAt: number;
 };
 
+export type MemoryState = { version: 1; stability: number; difficulty: number; lapses: number };
+
+// Content-free outcome records. Part of the private workspace, never third-party telemetry.
+export type FocusOutcome = {
+  id: string;
+  startedAt: number;
+  endedAt: number;
+  status: 'started' | 'finished' | 'abandoned';
+  plannedMinutes: number;
+  minutes: number;
+  launchMode: 'full' | 'five-minute';
+  taskOnly: boolean;
+  overdue: boolean;
+};
+
 export type RecallQuestion = {
+  memory?: MemoryState;
+  confusionGroup?: string;
   id: string;
   prompt: string;
   answer: string;
@@ -78,6 +99,7 @@ export type Topic = {
   lastGrade: ReviewGrade;
   lastReviewed: number;
   snoozeUntil: number;
+  postponements?: number;
   cards: RecallQuestion[];
 };
 
@@ -126,6 +148,8 @@ export type StudySession = {
   tinyStep?: string;
   hintUsed?: boolean;
   reviewAttemptId?: string;
+  elapsedDays?: number;
+  predictedRecall?: number;
 };
 
 export type BreakLog = {
@@ -139,6 +163,10 @@ export type WorkspaceSettings = {
   breakMinutes: number;
   energy: EnergyLevel;
   reduceMotion: boolean;
+  sleepEnabled?: boolean;
+  sleepStartMinutes?: number;
+  wakeMinutes?: number;
+  launchExperiment?: boolean;
 };
 
 export type WorkspaceState = {
@@ -153,6 +181,7 @@ export type WorkspaceState = {
   breaks: BreakLog[];
   tasks: StudyTask[];
   commitments: Commitment[];
+  focusOutcomes?: FocusOutcome[];
   settings: WorkspaceSettings;
 };
 
@@ -162,6 +191,10 @@ export const defaultWorkspaceSettings = (): WorkspaceSettings => ({
   breakMinutes: 10,
   energy: 'normal',
   reduceMotion: false,
+  sleepEnabled: true,
+  sleepStartMinutes: 1350,
+  wakeMinutes: 420,
+  launchExperiment: false,
 });
 
 export function createEmptyWorkspace(now = Date.now()): WorkspaceState {
@@ -177,6 +210,7 @@ export function createEmptyWorkspace(now = Date.now()): WorkspaceState {
     breaks: [],
     tasks: [],
     commitments: [],
+    focusOutcomes: [],
     settings: defaultWorkspaceSettings(),
   };
 }

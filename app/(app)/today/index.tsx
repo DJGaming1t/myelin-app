@@ -1,3 +1,4 @@
+import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
 import { taskUrgency } from '@/src/features/planning/task-urgency';
 import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 import { router } from 'expo-router';
@@ -54,6 +55,7 @@ export default function TodayScreen() {
         id: string;
         name: string;
         previousSnoozeUntil: number;
+        previousPostponements: number;
       }
     | {
         source: 'task';
@@ -61,6 +63,8 @@ export default function TodayScreen() {
         name: string;
         previousPlanState: 'inbox' | 'today' | 'scheduled' | 'postponed';
         previousPostponedUntil: number;
+        previousPostponements: number;
+        previousLastPostponedAt: number;
         previousScheduledStart: number;
         previousScheduledEnd: number;
       }
@@ -125,6 +129,8 @@ export default function TodayScreen() {
         name: task.title,
         previousPlanState: task.planState,
         previousPostponedUntil: task.postponedUntil,
+        previousPostponements: task.postponements ?? 0,
+        previousLastPostponedAt: task.lastPostponedAt ?? 0,
         previousScheduledStart: task.scheduledStart,
         previousScheduledEnd: task.scheduledEnd,
       });
@@ -142,13 +148,14 @@ export default function TodayScreen() {
     const previousSnoozeUntil = topic.snoozeUntil;
     updateWorkspace((draft) => {
       const target = draft.topics.find((item) => item.id === block.topicId);
-      if (target) target.snoozeUntil = nextLocalDayStart(Date.now());
+      if (target) { target.snoozeUntil = nextLocalDayStart(Date.now()); target.postponements = Math.min(100000, (target.postponements ?? 0) + 1); }
     });
     setLastDeferred({
       source: 'topic',
       id: topic.id,
       name: topic.name,
       previousSnoozeUntil,
+      previousPostponements: topic.postponements ?? 0,
     });
   }
 
@@ -162,7 +169,7 @@ export default function TodayScreen() {
     updateWorkspace((draft) => {
       if (lastDeferred.source === 'topic') {
         const target = draft.topics.find((item) => item.id === lastDeferred.id);
-        if (target) target.snoozeUntil = lastDeferred.previousSnoozeUntil;
+        if (target) { target.snoozeUntil = lastDeferred.previousSnoozeUntil; target.postponements = lastDeferred.previousPostponements; }
         return;
       }
 
@@ -170,6 +177,8 @@ export default function TodayScreen() {
       if (!target) return;
       target.planState = lastDeferred.previousPlanState;
       target.postponedUntil = lastDeferred.previousPostponedUntil;
+      target.postponements = lastDeferred.previousPostponements;
+      target.lastPostponedAt = lastDeferred.previousLastPostponedAt;
       target.scheduledStart = lastDeferred.previousScheduledStart;
       target.scheduledEnd = lastDeferred.previousScheduledEnd;
       target.updatedAt = Date.now();
@@ -262,14 +271,14 @@ export default function TodayScreen() {
               </View>
             ) : budgetFinished ? (
               <View style={styles.heroQuiet}>
-                <Text style={styles.heroTitle}>You have used today’s study capacity.</Text>
+                <Text style={styles.heroTitle}>{sleepingAt(workspace.settings, now) ? 'Your sleep window is protected.' : 'You have used today’s study capacity.'}</Text>
                 <Text style={styles.heroReason}>
-                  MYELIN will stay quiet unless your available time changes.
+                  {sleepingAt(workspace.settings, now) ? 'Your tasks are saved. Day Map can find a slot after you wake.' : 'MYELIN will stay quiet unless your available time changes.'}
                 </Text>
                 <AppButton
-                  label="Adjust today"
+                  label={sleepingAt(workspace.settings, now) ? 'Plan after rest' : 'Adjust today'}
                   variant="secondary"
-                  onPress={() => setShowAdjust(true)}
+                  onPress={() => sleepingAt(workspace.settings, now) ? router.push('/(app)/today/day-map') : setShowAdjust(true)}
                 />
               </View>
             ) : next ? (

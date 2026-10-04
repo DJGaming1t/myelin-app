@@ -793,6 +793,13 @@ export function mergeWorkspaces(
     report.added.breaks += 1;
   }
 
+  // Outcomes contain no content references. Prefer a terminal record over a stale start.
+  const outcomes = new Map((next.focusOutcomes ?? []).map(o => [o.id, o]));
+  for (const o of imported.focusOutcomes ?? []) {
+    const existing = outcomes.get(o.id);
+    if (!existing || (existing.status === 'started' && o.status !== 'started')) outcomes.set(o.id, clone(o));
+  }
+  next.focusOutcomes = [...outcomes.values()].sort((a, b) => a.startedAt - b.startedAt).slice(-2000);
   next.settings = clone(current.settings);
   return {
     workspace: migrateAndValidateWorkspace(next),

@@ -1,3 +1,4 @@
+import { DAY_MS, retrievability } from '@/src/features/adaptive/memory-engine';
 import {
   PropsWithChildren,
   createContext,
@@ -30,6 +31,7 @@ import {
 } from './types';
 
 type StartReviewInput = {
+  cardIds?: string[];
   topicId?: string;
   includeNotDue?: boolean;
   limit?: number;
@@ -215,6 +217,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
 
         const queue = buildReviewQueue(currentWorkspace, {
           topicId: input.topicId,
+          cardIds: input.cardIds,
           includeNotDue: input.includeNotDue,
           limit: input.limit,
         });
@@ -280,7 +283,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
         const card = topic ? findQuestion(topic, item.cardId) : null;
         if (!topic || !card) return null;
 
-        const schedule = scheduleReview(card, choice, now);
+        const schedule = scheduleReview(card, choice, now, { hintUsed: current.hintUsed });
         const recordedAttempt = currentWorkspace.history.find(
           (entry) => entry.reviewAttemptId === current.attemptId,
         );
@@ -301,7 +304,10 @@ export function ReviewProvider({ children }: PropsWithChildren) {
             const targetCard = targetTopic ? findQuestion(targetTopic, item.cardId) : null;
             if (!targetTopic || !targetCard) return;
 
-            applyReviewGrade(targetTopic, targetCard, choice, now);
+            if (draft.history.some(entry => entry.reviewAttemptId === current.attemptId)) return;
+            const elapsedDays = targetCard.lastReviewed ? Math.max(0, (now - targetCard.lastReviewed) / DAY_MS) : 0;
+            const predictedRecall = retrievability(targetCard, now);
+            applyReviewGrade(targetTopic, targetCard, choice, now, { hintUsed });
 
             if (choice === 'again' && targetCard.answer.trim()) {
               captureRecallMistake(draft, {
@@ -328,6 +334,8 @@ export function ReviewProvider({ children }: PropsWithChildren) {
               confidence,
               hintUsed,
               reviewAttemptId: current.attemptId,
+              elapsedDays,
+              ...(predictedRecall === null ? {} : { predictedRecall }),
               startedAt: cardStartedAt,
               endedAt: now,
             });

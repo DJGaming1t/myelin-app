@@ -115,7 +115,8 @@ export function isPristineWorkspace(workspace: WorkspaceState) {
     workspace.history.length === 0 &&
     workspace.breaks.length === 0 &&
     workspace.tasks.length === 0 &&
-    workspace.commitments.length === 0;
+    workspace.commitments.length === 0 &&
+    (workspace.focusOutcomes?.length ?? 0) === 0;
 
   return (
     noRecords &&

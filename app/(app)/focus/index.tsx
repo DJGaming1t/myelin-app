@@ -1,3 +1,4 @@
+import { FocusSupport, DistractionShield } from '@/src/features/adaptive/FocusSupport';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -32,7 +33,9 @@ function param(value: string | string[] | undefined) {
 }
 
 function intParam(value: string | string[] | undefined, fallback: number) {
-  const parsed = Number(param(value));
+  const raw = param(value);
+  if (!raw.trim()) return fallback;
+  const parsed = Number(raw);
   return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
 }
 
@@ -107,7 +110,7 @@ export default function FocusScreen() {
     ? Math.max(0, Math.min(1, 1 - remaining / Math.max(1, phaseDurationMs)))
     : 0;
 
-  async function begin(launchMode: 'full' | 'five-minute') {
+  async function begin(launchMode: 'full' | 'five-minute', firstStep = tinyStep) {
     if (!topic && !task) return;
 
     const next = await start({
@@ -116,7 +119,7 @@ export default function FocusScreen() {
       plannedMinutes,
       breakMinutes,
       launchMode,
-      tinyStep,
+      tinyStep: firstStep,
     });
 
     if (next) {
@@ -252,6 +255,7 @@ export default function FocusScreen() {
               Choose the first action, then let the timer disappear into the background.
             </Text>
 
+            <FocusSupport key={task?.id ?? topic?.id} task={task} topicPostponements={topic?.postponements} onStep={setTinyStep} onLaunch={step => begin('five-minute', step)} />
             <View style={styles.planStrip}>
               <Metric label="FULL BLOCK" value={`${plannedMinutes} min`} />
               <Metric label="BREAK" value={`${breakMinutes} min`} />
@@ -304,6 +308,7 @@ export default function FocusScreen() {
               </View>
             </Pressable>
 
+            <DistractionShield />
             <Text style={styles.recoveryNote}>
               The timer survives leaving or closing MYELIN.
             </Text>
@@ -342,8 +347,10 @@ export default function FocusScreen() {
             </View>
 
             <Text style={styles.breakPrompt}>
-              Stand up, get water, look away from the screen. You do not need to earn the break.
+              {session.focusActualMinutes >= 25 ? 'Step away from the screen. Walk a little, stretch gently, or get water.' : 'Let your eyes rest on something far away. Take a few unhurried breaths.'}
+              {session.distractions.length ? ` You parked ${session.distractions.length} thought${session.distractions.length === 1 ? '' : 's'}. Check them before leaving this break.` : ' You do not need to earn the break.'}
             </Text>
+            {session.distractions.length ? <ScrollView style={{ maxHeight: 120, alignSelf: 'stretch' }}>{session.distractions.map(item => <Text key={item.id} style={styles.breakPrompt}>• {item.text}</Text>)}</ScrollView> : null}
 
             <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6}>
               {timerDone ? (

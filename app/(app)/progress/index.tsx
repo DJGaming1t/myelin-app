@@ -1,3 +1,6 @@
+import { NeuralMap } from '@/src/features/adaptive/NeuralMap';
+import { LearningInsights, OutcomeEvidence } from '@/src/features/adaptive/LearningInsights';
+import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -26,7 +29,7 @@ import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 export default function ProgressScreen() {
   const { workspace } = useWorkspace();
-  const now = Date.now();
+  const now = useScreenClock();
   const [showEvidence, setShowEvidence] = useState(false);
 
   const snapshot = useMemo(
@@ -59,6 +62,8 @@ export default function ProgressScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
+          <NeuralMap workspace={workspace} />
+          <LearningInsights workspace={workspace} now={now} />
           <Reveal delay={35} distance={7}>
             <View style={styles.summaryGrid}>
               <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
@@ -131,6 +136,7 @@ export default function ProgressScreen() {
           </Pressable>
 
           <AnimatedDisclosure visible={showEvidence}>
+              <OutcomeEvidence workspace={workspace} now={now} />
               <SectionTitle
                 title="Confidence calibration"
                 subtitle="Confidence before checking compared with actual recall grades."

@@ -1,3 +1,4 @@
+import { nextMemory, retrievability } from '@/src/features/adaptive/memory-engine';
 import {
   Confidence,
   RecallQuestion,
@@ -21,6 +22,7 @@ export type ReviewQueueItem = {
 
 export type ReviewSchedule = {
   grade: ReviewGrade;
+  memory: NonNullable<RecallQuestion['memory']>;
   intervalDays: number;
   dueAt: number;
   label: string;
@@ -35,42 +37,19 @@ export function isCardReady(topic: Topic, card: RecallQuestion, now = Date.now()
 }
 
 export function scheduleReview(
-  card: Pick<RecallQuestion, 'intervalDays' | 'reps'>,
+  card: Pick<RecallQuestion, 'intervalDays' | 'reps'> & Partial<RecallQuestion>,
   choice: ReviewChoice,
   now = Date.now(),
+  evidence: { hintUsed?: boolean } = {},
 ): ReviewSchedule {
-  const previous = Math.max(0, card.intervalDays);
+  const grade = choice === 'again' ? 1 : choice === 'practising' ? 2 : 3;
+  const memory = nextMemory(card, grade === 3 && evidence.hintUsed ? 2 : grade, now);
+  // A 90% target means interval equals stability; Again retains a short learning step.
+  const intervalDays = grade === 1 ? 0 : Math.max(1, Math.min(3650, Math.round(memory.stability)));
+  return { grade, memory, intervalDays,
+    dueAt: now + (grade === 1 ? TEN_MINUTES : intervalDays * DAY),
+    label: grade === 1 ? 'Again in about 10 min' : intervalDays === 1 ? 'Review tomorrow' : `Review in ${intervalDays} days` };
 
-  if (choice === 'again') {
-    return {
-      grade: 1,
-      intervalDays: 0,
-      dueAt: now + TEN_MINUTES,
-      label: 'Again in about 10 min',
-    };
-  }
-
-  if (choice === 'practising') {
-    const intervalDays =
-      card.reps === 0 ? 1 : Math.max(1, Math.min(90, Math.round(Math.max(1, previous) * 1.8)));
-
-    return {
-      grade: 2,
-      intervalDays,
-      dueAt: now + intervalDays * DAY,
-      label: intervalDays === 1 ? 'Practise tomorrow' : `Practise in ${intervalDays} days`,
-    };
-  }
-
-  const intervalDays =
-    card.reps === 0 ? 3 : Math.max(3, Math.min(365, Math.round(Math.max(1, previous) * 2.5)));
-
-  return {
-    grade: 3,
-    intervalDays,
-    dueAt: now + intervalDays * DAY,
-    label: intervalDays === 1 ? 'Good for 1 day' : `Good for ${intervalDays} days`,
-  };
 }
 
 export function applyReviewGrade(
@@ -78,9 +57,11 @@ export function applyReviewGrade(
   card: RecallQuestion,
   choice: ReviewChoice,
   now = Date.now(),
+  evidence: { hintUsed?: boolean } = {},
 ) {
-  const schedule = scheduleReview(card, choice, now);
+  const schedule = scheduleReview(card, choice, now, evidence);
 
+  card.memory = schedule.memory;
   card.lastGrade = schedule.grade;
   card.lastReviewed = now;
   card.intervalDays = schedule.intervalDays;
@@ -90,6 +71,7 @@ export function applyReviewGrade(
   topic.lastGrade = schedule.grade;
   topic.lastReviewed = now;
   topic.status = 'review';
+  topic.postponements = 0;
 
   const reviewedCards = topic.cards.filter((item) => item.reps > 0);
   const nextDue = reviewedCards
@@ -123,6 +105,7 @@ export function buildReviewQueue(
   options: {
     now?: number;
     topicId?: string;
+    cardIds?: string[];
     includeNotDue?: boolean;
     limit?: number;
   } = {},
@@ -134,11 +117,14 @@ export function buildReviewQueue(
     .filter((topic) => !options.topicId || topic.id === options.topicId)
     .flatMap((topic) =>
       topic.cards
-        .filter((card) => options.includeNotDue || isCardReady(topic, card, now))
+        .filter((card) => (!options.cardIds || options.cardIds.includes(card.id)) && (options.includeNotDue || isCardReady(topic, card, now)))
         .map((card) => queueItem(topic, card)),
     );
 
+  const cardMap = new Map(workspace.topics.flatMap(t => t.cards.map(c => [c.id, c] as const)));
+  const risk = (item: ReviewQueueItem) => 1 - (retrievability(cardMap.get(item.cardId)!, now) ?? 1);
   candidates.sort((a, b) => {
+    if (Math.abs(risk(b) - risk(a)) > 0.02) return risk(b) - risk(a);
     const aOverdue = a.reps > 0 && a.dueAt > 0 ? Math.max(0, now - a.dueAt) : 0;
     const bOverdue = b.reps > 0 && b.dueAt > 0 ? Math.max(0, now - b.dueAt) : 0;
 
@@ -150,15 +136,22 @@ export function buildReviewQueue(
 
   const result: ReviewQueueItem[] = [];
   const remaining = [...candidates];
-  let previousSubject = '';
+  let previousGroup = '';
+  let contrastRun = 0;
 
   while (remaining.length && result.length < limit) {
-    let index = remaining.findIndex((item) => item.subject !== previousSubject);
+    // Pair explicitly confused concepts; after a pair return to the urgency ranking.
+    // Never alternate subjects as a proxy for confusion.
+    let index = previousGroup && contrastRun === 1
+      ? remaining.findIndex(item => cardMap.get(item.cardId)?.confusionGroup?.trim().toLocaleLowerCase() === previousGroup)
+      : 0;
     if (index < 0) index = 0;
     const [chosen] = remaining.splice(index, 1);
     if (!chosen) break;
     result.push(chosen);
-    previousSubject = chosen.subject;
+    const group = cardMap.get(chosen.cardId)?.confusionGroup?.trim().toLocaleLowerCase() ?? '';
+    contrastRun = group && group === previousGroup ? contrastRun + 1 : 1;
+    previousGroup = group;
   }
 
   return result;

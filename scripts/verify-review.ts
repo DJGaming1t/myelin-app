@@ -130,7 +130,7 @@ async function main() {
   assert.deepEqual(
     mixed.map((item) => item.cardId),
     ['math_due', 'chem_new'],
-    'Due review should mix useful subjects where possible.',
+    'Due review should prioritize fading, overdue recall.',
   );
 
   const topicPractice = buildReviewQueue(workspace, {
@@ -153,13 +153,13 @@ async function main() {
 
   const goodNew = scheduleReview(chemistry.cards[0]!, 'good', now);
   assert.equal(goodNew.grade, 3);
-  assert.equal(goodNew.intervalDays, 3);
+  assert.equal(goodNew.intervalDays, 2);
 
   const practisingExisting = scheduleReview(maths.cards[0]!, 'practising', now);
-  assert.equal(practisingExisting.intervalDays, 4);
+  assert.equal(practisingExisting.intervalDays, 7);
 
   const goodExisting = scheduleReview(maths.cards[0]!, 'good', now);
-  assert.equal(goodExisting.intervalDays, 5);
+  assert.equal(goodExisting.intervalDays, 11);
 
   const beforeReps = chemistry.cards[0]!.reps;
   const applied = applyReviewGrade(chemistry, chemistry.cards[0]!, 'good', now);

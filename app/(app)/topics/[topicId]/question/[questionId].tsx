@@ -58,7 +58,7 @@ export default function EditQuestionScreen() {
       <ScreenHeader
         eyebrow="EDIT RECALL QUESTION"
         title={topic.name}
-        subtitle="This is source material for the active-recall flow we will build later."
+        subtitle="Edit the reference answer, hint, and any concepts you confuse."
         onBack={() => router.back()}
       />
       <View style={styles.body}>
@@ -67,6 +67,7 @@ export default function EditQuestionScreen() {
             prompt: question.prompt,
             answer: question.answer,
             hint: question.hint,
+            confusionGroup: question.confusionGroup,
           }}
           submitLabel="Save question"
           onCancel={() => router.back()}

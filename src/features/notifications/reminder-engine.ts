@@ -1,3 +1,5 @@
+import { freeStudyWindows } from '@/src/features/planning/day-engine';
+import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
 import { WorkspaceState } from '@/src/data/schema';
 import { examCalendarDaysUntil } from '@/src/features/exams/exam-engine';
 import { isCardReady } from '@/src/features/review/review-engine';
@@ -7,6 +9,7 @@ export type ReminderDetail = 'brief' | 'guided' | 'context';
 export type ReminderKind = 'review' | 'exam' | 'study';
 
 export type ReminderSettings = {
+  adaptive?: boolean;
   enabled: boolean;
   reviewEnabled: boolean;
   examEnabled: boolean;
@@ -39,6 +42,7 @@ export const REVIEW_HORIZON_DAYS = 7;
 
 export const defaultReminderSettings = (): ReminderSettings => ({
   enabled: false,
+  adaptive: true,
   reviewEnabled: true,
   examEnabled: true,
   studyBlockEnabled: true,
@@ -86,6 +90,7 @@ export function normalizeReminderSettings(
 
   return {
     enabled: value?.enabled === true,
+    adaptive: value?.adaptive !== false,
     reviewEnabled: value?.reviewEnabled !== false,
     examEnabled: value?.examEnabled !== false,
     studyBlockEnabled: value?.studyBlockEnabled !== false,
@@ -705,7 +710,7 @@ function capPlan(plan: PlannedReminder[]) {
   for (const reminder of [...plan].sort((a, b) => a.at - b.at)) {
     const day = localDateKey(reminder.at);
     const count = perDay.get(day) ?? 0;
-    if (count >= MAX_REMINDERS_PER_DAY) continue;
+    if (count >= MAX_REMINDERS_PER_DAY || accepted.some(item => Math.abs(item.at - reminder.at) < 90 * 60000)) continue;
 
     accepted.push(reminder);
     perDay.set(day, count + 1);
@@ -716,6 +721,61 @@ function capPlan(plan: PlannedReminder[]) {
   return accepted;
 }
 
+function preferredStudyMinute(workspace: WorkspaceState, fallback: number, now: number) {
+  const samples = (workspace.focusOutcomes ?? []).filter(o => o.status === 'finished' && o.minutes >= 5 && o.startedAt >= now - 30 * 86400000 && o.startedAt <= now);
+  const buckets = new Map<number, number[]>();
+  for (const o of samples) {
+    const d = new Date(o.startedAt); const minute = d.getHours() * 60 + d.getMinutes();
+    const key = Math.floor(minute / 120); const values = buckets.get(key) ?? [];
+    values.push(minute); buckets.set(key, values);
+  }
+  const best = [...buckets.values()].sort((a, b) => b.length - a.length)[0];
+  if (!best || best.length < 3) return fallback;
+  best.sort((a, b) => a - b);
+  return Math.round(best[Math.floor(best.length / 2)] / 15) * 15;
+}
+function adaptReminders(plan: PlannedReminder[], workspace: WorkspaceState, settings: ReminderSettings, now: number) {
+  return plan.flatMap(reminder => {
+    let at = reminder.at;
+    if (settings.adaptive !== false && reminder.kind === 'review') {
+      const minute = preferredStudyMinute(workspace, settings.reviewTimeMinutes, now);
+      at = atLocalMinutes(reminder.at, minute);
+      // Do not interrupt a day on which recall was already practised.
+      if (workspace.history.some(h => h.kind === 'review' && localDateKey(h.at) === localDateKey(at) && h.at <= now)) return [];
+    }
+    at = moveOutOfQuietHours(at, settings.quietStartMinutes, settings.quietEndMinutes);
+    const sleeping = sleepingAt(workspace.settings, at);
+    if (sleeping) at = moveOutOfQuietHours(sleeping.end, settings.quietStartMinutes, settings.quietEndMinutes);
+    if (sleepingAt(workspace.settings, at)) return [];
+    if (settings.adaptive !== false) {
+      const earliest = Math.max(now + 60001, at);
+      const needed = reminder.kind === 'study' ? 1 : 10;
+      const windows = freeStudyWindows(workspace, at, { from: earliest, minMinutes: needed });
+      const usable = windows.map(w => ({ ...w, start: moveOutOfQuietHours(w.start, settings.quietStartMinutes, settings.quietEndMinutes) }))
+        .find(w => w.start + needed * 60000 <= w.end && !isInQuietHours(w.start + needed * 60000 - 1, settings.quietStartMinutes, settings.quietEndMinutes));
+      if (!usable) return [];
+      at = usable.start;
+    }
+    if (at <= now + 60000 || (reminder.kind !== 'exam' && at > addLocalDays(now, REVIEW_HORIZON_DAYS))) return [];
+    if (reminder.kind === 'study') {
+      if (at >= Number(reminder.data.scheduledStart)) return [];
+      const task = workspace.tasks.find(t => t.id === reminder.data.taskId);
+      return [{ ...reminder, at, ...(task && (task.postponements ?? 0) >= 2 && settings.adaptive !== false ? { body: `${task.title} is coming up. Begin with one five-minute step; then decide whether to continue.` } : {}) }];
+    }
+    if (reminder.kind === 'exam') {
+      if (localDateKey(at) !== localDateKey(reminder.at)) return [];
+      const exam = workspace.exams.find(e => e.id === reminder.data.examId);
+      if (exam && at >= exam.date) return [];
+    }
+    if (reminder.kind === 'review') {
+      const summary = dueReviewSummary(workspace, at);
+      if (!summary.count) return [];
+      return [{ ...reminder, at, ...reviewReminderCopy(settings, summary), data: { ...reminder.data, dueCount: summary.count, topicCount: summary.topicCount } }];
+    }
+    return [{ ...reminder, at }];
+  });
+}
+
 export function buildReminderPlan(
   workspace: WorkspaceState,
   settingsInput: ReminderSettings,
@@ -724,11 +784,11 @@ export function buildReminderPlan(
   const settings = normalizeReminderSettings(settingsInput);
   if (!settings.enabled) return [] as PlannedReminder[];
 
-  return capPlan([
+  return capPlan(adaptReminders([
     ...buildReviewReminders(workspace, settings, now),
     ...buildExamReminders(workspace, settings, now),
     ...buildStudyBlockReminders(workspace, settings, now),
-  ]);
+  ], workspace, settings, now));
 }
 
 export function reminderPlanSignature(plan: PlannedReminder[]) {

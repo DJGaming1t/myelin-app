@@ -97,6 +97,9 @@ jobs:
       - name: First-run onboarding gates and setup
         run: npm run verify:onboarding
 
+      - name: Guide registry and spotlight geometry
+        run: npx tsx scripts/verify-guides.ts
+
       - name: Transition routing and circle handoff
         run: npx tsx scripts/verify-transition.ts
 

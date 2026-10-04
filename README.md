@@ -2,6 +2,8 @@
 
 MYELIN is a study-planning and active-recall app.
 
+Active work follows the [MYELIN master checklist](docs/MYELIN_MASTER_PLAN.md), one verified chunk at a time.
+
 ## Repository strategy
 
 - `main` stays stable.

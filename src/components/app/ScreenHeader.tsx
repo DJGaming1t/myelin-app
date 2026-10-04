@@ -11,6 +11,7 @@ type Props = {
   onBack?: () => void;
   actionLabel?: string;
   onAction?: () => void;
+  onHelp?: () => void;
   variant?: 'hero' | 'standard' | 'compact';
 };
 
@@ -22,6 +23,7 @@ export function ScreenHeader({
   onBack,
   actionLabel,
   onAction,
+  onHelp,
   variant = 'standard',
 }: Props) {
   return (
@@ -47,6 +49,11 @@ export function ScreenHeader({
           </View>
         )}
 
+        <View style={styles.topActions}>
+        {onHelp ? <SpringPressable accessibilityRole="button" accessibilityLabel="Teach me this screen"
+          onPress={onHelp} lift={0} style={styles.helpButton}>
+          <Text style={styles.helpText}>?</Text>
+        </SpringPressable> : null}
         {actionLabel && onAction ? (
           <SpringPressable
             accessibilityRole="button"
@@ -59,6 +66,7 @@ export function ScreenHeader({
             <Text style={styles.actionText}>{actionLabel}</Text>
           </SpringPressable>
         ) : null}
+        </View>
       </View>
 
       <View style={[styles.copy, variant === 'compact' && styles.copyCompact]}>
@@ -101,6 +109,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.xs,
   },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  helpButton: { minWidth: layout.minTouch, minHeight: layout.minTouch, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  helpText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
   brandMark: {
     width: 18,
     height: 18,

@@ -16,33 +16,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { CORE_GUIDE_STEPS, tutorialDestination } from '@/src/features/guides/guide-registry';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type TutorialStep = 0 | 1 | 2;
 
-const STEPS = [
-  {
-    eyebrow: 'RECALL',
-    title: 'Think first. Then check.',
-    lead: 'MYELIN works best when your memory gets the first attempt.',
-    flow: ['Answer', 'Reveal', 'Grade'],
-    note: 'A hint is fine. MYELIN simply remembers that help was used.',
-  },
-  {
-    eyebrow: 'TODAY',
-    title: 'One useful move, not a giant list.',
-    lead: 'MYELIN uses the time you actually have to choose what matters next.',
-    flow: ['Time', 'Next move', 'Focus'],
-    note: 'You can always adjust today without rebuilding your whole plan.',
-  },
-  {
-    eyebrow: 'REVIEW',
-    title: 'What struggled comes back.',
-    lead: 'Mistakes and recall results feed the next review instead of disappearing.',
-    flow: ['Study', 'Recall', 'Correct'],
-    note: 'Progress is evidence for the next move, not a score of you.',
-  },
-] as const;
+const STEPS = CORE_GUIDE_STEPS;
 
 export default function TutorialReplayScreen() {
   const [step, setStep] = useState<TutorialStep>(0);
@@ -162,6 +141,12 @@ export default function TutorialReplayScreen() {
               <Text style={styles.primaryArrow}>→</Text>
             </Pressable>
           </View>
+
+          <Pressable accessibilityRole="button" accessibilityLabel="Show me Today"
+            onPress={() => router.dismissTo(tutorialDestination('today'))}
+            style={({ pressed }) => [styles.secondary, { marginTop: 12 }, pressed && styles.pressed]}>
+            <Text style={styles.secondaryText}>Show me Today →</Text>
+          </Pressable>
 
           <Text style={styles.readOnlyNote}>
             Tutorial replay is read-only — nothing here changes your study data or setup.

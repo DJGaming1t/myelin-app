@@ -271,7 +271,7 @@ export function taskPlanningScore(workspace: WorkspaceState, task: StudyTask, no
     const dueDay = startOfLocalDay(task.dueAt);
     const today = startOfLocalDay(now);
     const days = calendarDayDistance(today, dueDay);
-    if (days < 0) score += 70;
+    if (task.dueAt < now) score += 70;
     else if (days === 0) score += 58;
     else if (days === 1) score += 46;
     else if (days <= 3) score += 30;

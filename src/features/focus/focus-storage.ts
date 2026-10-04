@@ -76,7 +76,7 @@ export function validateFocusSession(raw: unknown): FocusSessionState {
     id: text(session.id, 'focus id', 120),
     ...(topicId ? { topicId } : {}),
     ...(taskId ? { taskId } : {}),
-    topicName: text(session.topicName, 'topic name', 300),
+    topicName: text(session.topicName, 'topic name', 500),
     subject: text(session.subject, 'subject', 120),
     phase,
     launchMode,

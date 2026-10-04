@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 
+import { useAchievement } from '@/src/features/achievement/AchievementProvider';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { recordTaskMinutes, taskById } from '@/src/features/planning/task-engine';
 import { findTopic } from '@/src/features/topics/topic-operations';
@@ -59,6 +60,7 @@ function historyId(focusSessionId: string) {
 
 export function FocusProvider({ children }: PropsWithChildren) {
   const { ownerKey, workspace, updateWorkspace, waitForSaves } = useWorkspace();
+  const celebrate = useAchievement();
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<FocusSessionState | null>(null);
   const sessionRef = useRef<FocusSessionState | null>(null);
@@ -252,7 +254,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
             if (current.taskId) {
               const task = taskById(draft, current.taskId);
-              if (task && task.status === 'open') {
+              if (task) {
                 recordTaskMinutes(task, actualMinutes, now);
               }
             }
@@ -270,9 +272,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
               return;
             }
 
-            if (task.status === 'open') {
-              recordTaskMinutes(task, actualMinutes, now);
-            }
+            recordTaskMinutes(task, actualMinutes, now);
 
             const focusDate = new Date(now);
             const focusDayKey = [
@@ -301,6 +301,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
         // task sessions update task minutes with an idempotency marker.
         await waitForSaves();
         await commitSession(beginBreak(current, actualMinutes, now));
+        celebrate({ title: 'Focus complete!', detail: `${actualMinutes} focused minutes · ${current.topicName}` });
       },
 
       async completeBreak(now = Date.now()) {
@@ -348,7 +349,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
         await commitSession(null);
       },
     }),
-    [commitSession, ready, session, start, transform, updateWorkspace, waitForSaves],
+    [celebrate, commitSession, ready, session, start, transform, updateWorkspace, waitForSaves],
   );
 
   return <FocusContext.Provider value={value}>{children}</FocusContext.Provider>;

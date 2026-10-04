@@ -64,14 +64,8 @@ export default function FocusScreen() {
   const topicId = param(params.topicId);
   const taskId = param(params.taskId);
   const task = workspace && taskId ? workspace.tasks.find((item) => item.id === taskId) ?? null : null;
-  const topic = workspace
-    ? topicId
-      ? findTopic(workspace, topicId)
-      : task?.topicId
-        ? findTopic(workspace, task.topicId)
-        : null
-    : null;
-  const plannedMinutes = Math.max(
+  const topic = workspace ? findTopic(workspace, task?.topicId || topicId) : null;
+  const suggestedMinutes = Math.max(
     5,
     Math.min(240, intParam(params.minutes, workspace?.settings.focusMinutes ?? 45)),
   );
@@ -80,6 +74,10 @@ export default function FocusScreen() {
     Math.min(30, intParam(params.breakMinutes, workspace?.settings.breakMinutes ?? 10)),
   );
 
+  const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
+  const plannedMinutes = selectedMinutes ?? suggestedMinutes;
+  const [savingFocus, setSavingFocus] = useState(false);
+  const [focusError, setFocusError] = useState('');
   const [tinyStep, setTinyStep] = useState('');
   const [distraction, setDistraction] = useState('');
   const [showParking, setShowParking] = useState(false);
@@ -142,7 +140,7 @@ export default function FocusScreen() {
   function requestDiscard() {
     Alert.alert(
       'Discard this focus session?',
-      'The timer and parked distractions will be removed. No study time will be recorded.',
+      'The timer and parked distractions will be removed. No study time will be added to history.',
       [
         { text: 'Keep session', style: 'cancel' },
         {
@@ -158,9 +156,13 @@ export default function FocusScreen() {
   }
 
   async function finishFocus() {
-    await completeFocus(effort, Date.now());
-    setFinishing(false);
-    setNow(Date.now());
+    if (savingFocus) return;
+    setSavingFocus(true); setFocusError('');
+    try {
+      await completeFocus(effort, Date.now());
+      setFinishing(false); setNow(Date.now());
+    } catch { setFocusError('Your session could not be saved. Tap Complete focus to retry.'); }
+    finally { setSavingFocus(false); }
   }
 
   async function finishBreak() {
@@ -208,16 +210,16 @@ export default function FocusScreen() {
   }
 
   if (!session) {
-    if (!topic && !task) {
+    if ((!topic && !task) || (task && task.status !== 'open')) {
       return (
         <SafeAreaView style={styles.safe}>
           <AmbientBackdrop />
           <View style={styles.setupPage}>
             <TopBar label="Focus" onBack={() => router.replace('/(app)/today')} />
             <View style={styles.missing}>
-              <Text style={styles.missingTitle}>Choose something to focus on first.</Text>
+              <Text style={styles.missingTitle}>Choose an open task or topic.</Text>
               <Text style={styles.missingText}>
-                Start Focus from Today, a study task, or a topic so MYELIN knows what the timer belongs to.
+                Start Focus from any task card or from a topic in Library.
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -241,14 +243,10 @@ export default function FocusScreen() {
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.setupContent}
             showsVerticalScrollIndicator={false}>
-            <Text style={styles.eyebrow}>
-              {(task?.subject || topic?.subject || task?.type || 'Study task').toUpperCase()}
-            </Text>
-            <Text style={styles.setupTitle}>{task?.title || topic?.name || 'Focus'}</Text>
+            <Text style={styles.eyebrow}>{(task?.subject || topic?.subject || 'STUDY TASK').toUpperCase()}</Text>
+            <Text style={styles.setupTitle}>{task?.title || topic?.name}</Text>
             {task ? (
-              <Text style={styles.taskContext}>
-                {topic ? `Linked topic · ${topic.name}` : 'Task focus · time counts toward this task'}
-              </Text>
+              <Text style={styles.taskContext}>{topic ? `Linked topic · ${topic.name}` : 'Time is saved to this task and today’s used time'}</Text>
             ) : null}
             <Text style={styles.setupSubtitle}>
               Choose the first action, then let the timer disappear into the background.
@@ -259,7 +257,14 @@ export default function FocusScreen() {
               <Metric label="BREAK" value={`${breakMinutes} min`} />
             </View>
 
-            <Text style={styles.fieldLabel}>First tiny step</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {[10, 25, 45].map(minutes => <Pressable key={minutes} accessibilityRole="button"
+                accessibilityLabel={`Focus for ${minutes} minutes`} accessibilityState={{ selected: plannedMinutes === minutes }}
+                onPress={() => setSelectedMinutes(minutes)} style={[styles.secondary, { minWidth: 64 }, plannedMinutes === minutes && styles.effortActive]}>
+                <Text style={styles.secondaryText}>{minutes} min</Text>
+              </Pressable>)}
+            </View>
+            <Text style={styles.fieldLabel}>First tiny step · optional</Text>
             <TextInput
               accessibilityLabel="First tiny step"
               value={tinyStep}
@@ -277,9 +282,9 @@ export default function FocusScreen() {
               accessibilityRole="button"
               onPress={() => begin('full')}
               style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-              <View>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.primaryText}>Start {plannedMinutes}-minute focus</Text>
-                <Text style={styles.primarySubtext}>Commit to the full planned block</Text>
+                <Text style={styles.primarySubtext}>One task. A little more progress.</Text>
               </View>
               <Text style={styles.buttonArrow}>→</Text>
             </Pressable>
@@ -327,6 +332,7 @@ export default function FocusScreen() {
               value={formatTimer(remaining)}
               label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
               complete={timerDone}
+            progress={phaseProgress}
             />
             <View style={styles.phaseProgress}>
               <AnimatedProgress
@@ -413,6 +419,7 @@ export default function FocusScreen() {
                   : 'PAUSED'
             }
             complete={timerDone}
+            progress={phaseProgress}
           />
           <View style={styles.phaseProgress}>
             <AnimatedProgress
@@ -483,11 +490,15 @@ export default function FocusScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Complete focus"
+                accessibilityState={{ disabled: savingFocus, busy: savingFocus }}
+                disabled={savingFocus}
                 onPress={finishFocus}
                 style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
-                <Text style={styles.primaryText}>Complete focus</Text>
+                <Text style={styles.primaryText}>{savingFocus ? 'Saving…' : 'Complete focus'}</Text>
                 <Text style={styles.buttonArrow}>→</Text>
               </Pressable>
+              {focusError ? <Text accessibilityRole="alert" style={{ color: colors.danger, marginTop: 10 }}>{focusError}</Text> : null}
               {!timerDone ? (
                 <Pressable
                   accessibilityRole="button"
@@ -525,7 +536,7 @@ export default function FocusScreen() {
               accessibilityLabel="Distraction parking"
               onPress={() => setShowParking((current) => !current)}
               style={({ pressed }) => [styles.parkingToggle, pressed && styles.pressed]}>
-              <View>
+              <View style={styles.parkingCopy}>
                 <Text style={styles.parkingTitle}>Park a distraction</Text>
                 <Text style={styles.parkingSubtitle}>
                   {session.distractions.length
@@ -624,15 +635,27 @@ function TimerDial({
   value,
   label,
   complete,
+  progress,
 }: {
   value: string;
   label: string;
   complete?: boolean;
+  progress: number;
 }) {
   return (
-    <Reveal distance={8}>
+    <Reveal distance={8} style={{ alignSelf: 'center' }}>
       <View style={[styles.dial, complete && styles.dialComplete]}>
         <View style={styles.dialOuterRing} />
+        <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+          {Array.from({ length: 40 }, (_, index) => {
+            const angle = index * Math.PI * 2 / 40;
+            const lit = index / 40 < progress;
+            return <View key={index} style={{ position: 'absolute', width: 3, height: 9,
+              left: 112 + Math.sin(angle) * 103, top: 108 - Math.cos(angle) * 103,
+              borderRadius: 2, transform: [{ rotate: `${index * 9}deg` }],
+              backgroundColor: lit ? (complete ? colors.success : colors.accent) : colors.lineStrong }} />;
+          })}
+        </View>
         <View style={styles.dialInner}>
           <Text style={[styles.timerValue, complete && styles.timerValueComplete]}>{value}</Text>
           <Text style={styles.timerLabel}>{label}</Text>
@@ -681,7 +704,7 @@ const styles = StyleSheet.create({
   tinyInput: { minHeight: 92, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: 13, color: colors.text, fontSize: 13, lineHeight: 19 },
   primary: { minHeight: 56, marginTop: spacing.lg, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   wideButton: { width: '100%' },
-  primaryText: { color: '#25140e', fontSize: 13, fontWeight: '800' },
+  primaryText: { flexShrink: 1, color: '#25140e', fontSize: 13, fontWeight: '800' },
   primarySubtext: { color: 'rgba(37,20,14,0.72)', fontSize: 11.5, lineHeight: 15, marginTop: 2 },
   buttonArrow: { color: '#25140e', fontSize: 20 },
   launchButton: { minHeight: 82, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.22)', backgroundColor: colors.accentSoft, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -736,10 +759,11 @@ const styles = StyleSheet.create({
   phaseProgress: {
     width: '100%',
     maxWidth: 280,
+    alignSelf: 'center',
     marginTop: 18,
   },
   dialInner: { width: 188, height: 188, borderRadius: 188, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
-  timerValue: { color: colors.text, fontSize: 44, lineHeight: 50, fontWeight: '500', letterSpacing: -2 },
+  timerValue: { color: colors.text, fontSize: 48, lineHeight: 56, fontWeight: '600', letterSpacing: -2 },
   timerValueComplete: { color: colors.success },
   timerLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, marginTop: 4 },
   timerActions: { flexDirection: 'row', gap: 9, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
@@ -757,6 +781,7 @@ const styles = StyleSheet.create({
   textButtonText: { color: colors.muted, fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   parkingShell: { marginTop: spacing.xl, borderTopWidth: 1, borderTopColor: colors.line },
   parkingToggle: { minHeight: layout.minTouch, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  parkingCopy: { flex: 1, minWidth: 0 },
   parkingToggleMark: { color: colors.accent, fontSize: 22, lineHeight: 24, fontWeight: '400' },
   parking: { paddingBottom: spacing.sm },
   parkingTitle: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },

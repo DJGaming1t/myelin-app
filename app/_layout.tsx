@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AchievementProvider } from '@/src/features/achievement/AchievementProvider';
 import { WorkspaceProvider } from '@/src/data/WorkspaceProvider';
 import { AuthProvider } from '@/src/features/auth/AuthProvider';
 import { CloudSyncProvider } from '@/src/features/cloud-sync/CloudSyncProvider';
@@ -21,6 +22,7 @@ export default function RootLayout() {
         <StartupUpdateGate>
         <AuthProvider>
           <WorkspaceProvider>
+            <AchievementProvider>
             <OnboardingProvider>
               <OnboardingTransitionProvider>
               <FocusProvider>
@@ -34,6 +36,7 @@ export default function RootLayout() {
               </FocusProvider>
               </OnboardingTransitionProvider>
             </OnboardingProvider>
+          </AchievementProvider>
           </WorkspaceProvider>
         </AuthProvider>
         </StartupUpdateGate>

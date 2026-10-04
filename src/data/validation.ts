@@ -1,3 +1,4 @@
+import { parseLocalDate } from '@/src/features/planning/commitment-dates';
 import {
   BreakLog,
   Commitment,
@@ -332,7 +333,7 @@ function commitment(raw: unknown): Commitment {
     new Set(
       array(c.skippedDates ?? [], 'commitment skipped dates', 366).map((value) => {
         const date = string(value, 'commitment skipped date', 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        if (parseLocalDate(date) === null) {
           throw new Error('Invalid commitment skipped date.');
         }
         return date;

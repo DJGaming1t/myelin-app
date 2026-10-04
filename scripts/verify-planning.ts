@@ -314,3 +314,40 @@ function main() {
 }
 
 main();
+
+// A cancellation belongs to its start date, including the carry across midnight.
+{
+  const w = createEmptyWorkspace(now);
+  const fixed = { id: 'night', title: 'Night shift', kind: 'other' as const,
+    startAt: local(2026, 10, 1, 22), endAt: local(2026, 10, 2, 8),
+    startMinutes: 22 * 60, endMinutes: 8 * 60, recurrenceDays: [4, 5],
+    skippedDates: ['2026-10-01'], createdAt: now, updatedAt: now };
+  w.commitments = [fixed];
+  assert.equal(commitmentOccurrencesForDay(w.commitments, local(2026, 10, 1, 12)).length, 0);
+  const next = commitmentOccurrencesForDay(w.commitments, local(2026, 10, 2, 12));
+  assert.equal(next.length, 1, 'Skipping Thursday removes its Friday carry but keeps Friday night.');
+  assert.equal(next[0]!.occurrenceDateKey, '2026-10-02');
+  assert.equal(next[0]!.commitmentId, 'night');
+  assert.equal(freeStudyWindows(w, local(2026, 10, 2, 12))[0]!.start, local(2026, 10, 2, 6));
+  fixed.skippedDates = [];
+  const restored = commitmentOccurrencesForDay(w.commitments, local(2026, 10, 2, 12));
+  assert.equal(restored.length, 2);
+  assert.equal(restored.find(item => item.id.endsWith(':carry'))!.occurrenceDateKey, '2026-10-01');
+  fixed.skippedDates = ['2026-10-01'];
+  const reloaded = migrateAndValidateWorkspace(JSON.parse(JSON.stringify(w)));
+  assert.deepEqual(reloaded.commitments[0]!.skippedDates, ['2026-10-01']);
+  assert.throws(() => migrateAndValidateWorkspace({ ...w, commitments: [{ ...fixed, skippedDates: ['2026-02-30'] }] }), /skipped date/i);
+}
+
+import { taskUrgency } from '../src/features/planning/task-urgency';
+{
+  const task = createStudyTask({ title: 'Overdue task', dueAt: now - 60_000, now });
+  assert.equal(taskUrgency(task, now)?.label, 'Overdue today');
+  task.dueAt = local(2026, 9, 29, 23, 59);
+  assert.equal(taskUrgency(task, now)?.label, '2 days overdue');
+  completeTask(task, now);
+  recordTaskMinutes(task, 10, now + 1000);
+  assert.equal(task.completedAt, now, 'Finishing a timer must preserve an earlier manual completion.');
+  assert.equal(taskUrgency(task, now), null);
+}
+console.log('✓ skipped dates survive reload, free time is reclaimed, overnight skips restore correctly, and due cues follow actual deadlines');

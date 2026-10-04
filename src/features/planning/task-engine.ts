@@ -107,7 +107,7 @@ export function reopenTask(task: StudyTask, now = Date.now()) {
 
 export function recordTaskMinutes(task: StudyTask, minutes: number, now = Date.now()) {
   task.actualMinutes = Math.max(0, Math.round(task.actualMinutes + Math.max(0, minutes)));
-  if (task.estimatedMinutes > 0 && task.actualMinutes >= task.estimatedMinutes) {
+  if (task.status === 'open' && task.estimatedMinutes > 0 && task.actualMinutes >= task.estimatedMinutes) {
     completeTask(task, now);
   } else {
     task.updatedAt = now;

@@ -1,4 +1,6 @@
 
+import { localDateKey, parseLocalDate } from './commitment-dates';
+import { addLocalDays } from './day-engine';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -59,12 +61,12 @@ function minutesFromText(text: string) {
   return hour * 60 + minute;
 }
 
-function atTime(text: string, fallbackHour: number) {
+function atTime(text: string, fallbackHour: number, day: number) {
   const match = /^(\d{1,2}):(\d{2})$/.exec(text.trim());
   const hour = match ? Number(match[1]) : fallbackHour;
   const minute = match ? Number(match[2]) : 0;
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return 0;
-  const d = new Date();
+  const d = new Date(day);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute, 0, 0).getTime();
 }
 
@@ -87,6 +89,9 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
       : '18:00',
   );
   const [days, setDays] = useState<number[]>(existing?.recurrenceDays ?? []);
+  const [date, setDate] = useState(localDateKey(existing?.startAt ?? Date.now()));
+  const [skippedDates, setSkippedDates] = useState<string[]>(existing?.skippedDates ?? []);
+  const [skipDate, setSkipDate] = useState('');
   const [error, setError] = useState('');
 
   if (!workspace) return null;
@@ -99,12 +104,26 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
     );
   }
 
+  function toggleSkip(value: string) {
+    const parsed = parseLocalDate(value);
+    if (parsed === null || !days.includes(new Date(parsed).getDay())) {
+      setError('Choose a valid date on one of the repeating weekdays.'); return;
+    }
+    if (!skippedDates.includes(value) && skippedDates.length >= 366) {
+      setError('Remove an older skipped date before adding another.'); return;
+    }
+    setSkippedDates(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value].sort());
+    setSkipDate(''); setError('');
+  }
+
   function save() {
     const clean = title.trim();
     const startMinutes = minutesFromText(start);
     const endMinutes = minutesFromText(end);
-    const startAt = atTime(start, 16);
-    let endAt = atTime(end, 18);
+    const day = parseLocalDate(date);
+    if (day === null) { setError('Use a valid date: YYYY-MM-DD.'); return; }
+    const startAt = atTime(start, 16, day);
+    let endAt = atTime(end, 18, day);
     if (!clean) {
       setError('Add a short name.');
       return;
@@ -113,7 +132,8 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
       setError('Use 24-hour time such as 16:00.');
       return;
     }
-    if (endAt <= startAt) endAt += 24 * 60 * 60 * 1000;
+    if (startMinutes === endMinutes) { setError('End time must differ from start time.'); return; }
+    if (endAt <= startAt) endAt = atTime(end, 18, addLocalDays(day, 1));
     const now = Date.now();
 
     updateWorkspace((draft) => {
@@ -127,6 +147,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
         target.startMinutes = startMinutes;
         target.endMinutes = endMinutes;
         target.recurrenceDays = days;
+        target.skippedDates = days.length ? skippedDates : [];
         target.updatedAt = now;
       } else {
         draft.commitments.push({
@@ -138,7 +159,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
           startMinutes,
           endMinutes,
           recurrenceDays: days,
-          skippedDates: [],
+          skippedDates: days.length ? skippedDates : [],
           createdAt: now,
           updatedAt: now,
         });
@@ -180,6 +201,8 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
 
       <Text style={styles.label}>Name</Text>
       <TextInput
+        accessibilityLabel="Fixed block name"
+        maxLength={300}
         value={title}
         onChangeText={setTitle}
         placeholder="Tuition"
@@ -202,6 +225,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
       <Text style={styles.label}>Time · 24-hour</Text>
       <View style={styles.row}>
         <TextInput
+          accessibilityLabel="Fixed block start time"
           value={start}
           onChangeText={setStart}
           placeholder="16:00"
@@ -210,6 +234,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
         />
         <Text style={styles.to}>to</Text>
         <TextInput
+          accessibilityLabel="Fixed block end time"
           value={end}
           onChangeText={setEnd}
           placeholder="18:00"
@@ -224,6 +249,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
           <Pressable
             key={String(day.value) + ':' + String(index)}
             accessibilityRole="button"
+            accessibilityLabel={['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day.value]}
             accessibilityState={{ selected: days.includes(day.value) }}
             onPress={() => toggleDay(day.value)}
             style={({ pressed }) => [
@@ -240,8 +266,29 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
       <Text style={styles.helper}>
         {days.length
           ? 'Repeats on the selected weekdays.'
-          : 'No days selected: this block applies today only.'}
+          : 'No days selected: this block applies once on the date below.'}
       </Text>
+
+      {!days.length ? <>
+        <Text style={styles.label}>Date · YYYY-MM-DD</Text>
+        <TextInput accessibilityLabel="Fixed block date" value={date} onChangeText={setDate} style={styles.input} />
+      </> : <>
+        <Text style={styles.label}>Skip specific dates</Text>
+        <Text style={styles.helper}>Cancelled class or a day off? Skip that occurrence. Your weekly schedule stays the same. For overnight blocks, choose the date they start.</Text>
+        <View style={[styles.wrap, { marginTop: 10 }]}>
+          {Array.from({ length: 14 }, (_, i) => addLocalDays(Date.now(), i))
+            .filter(day => days.includes(new Date(day).getDay()))
+            .map(day => <Chip key={day} label={`${skippedDates.includes(localDateKey(day)) ? 'Skipped · ' : ''}${new Date(day).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}`}
+              active={skippedDates.includes(localDateKey(day))} onPress={() => toggleSkip(localDateKey(day))} />)}
+        </View>
+        <Text style={styles.label}>Or choose a date · YYYY-MM-DD</Text>
+        <TextInput accessibilityLabel="Date to skip" placeholder="YYYY-MM-DD" placeholderTextColor={colors.subtle} value={skipDate} onChangeText={setSkipDate} style={styles.input} />
+        <Chip label="Skip this date" active={false} onPress={() => toggleSkip(skipDate.trim())} />
+        {skippedDates.length ? <>
+          <Text style={styles.label}>Skipped dates · tap to restore</Text>
+          <View style={styles.wrap}>{skippedDates.map(value => <Chip key={value} label={`${value} ×`} active onPress={() => setSkippedDates(current => current.filter(item => item !== value))} />)}</View>
+        </> : null}
+      </>}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 

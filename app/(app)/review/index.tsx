@@ -1,3 +1,4 @@
+import { useAchievement } from '@/src/features/achievement/AchievementProvider';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -42,6 +43,7 @@ const CONFIDENCE: { value: Confidence; label: string; helper: string }[] = [
 ];
 
 export default function ReviewScreen() {
+  const celebrate = useAchievement();
   const params = useLocalSearchParams<{ topicId?: string | string[] }>();
   const requestedTopicId = param(params.topicId);
   const { workspace } = useWorkspace();
@@ -329,7 +331,10 @@ export default function ReviewScreen() {
     setGrading(true);
     try {
       const result = await gradeCurrent(choice);
-      if (result?.completed) setCompletedNotice(true);
+      if (result?.completed) {
+        setCompletedNotice(true);
+        celebrate({ title: 'Recall complete!', detail: 'Another round remembered. Your next reviews are scheduled.' });
+      }
     } finally {
       setGrading(false);
     }

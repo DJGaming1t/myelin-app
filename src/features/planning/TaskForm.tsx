@@ -1,3 +1,4 @@
+import { TaskQuickActions, TaskDueLabel, useTaskCompletion } from '@/src/features/planning/TaskQuickActions';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -14,7 +15,6 @@ import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { Priority, StudyTask, StudyTaskType } from '@/src/data/schema';
 import {
-  completeTask,
   createStudyTask,
   reopenTask,
 } from '@/src/features/planning/task-engine';
@@ -99,6 +99,7 @@ function dueChoice(task: StudyTask | null): DueChoice {
 }
 
 export function TaskForm({ taskId }: { taskId?: string }) {
+  const complete = useTaskCompletion();
   const { workspace, updateWorkspace } = useWorkspace();
   const existing = useMemo(
     () => workspace?.tasks.find((task) => task.id === taskId) ?? null,
@@ -190,11 +191,10 @@ export function TaskForm({ taskId }: { taskId?: string }) {
 
   function toggleComplete() {
     if (!existing) return;
-    updateWorkspace((draft) => {
+    if (existing.status === 'open') complete(existing.id);
+    else updateWorkspace((draft) => {
       const target = draft.tasks.find((item) => item.id === existing.id);
-      if (!target) return;
-      if (target.status === 'completed') reopenTask(target);
-      else completeTask(target);
+      if (target) reopenTask(target);
     });
     router.back();
   }
@@ -230,6 +230,7 @@ export function TaskForm({ taskId }: { taskId?: string }) {
         onBack={() => router.back()}
       />
 
+      {existing ? <><TaskDueLabel task={existing} /><TaskQuickActions task={existing} /></> : null}
       <Label>What needs doing?</Label>
       <TextInput
         autoFocus={!existing}

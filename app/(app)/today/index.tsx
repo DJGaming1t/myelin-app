@@ -45,6 +45,7 @@ export default function TodayScreen() {
   const { style: heroMotion, busy: deferAnimating, transition } = useRecommendationMotion();
   const [showAdjust, setShowAdjust] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
+  const [showRest, setShowRest] = useState(false);
   const [showOverdue, setShowOverdue] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [lastDeferred, setLastDeferred] = useState<
@@ -98,6 +99,9 @@ export default function TodayScreen() {
     .slice(0, 3);
   const budgetFinished = currentPlan.remainingBudgetMinutes <= 0;
   const quickSession = shortSession(currentPlan);
+  const overdueCount = currentWorkspace.tasks.filter(task => taskUrgency(task, now)?.overdue).length;
+  const openTaskCount = currentWorkspace.tasks.filter(task => task.status === 'open').length;
+  const restCount = laterBlocks.length + (mistakeSummary.due > 0 ? 1 : 0) + (nextExam ? 1 : 0);
 
   function setBudget(minutes: number) {
     updateWorkspace((draft) => {
@@ -233,18 +237,6 @@ export default function TodayScreen() {
             <Text style={styles.todayDate}>{new Date(now).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
           </View>
 
-          {currentWorkspace.tasks.some(task => taskUrgency(task, now)?.overdue) ? <Pressable
-            accessibilityRole="button" accessibilityLabel="Show overdue tasks"
-            onPress={() => setShowOverdue(value => !value)}
-            style={{ padding: 12, borderLeftWidth: 3, borderLeftColor: colors.danger, backgroundColor: colors.panel, marginBottom: 14 }}>
-            <Text style={{ color: colors.danger, fontSize: 13, fontWeight: '800' }}>
-              {currentWorkspace.tasks.filter(task => taskUrgency(task, now)?.overdue).length} overdue · take one small step
-            </Text>
-            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>{showOverdue ? 'Hide overdue tasks ↑' : 'Choose a task to finish or focus on ↓'}</Text>
-          </Pressable> : null}
-
-          <AnimatedDisclosure visible={showOverdue}><StudyInboxCard overdueOnly /></AnimatedDisclosure>
-
           <Animated.View
             pointerEvents={deferAnimating ? 'none' : 'auto'}
             accessibilityElementsHidden={deferAnimating}
@@ -294,9 +286,9 @@ export default function TodayScreen() {
 
                 <Text style={styles.heroTitle}>{next.topicName}</Text>
                 {next.taskId ? <TaskDueLabel task={currentWorkspace.tasks.find(task => task.id === next.taskId)!} now={now} /> : null}
-                <Text style={styles.heroReason}>
+                {!(next.taskId && taskUrgency(currentWorkspace.tasks.find(task => task.id === next.taskId)!, now)) ? <Text style={styles.heroReason}>
                   {next.reasons[0] === 'overdue' ? 'A short session can help you catch up.' : next.reasons[0] ?? (next.mode === 'review' ? 'Ready for recall' : 'Worth continuing')}
-                </Text>
+                </Text> : null}
 
                 <AnimatedDisclosure visible={showWhy} style={styles.whyBox}>
                   {next.reasons.map((reason) => (
@@ -347,6 +339,16 @@ export default function TodayScreen() {
             )}
           </Animated.View>
 
+          {overdueCount > 0 ? <Pressable
+            accessibilityRole="button" accessibilityLabel="Show overdue tasks"
+            accessibilityState={{ expanded: showOverdue }}
+            onPress={() => { setShowOverdue(value => !value); setShowInbox(false); }}
+            style={styles.overdueToggle}>
+            <Text style={styles.overdueText}>● {overdueCount} overdue</Text>
+            <Text style={styles.summaryMeta}>{showOverdue ? 'Hide' : 'View tasks'} {showOverdue ? '−' : '+'}</Text>
+          </Pressable> : null}
+          <AnimatedDisclosure visible={showOverdue}><StudyInboxCard overdueOnly /></AnimatedDisclosure>
+
           {lastDeferred ? (
             <MotionItem key={`undo:${lastDeferred.source}:${lastDeferred.id}`} style={styles.undoRow}>
               <View style={styles.undoCopy}>
@@ -369,9 +371,9 @@ export default function TodayScreen() {
           <View style={styles.capacity}>
             <View style={styles.capacityTop}>
               <View style={styles.capacityCopy}>
-                <Text style={styles.capacityTitle}>Your pace today</Text>
+                <Text style={styles.capacityTitle}>{currentPlan.remainingBudgetMinutes} min available</Text>
                 <Text style={styles.capacityMeta}>
-                  {currentPlan.alreadyUsedMinutes} min used · {currentPlan.remainingBudgetMinutes} min available
+                  {currentPlan.alreadyUsedMinutes} min done{workspace.settings.energy === 'low' ? ' · low energy' : ''}
                 </Text>
               </View>
               <SpringPressable
@@ -388,30 +390,6 @@ export default function TodayScreen() {
               value={currentPlan.budgetMinutes ? currentPlan.alreadyUsedMinutes / currentPlan.budgetMinutes : 0}
               accessibilityLabel={`${currentPlan.alreadyUsedMinutes} of ${currentPlan.budgetMinutes} available minutes used, including breaks`}
             />
-            <View style={styles.paceActions}>
-              <SpringPressable
-                accessibilityRole="button"
-                accessibilityLabel="Low energy mode"
-                accessibilityHint="Choose shorter study blocks with more breathing room"
-                accessibilityState={{ selected: workspace.settings.energy === 'low' }}
-                onPress={() => setEnergy(workspace.settings.energy === 'low' ? 'normal' : 'low')}
-                lift={0}
-                style={[styles.paceChip, workspace.settings.energy === 'low' && styles.choiceActive]}>
-                <Text style={[styles.paceChipText, workspace.settings.energy === 'low' && styles.choiceTextActive]}>
-                  {workspace.settings.energy === 'low' ? 'Low energy · on' : 'Low energy?'}
-                </Text>
-              </SpringPressable>
-              {!activeFocus && !activeReview && quickSession ? (
-                <SpringPressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open a ${quickSession.minutes} minute focus session for ${quickSession.topicName}`}
-                  onPress={() => startBlock(quickSession, true)}
-                  lift={0}
-                  style={styles.paceChip}>
-                  <Text style={styles.paceChipText}>Just {quickSession.minutes} minutes →</Text>
-                </SpringPressable>
-              ) : null}
-            </View>
           </View>
 
           <AnimatedDisclosure visible={showAdjust} style={styles.adjustPanel}>
@@ -453,9 +431,48 @@ export default function TodayScreen() {
                   wide
                 />
               </View>
+            <View style={styles.paceActions}>
+              {!activeFocus && !activeReview && quickSession ? (
+                <SpringPressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open a ${quickSession.minutes} minute focus session for ${quickSession.topicName}`}
+                  onPress={() => startBlock(quickSession, true)}
+                  lift={0}
+                  style={styles.paceChip}>
+                  <Text style={styles.paceChipText}>Just {quickSession.minutes} minutes →</Text>
+                </SpringPressable>
+              ) : null}
+            </View>
           </AnimatedDisclosure>
 
 
+          <View style={styles.shortcuts}>
+            <SpringPressable accessibilityRole="button" accessibilityLabel="Open Day Map"
+              onPress={() => router.push('/(app)/today/day-map')} style={styles.shortcut}>
+              <Text style={styles.shortcutTitle}>Day Map</Text><Text style={styles.summaryMeta}>Your schedule →</Text>
+            </SpringPressable>
+            <SpringPressable accessibilityRole="button" accessibilityLabel="Show study tasks"
+              accessibilityState={{ expanded: showInbox }}
+              onPress={() => { setShowInbox(value => !value); setShowOverdue(false); }} style={styles.shortcut}>
+              <Text style={styles.shortcutTitle}>Tasks · {openTaskCount}</Text><Text style={styles.summaryMeta}>{showInbox ? 'Hide tasks −' : 'View all +'}</Text>
+            </SpringPressable>
+          </View>
+
+          <AnimatedDisclosure
+            visible={showInbox}
+            style={styles.inboxWrap}>
+            <StudyInboxCard />
+          </AnimatedDisclosure>
+
+          {restCount > 0 ? <>
+            <Pressable accessibilityRole="button" accessibilityLabel="Rest of today"
+              accessibilityState={{ expanded: showRest }} onPress={() => setShowRest(value => !value)}
+              style={styles.restToggle}>
+              <View style={styles.capacityCopy}><Text style={styles.shortcutTitle}>Rest of today</Text>
+                <Text style={styles.summaryMeta}>{[laterBlocks.length ? `${laterBlocks.length} later` : '', mistakeSummary.due ? `${mistakeSummary.due} corrections due` : '', nextExam ? 'Upcoming exam' : ''].filter(Boolean).join(' · ')}</Text>
+              </View><Text style={styles.summaryMeta}>{showRest ? '−' : '+'}</Text>
+            </Pressable>
+            <AnimatedDisclosure visible={showRest}>
           {laterBlocks.length ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Later today</Text>
@@ -514,33 +531,8 @@ export default function TodayScreen() {
             </View>
           ) : null}
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Plan</Text>
-            <View style={styles.flatList}>
-              <ActionRow
-                icon="today"
-                title="Day Map"
-                detail="See when study fits around the rest of your day."
-                onPress={() => router.push('/(app)/today/day-map')}
-              />
-              {currentWorkspace.tasks.some(task => task.status === 'open') ? (
-                <ActionRow
-                  icon="library"
-                  title="Study tasks"
-                  detail="All open work · focus, finish or schedule."
-                  meta={showInbox ? 'Hide' : 'Open'}
-                  onPress={() => setShowInbox((current) => !current)}
-                />
-              ) : null}
-            </View>
-          </View>
-
-
-          <AnimatedDisclosure
-            visible={showInbox}
-            style={styles.inboxWrap}>
-            <StudyInboxCard />
-          </AnimatedDisclosure>
+            </AnimatedDisclosure>
+          </> : null}
 
           <View style={styles.bottomSpace} />
         </ScrollView>
@@ -604,6 +596,13 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
   loadingText: { color: colors.muted, ...type.meta },
 
+  overdueToggle: { minHeight: layout.minTouch, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, marginTop: space.xxs },
+  overdueText: { color: colors.danger, ...type.meta, fontWeight: '700' },
+  summaryMeta: { color: colors.muted, ...type.meta, flexShrink: 1 },
+  shortcuts: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
+  shortcut: { flex: 1, minWidth: 0, minHeight: 66, padding: space.sm, gap: space.xxs, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, justifyContent: 'center' },
+  shortcutTitle: { color: colors.text, ...type.bodyStrong },
+  restToggle: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   nextHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, marginTop: space.xs, marginBottom: space.sm },
   todayDate: { color: colors.muted, ...type.meta },
   nextLabel: {
@@ -644,7 +643,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     ...type.body,
     marginTop: space.xs,
-    marginBottom: space.lg,
+    marginBottom: space.xs,
   },
   whyBox: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -654,7 +653,7 @@ const styles = StyleSheet.create({
     gap: space.xs,
   },
   whyText: { color: colors.textDim, ...type.meta },
-  heroActions: { gap: space.xxs },
+  heroActions: { gap: space.xxs, marginTop: space.sm },
   heroSecondary: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' },
   primaryAction: { alignSelf: 'stretch' },
   textAction: {
@@ -688,14 +687,14 @@ const styles = StyleSheet.create({
   undoButtonText: { color: colors.accent, ...type.meta, fontWeight: '700' },
   saveError: { color: colors.danger, ...type.meta, marginTop: space.sm },
 
-  capacity: { marginTop: space.lg, gap: space.sm },
+  capacity: { marginTop: space.sm, gap: space.xs },
   capacityTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   capacityCopy: { flex: 1, minWidth: 0 },
   capacityTitle: { color: colors.text, ...type.bodyStrong },
   capacityMeta: { color: colors.muted, ...type.meta, marginTop: space.xxs },
   capacityAction: { minHeight: layout.minTouch, paddingHorizontal: space.sm, justifyContent: 'center' },
   capacityActionText: { color: colors.accent, ...type.meta },
-  paceActions: { flexDirection: 'row', gap: space.xs, flexWrap: 'wrap' },
+  paceActions: { marginTop: space.sm, flexDirection: 'row', gap: space.xs, flexWrap: 'wrap' },
   paceChip: { minHeight: layout.minTouch, paddingHorizontal: space.sm, paddingVertical: space.xs, justifyContent: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel },
   paceChipText: { color: colors.textDim, ...type.meta },
   section: { marginTop: space.xl },

@@ -33,8 +33,8 @@ Key code: `app/(app)/today/index.tsx`, `src/features/focus/`, `src/features/adap
 
 ## Prioritized checklist
 
-- [x] **M01 — Guide foundation + Today tour (current chunk).** Central typed registry with real routes, descriptions, search terms, anchors and currently supported actions. Three-step Today spotlight with dimming, Back/Next/Skip, reduced motion, state-aware copy, scroll restoration and replay. Registry-backed short core-loop explanation. No domain mutations, model, schema migration or native dependency.
-- [ ] **M02 — Local Help and contextual coverage.** First implement local keyword/fuzzy search and useful explanations for the four requested example questions. Offer Go there, and Show me for implemented tours only. Then extend tours screen by screen, with contextual `?`, replay and owner-scoped first-open guidance. Keep the registry authoritative.
+- [x] **M01 — Guide foundation + Today tour.** Central typed registry with real routes, descriptions, search terms, anchors and currently supported actions. Three-step Today spotlight with dimming, Back/Next/Skip, reduced motion, state-aware copy, scroll restoration and replay. Registry-backed short core-loop explanation. No domain mutations, model, schema migration or native dependency.
+- [ ] **M02 — Local Help and contextual coverage.** M02a local Help search is complete; M02b Focus guidance is next. Local keyword/fuzzy search and useful explanations cover the four requested example questions. Offer Go there, and Show me for implemented tours only. Then extend tours screen by screen, with contextual `?`, replay and owner-scoped first-open guidance. Keep the registry authoritative.
 - [ ] **M03 — Reminder / schedule correctness.** First suppress or safely reschedule notifications while Focus is active, retaining quiet/sleep boundaries and uniqueness. Then reproduce and fix any remaining recurrence, bounds, unscheduled-work, move and Not now bugs with regression checks.
 - [ ] **M04 — Recovery and evidence polish.** Unify Make smaller / Find another time / Move / Remove for repeated avoidance; preserve progressive, calm overdue urgency. Audit completion feedback and open/close/undo motion. Audit deterministic recommendations, review calibration/confusion practice, actionable Progress and Neural Map semantics without replacing existing engines. Tie changes to starts, completed blocks, retention and recovery outcomes.
 - [ ] **M05 — Onboarding, settings and account audit.** Explain only the core loop at setup; advanced guidance stays contextual. Check task-only existing users, login persistence, account deletion, tutorial replay, layout/chevrons and dead controls. Report anything needing a real device/account.
@@ -48,7 +48,19 @@ Key code: `app/(app)/today/index.tsx`, `src/features/focus/`, `src/features/adap
 Status: implemented and locally verified. Preview delivery is tracked by the existing GitHub Actions checks for the merged commit.
 
 - Scope: three real Today anchors; manual `?` entry; Settings → View tutorial again → Show me Today; central core-loop copy.
-- Validation: TypeScript passed; all 21 verification scripts passed. Six browser scenarios passed (normal/reduced motion at 320×740, 390×844 and 320×568; ready, empty, rest, active Focus and active Review). Checked actual spotlight coordinates, Back/Next/Skip/Done, card bounds, replay, consumed route parameters, restored scroll and unchanged workspace/session storage. Android export passed before the final compact-card adjustment; the preview pipeline must compile the final commit.
+- Validation: TypeScript passed; all 21 verification scripts passed. Six browser scenarios passed (normal/reduced motion at 320×740, 390×844 and 320×568; ready, empty, rest, active Focus and active Review). Checked actual spotlight coordinates, Back/Next/Skip/Done, card bounds, replay, consumed route parameters, restored scroll and unchanged workspace/session storage. Final GitHub checks and Android preview export/publication passed in PR #80 (runtime 0.2.7).
 - Fixed during verification: cap the card to the free area beside the spotlight and scroll its copy on compact screens; return to the existing Today route from replay rather than pushing duplicate Today screens.
 - Device boundary: browser checks cannot establish Android TalkBack, status-bar/inset behavior or native Back behavior; physical Android verification remains necessary.
 - Next chunk: **M02a — local Help search from the registry**, with Explain / Go there and Show me for the completed Today tour. Other screen tours remain later M02 chunks.
+
+
+### M02a — Local Help search
+
+Status: implemented and locally verified; delivery follows the existing preview pipeline.
+
+- Entry: Settings → Help & tutorial → Search help. Four example questions, a search field, and optional Browse all guides keep the screen small.
+- Retrieval: local deterministic keyword, prefix and limited typo/transposition matching. Bounded queries, up to five ranked results, honest no-match state. No new dependency, model, network request, query persistence or study-data mutation.
+- Content: descriptions, example questions, detailed instructions and supported navigation/tutorial actions come from the shared registry. Instructions distinguish scheduling study from moving a deadline.
+- Actions: Explain expands the instructions; Go there navigates to the existing screen; Show me is offered only for the completed Today tour. Opening Focus from Help does not start a timer.
+- Verification: TypeScript and all 22 verification scripts passed. Browser checks at 320×568 passed with normal/reduced motion: Settings entry, the four questions while offline, typo matching, no-match/browse/clear, explanations, Back preserving the query, real Mistakes/Focus navigation, Today tutorial launch, and unchanged saved data. Native keyboard/TalkBack behavior remains a device check.
+- Next chunk: **M02b — contextual Focus tutorial**, reachable through Focus’s contextual help and Help’s Show me action. Explain the existing setup/session states without creating another timer. Other advanced tours and first-open guidance remain later M02 chunks.

@@ -100,6 +100,9 @@ jobs:
       - name: Guide registry and spotlight geometry
         run: npx tsx scripts/verify-guides.ts
 
+      - name: Offline Help search and instructions
+        run: npx tsx scripts/verify-help.ts
+
       - name: Transition routing and circle handoff
         run: npx tsx scripts/verify-transition.ts
 

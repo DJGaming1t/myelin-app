@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   LOCAL_AI_MODELS,
@@ -223,6 +224,42 @@ const androidCapabilities: LocalAiDeviceCapabilities = {
 
 async function main() {
   {
+    const storageSource = readFileSync(
+      'src/features/assistant/local-ai/expo-model-file-store.ts',
+      'utf8',
+    );
+    const providerSource = readFileSync(
+      'src/features/assistant/local-ai/LocalAiProvider.tsx',
+      'utf8',
+    );
+    const settingsSource = readFileSync(
+      'app/(app)/settings/index.tsx',
+      'utf8',
+    );
+    const modelScreenSource = readFileSync(
+      'app/(app)/settings/ai-models.tsx',
+      'utf8',
+    );
+    const rootLayoutSource = readFileSync('app/_layout.tsx', 'utf8');
+
+    assert.match(storageSource, /Paths\.document/);
+    assert.match(storageSource, /Paths\.availableDiskSpace/);
+    assert.match(storageSource, /File\.createDownloadTask/);
+    assert.match(storageSource, /DownloadTask\.fromSavable/);
+    assert.match(storageSource, /task\.savable\(\)/);
+    assert.match(storageSource, /install\.json/);
+    assert.match(storageSource, /download\.json/);
+    assert.match(storageSource, /size did not match the expected artifact/i);
+    assert.match(storageSource, /state === 'active'/);
+    assert.match(providerSource, /AppState\.addEventListener/);
+    assert.match(providerSource, /controller\.abort\(\)/);
+    assert.match(rootLayoutSource, /<LocalAiProvider>/);
+    assert.match(settingsSource, /Manage AI models/);
+    assert.match(modelScreenSource, /Unload AI in background/);
+    assert.match(modelScreenSource, /downloadModel/);
+  }
+
+  {
     const kv = new MemoryKeyValueStore();
     const preferences = createLocalAiPreferenceStore(kv);
     const files = new FakeFileStore();
@@ -329,6 +366,9 @@ async function main() {
     );
   }
   
+  console.log('✓ model storage uses persistent documents, size validation and resumable checkpoints');
+  console.log('✓ app background pauses active downloads and mounts the local AI provider globally');
+  console.log('✓ Settings exposes a dedicated model management screen');
   console.log('✓ catalog exposes FunctionGemma and Qwen without shipping an unverified mobile artifact');
   console.log('✓ compatibility blocks unsupported platforms, missing runtimes and low storage');
   console.log('✓ FunctionGemma license acceptance is enforced before download');

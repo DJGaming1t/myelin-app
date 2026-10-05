@@ -254,6 +254,11 @@ async function main() {
       'utf8',
     );
     const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+    const appConfig = JSON.parse(readFileSync('app.json', 'utf8'));
+    const nativeBoundarySource = readFileSync(
+      'scripts/check-native-runtime-boundary.cjs',
+      'utf8',
+    );
 
     assert.match(storageSource, /Paths\.document/);
     assert.match(storageSource, /Paths\.availableDiskSpace/);

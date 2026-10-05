@@ -10,7 +10,7 @@ function withMyelinKotlinVersion(config, props = {}) {
     props.kotlinVersion || DEFAULT_KOTLIN_VERSION,
   ).trim();
 
-  if (!/^\\d+\\.\\d+\\.\\d+(?:[-+].+)?$/.test(kotlinVersion)) {
+  if (!/^\d+\.\d+\.\d+(?:[-+].+)?$/.test(kotlinVersion)) {
     throw new Error(
       `Invalid MYELIN Android Kotlin version: ${kotlinVersion}`,
     );

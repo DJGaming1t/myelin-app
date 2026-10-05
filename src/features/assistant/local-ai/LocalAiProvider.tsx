@@ -25,6 +25,10 @@ import {
   LocalAiModelDefinition,
   LocalAiModelId,
 } from './model-catalog';
+import {
+  liteRtLmRuntimeAdapter,
+  liteRtLmRuntimeIds,
+} from './litert-lm-runtime';
 
 export type LocalAiModelView = {
   definition: LocalAiModelDefinition;
@@ -45,6 +49,7 @@ type LocalAiContextValue = {
   removeModel: (modelId: LocalAiModelId) => Promise<void>;
   acceptLicense: (modelId: LocalAiModelId) => Promise<void>;
   setAutoUnload: (value: boolean) => Promise<void>;
+  smokeTestModel: (modelId: LocalAiModelId) => Promise<string>;
 };
 
 const EMPTY_SNAPSHOT: LocalAiManagerSnapshot = {
@@ -60,6 +65,8 @@ const EMPTY_SNAPSHOT: LocalAiManagerSnapshot = {
 };
 
 const LocalAiContext = createContext<LocalAiContextValue | null>(null);
+
+const LOCAL_AI_RUNTIME_ADAPTERS = [liteRtLmRuntimeAdapter];
 
 function friendlyError(error: unknown) {
   if (error instanceof Error) {
@@ -77,8 +84,9 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     managerRef.current = new LocalAiManager(
       createExpoLocalAiModelFileStore(),
       createLocalAiPreferenceStore(AsyncStorage),
-      async () => getLocalAiDeviceCapabilities([]),
-      [],
+      async () =>
+        getLocalAiDeviceCapabilities(await liteRtLmRuntimeIds()),
+      LOCAL_AI_RUNTIME_ADAPTERS,
     );
   }
 
@@ -214,6 +222,43 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     [manager],
   );
 
+  const smokeTestModel = useCallback(
+    async (modelId: LocalAiModelId) => {
+      setError('');
+      setMessage('');
+      let loaded = false;
+
+      try {
+        const session = await manager.load(modelId);
+        loaded = true;
+        const result = await session.generate({
+          prompt:
+            'This is a native runtime test. Reply with exactly MYELIN_OK and nothing else.',
+          maxOutputTokens: 24,
+        });
+        const output = result.text.trim();
+        if (result.finishReason !== 'stop' || !output) {
+          throw new Error('The native model did not return a usable response.');
+        }
+        setMessage(`Native AI test replied: ${output.slice(0, 120)}`);
+        return output;
+      } catch (cause) {
+        setError(friendlyError(cause));
+        throw cause;
+      } finally {
+        if (loaded) {
+          try {
+            await manager.unload();
+          } catch {
+            // The next refresh reconciles lifecycle state if native cleanup fails.
+          }
+        }
+        updateStorage();
+      }
+    },
+    [manager, updateStorage],
+  );
+
   const models = useMemo(
     () =>
       LOCAL_AI_MODELS.map((definition) => ({
@@ -250,6 +295,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       removeModel,
       acceptLicense,
       setAutoUnload,
+      smokeTestModel,
     }),
     [
       acceptLicense,
@@ -264,6 +310,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       removeModel,
       selectModel,
       setAutoUnload,
+      smokeTestModel,
       snapshot,
     ],
   );

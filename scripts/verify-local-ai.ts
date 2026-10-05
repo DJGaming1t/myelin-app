@@ -359,7 +359,7 @@ async function main() {
     assert.match(modelScreenSource, /I accepted the licence/);
     assert.match(modelScreenSource, /Run test/);
     assert.match(modelScreenSource, /Try selected model/);
-    assert.match(modelScreenSource, /\/(app)\/settings\/ai-assistant/);
+    assert.match(modelScreenSource, /\/\(app\)\/settings\/ai-assistant/);
     assert.match(assistantScreenSource, /Preview actions/);
     assert.match(assistantScreenSource, /REVIEW BEFORE APPLYING/);
     assert.match(assistantScreenSource, /Apply changes/);

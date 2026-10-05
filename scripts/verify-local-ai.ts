@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import {
   LOCAL_AI_MODELS,
@@ -253,27 +253,7 @@ async function main() {
       'src/features/assistant/local-ai/litert-lm-runtime.ts',
       'utf8',
     );
-    const nativeModuleSource = readFileSync(
-      'modules/myelin-litertlm/android/src/main/java/com/djgaming1t/myelin/litertlm/MyelinLiteRtLmModule.kt',
-      'utf8',
-    );
-    const nativeBuildSource = readFileSync(
-      'modules/myelin-litertlm/android/build.gradle',
-      'utf8',
-    );
-    const nativeConfigSource = readFileSync(
-      'modules/myelin-litertlm/expo-module.config.json',
-      'utf8',
-    );
-    const nativeBoundarySource = readFileSync(
-      'scripts/check-native-runtime-boundary.cjs',
-      'utf8',
-    );
-    const appConfig = JSON.parse(readFileSync('app.json', 'utf8'));
-    const kotlinPluginSource = readFileSync(
-      'plugins/with-myelin-kotlin-version.js',
-      'utf8',
-    );
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
 
     assert.match(storageSource, /Paths\.document/);
     assert.match(storageSource, /Paths\.availableDiskSpace/);
@@ -294,29 +274,36 @@ async function main() {
     assert.match(providerSource, /liteRtLmRuntimeAdapter/);
     assert.match(providerSource, /smokeTestModel/);
     assert.match(liteRtAdapterSource, /id: 'litert-lm'/);
-    assert.match(liteRtAdapterSource, /nativeModule\.generate/);
-    assert.match(nativeModuleSource, /Name\("MyelinLiteRtLm"\)/);
-    assert.match(nativeModuleSource, /automaticToolCalling = false/);
-    assert.match(nativeModuleSource, /Backend\.CPU\(\)/);
-    assert.match(nativeModuleSource, /conversation\.sendMessage/);
-    assert.match(nativeModuleSource, /cancelProcess\(\)/);
-    assert.match(nativeBuildSource, /litertlm-android:0\.16\.1/);
-    assert.match(nativeConfigSource, /MyelinLiteRtLmModule/);
-    assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
-    assert.match(kotlinPluginSource, /android\.kotlinVersion/);
-    assert.match(kotlinPluginSource, /withGradleProperties/);
-    assert.match(kotlinPluginSource, /2\.3\.0/);
-    assert.ok(
-      appConfig.expo.plugins.some(
-        (entry: unknown) =>
-          Array.isArray(entry) &&
-          entry[0] === './plugins/with-myelin-kotlin-version' &&
-          (entry[1] as { kotlinVersion?: string } | undefined)?.kotlinVersion === '2.3.0',
-      ),
-      'Expo config must pin Kotlin 2.3.0 for LiteRT-LM metadata compatibility.',
+    assert.match(liteRtAdapterSource, /createLLM/);
+    assert.match(liteRtAdapterSource, /backend: 'cpu'/);
+    assert.match(liteRtAdapterSource, /enableStructuredOutput: true/);
+    assert.match(liteRtAdapterSource, /llm\.resetConversation\(\)/);
+    assert.match(liteRtAdapterSource, /responseSchema/);
+    assert.match(liteRtAdapterSource, /await llm\.unload\(\)/);
+    assert.doesNotMatch(liteRtAdapterSource, /@\/modules\/myelin-litertlm/);
+    assert.equal(
+      packageJson.dependencies['react-native-litert-lm'],
+      '0.7.0',
+      'The maintained LiteRT wrapper must stay pinned exactly.',
     );
-    assert.equal(appConfig.expo.version, '0.2.11');
-    assert.equal(appConfig.expo.android.versionCode, 8);
+    assert.ok(
+      appConfig.expo.plugins.includes('react-native-litert-lm'),
+      'Expo must load the maintained LiteRT wrapper plugin.',
+    );
+    assert.ok(
+      !appConfig.expo.plugins.some(
+        (entry: unknown) =>
+          entry === './plugins/with-myelin-kotlin-version' ||
+          (Array.isArray(entry) &&
+            entry[0] === './plugins/with-myelin-kotlin-version'),
+      ),
+      'The wrapper plugin owns Kotlin/minSdk configuration; the temporary MYELIN Kotlin plugin must be removed.',
+    );
+    assert.equal(existsSync('modules/myelin-litertlm'), false);
+    assert.equal(existsSync('plugins/with-myelin-kotlin-version.js'), false);
+    assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
+    assert.equal(appConfig.expo.version, '0.2.12');
+    assert.equal(appConfig.expo.android.versionCode, 9);
   }
 
   {
@@ -426,9 +413,9 @@ async function main() {
     );
   }
   
-  console.log('✓ LiteRT-LM Android bridge is autolinked and pinned to Expo-compatible 0.16.1');
+  console.log('✓ maintained react-native-litert-lm 0.7.0 replaces the custom Kotlin bridge');
   console.log('✓ FunctionGemma candidate fingerprint is recorded without bypassing its gated download');
-  console.log('✓ native inference stays CPU-first with automatic native tool execution disabled');
+  console.log('✓ native inference stays CPU-first, structured, and isolated between MYELIN requests');
   console.log('✓ model storage uses persistent documents, size validation and resumable checkpoints');
   console.log('✓ app background pauses active downloads and mounts the local AI provider globally');
   console.log('✓ Settings exposes a dedicated model management screen');

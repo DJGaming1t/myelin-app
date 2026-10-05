@@ -126,6 +126,8 @@ export type AssistantExamPlanSummary = {
   revisionLeadDays: number;
   feasibility: {
     feasible: boolean;
+    totalRequiredMinutes: number;
+    totalCapacityMinutes: number;
     totalOverloadMinutes: number;
     firstOverloadedDeadline: null | {
       deadlineAt: number;
@@ -145,6 +147,15 @@ export type AssistantExamPlanSummary = {
         movable: boolean;
       }>;
     };
+  };
+  workload: {
+    demandCount: number;
+    taskRemainingMinutes: number;
+    scheduledTaskMinutes: number;
+    unscheduledTaskMinutes: number;
+    examPreparationMinutes: number;
+    examRevisionMinutes: number;
+    deduplicatedMinutes: number;
   };
   capacity: {
     source: 'default' | 'personalized';
@@ -211,6 +222,7 @@ export function isAssistantExamPlanSummary(
     typeof item.unallocatedRevisionMinutes === 'number' &&
     Boolean(item.capacity) &&
     Boolean(item.feasibility) &&
+    Boolean(item.workload) &&
     Array.isArray(item.exams) &&
     Array.isArray(item.warnings) &&
     Array.isArray(item.days)
@@ -775,7 +787,7 @@ function planSummary(plan: JointExamPreparationPlan): AssistantExamPlanSummary {
   return {
     examCount: plan.exams.length,
     uniqueTopicCount: plan.uniqueTopicCount,
-    strain: plan.strain,
+    strain: plan.feasibility.feasible ? plan.strain : 'overloaded',
     strainRatio: plan.strainRatio,
     totalPreparationRequiredMinutes: plan.totalPreparationRequiredMinutes,
     totalRevisionRequiredMinutes: plan.totalRevisionRequiredMinutes,
@@ -789,6 +801,8 @@ function planSummary(plan: JointExamPreparationPlan): AssistantExamPlanSummary {
     revisionLeadDays: plan.revisionLeadDays,
     feasibility: {
       feasible: plan.feasibility.feasible,
+      totalRequiredMinutes: plan.feasibility.totalRequiredMinutes,
+      totalCapacityMinutes: plan.feasibility.totalCapacityMinutes,
       totalOverloadMinutes: plan.feasibility.totalOverloadMinutes,
       firstOverloadedDeadline: plan.feasibility.firstOverloadedDeadline
         ? {
@@ -807,6 +821,15 @@ function planSummary(plan: JointExamPreparationPlan): AssistantExamPlanSummary {
               ),
           }
         : null,
+    },
+    workload: {
+      demandCount: plan.workloadLedger.demands.length,
+      taskRemainingMinutes: plan.workloadLedger.taskRemainingMinutes,
+      scheduledTaskMinutes: plan.workloadLedger.scheduledTaskMinutes,
+      unscheduledTaskMinutes: plan.workloadLedger.unscheduledTaskMinutes,
+      examPreparationMinutes: plan.workloadLedger.examPreparationMinutes,
+      examRevisionMinutes: plan.workloadLedger.examRevisionMinutes,
+      deduplicatedMinutes: plan.workloadLedger.deduplicatedMinutes,
     },
     capacity: {
       source: plan.capacityProfile.source,

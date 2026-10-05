@@ -316,6 +316,10 @@ async function main() {
       'app/(app)/settings/ai-models.tsx',
       'utf8',
     );
+    const assistantScreenSource = readFileSync(
+      'app/(app)/settings/ai-assistant.tsx',
+      'utf8',
+    );
     const rootLayoutSource = readFileSync('app/_layout.tsx', 'utf8');
     const liteRtAdapterSource = readFileSync(
       'src/features/assistant/local-ai/litert-lm-runtime.ts',
@@ -354,6 +358,18 @@ async function main() {
     assert.match(modelScreenSource, /Confirm licence/);
     assert.match(modelScreenSource, /I accepted the licence/);
     assert.match(modelScreenSource, /Run test/);
+    assert.match(modelScreenSource, /Try selected model/);
+    assert.match(modelScreenSource, /\/(app)\/settings\/ai-assistant/);
+    assert.match(assistantScreenSource, /Preview actions/);
+    assert.match(assistantScreenSource, /REVIEW BEFORE APPLYING/);
+    assert.match(assistantScreenSource, /Apply changes/);
+    assert.match(assistantScreenSource, /applyPreparedAssistantActionBatch/);
+    assert.match(assistantScreenSource, /commitAssistantWorkspace/);
+    assert.match(assistantScreenSource, /prepared\.confirmationKey/);
+    assert.match(assistantScreenSource, /prepared\.sourceRevision/);
+    assert.match(assistantScreenSource, /MYELIN stays in control/);
+    assert.match(assistantScreenSource, /deterministic planner/);
+    assert.doesNotMatch(assistantScreenSource, /updateWorkspace\(/);
     assert.match(providerSource, /liteRtLmRuntimeAdapter/);
     assert.match(providerSource, /DocumentPicker\.getDocumentAsync/);
     assert.match(providerSource, /copyToCacheDirectory: true/);
@@ -699,6 +715,7 @@ async function main() {
   console.log('✓ imported models survive reinitialization and remain loadable through the maintained runtime');
   console.log('✓ app background pauses active downloads and mounts the local AI provider globally');
   console.log('✓ Settings exposes a dedicated model management screen');
+  console.log('✓ Settings exposes a preview-first request → review → explicit apply flow for the selected local model');
   console.log('✓ catalog exposes FunctionGemma and Qwen without shipping an unverified mobile artifact');
   console.log('✓ compatibility blocks unsupported platforms, missing runtimes and low storage');
   console.log('✓ FunctionGemma license acceptance is enforced before download');

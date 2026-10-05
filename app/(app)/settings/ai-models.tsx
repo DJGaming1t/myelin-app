@@ -69,6 +69,7 @@ export default function AiModelsScreen() {
     cancelDownload,
     removeModel,
     setAutoUnload,
+    smokeTestModel,
   } = useLocalAi();
   const [busy, setBusy] = useState('');
 
@@ -189,6 +190,11 @@ export default function AiModelsScreen() {
               onRemove={() =>
                 confirmRemove(model.definition.id, model.definition.shortName)
               }
+              onSmokeTest={() =>
+                void run(`smoke:${model.definition.id}`, () =>
+                  smokeTestModel(model.definition.id),
+                ).catch(() => undefined)
+              }
             />
           ))}
         </View>
@@ -197,9 +203,9 @@ export default function AiModelsScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.note}>
-          <Text style={styles.noteTitle}>Why are downloads disabled right now?</Text>
+          <Text style={styles.noteTitle}>Why are downloads still disabled?</Text>
           <Text style={styles.noteText}>
-            The manager and storage system are ready, but MYELIN will not ship a generic checkpoint just because it fits. The next native-runtime step will pair each option with a verified quantized artifact that actually runs correctly on Android.
+            The Android LiteRT-LM runtime is now wired in, but MYELIN will not bypass model licences or ship an unverified checkpoint. FunctionGemma has a candidate runtime bundle for device testing; production download stays off until the licensed artifact and MYELIN-specific fine-tune are finalized.
           </Text>
         </View>
       </ScrollView>
@@ -215,6 +221,7 @@ function ModelCard({
   onDownload,
   onCancel,
   onRemove,
+  onSmokeTest,
 }: {
   model: LocalAiModelView;
   selected: boolean;
@@ -223,6 +230,7 @@ function ModelCard({
   onDownload: () => void;
   onCancel: () => void;
   onRemove: () => void;
+  onSmokeTest: () => void;
 }) {
   const downloading = model.state.lifecycle === 'downloading';
   const installed = Boolean(model.state.install);
@@ -309,17 +317,32 @@ function ModelCard({
             <Text style={styles.primaryButtonText}>Pause</Text>
           </Pressable>
         ) : installed ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={Boolean(busy)}
-            onPress={onRemove}
-            style={({ pressed }) => [
-              styles.removeButton,
-              Boolean(busy) && styles.disabled,
-              pressed && !busy && styles.pressed,
-            ]}>
-            <Text style={styles.removeButtonText}>Remove</Text>
-          </Pressable>
+          <>
+            <Pressable
+              accessibilityRole="button"
+              disabled={Boolean(busy)}
+              onPress={onSmokeTest}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                Boolean(busy) && styles.disabled,
+                pressed && !busy && styles.pressed,
+              ]}>
+              <Text style={styles.primaryButtonText}>
+                {busy === `smoke:${model.definition.id}` ? 'Testing…' : 'Run test'}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={Boolean(busy)}
+              onPress={onRemove}
+              style={({ pressed }) => [
+                styles.removeButton,
+                Boolean(busy) && styles.disabled,
+                pressed && !busy && styles.pressed,
+              ]}>
+              <Text style={styles.removeButtonText}>Remove</Text>
+            </Pressable>
+          </>
         ) : (
           <Pressable
             accessibilityRole="button"

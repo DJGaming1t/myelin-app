@@ -78,6 +78,9 @@ jobs:
       - name: Exam capacity, safe buffers and workload strain
         run: npm run verify:exam-plan
 
+      - name: Shared deadline capacity feasibility
+        run: npm run verify:feasibility
+
       - name: Assistant action protocol and safety boundary
         run: npm run verify:assistant-actions
 

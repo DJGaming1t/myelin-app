@@ -242,10 +242,240 @@ const now = local(2026, 10, 5, 15, 0);
   );
 }
 
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 120;
+  workspace.settings.focusMinutes = 40;
+  workspace.topics.push(makeTopic('pace', 'Quadratic Equations', 'Mathematics', 'learning', 60, 2));
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Pace-aware maths',
+        date: addLocalDays(startOfLocalDay(now), 3) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['pace'],
+      },
+      now,
+      'exam_pace',
+    ),
+  );
+
+  for (let offset = 1; offset <= 4; offset += 1) {
+    const at = addLocalDays(startOfLocalDay(now), -offset) + 17 * 60 * 60 * 1000;
+    workspace.history.push({
+      id: `paced-${offset}`,
+      topicId: 'pace',
+      at,
+      kind: 'study',
+      minutes: 45,
+      grade: 0,
+      effort: 3,
+      prompt: '',
+      response: '',
+      confidence: 'partial',
+      plannedMinutes: 30,
+    });
+  }
+
+  const profile = buildExamCapacityProfile(workspace, now);
+  assert.equal(profile.estimateSampleCount, 4);
+  assert.equal(profile.estimateMultiplier, 1.35);
+  const plan = buildExamPreparationPlan(workspace, 'exam_pace', now)!;
+  const paced = plan.topics.find((topic) => topic.topicId === 'pace')!;
+  assert.equal(paced.baseEstimatedMinutes, 60);
+  assert.equal(paced.estimatedMinutes, 81);
+  assert.ok(
+    plan.warnings.some((warning) => /adjusted by about 35%/i.test(warning)),
+    'Repeated underestimation should increase future workload estimates transparently.',
+  );
+}
+
+{
+  const reliable = createEmptyWorkspace(now);
+  const unreliable = createEmptyWorkspace(now);
+  reliable.settings.dailyMinutes = 120;
+  unreliable.settings.dailyMinutes = 120;
+  const day = addLocalDays(startOfLocalDay(now), -1);
+
+  for (let index = 0; index < 4; index += 1) {
+    const startedAt = day + (16 * 60 + index * 35) * 60 * 1000;
+    reliable.focusOutcomes!.push({
+      id: `reliable-${index}`,
+      startedAt,
+      endedAt: startedAt + 30 * 60 * 1000,
+      status: 'finished',
+      plannedMinutes: 30,
+      minutes: 30,
+      launchMode: 'full',
+      taskOnly: true,
+      overdue: false,
+    });
+    unreliable.focusOutcomes!.push({
+      id: `unreliable-${index}`,
+      startedAt,
+      endedAt: startedAt + 30 * 60 * 1000,
+      status: index < 2 ? 'finished' : 'abandoned',
+      plannedMinutes: 30,
+      minutes: index < 2 ? 30 : 5,
+      launchMode: 'full',
+      taskOnly: true,
+      overdue: false,
+    });
+  }
+
+  const reliableProfile = buildExamCapacityProfile(reliable, now);
+  const unreliableProfile = buildExamCapacityProfile(unreliable, now);
+  assert.equal(reliableProfile.completionReliability, 1);
+  assert.equal(unreliableProfile.completionReliability, 0.5);
+  assert.ok(
+    unreliableProfile.sustainableDailyMinutes < reliableProfile.sustainableDailyMinutes,
+    'Repeated abandoned sessions should make capacity more conservative.',
+  );
+}
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 100;
+
+  for (let index = 0; index < 2; index += 1) {
+    const task = createStudyTask({
+      title: `Frequently postponed ${index}`,
+      type: 'revision',
+      estimatedMinutes: 30,
+      now,
+    });
+    task.postponements = 3;
+    task.lastPostponedAt = now - 60 * 60 * 1000;
+    workspace.tasks.push(task);
+  }
+
+  const profile = buildExamCapacityProfile(workspace, now);
+  assert.equal(profile.source, 'personalized');
+  assert.equal(profile.postponementPressure, 1);
+  assert.ok(
+    profile.sustainableDailyMinutes < workspace.settings.dailyMinutes,
+    'Repeated postponement should lower the amount MYELIN assumes can be sustainably planned.',
+  );
+}
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 120;
+  workspace.settings.focusMinutes = 40;
+  workspace.topics.push(
+    makeTopic('hard-a', 'Trigonometry', 'Mathematics', 'new', 140, 3),
+    makeTopic('hard-b', 'Statistics', 'Mathematics', 'new', 140, 3),
+  );
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Hard maths exam',
+        date: addLocalDays(startOfLocalDay(now), 2) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['hard-a', 'hard-b'],
+      },
+      now,
+      'exam_hard',
+    ),
+  );
+
+  const previous = addLocalDays(startOfLocalDay(now), -1);
+  for (let index = 0; index < 4; index += 1) {
+    workspace.history.push({
+      id: `effort-${index}`,
+      topicId: 'hard-a',
+      at: previous + (15 * 60 + index * 25) * 60 * 1000,
+      kind: 'study',
+      minutes: 20,
+      grade: 0,
+      effort: 5,
+      prompt: '',
+      response: '',
+      confidence: 'partial',
+    });
+  }
+
+  const plan = buildExamPreparationPlan(workspace, 'exam_hard', now)!;
+  assert.ok(plan.capacityProfile.highEffortShare > 0.9);
+  assert.ok(plan.capacityProfile.hardStudyShareLimit <= 0.5);
+  assert.ok(
+    plan.days.every((day) => day.hardStudyMinutes <= day.hardStudyLimitMinutes),
+    'High-effort work must respect the daily fatigue guardrail.',
+  );
+  assert.ok(
+    plan.warnings.some((warning) => /spread out instead of being packed/i.test(warning)),
+    'The user should be told when difficult work is intentionally spread across days.',
+  );
+}
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 120;
+  workspace.settings.focusMinutes = 40;
+  const maths = makeTopic('target-maths', 'Quadratics', 'Mathematics', 'learning', 120, 3);
+  const physics = makeTopic('competitor-physics', 'Electricity', 'Physics', 'learning', 120, 3);
+  workspace.topics.push(maths, physics);
+
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Maths exam',
+        date: addLocalDays(startOfLocalDay(now), 4) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['target-maths'],
+      },
+      now,
+      'exam_target',
+    ),
+    createExam(
+      {
+        name: 'Physics exam',
+        date: addLocalDays(startOfLocalDay(now), 3) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['competitor-physics'],
+      },
+      now,
+      'exam_competitor',
+    ),
+    createExam(
+      {
+        name: 'Shared-topic quiz',
+        date: addLocalDays(startOfLocalDay(now), 2) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['target-maths'],
+      },
+      now,
+      'exam_shared',
+    ),
+  );
+
+  const plan = buildExamPreparationPlan(workspace, 'exam_target', now)!;
+  assert.equal(plan.competingExams.length, 1, 'Shared material must not be double-counted as competing work.');
+  assert.equal(plan.competingExams[0]!.examId, 'exam_competitor');
+  assert.ok(
+    plan.days.reduce((sum, day) => sum + day.competingExamReserveMinutes, 0) > 0,
+    'A separate nearby exam should reserve some weekly capacity.',
+  );
+  assert.ok(
+    plan.warnings.some((warning) => /other upcoming exam/i.test(warning)),
+    'Competing exam capacity should be explained to the user.',
+  );
+}
+
 console.log('✓ exam scope limits planning to included topics');
 console.log('✓ per-exam workload estimates override generic Topic estimates');
 console.log('✓ feasible workload is split into focus-sized blocks within safe daily capacity');
 console.log('✓ enough study history personalizes sustainable daily capacity');
+console.log('✓ planned-vs-actual pace corrects future topic estimates');
+console.log('✓ completion reliability and postponements make capacity more conservative');
+console.log('✓ high-effort topics are spread with a daily fatigue guardrail');
+console.log('✓ nearby exams reserve capacity without double-counting shared topics');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

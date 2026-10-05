@@ -36,18 +36,26 @@ function targetSize(model: LocalAiModelView) {
 function lifecycleLabel(model: LocalAiModelView) {
   const { state } = model;
   if (state.lifecycle === 'downloading') return 'Downloading';
+  if (state.lifecycle === 'importing') return 'Importing';
   if (state.lifecycle === 'loading') return 'Loading';
   if (state.lifecycle === 'loaded') return 'Loaded';
   if (state.lifecycle === 'installed') return 'Installed';
   if (state.install) return 'Installed';
   if (!model.definition.artifact) return 'Mobile artifact not selected yet';
   if (!state.compatibility.runtimeId) return 'Runtime not in this build';
+  if (!model.definition.artifact.downloadUrl) return 'Ready to import';
   return 'Ready to download';
 }
 
 function blockedReason(model: LocalAiModelView) {
   if (!model.definition.artifact) {
-    return 'MYELIN is waiting for a verified mobile export before enabling this download.';
+    return 'MYELIN is waiting for a verified mobile export before enabling this model.';
+  }
+  if (
+    !model.definition.artifact.downloadUrl &&
+    model.state.compatibility.runtimeId
+  ) {
+    return 'Direct download is intentionally disabled. Import a licensed .litertlm bundle from your device.';
   }
   return (
     model.state.compatibility.issues[0]?.message ??
@@ -66,8 +74,10 @@ export default function AiModelsScreen() {
     refresh,
     selectModel,
     downloadModel,
+    importModelFile,
     cancelDownload,
     removeModel,
+    acceptLicense,
     setAutoUnload,
     smokeTestModel,
   } = useLocalAi();
@@ -88,6 +98,21 @@ export default function AiModelsScreen() {
     } finally {
       setBusy('');
     }
+  }
+
+  function confirmLicense(modelId: LocalAiModelId, name: string) {
+    Alert.alert(
+      `Confirm ${name} licence`,
+      'Only continue if you obtained the model legally and already accepted its licence terms at the source. MYELIN does not bypass gated access.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'I accepted the licence',
+          onPress: () =>
+            void run(`license:${modelId}`, () => acceptLicense(modelId)),
+        },
+      ],
+    );
   }
 
   function confirmRemove(modelId: LocalAiModelId, name: string) {
@@ -181,6 +206,23 @@ export default function AiModelsScreen() {
                   selectModel(model.definition.id),
                 )
               }
+              licenseAccepted={
+                model.definition.license === 'Apache-2.0' ||
+                snapshot.preferences.acceptedLicenseModelIds.includes(
+                  model.definition.id,
+                )
+              }
+              onAcceptLicense={() =>
+                confirmLicense(
+                  model.definition.id,
+                  model.definition.shortName,
+                )
+              }
+              onImport={() =>
+                void run(`import:${model.definition.id}`, () =>
+                  importModelFile(model.definition.id),
+                ).catch(() => undefined)
+              }
               onDownload={() =>
                 void run(`download:${model.definition.id}`, () =>
                   downloadModel(model.definition.id),
@@ -205,7 +247,7 @@ export default function AiModelsScreen() {
         <View style={styles.note}>
           <Text style={styles.noteTitle}>Why are downloads still disabled?</Text>
           <Text style={styles.noteText}>
-            The Android LiteRT-LM runtime is now wired in, but MYELIN will not bypass model licences or ship an unverified checkpoint. FunctionGemma has a candidate runtime bundle for device testing; production download stays off until the licensed artifact and MYELIN-specific fine-tune are finalized.
+            Direct downloads remain disabled for gated or unverified artifacts. For device testing, you can import a licensed FunctionGemma .litertlm file that matches MYELIN's candidate bundle; the app copies it into private storage and validates the expected size before enabling the runtime test.
           </Text>
         </View>
       </ScrollView>
@@ -218,6 +260,9 @@ function ModelCard({
   selected,
   busy,
   onSelect,
+  licenseAccepted,
+  onAcceptLicense,
+  onImport,
   onDownload,
   onCancel,
   onRemove,
@@ -226,17 +271,30 @@ function ModelCard({
   model: LocalAiModelView;
   selected: boolean;
   busy: string;
+  licenseAccepted: boolean;
   onSelect: () => void;
+  onAcceptLicense: () => void;
+  onImport: () => void;
   onDownload: () => void;
   onCancel: () => void;
   onRemove: () => void;
   onSmokeTest: () => void;
 }) {
   const downloading = model.state.lifecycle === 'downloading';
+  const importing = model.state.lifecycle === 'importing';
   const installed = Boolean(model.state.install);
+  const artifact = model.definition.artifact;
+  const canImport =
+    artifact?.format === 'litertlm' &&
+    Boolean(model.state.compatibility.runtimeId);
+  const downloadAvailable = Boolean(artifact?.downloadUrl);
   const downloadBlocked =
-    !model.definition.artifact ||
+    !downloadAvailable ||
     !model.state.compatibility.compatible ||
+    Boolean(busy);
+  const importBlocked =
+    !canImport ||
+    !licenseAccepted ||
     Boolean(busy);
   const progress = model.state.progress;
   const ratio =
@@ -285,7 +343,7 @@ function ModelCard({
         </View>
       ) : null}
 
-      {!installed && !downloading ? (
+      {!installed && !downloading && !importing ? (
         <Text style={styles.blockedText}>{blockedReason(model)}</Text>
       ) : null}
 
@@ -316,6 +374,13 @@ function ModelCard({
             style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
             <Text style={styles.primaryButtonText}>Pause</Text>
           </Pressable>
+        ) : importing ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled
+            style={[styles.primaryButton, styles.disabled]}>
+            <Text style={styles.primaryButtonText}>Importing…</Text>
+          </Pressable>
         ) : installed ? (
           <>
             <Pressable
@@ -343,6 +408,30 @@ function ModelCard({
               <Text style={styles.removeButtonText}>Remove</Text>
             </Pressable>
           </>
+        ) : !licenseAccepted && model.definition.license !== 'Apache-2.0' ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={Boolean(busy)}
+            onPress={onAcceptLicense}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              Boolean(busy) && styles.disabled,
+              pressed && !busy && styles.pressed,
+            ]}>
+            <Text style={styles.primaryButtonText}>Confirm licence</Text>
+          </Pressable>
+        ) : canImport && !downloadAvailable ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={importBlocked}
+            onPress={onImport}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              importBlocked && styles.disabled,
+              pressed && !importBlocked && styles.pressed,
+            ]}>
+            <Text style={styles.primaryButtonText}>Import file</Text>
+          </Pressable>
         ) : (
           <Pressable
             accessibilityRole="button"
@@ -353,7 +442,9 @@ function ModelCard({
               downloadBlocked && styles.disabled,
               pressed && !downloadBlocked && styles.pressed,
             ]}>
-            <Text style={styles.primaryButtonText}>Download</Text>
+            <Text style={styles.primaryButtonText}>
+              {downloadAvailable ? 'Download' : 'Unavailable'}
+            </Text>
           </Pressable>
         )}
       </View>

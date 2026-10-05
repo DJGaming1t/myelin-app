@@ -312,8 +312,8 @@ async function main() {
     assert.equal(existsSync('modules/myelin-litertlm'), false);
     assert.equal(existsSync('plugins/with-myelin-kotlin-version.js'), false);
     assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
-    assert.equal(appConfig.expo.version, '0.2.12');
-    assert.equal(appConfig.expo.android.versionCode, 9);
+    assert.equal(appConfig.expo.version, '0.2.13');
+    assert.equal(appConfig.expo.android.versionCode, 10);
   }
 
   {

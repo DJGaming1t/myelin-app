@@ -315,8 +315,8 @@ async function main() {
       ),
       'Expo config must pin Kotlin 2.3.0 for LiteRT-LM metadata compatibility.',
     );
-    assert.equal(appConfig.expo.version, '0.2.10');
-    assert.equal(appConfig.expo.android.versionCode, 7);
+    assert.equal(appConfig.expo.version, '0.2.11');
+    assert.equal(appConfig.expo.android.versionCode, 8);
   }
 
   {

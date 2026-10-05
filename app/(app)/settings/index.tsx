@@ -25,6 +25,7 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppIcon } from '@/src/components/app/AppIcon';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
 import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useCloudSync } from '@/src/features/cloud-sync/CloudSyncProvider';
@@ -65,6 +66,7 @@ export default function SettingsScreen() {
   } = useAuth();
   const { discard: discardFocus, session: focusSession } = useFocus();
   const { discardReview, session: reviewSession } = useReview();
+  const { snapshot: localAiSnapshot, models: localAiModels } = useLocalAi();
   const { restart: restartOnboarding } = useOnboarding();
   const {
     deleteAccountAndCloud,
@@ -85,6 +87,9 @@ export default function SettingsScreen() {
   const summary = useMemo(
     () => (workspace ? workspaceDataSummary(workspace) : null),
     [workspace],
+  );
+  const selectedLocalAi = localAiModels.find(
+    (model) => model.definition.id === localAiSnapshot.selectedModelId,
   );
 
   if (!workspace || !summary || !ownerKey) {
@@ -448,6 +453,33 @@ export default function SettingsScreen() {
               <View style={styles.transferCopy}>
                 <Text style={styles.transferTitle}>Reminder studio</Text>
                 <Text style={styles.transferText}>Tone, quiet hours, exam timing and live previews</Text>
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+            </Pressable>
+          </Section>
+
+          <Section
+            title="On-device AI"
+            subtitle="Optional local models stay separate from MYELIN’s core planner.">
+            <StatusRow
+              label="MODEL"
+              value={selectedLocalAi?.definition.shortName ?? 'None selected'}
+              tone={selectedLocalAi ? 'accent' : undefined}
+            />
+            <StatusRow
+              label="DOWNLOADS"
+              value="Optional"
+            />
+            <InfoBox>
+              Model files are stored separately on this device. The base app and deterministic planner continue to work without downloading one.
+            </InfoBox>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(app)/settings/ai-models')}
+              style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
+              <View style={styles.transferCopy}>
+                <Text style={styles.transferTitle}>Manage AI models</Text>
+                <Text style={styles.transferText}>Choose FunctionGemma or Qwen, inspect storage and manage downloads</Text>
               </View>
               <Text style={styles.transferArrow}>→</Text>
             </Pressable>

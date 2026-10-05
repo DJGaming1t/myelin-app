@@ -5,6 +5,7 @@ import { cloneWorkspace, createEmptyWorkspace } from '../src/data/schema';
 import {
   AssistantActionError,
   assistantActionToolCatalog,
+  isAssistantExamPlanSummary,
   parseAssistantActionBatch,
   runAssistantActionBatch,
 } from '../src/features/assistant/ai-action-engine';
@@ -89,13 +90,24 @@ const now = local(2026, 10, 5, 15);
 
   const planResult = preview.results.find((result) => result.type === 'generate_exam_plan');
   assert.ok(planResult);
-  const data = planResult!.data as {
-    examCount: number;
-    uniqueTopicCount: number;
-    days: Array<{ blocks: Array<{ topicName: string; minutes: number }> }>;
-  };
+  assert.equal(
+    isAssistantExamPlanSummary(planResult!.data),
+    true,
+    'The planner result should expose the typed deterministic capacity summary.',
+  );
+  assert.ok(isAssistantExamPlanSummary(planResult!.data));
+  const data = planResult!.data;
   assert.equal(data.examCount, 1);
   assert.equal(data.uniqueTopicCount, 2);
+  assert.equal(data.capacity.source, 'default');
+  assert.equal(data.capacity.sustainableDailyMinutes, 90);
+  assert.ok(data.totalPreparationRequiredMinutes > 0);
+  assert.ok(data.totalRevisionRequiredMinutes > 0);
+  assert.ok(data.totalUsableCapacityMinutes >= 0);
+  assert.ok(data.bufferRatio >= 0.12 && data.bufferRatio <= 0.3);
+  assert.equal(data.revisionRatio, 0.2);
+  assert.equal(data.revisionLeadDays, 2);
+  assert.equal(data.exams[0]?.examName, 'Maths exam');
   assert.ok(
     data.days.flatMap((day) => day.blocks).some((block) => block.topicName === 'Trigonometry'),
     'The assistant must invoke the MYELIN planner using same-batch topic/exam references.',

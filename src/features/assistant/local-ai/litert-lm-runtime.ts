@@ -1,6 +1,5 @@
+import { createLLM } from 'react-native-litert-lm';
 import { Platform } from 'react-native';
-
-import MyelinLiteRtLm from '@/modules/myelin-litertlm';
 
 import {
   LocalAiGenerationRequest,
@@ -10,6 +9,7 @@ import {
 } from './local-ai-runtime';
 
 const DEFAULT_MAX_OUTPUT_TOKENS = 384;
+const DEFAULT_CONTEXT_TOKENS = 1024;
 
 function clampOutputTokens(value: number | undefined) {
   if (value == null || !Number.isFinite(value)) {
@@ -18,27 +18,57 @@ function clampOutputTokens(value: number | undefined) {
   return Math.max(8, Math.min(1024, Math.round(value)));
 }
 
+function localModelPath(uri: string) {
+  return uri.startsWith('file://') ? uri.slice('file://'.length) : uri;
+}
+
+function responseSchema(schema: unknown) {
+  if (schema == null) return undefined;
+  return typeof schema === 'string' ? schema : JSON.stringify(schema);
+}
+
 export const liteRtLmRuntimeAdapter: LocalAiRuntimeAdapter = {
   id: 'litert-lm',
 
   async isAvailable() {
-    if (Platform.OS !== 'android' || !MyelinLiteRtLm) return false;
+    if (Platform.OS !== 'android') return false;
+
     try {
-      return MyelinLiteRtLm.isAvailable();
+      const probe = createLLM();
+      probe.close();
+      return true;
     } catch {
       return false;
     }
   },
 
   async load(request) {
-    if (Platform.OS !== 'android' || !MyelinLiteRtLm) {
+    if (Platform.OS !== 'android') {
       throw new Error(
-        'LiteRT-LM is not available in this app build. Install a native MYELIN preview build first.',
+        'LiteRT-LM is available only in a native Android MYELIN build.',
       );
     }
 
-    const nativeModule = MyelinLiteRtLm;
-    const nativeSessionId = await nativeModule.load(request.artifactUri);
+    const llm = createLLM({
+      enableMemoryTracking: true,
+      maxMemorySnapshots: 64,
+    });
+
+    try {
+      await llm.loadModel(localModelPath(request.artifactUri), {
+        backend: 'cpu',
+        maxContextTokens: DEFAULT_CONTEXT_TOKENS,
+        maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        temperature: 0,
+        enableStructuredOutput: true,
+      });
+    } catch (error) {
+      llm.close();
+      throw error;
+    }
+
+    let closed = false;
+    let inFlight: Promise<unknown> | null = null;
 
     const session: LocalAiRuntimeSession = {
       modelId: request.model.id,
@@ -46,23 +76,45 @@ export const liteRtLmRuntimeAdapter: LocalAiRuntimeAdapter = {
       async generate(
         generation: LocalAiGenerationRequest,
       ): Promise<LocalAiGenerationResult> {
+        if (closed) {
+          throw new Error('This local AI session has already been closed.');
+        }
         if (generation.signal?.aborted) {
           return { text: '', finishReason: 'cancelled' };
+        }
+        if (inFlight) {
+          throw new Error(
+            'This local AI session is already generating. Wait for it to finish first.',
+          );
         }
 
         let cancelled = false;
         const onAbort = () => {
+          // react-native-litert-lm 0.7.0 does not expose a safe public
+          // mid-generation cancel primitive. We mark the result cancelled and
+          // discard it when native generation returns instead of pretending
+          // compute stopped immediately.
           cancelled = true;
-          void nativeModule.cancel(nativeSessionId).catch(() => undefined);
         };
         generation.signal?.addEventListener('abort', onAbort, { once: true });
 
         try {
-          const text = await nativeModule.generate(
-            nativeSessionId,
-            generation.prompt,
-            clampOutputTokens(generation.maxOutputTokens),
+          // Independent MYELIN requests must never inherit hidden model chat
+          // history from the previous planning request.
+          llm.resetConversation();
+
+          const work = llm.execute(
+            [{ type: 'text', text: generation.prompt }],
+            undefined,
+            {
+              maxOutputTokens: clampOutputTokens(generation.maxOutputTokens),
+              ...(generation.jsonSchema == null
+                ? {}
+                : { responseSchema: responseSchema(generation.jsonSchema) }),
+            },
           );
+          inFlight = work;
+          const text = await work;
 
           if (cancelled || generation.signal?.aborted) {
             return { text: '', finishReason: 'cancelled' };
@@ -72,18 +124,26 @@ export const liteRtLmRuntimeAdapter: LocalAiRuntimeAdapter = {
             text,
             finishReason: 'stop',
           };
-        } catch (error) {
-          if (cancelled || generation.signal?.aborted) {
-            return { text: '', finishReason: 'cancelled' };
-          }
-          throw error;
         } finally {
+          inFlight = null;
           generation.signal?.removeEventListener('abort', onAbort);
         }
       },
 
       async close() {
-        await nativeModule.close(nativeSessionId);
+        if (closed) return;
+        closed = true;
+
+        if (inFlight) {
+          try {
+            await inFlight;
+          } catch {
+            // Unload still needs to run after a failed generation.
+          }
+        }
+
+        await llm.unload();
+        llm.close();
       },
     };
 

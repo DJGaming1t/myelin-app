@@ -221,117 +221,125 @@ const androidCapabilities: LocalAiDeviceCapabilities = {
   assert.equal(normalized.autoUnload, false);
 }
 
-{
-  const kv = new MemoryKeyValueStore();
-  const preferences = createLocalAiPreferenceStore(kv);
-  const files = new FakeFileStore();
-  const runtime = new FakeRuntime();
-
-  const manager = new LocalAiManager(
-    files,
-    preferences,
-    async () => androidCapabilities,
-    [runtime],
-    configuredModels(),
-  );
-
-  const initialized = await manager.initialize();
-  assert.equal(initialized.initialized, true);
-  assert.equal(
-    initialized.models.find((model) => model.modelId === 'functiongemma-270m')!
-      .lifecycle,
-    'not-installed',
-  );
-
-  await assert.rejects(
-    () => manager.download('functiongemma-270m'),
-    (error: unknown) =>
-      error instanceof LocalAiManagerError && error.code === 'license_required',
-  );
-
-  await manager.acceptLicense('functiongemma-270m');
-  await manager.selectModel('functiongemma-270m');
-  const installed = await manager.download('functiongemma-270m');
-  assert.equal(installed.modelId, 'functiongemma-270m');
-  assert.equal(manager.snapshot().selectedModelId, 'functiongemma-270m');
-  assert.equal(
-    manager.snapshot().models.find((model) => model.modelId === 'functiongemma-270m')!
-      .lifecycle,
-    'installed',
-  );
-
-  const firstSession = (await manager.load('functiongemma-270m')) as FakeSession;
-  assert.equal(manager.snapshot().activeModelId, 'functiongemma-270m');
-  assert.equal(firstSession.closed, false);
-
-  await manager.handleAppBackgrounded();
-  assert.equal(firstSession.closed, true);
-  assert.equal(manager.snapshot().activeModelId, null);
-  assert.equal(
-    manager.snapshot().models.find((model) => model.modelId === 'functiongemma-270m')!
-      .lifecycle,
-    'installed',
-  );
-
-  await manager.remove('functiongemma-270m');
-  assert.equal(files.records.has('functiongemma-270m'), false);
-  assert.equal(
-    manager.snapshot().models.find((model) => model.modelId === 'functiongemma-270m')!
-      .lifecycle,
-    'not-installed',
-  );
+async function main() {
+  {
+    const kv = new MemoryKeyValueStore();
+    const preferences = createLocalAiPreferenceStore(kv);
+    const files = new FakeFileStore();
+    const runtime = new FakeRuntime();
+  
+    const manager = new LocalAiManager(
+      files,
+      preferences,
+      async () => androidCapabilities,
+      [runtime],
+      configuredModels(),
+    );
+  
+    const initialized = await manager.initialize();
+    assert.equal(initialized.initialized, true);
+    assert.equal(
+      initialized.models.find((model) => model.modelId === 'functiongemma-270m')!
+        .lifecycle,
+      'not-installed',
+    );
+  
+    await assert.rejects(
+      () => manager.download('functiongemma-270m'),
+      (error: unknown) =>
+        error instanceof LocalAiManagerError && error.code === 'license_required',
+    );
+  
+    await manager.acceptLicense('functiongemma-270m');
+    await manager.selectModel('functiongemma-270m');
+    const installed = await manager.download('functiongemma-270m');
+    assert.equal(installed.modelId, 'functiongemma-270m');
+    assert.equal(manager.snapshot().selectedModelId, 'functiongemma-270m');
+    assert.equal(
+      manager.snapshot().models.find((model) => model.modelId === 'functiongemma-270m')!
+        .lifecycle,
+      'installed',
+    );
+  
+    const firstSession = (await manager.load('functiongemma-270m')) as FakeSession;
+    assert.equal(manager.snapshot().activeModelId, 'functiongemma-270m');
+    assert.equal(firstSession.closed, false);
+  
+    await manager.handleAppBackgrounded();
+    assert.equal(firstSession.closed, true);
+    assert.equal(manager.snapshot().activeModelId, null);
+    assert.equal(
+      manager.snapshot().models.find((model) => model.modelId === 'functiongemma-270m')!
+        .lifecycle,
+      'installed',
+    );
+  
+    await manager.remove('functiongemma-270m');
+    assert.equal(files.records.has('functiongemma-270m'), false);
+    assert.equal(
+      manager.snapshot().models.find((model) => model.modelId === 'functiongemma-270m')!
+        .lifecycle,
+      'not-installed',
+    );
+  }
+  
+  {
+    const kv = new MemoryKeyValueStore();
+    const preferences = createLocalAiPreferenceStore(kv);
+    const files = new FakeFileStore();
+    const runtime = new FakeRuntime();
+  
+    const manager = new LocalAiManager(
+      files,
+      preferences,
+      async () => androidCapabilities,
+      [runtime],
+      configuredModels(),
+    );
+    await manager.initialize();
+  
+    await manager.download('qwen3.5-0.8b');
+    const qwenSession = (await manager.load('qwen3.5-0.8b')) as FakeSession;
+    assert.equal(qwenSession.modelId, 'qwen3.5-0.8b');
+  
+    await manager.acceptLicense('functiongemma-270m');
+    await manager.download('functiongemma-270m');
+    const functionSession = (await manager.load('functiongemma-270m')) as FakeSession;
+  
+    assert.equal(qwenSession.closed, true, 'Loading another model should unload the previous model.');
+    assert.equal(functionSession.closed, false);
+    assert.equal(manager.snapshot().activeModelId, 'functiongemma-270m');
+  
+    await manager.setAutoUnload(false);
+    await manager.handleAppBackgrounded();
+    assert.equal(functionSession.closed, false, 'Auto-unload can be disabled explicitly.');
+  
+    files.failNextDownload = true;
+    await manager.remove('qwen3.5-0.8b');
+    await assert.rejects(() => manager.download('qwen3.5-0.8b'), /simulated download failure/);
+    assert.equal(
+      manager.snapshot().models.find((model) => model.modelId === 'qwen3.5-0.8b')!
+        .lifecycle,
+      'not-installed',
+    );
+    assert.match(
+      manager.snapshot().models.find((model) => model.modelId === 'qwen3.5-0.8b')!
+        .error,
+      /simulated download failure/,
+    );
+  }
+  
+  console.log('✓ catalog exposes FunctionGemma and Qwen without shipping an unverified mobile artifact');
+  console.log('✓ compatibility blocks unsupported platforms, missing runtimes and low storage');
+  console.log('✓ FunctionGemma license acceptance is enforced before download');
+  console.log('✓ Qwen can use the same manager without a separate code path');
+  console.log('✓ download, install, load, unload, switch and remove lifecycle is deterministic');
+  console.log('✓ background auto-unload releases the active model session');
+  console.log('✓ failed downloads roll back to a safe lifecycle state');
+  
 }
 
-{
-  const kv = new MemoryKeyValueStore();
-  const preferences = createLocalAiPreferenceStore(kv);
-  const files = new FakeFileStore();
-  const runtime = new FakeRuntime();
-
-  const manager = new LocalAiManager(
-    files,
-    preferences,
-    async () => androidCapabilities,
-    [runtime],
-    configuredModels(),
-  );
-  await manager.initialize();
-
-  await manager.download('qwen3.5-0.8b');
-  const qwenSession = (await manager.load('qwen3.5-0.8b')) as FakeSession;
-  assert.equal(qwenSession.modelId, 'qwen3.5-0.8b');
-
-  await manager.acceptLicense('functiongemma-270m');
-  await manager.download('functiongemma-270m');
-  const functionSession = (await manager.load('functiongemma-270m')) as FakeSession;
-
-  assert.equal(qwenSession.closed, true, 'Loading another model should unload the previous model.');
-  assert.equal(functionSession.closed, false);
-  assert.equal(manager.snapshot().activeModelId, 'functiongemma-270m');
-
-  await manager.setAutoUnload(false);
-  await manager.handleAppBackgrounded();
-  assert.equal(functionSession.closed, false, 'Auto-unload can be disabled explicitly.');
-
-  files.failNextDownload = true;
-  await manager.remove('qwen3.5-0.8b');
-  await assert.rejects(() => manager.download('qwen3.5-0.8b'), /simulated download failure/);
-  assert.equal(
-    manager.snapshot().models.find((model) => model.modelId === 'qwen3.5-0.8b')!
-      .lifecycle,
-    'not-installed',
-  );
-  assert.match(
-    manager.snapshot().models.find((model) => model.modelId === 'qwen3.5-0.8b')!
-      .error,
-    /simulated download failure/,
-  );
-}
-
-console.log('✓ catalog exposes FunctionGemma and Qwen without shipping an unverified mobile artifact');
-console.log('✓ compatibility blocks unsupported platforms, missing runtimes and low storage');
-console.log('✓ FunctionGemma license acceptance is enforced before download');
-console.log('✓ Qwen can use the same manager without a separate code path');
-console.log('✓ download, install, load, unload, switch and remove lifecycle is deterministic');
-console.log('✓ background auto-unload releases the active model session');
-console.log('✓ failed downloads roll back to a safe lifecycle state');
+void main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

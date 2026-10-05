@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AchievementProvider } from '@/src/features/achievement/AchievementProvider';
 import { WorkspaceProvider } from '@/src/data/WorkspaceProvider';
+import { LocalAiProvider } from '@/src/features/assistant/local-ai/LocalAiProvider';
 import { AuthProvider } from '@/src/features/auth/AuthProvider';
 import { CloudSyncProvider } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { FocusProvider } from '@/src/features/focus/FocusProvider';
@@ -19,27 +20,29 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StartupUpdateGate>
-        <AuthProvider>
-          <WorkspaceProvider>
-            <AchievementProvider>
-            <OnboardingProvider>
-              <OnboardingTransitionProvider>
-              <FocusProvider>
-                <ReviewProvider>
-                  <ReminderProvider>
-                    <CloudSyncProvider>
-                      <RootNavigator />
-                    </CloudSyncProvider>
-                  </ReminderProvider>
-                </ReviewProvider>
-              </FocusProvider>
-              </OnboardingTransitionProvider>
-            </OnboardingProvider>
-          </AchievementProvider>
-          </WorkspaceProvider>
-        </AuthProvider>
-        </StartupUpdateGate>
+        <LocalAiProvider>
+          <StartupUpdateGate>
+          <AuthProvider>
+            <WorkspaceProvider>
+              <AchievementProvider>
+              <OnboardingProvider>
+                <OnboardingTransitionProvider>
+                <FocusProvider>
+                  <ReviewProvider>
+                    <ReminderProvider>
+                      <CloudSyncProvider>
+                        <RootNavigator />
+                      </CloudSyncProvider>
+                    </ReminderProvider>
+                  </ReviewProvider>
+                </FocusProvider>
+                </OnboardingTransitionProvider>
+              </OnboardingProvider>
+            </AchievementProvider>
+            </WorkspaceProvider>
+          </AuthProvider>
+          </StartupUpdateGate>
+        </LocalAiProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

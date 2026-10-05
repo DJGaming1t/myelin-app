@@ -275,6 +275,16 @@ function main() {
   const springPressable = read('src/components/motion/SpringPressable.tsx');
   const inboxCard = read('src/features/planning/StudyInboxCard.tsx');
   assert.ok(todayScreen.includes('min available'), 'Today does not expose remaining capacity when requested.');
+  assert.ok(
+    todayScreen.includes('CAPACITY WARNING') &&
+      todayScreen.includes('deadlineFeasibility.firstOverloadedDeadline'),
+    'Today must surface the first impossible near-term task deadline from the shared feasibility engine.',
+  );
+  assert.ok(
+    todayScreen.includes('Move or reduce') &&
+      todayScreen.includes('Review tasks'),
+    'Today capacity pressure must provide a concrete relief direction instead of a generic warning.',
+  );
   assert.ok(todayScreen.includes('showAdjust'), 'Today capacity controls are not progressively disclosed.');
   assert.ok(todayScreen.includes('maxWidth: layout.contentMax'), 'Today is not bounded responsively.');
   assert.ok(todayScreen.includes('minHeight: layout.minTouch'), 'Today choices do not meet the shared touch target.');
@@ -331,6 +341,7 @@ function main() {
 
   console.log('✓ small real topics remain schedulable');
   console.log('✓ Today keeps capacity available without making it the primary hierarchy');
+  console.log('✓ Today surfaces the first deadline that cannot fit and a deterministic relief target');
   console.log('✓ Today choices meet the 44-point touch target');
   console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
   console.log('✓ Not now animates to the next recommendation or a calm fallback and remains undoable');

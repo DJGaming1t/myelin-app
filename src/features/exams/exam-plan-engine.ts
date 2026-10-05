@@ -30,12 +30,21 @@ export type ExamCapacityProfile = {
   historyActiveDays: number;
   historicalMedianMinutes: number | null;
   lookbackDays: number;
+  completionReliability: number | null;
+  completionSampleCount: number;
+  estimateMultiplier: number;
+  estimateSampleCount: number;
+  postponementPressure: number;
+  highEffortShare: number;
+  hardStudyShareLimit: number;
 };
 
 export type ExamPlanTopic = {
   topicId: string;
   topicName: string;
   subject: string;
+  baseEstimatedMinutes: number;
+  estimateMultiplier: number;
   estimatedMinutes: number;
   retrievalReserveMinutes: number;
   totalRequiredMinutes: number;
@@ -66,12 +75,23 @@ export type ExamPlanDay = {
   sustainableRemainingMinutes: number;
   grossCapacityMinutes: number;
   reservedBufferMinutes: number;
+  competingExamReserveMinutes: number;
   usableCapacityMinutes: number;
   plannedMinutes: number;
+  hardStudyMinutes: number;
+  hardStudyLimitMinutes: number;
   totalStudyLoadMinutes: number;
   loadRatio: number;
   strain: ExamPlanStrain;
   blocks: ExamPlanBlock[];
+};
+
+export type CompetingExamSummary = {
+  examId: string;
+  examName: string;
+  examDate: number;
+  uniqueTopicCount: number;
+  requiredMinutes: number;
 };
 
 export type ExamPreparationPlan = {
@@ -81,7 +101,9 @@ export type ExamPreparationPlan = {
   generatedAt: number;
   daysAvailable: number;
   capacityProfile: ExamCapacityProfile;
+  bufferRatio: number;
   topics: ExamPlanTopic[];
+  competingExams: CompetingExamSummary[];
   totalRequiredMinutes: number;
   totalUsableCapacityMinutes: number;
   plannedMinutes: number;
@@ -141,6 +163,108 @@ function scheduledStudyMinutesForDay(workspace: WorkspaceState, day: number) {
   );
 }
 
+function recentWindowStart(now: number, lookbackDays: number) {
+  return addLocalDays(startOfLocalDay(now), -lookbackDays);
+}
+
+function estimateRatios(
+  workspace: WorkspaceState,
+  windowStart: number,
+  now: number,
+) {
+  const ratios: number[] = [];
+
+  for (const session of workspace.history) {
+    if (
+      session.at < windowStart ||
+      session.at > now ||
+      !session.plannedMinutes ||
+      session.plannedMinutes < 5 ||
+      session.minutes < 2
+    ) {
+      continue;
+    }
+    ratios.push(clamp(session.minutes / session.plannedMinutes, 0.5, 2));
+  }
+
+  for (const outcome of workspace.focusOutcomes ?? []) {
+    if (
+      outcome.status !== 'finished' ||
+      outcome.endedAt < windowStart ||
+      outcome.endedAt > now ||
+      outcome.plannedMinutes < 5 ||
+      outcome.minutes < 2
+    ) {
+      continue;
+    }
+    ratios.push(clamp(outcome.minutes / outcome.plannedMinutes, 0.5, 2));
+  }
+
+  for (const task of workspace.tasks) {
+    if (
+      task.status !== 'completed' ||
+      task.completedAt < windowStart ||
+      task.completedAt > now ||
+      task.estimatedMinutes < 5 ||
+      task.actualMinutes < 2
+    ) {
+      continue;
+    }
+    ratios.push(clamp(task.actualMinutes / task.estimatedMinutes, 0.5, 2));
+  }
+
+  return ratios;
+}
+
+function completionEvidence(
+  workspace: WorkspaceState,
+  windowStart: number,
+  now: number,
+) {
+  const outcomes = (workspace.focusOutcomes ?? []).filter(
+    (outcome) =>
+      outcome.startedAt >= windowStart &&
+      outcome.startedAt <= now &&
+      (outcome.status === 'finished' || outcome.status === 'abandoned'),
+  );
+  const finished = outcomes.filter((outcome) => outcome.status === 'finished').length;
+  return {
+    sampleCount: outcomes.length,
+    reliability: outcomes.length >= 4 ? finished / outcomes.length : null,
+  };
+}
+
+function recentPostponementPressure(
+  workspace: WorkspaceState,
+  windowStart: number,
+  now: number,
+) {
+  const weighted = workspace.tasks.reduce((sum, task) => {
+    if (!task.lastPostponedAt || task.lastPostponedAt < windowStart || task.lastPostponedAt > now) {
+      return sum;
+    }
+    return sum + Math.min(3, Math.max(1, task.postponements ?? 1));
+  }, 0);
+
+  const denominator = Math.max(4, workspace.tasks.length * 1.5);
+  return clamp(weighted / denominator, 0, 1);
+}
+
+function recentHighEffortShare(
+  workspace: WorkspaceState,
+  windowStart: number,
+  now: number,
+) {
+  let total = 0;
+  let hard = 0;
+  for (const session of workspace.history) {
+    if (session.at < windowStart || session.at > now || session.minutes <= 0) continue;
+    total += session.minutes;
+    if (session.effort >= 4) hard += session.minutes;
+  }
+  return total >= 60 ? clamp(hard / total, 0, 1) : 0;
+}
+
 export function buildExamCapacityProfile(
   workspace: WorkspaceState,
   now = Date.now(),
@@ -156,10 +280,21 @@ export function buildExamCapacityProfile(
 
   const active = dailyMinutes.filter((minutes) => minutes >= 10);
   const historicalMedianMinutes = active.length ? median(active) : null;
-  const hasEnoughHistory = active.length >= 4;
+  const windowStart = recentWindowStart(now, lookbackDays);
+  const completion = completionEvidence(workspace, windowStart, now);
+  const ratios = estimateRatios(workspace, windowStart, now);
+  const estimateMultiplier =
+    ratios.length >= 4 ? clamp(median(ratios), 0.9, 1.35) : 1;
+  const postponementPressure = recentPostponementPressure(workspace, windowStart, now);
+  const highEffortShare = recentHighEffortShare(workspace, windowStart, now);
+
+  const hasEnoughHistory =
+    active.length >= 4 ||
+    completion.sampleCount >= 4 ||
+    ratios.length >= 4;
 
   let sustainableDailyMinutes = Math.max(30, workspace.settings.dailyMinutes || 90);
-  if (hasEnoughHistory && historicalMedianMinutes !== null) {
+  if (active.length >= 4 && historicalMedianMinutes !== null) {
     const blended = Math.round(
       workspace.settings.dailyMinutes * 0.45 + historicalMedianMinutes * 0.55,
     );
@@ -167,16 +302,36 @@ export function buildExamCapacityProfile(
     sustainableDailyMinutes = clamp(blended, 30, upperBound);
   }
 
+  if (completion.reliability !== null) {
+    const reliabilityFactor = clamp(0.86 + completion.reliability * 0.16, 0.86, 1.02);
+    sustainableDailyMinutes = Math.round(sustainableDailyMinutes * reliabilityFactor);
+  }
+
+  sustainableDailyMinutes = Math.round(
+    sustainableDailyMinutes *
+      (1 - postponementPressure * 0.1) *
+      (1 - highEffortShare * 0.06),
+  );
+
   if (workspace.settings.energy === 'low') {
     sustainableDailyMinutes = Math.max(25, Math.round(sustainableDailyMinutes * 0.82));
   }
 
+  const hardStudyShareLimit = clamp(0.66 - highEffortShare * 0.16, 0.48, 0.66);
+
   return {
     source: hasEnoughHistory ? 'personalized' : 'default',
-    sustainableDailyMinutes,
+    sustainableDailyMinutes: Math.max(25, sustainableDailyMinutes),
     historyActiveDays: active.length,
     historicalMedianMinutes,
     lookbackDays,
+    completionReliability: completion.reliability,
+    completionSampleCount: completion.sampleCount,
+    estimateMultiplier,
+    estimateSampleCount: ratios.length,
+    postponementPressure,
+    highEffortShare,
+    hardStudyShareLimit,
   };
 }
 
@@ -198,12 +353,13 @@ function topicWorkload(
   workspace: WorkspaceState,
   topic: Topic,
   now: number,
+  capacityProfile: ExamCapacityProfile,
   override?: ExamPlanTopicOverride,
 ): ExamPlanTopic {
   const risk = forgettingPressure(topic.cards, now);
   const dueCount = dueQuestionCount(topic, now);
   const explicitEstimate = override?.estimatedMinutes;
-  const estimatedMinutes = Math.max(
+  const baseEstimatedMinutes = Math.max(
     10,
     Math.round(
       explicitEstimate && explicitEstimate > 0
@@ -212,6 +368,10 @@ function topicWorkload(
           ? topic.estimate
           : workspace.settings.focusMinutes,
     ),
+  );
+  const estimatedMinutes = Math.max(
+    10,
+    Math.round(baseEstimatedMinutes * capacityProfile.estimateMultiplier),
   );
   const retrievalReserveMinutes = Math.min(
     30,
@@ -227,12 +387,15 @@ function topicWorkload(
   if (importance === 3) reasons.push('high priority');
   if (dueCount > 0) reasons.push('retrieval due');
   if (risk >= 0.25) reasons.push('recall may be fading');
+  if (capacityProfile.estimateMultiplier >= 1.1) reasons.push('adjusted to your recent pace');
   if (!reasons.length) reasons.push(topic.status === 'new' ? 'not started' : 'exam scope');
 
   return {
     topicId: topic.id,
     topicName: topic.name,
     subject: topic.subject,
+    baseEstimatedMinutes,
+    estimateMultiplier: capacityProfile.estimateMultiplier,
     estimatedMinutes,
     retrievalReserveMinutes,
     totalRequiredMinutes: estimatedMinutes + retrievalReserveMinutes,
@@ -266,6 +429,98 @@ function topicPriorityScore(topic: ExamPlanTopic, dayIndex: number, totalDays: n
   );
 }
 
+type MutableCompetingExamDemand = CompetingExamSummary & {
+  remainingMinutes: number;
+};
+
+function competingExamDemands(
+  workspace: WorkspaceState,
+  targetExamId: string,
+  targetTopicIds: Set<string>,
+  now: number,
+  horizonEnd: number,
+  capacityProfile: ExamCapacityProfile,
+): MutableCompetingExamDemand[] {
+  const seenTopicIds = new Set(targetTopicIds);
+  const exams = workspace.exams
+    .filter(
+      (exam) =>
+        exam.id !== targetExamId &&
+        exam.date > now &&
+        exam.date <= horizonEnd,
+    )
+    .sort((a, b) => a.date - b.date);
+
+  const demands: MutableCompetingExamDemand[] = [];
+  for (const exam of exams) {
+    const uniqueTopics = workspace.topics.filter(
+      (topic) => examAppliesToTopic(exam, topic) && !seenTopicIds.has(topic.id),
+    );
+    if (!uniqueTopics.length) continue;
+
+    uniqueTopics.forEach((topic) => seenTopicIds.add(topic.id));
+    const requiredMinutes = uniqueTopics
+      .map((topic) => topicWorkload(workspace, topic, now, capacityProfile))
+      .reduce((sum, topic) => sum + topic.totalRequiredMinutes, 0);
+
+    if (requiredMinutes <= 0) continue;
+    demands.push({
+      examId: exam.id,
+      examName: exam.name,
+      examDate: exam.date,
+      uniqueTopicCount: uniqueTopics.length,
+      requiredMinutes,
+      remainingMinutes: requiredMinutes,
+    });
+  }
+
+  return demands;
+}
+
+function dynamicBufferRatio(
+  profile: ExamCapacityProfile,
+  explicit?: number,
+) {
+  if (explicit !== undefined) return clamp(explicit, 0, 0.4);
+
+  const reliability = profile.completionReliability ?? 0.8;
+  return clamp(
+    0.12 +
+      (1 - reliability) * 0.08 +
+      profile.postponementPressure * 0.07 +
+      profile.highEffortShare * 0.05,
+    0.12,
+    0.3,
+  );
+}
+
+function reserveForCompetingExams(
+  demands: MutableCompetingExamDemand[],
+  day: number,
+  postBufferCapacity: number,
+) {
+  let availableReserve = Math.floor(postBufferCapacity * 0.45);
+  let reserved = 0;
+
+  for (const demand of demands) {
+    if (availableReserve <= 0 || demand.remainingMinutes <= 0 || day >= demand.examDate) continue;
+
+    const daysLeft = Math.max(1, examCalendarDaysUntil(demand.examDate, day));
+    const dailyNeed = Math.ceil(demand.remainingMinutes / daysLeft);
+    const allocation = Math.min(
+      availableReserve,
+      dailyNeed,
+      demand.remainingMinutes,
+    );
+
+    demand.remainingMinutes -= allocation;
+    availableReserve -= allocation;
+    reserved += allocation;
+  }
+
+  return reserved;
+}
+
 export function buildExamPreparationPlan(
   workspace: WorkspaceState,
   examId: string,
@@ -278,19 +533,37 @@ export function buildExamPreparationPlan(
   const examDays = examCalendarDaysUntil(exam.date, now);
   if (examDays < 0) return null;
 
+  const capacityProfile = buildExamCapacityProfile(workspace, now);
   const overrides = new Map(
     (options.topicOverrides ?? []).map((override) => [override.topicId, override]),
   );
   const scopedTopics = workspace.topics.filter((topic) => examAppliesToTopic(exam, topic));
   const topics = scopedTopics.map((topic) =>
-    topicWorkload(workspace, topic, now, overrides.get(topic.id)),
+    topicWorkload(
+      workspace,
+      topic,
+      now,
+      capacityProfile,
+      overrides.get(topic.id),
+    ),
   );
 
-  const capacityProfile = buildExamCapacityProfile(workspace, now);
-  const bufferRatio = clamp(options.bufferRatio ?? 0.15, 0, 0.4);
+  const bufferRatio = dynamicBufferRatio(capacityProfile, options.bufferRatio);
   const maxDays = clamp(Math.round(options.maxDays ?? 45), 1, 120);
   const daysAvailable = Math.min(Math.max(1, examDays), maxDays);
   const today = startOfLocalDay(now);
+  const horizonEnd = addLocalDays(startOfLocalDay(exam.date), 7);
+  const competitionState = competingExamDemands(
+    workspace,
+    exam.id,
+    new Set(topics.map((topic) => topic.topicId)),
+    now,
+    horizonEnd,
+    capacityProfile,
+  );
+  const competingExams = competitionState.map(
+    ({ remainingMinutes: _remainingMinutes, ...summary }) => summary,
+  );
 
   const days: ExamPlanDay[] = [];
   for (let offset = 0; offset < daysAvailable; offset += 1) {
@@ -313,13 +586,29 @@ export function buildExamPreparationPlan(
       0,
       Math.min(freeClockMinutes, sustainableRemainingMinutes),
     );
-    const usableCapacityMinutes = Math.max(
+    const postBufferCapacity = Math.max(
       0,
       Math.floor(grossCapacityMinutes * (1 - bufferRatio)),
     );
     const reservedBufferMinutes = Math.max(
       0,
-      grossCapacityMinutes - usableCapacityMinutes,
+      grossCapacityMinutes - postBufferCapacity,
+    );
+    const competingExamReserveMinutes = reserveForCompetingExams(
+      competitionState,
+      day,
+      postBufferCapacity,
+    );
+    const usableCapacityMinutes = Math.max(
+      0,
+      postBufferCapacity - competingExamReserveMinutes,
+    );
+    const hardStudyLimitMinutes = Math.min(
+      usableCapacityMinutes,
+      Math.max(
+        Math.min(usableCapacityMinutes, Math.round(workspace.settings.focusMinutes || 45)),
+        Math.floor(usableCapacityMinutes * capacityProfile.hardStudyShareLimit),
+      ),
     );
 
     days.push({
@@ -330,8 +619,11 @@ export function buildExamPreparationPlan(
       sustainableRemainingMinutes,
       grossCapacityMinutes,
       reservedBufferMinutes,
+      competingExamReserveMinutes,
       usableCapacityMinutes,
       plannedMinutes: 0,
+      hardStudyMinutes: 0,
+      hardStudyLimitMinutes,
       totalStudyLoadMinutes: existingStudyMinutes + scheduledStudyMinutes,
       loadRatio:
         capacityProfile.sustainableDailyMinutes > 0
@@ -352,6 +644,7 @@ export function buildExamPreparationPlan(
     topics.map((topic) => [topic.topicId, topic.totalRequiredMinutes]),
   );
   const focusChunk = clamp(Math.round(workspace.settings.focusMinutes || 45), 10, 90);
+  let fatigueLimited = false;
 
   for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
     const day = days[dayIndex]!;
@@ -375,7 +668,16 @@ export function buildExamPreparationPlan(
         const left = remaining.get(topic.topicId) ?? 0;
         if (left <= 0) continue;
 
-        const minutes = Math.min(focusChunk, left, available);
+        const hardRemaining =
+          topic.difficulty === 3
+            ? Math.max(0, day.hardStudyLimitMinutes - day.hardStudyMinutes)
+            : Number.POSITIVE_INFINITY;
+        if (topic.difficulty === 3 && hardRemaining < 5) {
+          fatigueLimited = true;
+          continue;
+        }
+
+        const minutes = Math.min(focusChunk, left, available, hardRemaining);
         if (minutes < 5) continue;
 
         const block: ExamPlanBlock = {
@@ -391,6 +693,7 @@ export function buildExamPreparationPlan(
 
         day.blocks.push(block);
         day.plannedMinutes += minutes;
+        if (topic.difficulty === 3) day.hardStudyMinutes += minutes;
         available -= minutes;
         remaining.set(topic.topicId, left - minutes);
         progressed = true;
@@ -435,8 +738,27 @@ export function buildExamPreparationPlan(
   if (capacityProfile.source === 'default') {
     warnings.push('Capacity is using your daily setting until MYELIN has enough study history.');
   }
+  if (capacityProfile.estimateMultiplier >= 1.1) {
+    warnings.push(
+      `Recent sessions have taken longer than planned, so estimates were adjusted by about ${Math.round(
+        (capacityProfile.estimateMultiplier - 1) * 100,
+      )}%.`,
+    );
+  }
   if (daysAvailable <= 2 && totalRequiredMinutes > 0) {
     warnings.push('There is very little recovery margin before the exam.');
+  }
+  if (competingExams.length > 0) {
+    const reserved = days.reduce(
+      (sum, day) => sum + day.competingExamReserveMinutes,
+      0,
+    );
+    warnings.push(
+      `${competingExams.length} other upcoming ${competingExams.length === 1 ? 'exam is' : 'exams are'} reserving about ${reserved} minutes of study capacity.`,
+    );
+  }
+  if (fatigueLimited) {
+    warnings.push('High-effort topics are being spread out instead of being packed into one day.');
   }
   if (totalUsableCapacityMinutes === 0 && totalRequiredMinutes > 0) {
     warnings.push('No sustainable study capacity is available before this exam.');
@@ -453,7 +775,9 @@ export function buildExamPreparationPlan(
     generatedAt: now,
     daysAvailable,
     capacityProfile,
+    bufferRatio,
     topics,
+    competingExams,
     totalRequiredMinutes,
     totalUsableCapacityMinutes,
     plannedMinutes,

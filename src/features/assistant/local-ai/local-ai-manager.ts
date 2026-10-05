@@ -39,6 +39,15 @@ export type LocalAiModelFileStore = {
       onProgress?: (progress: LocalAiDownloadProgress) => void;
     },
   ): Promise<LocalAiInstallRecord>;
+  importFile(
+    model: LocalAiModelDefinition,
+    artifact: LocalAiArtifactDescriptor,
+    source: {
+      uri: string;
+      name: string;
+      sizeBytes: number | null;
+    },
+  ): Promise<LocalAiInstallRecord>;
   remove(modelId: LocalAiModelId): Promise<void>;
 };
 
@@ -57,6 +66,7 @@ export type LocalAiModelLifecycle =
   | 'not-installed'
   | 'blocked'
   | 'downloading'
+  | 'importing'
   | 'installed'
   | 'loading'
   | 'loaded'
@@ -89,7 +99,8 @@ export class LocalAiManagerError extends Error {
       | 'artifact_unconfigured'
       | 'not_installed'
       | 'runtime_unavailable'
-      | 'license_required',
+      | 'license_required'
+      | 'invalid_artifact',
   ) {
     super(message);
     this.name = 'LocalAiManagerError';
@@ -223,11 +234,12 @@ export class LocalAiManager {
 
       this.states.set(model.id, {
         modelId: model.id,
-        lifecycle: compatibility.compatible
-          ? install
+        lifecycle:
+          install && compatibility.runtimeId
             ? 'installed'
-            : 'not-installed'
-          : 'blocked',
+            : compatibility.compatible
+              ? 'not-installed'
+              : 'blocked',
         compatibility,
         install,
         progress: null,
@@ -321,6 +333,81 @@ export class LocalAiManager {
           this.update(modelId, { progress });
         },
       });
+      this.update(modelId, {
+        lifecycle: 'installed',
+        install,
+        progress: null,
+        error: '',
+      });
+      return install;
+    } catch (error) {
+      this.update(modelId, {
+        lifecycle: state.install ? 'installed' : 'not-installed',
+        progress: null,
+        error: errorMessage(error),
+      });
+      throw error;
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async importFile(
+    modelId: LocalAiModelId,
+    source: {
+      uri: string;
+      name: string;
+      sizeBytes: number | null;
+    },
+  ) {
+    this.ensureIdle();
+    const model = this.model(modelId);
+    const state = this.state(modelId);
+    this.assertLicenseAccepted(model);
+
+    if (!model.artifact) {
+      throw new LocalAiManagerError(
+        'No mobile artifact definition exists for this model yet.',
+        'artifact_unconfigured',
+      );
+    }
+    if (model.artifact.format !== 'litertlm') {
+      throw new LocalAiManagerError(
+        'This model does not use a LiteRT-LM artifact that MYELIN can import.',
+        'invalid_artifact',
+      );
+    }
+    if (!source.name.toLowerCase().endsWith('.litertlm')) {
+      throw new LocalAiManagerError(
+        'Choose a .litertlm model file.',
+        'invalid_artifact',
+      );
+    }
+    if (!state.compatibility.runtimeId) {
+      throw new LocalAiManagerError(
+        state.compatibility.issues.find((issue) => issue.code === 'runtime_missing')
+          ?.message ?? 'No compatible runtime is available in this app build.',
+        'runtime_unavailable',
+      );
+    }
+
+    if (this.activeModelId === modelId) {
+      await this.unload();
+    }
+
+    this.busy = true;
+    this.update(modelId, {
+      lifecycle: 'importing',
+      progress: null,
+      error: '',
+    });
+
+    try {
+      const install = await this.fileStore.importFile(
+        model,
+        model.artifact,
+        source,
+      );
       this.update(modelId, {
         lifecycle: 'installed',
         install,

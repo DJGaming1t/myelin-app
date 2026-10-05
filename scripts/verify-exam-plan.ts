@@ -462,6 +462,15 @@ const now = local(2026, 10, 5, 15, 0);
     plan.days.reduce((sum, day) => sum + day.competingExamReserveMinutes, 0) > 0,
     'A separate nearby exam should reserve some weekly capacity.',
   );
+  const sharedDeadline = workspace.exams.find((exam) => exam.id === 'exam_shared')!.date;
+  const targetBlocks = plan.days
+    .flatMap((day) => day.blocks)
+    .filter((block) => block.topicId === 'target-maths');
+  assert.ok(targetBlocks.length > 0);
+  assert.ok(
+    targetBlocks.every((block) => block.day < startOfLocalDay(sharedDeadline)),
+    'A topic shared with an earlier exam must be scheduled before that earlier exam, not the later target exam.',
+  );
   assert.ok(
     plan.warnings.some((warning) => /other upcoming exam/i.test(warning)),
     'Competing exam capacity should be explained to the user.',

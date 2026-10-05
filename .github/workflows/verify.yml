@@ -81,6 +81,9 @@ jobs:
       - name: Assistant action protocol and safety boundary
         run: npm run verify:assistant-actions
 
+      - name: Local AI model manager lifecycle
+        run: npm run verify:local-ai
+
       - name: Progress and calibration evidence
         run: npm run verify:progress
 

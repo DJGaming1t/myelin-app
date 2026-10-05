@@ -370,13 +370,23 @@ export default function TodayScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Review tasks causing the capacity warning"
+                accessibilityLabel={
+                  deadlineRelief?.kind === 'task'
+                    ? 'Review tasks causing the capacity warning'
+                    : 'Review exams causing the capacity warning'
+                }
                 onPress={() => {
-                  setShowInbox(true);
-                  setShowOverdue(false);
+                  if (deadlineRelief?.kind === 'task') {
+                    setShowInbox(true);
+                    setShowOverdue(false);
+                    return;
+                  }
+                  router.push('/(app)/exams');
                 }}
                 style={({ pressed }) => [styles.deadlineWarningAction, pressed && styles.pressed]}>
-                <Text style={styles.deadlineWarningActionText}>Review tasks</Text>
+                <Text style={styles.deadlineWarningActionText}>
+                  {deadlineRelief?.kind === 'task' ? 'Review tasks' : 'Review exams'}
+                </Text>
               </Pressable>
             </View>
           ) : null}
@@ -416,6 +426,12 @@ export default function TodayScreen() {
                 <Text style={styles.capacityTitle}>{currentPlan.remainingBudgetMinutes} min available</Text>
                 <Text style={styles.capacityMeta}>
                   {currentPlan.alreadyUsedMinutes} min done{workspace.settings.energy === 'low' ? ' · low energy' : ''}
+                </Text>
+                <Text style={styles.capacityLedgerMeta}>
+                  Tasks + exam work share one mileage pool
+                  {currentPlan.workloadLedger.deduplicatedMinutes > 0
+                    ? ` · ${currentPlan.workloadLedger.deduplicatedMinutes} min merged`
+                    : ''}
                 </Text>
               </View>
               <SpringPressable
@@ -768,6 +784,7 @@ const styles = StyleSheet.create({
   capacity: { marginTop: space.sm, gap: space.xs },
   capacityTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   capacityCopy: { flex: 1, minWidth: 0 },
+  capacityLedgerMeta: { color: colors.subtle, ...type.meta, fontSize: 11, marginTop: 2 },
   capacityTitle: { color: colors.text, ...type.bodyStrong },
   capacityMeta: { color: colors.muted, ...type.meta, marginTop: space.xxs },
   capacityAction: { minHeight: layout.minTouch, paddingHorizontal: space.sm, justifyContent: 'center' },

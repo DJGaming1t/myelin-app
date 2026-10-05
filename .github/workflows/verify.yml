@@ -161,7 +161,17 @@ jobs:
 
       - name: Compile maintained LiteRT wrapper
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
-        run: cd android && ./gradlew :app:compileDebugKotlin --no-daemon
+        shell: bash
+        run: |
+          cd android
+          project="$(./gradlew projects --console=plain | sed -n "s/.*Project ':\([^']*litert[^']*\)'.*/:\1/p" | head -1)"
+          if [ -z "$project" ]; then
+            echo "::error::Could not find the generated LiteRT wrapper Gradle project."
+            ./gradlew projects --console=plain
+            exit 1
+          fi
+          echo "Compiling native wrapper project $project"
+          ./gradlew "$project:compileDebugKotlin" --no-daemon --console=plain
 
       - name: Expo Doctor
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}

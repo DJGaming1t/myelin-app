@@ -276,9 +276,14 @@ function main() {
   const inboxCard = read('src/features/planning/StudyInboxCard.tsx');
   assert.ok(todayScreen.includes('min available'), 'Today does not expose remaining capacity when requested.');
   assert.ok(
+    todayScreen.includes('Tasks + exam work share one mileage pool') &&
+      todayScreen.includes('workloadLedger.deduplicatedMinutes'),
+    'Today must expose that tasks and exam work share one deduplicated mileage ledger.',
+  );
+  assert.ok(
     todayScreen.includes('CAPACITY WARNING') &&
       todayScreen.includes('deadlineFeasibility.firstOverloadedDeadline'),
-    'Today must surface the first impossible near-term task deadline from the shared feasibility engine.',
+    'Today must surface the first impossible deadline from the unified workload ledger.',
   );
   assert.ok(
     todayScreen.includes('Move or reduce') &&

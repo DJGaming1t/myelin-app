@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   PropsWithChildren,
   createContext,
@@ -45,6 +46,7 @@ type LocalAiContextValue = {
   refresh: () => Promise<void>;
   selectModel: (modelId: LocalAiModelId | null) => Promise<void>;
   downloadModel: (modelId: LocalAiModelId) => Promise<void>;
+  importModelFile: (modelId: LocalAiModelId) => Promise<void>;
   cancelDownload: (modelId: LocalAiModelId) => void;
   removeModel: (modelId: LocalAiModelId) => Promise<void>;
   acceptLicense: (modelId: LocalAiModelId) => Promise<void>;
@@ -182,6 +184,49 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     [manager, updateStorage],
   );
 
+  const importModelFile = useCallback(
+    async (modelId: LocalAiModelId) => {
+      setError('');
+      setMessage('');
+
+      if (Platform.OS === 'web') {
+        const cause = new Error('Local model import is only available in the native app.');
+        setError(friendlyError(cause));
+        throw cause;
+      }
+
+      try {
+        const picked = await DocumentPicker.getDocumentAsync({
+          copyToCacheDirectory: true,
+          multiple: false,
+          type: '*/*',
+        });
+        if (picked.canceled) {
+          setMessage('Model import cancelled.');
+          return;
+        }
+
+        const asset = picked.assets[0];
+        if (!asset) {
+          throw new Error('No model file was selected.');
+        }
+
+        await manager.importFile(modelId, {
+          uri: asset.uri,
+          name: asset.name,
+          sizeBytes: asset.size ?? null,
+        });
+        setMessage('Model file verified and imported into MYELIN.');
+      } catch (cause) {
+        setError(friendlyError(cause));
+        throw cause;
+      } finally {
+        updateStorage();
+      }
+    },
+    [manager, updateStorage],
+  );
+
   const cancelDownload = useCallback((modelId: LocalAiModelId) => {
     controllers.current.get(modelId)?.abort();
   }, []);
@@ -291,6 +336,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       refresh,
       selectModel,
       downloadModel,
+      importModelFile,
       cancelDownload,
       removeModel,
       acceptLicense,
@@ -302,6 +348,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       cancelDownload,
       downloadModel,
       error,
+      importModelFile,
       freeStorageBytes,
       message,
       models,

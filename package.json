@@ -35,7 +35,8 @@
     "verify:auth": "tsx scripts/verify-auth.ts",
     "verify:visual": "tsx scripts/verify-visual-overhaul.ts",
     "verify:exam-plan": "tsx scripts/verify-exam-plan.ts",
-    "verify:assistant-actions": "tsx scripts/verify-assistant-actions.ts"
+    "verify:assistant-actions": "tsx scripts/verify-assistant-actions.ts",
+    "verify:local-ai": "tsx scripts/verify-local-ai.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

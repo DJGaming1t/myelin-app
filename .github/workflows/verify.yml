@@ -135,7 +135,7 @@ jobs:
         shell: bash
         run: |
           rm -rf modules/myelin-litertlm
-          npm install react-native-litert-lm@0.5.1 --no-save --no-audit --no-fund
+          npm install react-native-litert-lm@0.7.0 --no-save --no-audit --no-fund
           node <<'NODE'
           const fs = require('node:fs');
           const path = 'app.json';

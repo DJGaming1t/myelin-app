@@ -586,11 +586,11 @@ async function main() {
   {
     const now = 1_760_000_100_000;
     const workspace = createEmptyWorkspace(now);
-    let generationRequest: Parameters<LocalAiRuntimeSession['generate']>[0] | null = null;
+    const captured: { request?: Parameters<LocalAiRuntimeSession['generate']>[0] } = {};
     const session: LocalAiRuntimeSession = {
       modelId: 'functiongemma-270m',
       async generate(request) {
-        generationRequest = request;
+        captured.request = request;
         return {
           text: JSON.stringify({
             version: 1,
@@ -627,9 +627,9 @@ async function main() {
     assert.equal(prepared.preview.hasMutations, true);
     assert.equal(workspace.topics.length, 0, 'Local AI bridge must not mutate the source workspace.');
     assert.equal(prepared.preview.nextWorkspace.topics.length, 1);
-    assert.ok(generationRequest?.jsonSchema, 'Local AI requests must use the assistant action JSON schema.');
-    assert.match(generationRequest?.prompt ?? '', /Never invent a timetable/i);
-    assert.match(generationRequest?.prompt ?? '', /Copy this requestId exactly: local-test-1/);
+    assert.ok(captured.request?.jsonSchema, 'Local AI requests must use the assistant action JSON schema.');
+    assert.match(captured.request?.prompt ?? '', /Never invent a timetable/i);
+    assert.match(captured.request?.prompt ?? '', /Copy this requestId exactly: local-test-1/);
 
     const invalidJsonSession: LocalAiRuntimeSession = {
       modelId: 'functiongemma-270m',

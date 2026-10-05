@@ -53,6 +53,8 @@ export type ExamPlanTopic = {
   forgettingRisk: number;
   dueQuestionCount: number;
   mode: 'study' | 'review';
+  requiredBy: number;
+  requiredByExamName: string;
   reasons: string[];
 };
 
@@ -357,6 +359,8 @@ function topicWorkload(
   now: number,
   capacityProfile: ExamCapacityProfile,
   override?: ExamPlanTopicOverride,
+  requiredBy = Number.POSITIVE_INFINITY,
+  requiredByExamName = '',
 ): ExamPlanTopic {
   const risk = forgettingPressure(topic.cards, now);
   const dueCount = dueQuestionCount(topic, now);
@@ -390,6 +394,9 @@ function topicWorkload(
   if (dueCount > 0) reasons.push('retrieval due');
   if (risk >= 0.25) reasons.push('recall may be fading');
   if (capacityProfile.estimateMultiplier >= 1.1) reasons.push('adjusted to your recent pace');
+  if (Number.isFinite(requiredBy) && requiredByExamName) {
+    reasons.push(`needed by ${requiredByExamName}`);
+  }
   if (!reasons.length) reasons.push(topic.status === 'new' ? 'not started' : 'exam scope');
 
   return {
@@ -406,6 +413,8 @@ function topicWorkload(
     forgettingRisk: risk,
     dueQuestionCount: dueCount,
     mode,
+    requiredBy,
+    requiredByExamName,
     reasons,
   };
 }
@@ -417,18 +426,64 @@ function strainForRatio(ratio: number): ExamPlanStrain {
   return 'overloaded';
 }
 
-function topicPriorityScore(topic: ExamPlanTopic, dayIndex: number, totalDays: number) {
+function topicPriorityScore(
+  topic: ExamPlanTopic,
+  dayIndex: number,
+  totalDays: number,
+  day: number,
+) {
   const progress = totalDays <= 1 ? 1 : dayIndex / (totalDays - 1);
   const earlyStudyBoost = topic.mode === 'study' ? Math.round((1 - progress) * 12) : 0;
   const lateReviewBoost = topic.mode === 'review' ? Math.round(progress * 10) : 0;
+  const deadlineDays = Number.isFinite(topic.requiredBy)
+    ? examCalendarDaysUntil(topic.requiredBy, day)
+    : null;
+  const deadlineBoost =
+    deadlineDays === null
+      ? 0
+      : deadlineDays <= 1
+        ? 55
+        : deadlineDays <= 3
+          ? 35
+          : deadlineDays <= 7
+            ? 18
+            : 0;
+
   return (
     topic.importance * 20 +
     topic.difficulty * 14 +
     topic.forgettingRisk * 30 +
     Math.min(20, topic.dueQuestionCount * 4) +
     earlyStudyBoost +
-    lateReviewBoost
+    lateReviewBoost +
+    deadlineBoost
   );
+}
+
+function earliestTopicExamDeadline(
+  workspace: WorkspaceState,
+  topic: Topic,
+  targetExamId: string,
+  targetExamDate: number,
+  now: number,
+) {
+  const earliest = workspace.exams
+    .filter(
+      (exam) =>
+        exam.date > now &&
+        examAppliesToTopic(exam, topic),
+    )
+    .sort((a, b) => a.date - b.date)[0];
+
+  if (earliest) {
+    return { date: earliest.date, examName: earliest.name };
+  }
+
+  const target = workspace.exams.find((exam) => exam.id === targetExamId);
+  return {
+    date: target?.date ?? targetExamDate,
+    examName: target?.name ?? '',
+  };
 }
 
 type MutableCompetingExamDemand = CompetingExamSummary & {
@@ -540,15 +595,24 @@ export function buildExamPreparationPlan(
     (options.topicOverrides ?? []).map((override) => [override.topicId, override]),
   );
   const scopedTopics = workspace.topics.filter((topic) => examAppliesToTopic(exam, topic));
-  const topics = scopedTopics.map((topic) =>
-    topicWorkload(
+  const topics = scopedTopics.map((topic) => {
+    const deadline = earliestTopicExamDeadline(
+      workspace,
+      topic,
+      exam.id,
+      exam.date,
+      now,
+    );
+    return topicWorkload(
       workspace,
       topic,
       now,
       capacityProfile,
       overrides.get(topic.id),
-    ),
-  );
+      deadline.date,
+      deadline.examName,
+    );
+  });
 
   const bufferRatio = dynamicBufferRatio(capacityProfile, options.bufferRatio);
   const maxDays = clamp(Math.round(options.maxDays ?? 45), 1, 120);
@@ -654,11 +718,15 @@ export function buildExamPreparationPlan(
 
     while (available >= 5) {
       const candidates = topics
-        .filter((topic) => (remaining.get(topic.topicId) ?? 0) > 0)
+        .filter(
+          (topic) =>
+            (remaining.get(topic.topicId) ?? 0) > 0 &&
+            day.day < startOfLocalDay(topic.requiredBy),
+        )
         .sort(
           (a, b) =>
-            topicPriorityScore(b, dayIndex, days.length) -
-              topicPriorityScore(a, dayIndex, days.length) ||
+            topicPriorityScore(b, dayIndex, days.length, day.day) -
+              topicPriorityScore(a, dayIndex, days.length, day.day) ||
             a.topicName.localeCompare(b.topicName),
         );
 
@@ -749,6 +817,15 @@ export function buildExamPreparationPlan(
   }
   if (daysAvailable <= 2 && totalRequiredMinutes > 0) {
     warnings.push('There is very little recovery margin before the exam.');
+  }
+  const missedEarlierDeadlineMinutes = topics.reduce((sum, topic) => {
+    if (topic.requiredBy >= exam.date) return sum;
+    return sum + (remaining.get(topic.topicId) ?? 0);
+  }, 0);
+  if (missedEarlierDeadlineMinutes > 0) {
+    warnings.push(
+      `About ${missedEarlierDeadlineMinutes} minutes of shared material cannot fit before an earlier exam deadline.`,
+    );
   }
   if (competingExams.length > 0) {
     const reserved = days.reduce(

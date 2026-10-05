@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
+import { createEmptyWorkspace } from '../src/data/schema';
+
 import {
   LOCAL_AI_MODELS,
   LocalAiModelDefinition,
@@ -24,6 +26,10 @@ import {
   normalizeLocalAiPreferences,
 } from '../src/features/assistant/local-ai/local-ai-preferences';
 import { Sha256, sha256Hex } from '../src/features/assistant/local-ai/sha256';
+import {
+  LocalAssistantBridgeError,
+  prepareLocalAssistantActions,
+} from '../src/features/assistant/local-ai/local-assistant-bridge';
 
 const MB = 1024 * 1024;
 const FAKE_SHA_256 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -353,6 +359,7 @@ async function main() {
     assert.match(providerSource, /copyToCacheDirectory: true/);
     assert.match(providerSource, /importModelFile/);
     assert.match(providerSource, /smokeTestModel/);
+    assert.match(providerSource, /prepareAssistantActions/);
     assert.match(liteRtAdapterSource, /id: 'litert-lm'/);
     assert.match(liteRtAdapterSource, /createLLM/);
     assert.match(liteRtAdapterSource, /backend: 'cpu'/);
@@ -576,6 +583,113 @@ async function main() {
     );
   }
   
+  {
+    const now = 1_760_000_100_000;
+    const workspace = createEmptyWorkspace(now);
+    let generationRequest: Parameters<LocalAiRuntimeSession['generate']>[0] | null = null;
+    const session: LocalAiRuntimeSession = {
+      modelId: 'functiongemma-270m',
+      async generate(request) {
+        generationRequest = request;
+        return {
+          text: JSON.stringify({
+            version: 1,
+            requestId: 'local-test-1',
+            actions: [
+              {
+                type: 'create_topic',
+                name: 'Magnetic Effects of Electric Current',
+                subject: 'Science',
+                status: 'new',
+                priority: 2,
+                estimatedMinutes: 45,
+                notes: '',
+              },
+            ],
+          }),
+          finishReason: 'stop',
+        };
+      },
+      async close() {},
+    };
+
+    const prepared = await prepareLocalAssistantActions({
+      workspace,
+      session,
+      userRequest: 'Add Magnetic Effects of Electric Current as a Science topic.',
+      requestId: 'local-test-1',
+      currentRoute: '/(app)/today',
+      now,
+    });
+
+    assert.equal(prepared.requestId, 'local-test-1');
+    assert.equal(prepared.preview.requiresConfirmation, true);
+    assert.equal(prepared.preview.hasMutations, true);
+    assert.equal(workspace.topics.length, 0, 'Local AI bridge must not mutate the source workspace.');
+    assert.equal(prepared.preview.nextWorkspace.topics.length, 1);
+    assert.ok(generationRequest?.jsonSchema, 'Local AI requests must use the assistant action JSON schema.');
+    assert.match(generationRequest?.prompt ?? '', /Never invent a timetable/i);
+    assert.match(generationRequest?.prompt ?? '', /Copy this requestId exactly: local-test-1/);
+
+    const invalidJsonSession: LocalAiRuntimeSession = {
+      modelId: 'functiongemma-270m',
+      async generate() {
+        return { text: 'not-json', finishReason: 'stop' };
+      },
+      async close() {},
+    };
+    await assert.rejects(
+      () =>
+        prepareLocalAssistantActions({
+          workspace,
+          session: invalidJsonSession,
+          userRequest: 'Do something.',
+          requestId: 'local-test-2',
+          now,
+        }),
+      (error: unknown) =>
+        error instanceof LocalAssistantBridgeError && error.code === 'invalid_json',
+    );
+
+    const wrongIdSession: LocalAiRuntimeSession = {
+      modelId: 'functiongemma-270m',
+      async generate() {
+        return {
+          text: JSON.stringify({
+            version: 1,
+            requestId: 'wrong-id',
+            actions: [
+              {
+                type: 'create_topic',
+                name: 'Light',
+                subject: 'Science',
+                status: 'new',
+                priority: 2,
+                estimatedMinutes: 45,
+                notes: '',
+              },
+            ],
+          }),
+          finishReason: 'stop',
+        };
+      },
+      async close() {},
+    };
+    await assert.rejects(
+      () =>
+        prepareLocalAssistantActions({
+          workspace,
+          session: wrongIdSession,
+          userRequest: 'Add Light.',
+          requestId: 'local-test-3',
+          now,
+        }),
+      (error: unknown) =>
+        error instanceof LocalAssistantBridgeError && error.code === 'mismatched_request_id',
+    );
+  }
+
+  console.log('✓ local model output is schema-bound, exact-JSON only, and previewed through the Assistant Action Layer');
   console.log('✓ streamed SHA-256 matches standard vectors and chunk boundaries');
   console.log('✓ maintained react-native-litert-lm 0.7.0 replaces the custom Kotlin bridge');
   console.log('✓ FunctionGemma candidate fingerprint is recorded without bypassing its gated download');

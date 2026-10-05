@@ -105,6 +105,8 @@ export default function TodayScreen() {
   const quickSession = shortSession(currentPlan);
   const overdueCount = currentWorkspace.tasks.filter(task => taskUrgency(task, now)?.overdue).length;
   const openTaskCount = currentWorkspace.tasks.filter(task => task.status === 'open').length;
+  const deadlineBreak = currentPlan.deadlineFeasibility.firstOverloadedDeadline;
+  const deadlineRelief = deadlineBreak?.reliefCandidates[0] ?? null;
   const restCount = laterBlocks.length + (mistakeSummary.due > 0 ? 1 : 0) + (nextExam ? 1 : 0);
 
   function setBudget(minutes: number) {
@@ -347,6 +349,37 @@ export default function TodayScreen() {
               </View>
             )}
           </Animated.View>
+
+          {deadlineBreak ? (
+            <View
+              accessibilityRole="alert"
+              style={styles.deadlineWarning}>
+              <View style={styles.deadlineWarningCopy}>
+                <Text style={styles.deadlineWarningKicker}>CAPACITY WARNING</Text>
+                <Text style={styles.deadlineWarningTitle}>
+                  {formatMinutes(deadlineBreak.overloadMinutes)} will not fit before{' '}
+                  {formatDeadline(deadlineBreak.deadlineAt)}.
+                </Text>
+                <Text style={styles.deadlineWarningText}>
+                  {deadlineRelief
+                    ? `${deadlineRelief.movable ? 'Move or reduce' : 'Reduce scope or add capacity for'} ${formatMinutes(deadlineRelief.suggestedMinutes)} from ${deadlineRelief.label}.`
+                    : deadlineBreak.extraMinutesPerAvailableDay
+                      ? `You need about ${formatMinutes(deadlineBreak.extraMinutesPerAvailableDay)} more per available day.`
+                      : 'The current deadline window has no remaining safe capacity.'}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Review tasks causing the capacity warning"
+                onPress={() => {
+                  setShowInbox(true);
+                  setShowOverdue(false);
+                }}
+                style={({ pressed }) => [styles.deadlineWarningAction, pressed && styles.pressed]}>
+                <Text style={styles.deadlineWarningActionText}>Review tasks</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {overdueCount > 0 ? <Pressable
             accessibilityRole="button" accessibilityLabel="Show overdue tasks"
@@ -591,6 +624,21 @@ function sentenceCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function formatMinutes(minutes: number) {
+  const rounded = Math.max(0, Math.round(minutes));
+  if (rounded < 60) return `${rounded} min`;
+  const hours = Math.floor(rounded / 60);
+  const rest = rounded % 60;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
+
+function formatDeadline(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(timestamp));
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1 },
@@ -605,6 +653,27 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
   loadingText: { color: colors.muted, ...type.meta },
 
+  deadlineWarning: {
+    marginTop: space.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,165,150,0.22)',
+    backgroundColor: 'rgba(255,165,150,0.055)',
+    padding: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  deadlineWarningCopy: { flex: 1, minWidth: 0 },
+  deadlineWarningKicker: { color: colors.danger, ...type.label, fontSize: 10 },
+  deadlineWarningTitle: { color: colors.text, ...type.bodyStrong, marginTop: 2 },
+  deadlineWarningText: { color: colors.textDim, ...type.meta, marginTop: 3 },
+  deadlineWarningAction: {
+    minHeight: layout.minTouch,
+    justifyContent: 'center',
+    paddingHorizontal: space.xs,
+  },
+  deadlineWarningActionText: { color: colors.accent, ...type.label },
   overdueToggle: { minHeight: layout.minTouch, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, marginTop: space.xxs },
   overdueText: { color: colors.danger, ...type.meta, fontWeight: '700' },
   summaryMeta: { color: colors.muted, ...type.meta, flexShrink: 1 },

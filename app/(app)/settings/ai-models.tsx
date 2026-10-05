@@ -247,7 +247,7 @@ export default function AiModelsScreen() {
         <View style={styles.note}>
           <Text style={styles.noteTitle}>Why are downloads still disabled?</Text>
           <Text style={styles.noteText}>
-            Direct downloads remain disabled for gated or unverified artifacts. For device testing, you can import a licensed FunctionGemma .litertlm file that matches MYELIN's candidate bundle; the app copies it into private storage and validates the expected size before enabling the runtime test.
+            Direct downloads remain disabled for gated or unverified artifacts. For device testing, import a licensed FunctionGemma .litertlm file that matches MYELIN's candidate bundle. MYELIN copies it into private storage, checks the exact size and SHA-256 fingerprint, and only then enables the runtime test.
           </Text>
         </View>
       </ScrollView>
@@ -330,6 +330,15 @@ function ModelCard({
         <Text style={styles.statusLabel}>STATUS</Text>
         <Text style={styles.statusValue}>{lifecycleLabel(model)}</Text>
       </View>
+
+      {installed && model.state.install?.sha256 ? (
+        <View style={styles.verifiedRow}>
+          <Text style={styles.verifiedBadge}>SHA-256 VERIFIED</Text>
+          <Text style={styles.verifiedFingerprint}>
+            {model.state.install.sha256.slice(0, 12)}…
+          </Text>
+        </View>
+      ) : null}
 
       {downloading && progress ? (
         <View style={styles.progressWrap}>
@@ -567,6 +576,27 @@ const styles = StyleSheet.create({
   },
   statusLabel: { color: colors.subtle, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.5 },
   statusValue: { flex: 1, color: colors.text, fontSize: 11.5, lineHeight: 16, fontWeight: '700', textAlign: 'right' },
+  verifiedRow: {
+    marginTop: -2,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  verifiedBadge: {
+    color: colors.accent,
+    fontSize: 9.5,
+    lineHeight: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  verifiedFingerprint: {
+    color: colors.subtle,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '600',
+  },
   blockedText: { color: colors.muted, fontSize: 11.5, lineHeight: 17, marginBottom: 10 },
   modelError: { color: colors.danger, fontSize: 11.5, lineHeight: 17, marginBottom: 10 },
   progressWrap: { marginBottom: 12 },

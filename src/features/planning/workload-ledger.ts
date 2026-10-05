@@ -1,7 +1,6 @@
 import { StudyTask, WorkspaceState } from '@/src/data/schema';
 import { examAppliesToTopic } from '@/src/features/exams/exam-engine';
 import {
-  CapacityDemandKind,
   CapacityDemandPriority,
   CapacityFeasibilityAnalysis,
   CapacityFeasibilityDay,
@@ -305,13 +304,11 @@ function taskCoverageOrder(
 
 function taskLedgerDemands(
   task: TaskWork,
+  now: number,
   horizonEnd: number,
 ): WorkloadLedgerDemand[] {
   const result: WorkloadLedgerDemand[] = [];
-  const availableFrom =
-    task.task.postponedUntil > 0
-      ? Math.max(startOfLocalDay(task.task.postponedUntil), startOfLocalDay(Date.now()))
-      : 0;
+  const today = startOfLocalDay(now);
 
   if (
     task.scheduledMinutes > 0 &&
@@ -354,12 +351,12 @@ function taskLedgerDemands(
       requiredMinutes: task.unscheduledMinutes,
       priority: task.task.priority,
       availableFrom:
-        task.task.postponedUntil > 0
+        task.task.postponedUntil > now
           ? Math.min(
               startOfLocalDay(task.task.postponedUntil),
               task.hardCapacityUntil,
             )
-          : startOfLocalDay(task.task.updatedAt || task.task.createdAt),
+          : today,
       deadlineAt: task.hardDeadlineAt,
       capacityUntil: task.hardCapacityUntil,
       movable: task.task.priority < 3,
@@ -443,7 +440,7 @@ export function buildUnifiedWorkloadLedger(
   }
 
   const taskDemands = taskWorkItems.flatMap((task) =>
-    taskLedgerDemands(task, horizonEnd),
+    taskLedgerDemands(task, now, horizonEnd),
   );
   const residualExamDemands: WorkloadLedgerDemand[] = examDemands
     .filter(

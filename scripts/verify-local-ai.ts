@@ -375,6 +375,9 @@ async function main() {
     assert.match(assistantScreenSource, /DOESN'T FIT/);
     assert.match(assistantScreenSource, /CAPACITY WARNINGS/);
     assert.match(assistantScreenSource, /NEXT PLANNED DAYS/);
+    assert.match(assistantScreenSource, /ONE WORKLOAD LEDGER/);
+    assert.match(assistantScreenSource, /Tasks and exam work are sharing the same mileage/);
+    assert.match(assistantScreenSource, /deduplicatedMinutes/);
     assert.match(assistantScreenSource, /isAssistantExamPlanSummary/);
     assert.match(assistantScreenSource, /slice\(0, 7\)/);
     assert.doesNotMatch(assistantScreenSource, /updateWorkspace\(/);

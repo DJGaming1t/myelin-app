@@ -33,7 +33,7 @@ class MyelinLiteRtLmModule : Module() {
       mapOf(
         "runtimeId" to "litert-lm",
         "backend" to "CPU",
-        "libraryVersion" to "0.17.1",
+        "libraryVersion" to "0.16.1",
         "supportsCancellation" to true,
         "automaticToolCalling" to false,
       )

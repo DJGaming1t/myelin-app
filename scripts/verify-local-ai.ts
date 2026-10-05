@@ -369,6 +369,14 @@ async function main() {
     assert.match(assistantScreenSource, /prepared\.sourceRevision/);
     assert.match(assistantScreenSource, /MYELIN stays in control/);
     assert.match(assistantScreenSource, /deterministic planner/);
+    assert.match(assistantScreenSource, /MYELIN CALCULATED PLAN/);
+    assert.match(assistantScreenSource, /DAILY MILEAGE/);
+    assert.match(assistantScreenSource, /USABLE CAPACITY/);
+    assert.match(assistantScreenSource, /DOESN'T FIT/);
+    assert.match(assistantScreenSource, /CAPACITY WARNINGS/);
+    assert.match(assistantScreenSource, /NEXT PLANNED DAYS/);
+    assert.match(assistantScreenSource, /isAssistantExamPlanSummary/);
+    assert.match(assistantScreenSource, /slice\(0, 7\)/);
     assert.doesNotMatch(assistantScreenSource, /updateWorkspace\(/);
     assert.match(providerSource, /liteRtLmRuntimeAdapter/);
     assert.match(providerSource, /DocumentPicker\.getDocumentAsync/);
@@ -716,6 +724,7 @@ async function main() {
   console.log('✓ app background pauses active downloads and mounts the local AI provider globally');
   console.log('✓ Settings exposes a dedicated model management screen');
   console.log('✓ Settings exposes a preview-first request → review → explicit apply flow for the selected local model');
+  console.log('✓ exam-plan previews surface bounded deterministic mileage, fit warnings and next planned days');
   console.log('✓ catalog exposes FunctionGemma and Qwen without shipping an unverified mobile artifact');
   console.log('✓ compatibility blocks unsupported platforms, missing runtimes and low storage');
   console.log('✓ FunctionGemma license acceptance is enforced before download');

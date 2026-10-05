@@ -45,6 +45,7 @@ class MemoryKeyValueStore {
 class FakeFileStore implements LocalAiModelFileStore {
   records = new Map<LocalAiModelId, LocalAiInstallRecord>();
   failNextDownload = false;
+  importedNames: string[] = [];
 
   async inspect(model: LocalAiModelDefinition) {
     return this.records.get(model.id) ?? null;
@@ -78,6 +79,23 @@ class FakeFileStore implements LocalAiModelFileStore {
       uri: `file:///models/${model.id}/${artifact.fileName}`,
       sizeBytes: artifact.sizeBytes ?? null,
       installedAt: 1_760_000_000_000,
+    };
+    this.records.set(model.id, record);
+    return record;
+  }
+
+  async importFile(
+    model: LocalAiModelDefinition,
+    artifact: NonNullable<LocalAiModelDefinition['artifact']>,
+    source: { uri: string; name: string; sizeBytes: number | null },
+  ) {
+    this.importedNames.push(source.name);
+    const record: LocalAiInstallRecord = {
+      modelId: model.id,
+      artifactId: artifact.id,
+      uri: `file:///models/${model.id}/${artifact.fileName}`,
+      sizeBytes: source.sizeBytes ?? artifact.sizeBytes ?? null,
+      installedAt: 1_760_000_000_100,
     };
     this.records.set(model.id, record);
     return record;
@@ -153,6 +171,24 @@ function configuredModels(): LocalAiModelDefinition[] {
         sizeBytes: 520 * MB,
         releaseStage: 'candidate',
         notes: ['verification fixture'],
+      },
+    },
+  ];
+}
+
+function importOnlyModels(): LocalAiModelDefinition[] {
+  const functionGemma = LOCAL_AI_MODELS.find(
+    (model) => model.id === 'functiongemma-270m',
+  )!;
+
+  return [
+    {
+      ...functionGemma,
+      runtimeCandidates: ['fake-runtime'],
+      artifact: {
+        ...functionGemma.artifact!,
+        runtimeId: 'fake-runtime',
+        downloadUrl: undefined,
       },
     },
   ];
@@ -269,14 +305,23 @@ async function main() {
     assert.match(storageSource, /download\.json/);
     assert.match(storageSource, /size did not match the expected artifact/i);
     assert.match(storageSource, /state === 'active'/);
+    assert.match(storageSource, /sourceFile\.copy/);
+    assert.match(storageSource, /\.litertlm/);
+    assert.match(storageSource, /selected model size did not match the expected artifact/i);
     assert.match(providerSource, /AppState\.addEventListener/);
     assert.match(providerSource, /controller\.abort\(\)/);
     assert.match(rootLayoutSource, /<LocalAiProvider>/);
     assert.match(settingsSource, /Manage AI models/);
     assert.match(modelScreenSource, /Unload AI in background/);
     assert.match(modelScreenSource, /downloadModel/);
+    assert.match(modelScreenSource, /Import file/);
+    assert.match(modelScreenSource, /Confirm licence/);
+    assert.match(modelScreenSource, /I accepted the licence/);
     assert.match(modelScreenSource, /Run test/);
     assert.match(providerSource, /liteRtLmRuntimeAdapter/);
+    assert.match(providerSource, /DocumentPicker\.getDocumentAsync/);
+    assert.match(providerSource, /copyToCacheDirectory: true/);
+    assert.match(providerSource, /importModelFile/);
     assert.match(providerSource, /smokeTestModel/);
     assert.match(liteRtAdapterSource, /id: 'litert-lm'/);
     assert.match(liteRtAdapterSource, /createLLM/);
@@ -377,6 +422,89 @@ async function main() {
     const preferences = createLocalAiPreferenceStore(kv);
     const files = new FakeFileStore();
     const runtime = new FakeRuntime();
+    const catalog = importOnlyModels();
+
+    const manager = new LocalAiManager(
+      files,
+      preferences,
+      async () => androidCapabilities,
+      [runtime],
+      catalog,
+    );
+    const initialized = await manager.initialize();
+    assert.equal(
+      initialized.models.find((model) => model.modelId === 'functiongemma-270m')!
+        .lifecycle,
+      'blocked',
+      'An import-only gated model starts blocked until a licensed file is supplied.',
+    );
+
+    await assert.rejects(
+      () =>
+        manager.importFile('functiongemma-270m', {
+          uri: 'file:///picked/mobile_actions_q8_ekv1024.litertlm',
+          name: 'mobile_actions_q8_ekv1024.litertlm',
+          sizeBytes: 288_964_608,
+        }),
+      (error: unknown) =>
+        error instanceof LocalAiManagerError && error.code === 'license_required',
+    );
+
+    await manager.acceptLicense('functiongemma-270m');
+
+    await assert.rejects(
+      () =>
+        manager.importFile('functiongemma-270m', {
+          uri: 'file:///picked/not-a-model.bin',
+          name: 'not-a-model.bin',
+          sizeBytes: 288_964_608,
+        }),
+      (error: unknown) =>
+        error instanceof LocalAiManagerError && error.code === 'invalid_artifact',
+    );
+
+    const imported = await manager.importFile('functiongemma-270m', {
+      uri: 'file:///picked/mobile_actions_q8_ekv1024.litertlm',
+      name: 'mobile_actions_q8_ekv1024.litertlm',
+      sizeBytes: 288_964_608,
+    });
+    assert.equal(imported.modelId, 'functiongemma-270m');
+    assert.deepEqual(files.importedNames, [
+      'mobile_actions_q8_ekv1024.litertlm',
+    ]);
+    assert.equal(
+      manager.snapshot().models.find((model) => model.modelId === 'functiongemma-270m')!
+        .lifecycle,
+      'installed',
+    );
+
+    const reloaded = new LocalAiManager(
+      files,
+      preferences,
+      async () => androidCapabilities,
+      [runtime],
+      catalog,
+    );
+    const reloadedSnapshot = await reloaded.initialize();
+    assert.equal(
+      reloadedSnapshot.models.find(
+        (model) => model.modelId === 'functiongemma-270m',
+      )!.lifecycle,
+      'installed',
+      'Imported models remain installed after manager/app reinitialization even without a direct download URL.',
+    );
+
+    const session = (await reloaded.load('functiongemma-270m')) as FakeSession;
+    assert.equal(session.modelId, 'functiongemma-270m');
+    await reloaded.unload();
+    assert.equal(session.closed, true);
+  }
+
+  {
+    const kv = new MemoryKeyValueStore();
+    const preferences = createLocalAiPreferenceStore(kv);
+    const files = new FakeFileStore();
+    const runtime = new FakeRuntime();
   
     const manager = new LocalAiManager(
       files,
@@ -422,6 +550,8 @@ async function main() {
   console.log('✓ FunctionGemma candidate fingerprint is recorded without bypassing its gated download');
   console.log('✓ native inference stays CPU-first, structured, and isolated between MYELIN requests');
   console.log('✓ model storage uses persistent documents, size validation and resumable checkpoints');
+  console.log('✓ licensed .litertlm files can be imported safely without enabling gated direct downloads');
+  console.log('✓ imported models survive reinitialization and remain loadable through the maintained runtime');
   console.log('✓ app background pauses active downloads and mounts the local AI provider globally');
   console.log('✓ Settings exposes a dedicated model management screen');
   console.log('✓ catalog exposes FunctionGemma and Qwen without shipping an unverified mobile artifact');

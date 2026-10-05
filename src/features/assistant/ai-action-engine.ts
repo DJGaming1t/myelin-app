@@ -109,6 +109,61 @@ export type AssistantActionBatch = {
 
 export type AssistantActionRisk = 'read' | 'confirm';
 
+export type AssistantExamPlanSummary = {
+  examCount: number;
+  uniqueTopicCount: number;
+  strain: 'comfortable' | 'balanced' | 'tight' | 'overloaded';
+  strainRatio: number;
+  totalPreparationRequiredMinutes: number;
+  totalRevisionRequiredMinutes: number;
+  totalUsableCapacityMinutes: number;
+  plannedPreparationMinutes: number;
+  plannedRevisionMinutes: number;
+  unallocatedPreparationMinutes: number;
+  unallocatedRevisionMinutes: number;
+  bufferRatio: number;
+  revisionRatio: number;
+  revisionLeadDays: number;
+  capacity: {
+    source: 'default' | 'personalized';
+    sustainableDailyMinutes: number;
+    historicalMedianMinutes: number | null;
+    completionReliability: number | null;
+    estimateMultiplier: number;
+    postponementPressure: number;
+    highEffortShare: number;
+  };
+  exams: Array<{
+    examId: string;
+    examName: string;
+    examDate: number;
+    topicCount: number;
+    preparationUnallocatedMinutes: number;
+    revisionRequiredMinutes: number;
+    revisionPlannedMinutes: number;
+    revisionUnallocatedMinutes: number;
+  }>;
+  warnings: string[];
+  days: Array<{
+    day: number;
+    plannedPreparationMinutes: number;
+    plannedRevisionMinutes: number;
+    usableCapacityMinutes: number;
+    totalStudyLoadMinutes: number;
+    strain: 'comfortable' | 'balanced' | 'tight' | 'overloaded';
+    blocks: Array<{
+      kind: 'preparation' | 'revision';
+      topicId: string;
+      topicName: string;
+      subject: string;
+      minutes: number;
+      examIds: string[];
+      examId: string | null;
+      reasons: string[];
+    }>;
+  }>;
+};
+
 export type AssistantActionResult = {
   index: number;
   type: AssistantAction['type'];
@@ -116,6 +171,28 @@ export type AssistantActionResult = {
   summary: string;
   data?: unknown;
 };
+
+export function isAssistantExamPlanSummary(
+  value: unknown,
+): value is AssistantExamPlanSummary {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Partial<AssistantExamPlanSummary>;
+  return (
+    typeof item.examCount === 'number' &&
+    typeof item.uniqueTopicCount === 'number' &&
+    typeof item.strain === 'string' &&
+    typeof item.strainRatio === 'number' &&
+    typeof item.totalUsableCapacityMinutes === 'number' &&
+    typeof item.totalPreparationRequiredMinutes === 'number' &&
+    typeof item.totalRevisionRequiredMinutes === 'number' &&
+    typeof item.unallocatedPreparationMinutes === 'number' &&
+    typeof item.unallocatedRevisionMinutes === 'number' &&
+    Boolean(item.capacity) &&
+    Array.isArray(item.exams) &&
+    Array.isArray(item.warnings) &&
+    Array.isArray(item.days)
+  );
+}
 
 export type AssistantActionBatchResult = {
   requestId: string;
@@ -671,21 +748,48 @@ function actionRisk(action: AssistantAction): AssistantActionRisk {
   return action.type === 'generate_exam_plan' ? 'read' : 'confirm';
 }
 
-function planSummary(plan: JointExamPreparationPlan) {
+function planSummary(plan: JointExamPreparationPlan): AssistantExamPlanSummary {
   return {
     examCount: plan.exams.length,
     uniqueTopicCount: plan.uniqueTopicCount,
     strain: plan.strain,
+    strainRatio: plan.strainRatio,
+    totalPreparationRequiredMinutes: plan.totalPreparationRequiredMinutes,
+    totalRevisionRequiredMinutes: plan.totalRevisionRequiredMinutes,
+    totalUsableCapacityMinutes: plan.totalUsableCapacityMinutes,
     plannedPreparationMinutes: plan.plannedPreparationMinutes,
     plannedRevisionMinutes: plan.plannedRevisionMinutes,
     unallocatedPreparationMinutes: plan.unallocatedPreparationMinutes,
     unallocatedRevisionMinutes: plan.unallocatedRevisionMinutes,
-    warnings: plan.warnings,
+    bufferRatio: plan.bufferRatio,
+    revisionRatio: plan.revisionRatio,
+    revisionLeadDays: plan.revisionLeadDays,
+    capacity: {
+      source: plan.capacityProfile.source,
+      sustainableDailyMinutes: plan.capacityProfile.sustainableDailyMinutes,
+      historicalMedianMinutes: plan.capacityProfile.historicalMedianMinutes,
+      completionReliability: plan.capacityProfile.completionReliability,
+      estimateMultiplier: plan.capacityProfile.estimateMultiplier,
+      postponementPressure: plan.capacityProfile.postponementPressure,
+      highEffortShare: plan.capacityProfile.highEffortShare,
+    },
+    exams: plan.exams.map((exam) => ({
+      examId: exam.examId,
+      examName: exam.examName,
+      examDate: exam.examDate,
+      topicCount: exam.topicIds.length,
+      preparationUnallocatedMinutes: exam.preparationUnallocatedMinutes,
+      revisionRequiredMinutes: exam.revisionRequiredMinutes,
+      revisionPlannedMinutes: exam.revisionPlannedMinutes,
+      revisionUnallocatedMinutes: exam.revisionUnallocatedMinutes,
+    })),
+    warnings: [...plan.warnings],
     days: plan.days.map((day) => ({
       day: day.day,
       plannedPreparationMinutes: day.plannedPreparationMinutes,
       plannedRevisionMinutes: day.plannedRevisionMinutes,
       usableCapacityMinutes: day.usableCapacityMinutes,
+      totalStudyLoadMinutes: day.totalStudyLoadMinutes,
       strain: day.strain,
       blocks: day.blocks.map((block) => ({
         kind: block.kind,

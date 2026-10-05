@@ -123,12 +123,20 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         run: echo "Fast PR gate passed. Firebase security rules and native Android generation run after merge before preview OTA publishing."
 
-      - name: Use Java for maintained LiteRT wrapper check
+      - name: Use Java for local AI native checks
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Generate Android project for MYELIN LiteRT bridge
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Compile MYELIN LiteRT bridge
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
+        run: cd android && ./gradlew :myelin-litertlm:compileDebugKotlin --no-daemon
 
       - name: Install maintained LiteRT wrapper in CI sandbox
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}

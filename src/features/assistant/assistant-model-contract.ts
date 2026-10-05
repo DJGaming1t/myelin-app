@@ -449,11 +449,33 @@ export function assistantActionBatchJsonSchema() {
 
 export function assistantModelToolDefinitions() {
   const catalog = assistantActionToolCatalog();
-  return catalog.map((tool) => ({
-    name: tool.name,
-    risk: tool.risk,
-    description: tool.purpose,
-  }));
+  const variants = assistantActionBatchJsonSchema().properties.actions.items.oneOf;
+
+  return catalog.map((tool) => {
+    const variant = variants.find(
+      (item) => item.properties.type.const === tool.name,
+    ) as
+      | {
+          required: readonly string[];
+          properties: Record<string, unknown>;
+        }
+      | undefined;
+
+    if (!variant) throw new Error(`Missing schema for assistant tool ${tool.name}.`);
+
+    const { type: _type, ...properties } = variant.properties;
+    return {
+      name: tool.name,
+      risk: tool.risk,
+      description: tool.purpose,
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        required: variant.required.filter((field) => field !== 'type'),
+        properties,
+      },
+    };
+  });
 }
 
 export function assistantModelInstructions() {

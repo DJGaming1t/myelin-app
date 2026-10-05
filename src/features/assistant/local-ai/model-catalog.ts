@@ -54,7 +54,21 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
       'Small tool-calling specialist intended for a MYELIN-specific fine-tune.',
     requiresTaskFineTune: true,
     runtimeCandidates: ['litert-lm'],
-    artifact: null,
+    artifact: {
+      id: 'functiongemma-mobile-actions-q8-ekv1024',
+      runtimeId: 'litert-lm',
+      format: 'litertlm',
+      fileName: 'mobile_actions_q8_ekv1024.litertlm',
+      sizeBytes: 288_964_608,
+      sha256:
+        '33e295cbd996b419bb1de8f3f85c5b6b01ee058a2c89bdb2173cf3e6ff4ce9d0',
+      releaseStage: 'candidate',
+      notes: [
+        'Runtime smoke-test candidate only; this is not the final MYELIN-specific fine-tune.',
+        'The official FunctionGemma source is Gemma-license gated, so MYELIN does not expose an unauthenticated direct download URL.',
+        'The recorded SHA-256 is a candidate fingerprint and must be re-verified against the licensed release source before production distribution.',
+      ],
+    },
     targetDownloadMb: {
       min: 250,
       max: 350,
@@ -69,7 +83,8 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
     },
     notes: [
       'Do not ship the generic checkpoint as the finished MYELIN assistant.',
-      'A MYELIN-specific fine-tune/export must be selected before downloads are enabled.',
+      'The configured mobile-actions bundle is only for native runtime validation.',
+      'Production download remains disabled until a MYELIN-specific licensed artifact is selected.',
     ],
   },
   {
@@ -82,13 +97,13 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
     role: 'reasoning-assistant',
     parameterLabel: '0.8B family',
     description:
-      'Smarter local assistant candidate for interpretation and plan critique.',
+      'Stronger local assistant candidate for interpretation and plan critique, with a much larger current LiteRT bundle.',
     requiresTaskFineTune: false,
-    runtimeCandidates: ['qwen-mobile'],
+    runtimeCandidates: ['litert-lm'],
     artifact: null,
     targetDownloadMb: {
-      min: 450,
-      max: 650,
+      min: 900,
+      max: 1050,
       kind: 'engineering-target',
     },
     capabilities: {
@@ -99,8 +114,8 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
       plannerCritique: 'moderate',
     },
     notes: [
-      'The official checkpoint is not the mobile artifact MYELIN should distribute.',
-      'A verified quantized Android artifact/runtime pair must be selected before downloads are enabled.',
+      'The current verified LiteRT text candidate is roughly 963 MB, so Qwen remains the heavier optional tier.',
+      'A smaller verified LiteRT artifact should replace it before MYELIN enables Qwen downloads broadly.',
     ],
   },
 ] as const;

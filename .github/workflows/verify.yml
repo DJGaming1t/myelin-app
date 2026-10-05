@@ -130,14 +130,6 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Generate Android project for MYELIN LiteRT bridge
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
-        run: npx expo prebuild --platform android --clean --no-install
-
-      - name: Compile MYELIN LiteRT bridge
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
-        run: cd android && ./gradlew :myelin-litertlm:compileDebugKotlin --no-daemon
-
       - name: Install maintained LiteRT wrapper in CI sandbox
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
         shell: bash

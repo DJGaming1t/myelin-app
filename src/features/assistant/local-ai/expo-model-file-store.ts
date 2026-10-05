@@ -656,6 +656,7 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
           fileName: artifact.fileName,
           uri: finalFile.uri,
           sizeBytes: finalSize,
+          sha256,
           installedAt,
         } satisfies InstallManifest);
 
@@ -667,6 +668,7 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
           artifactId: artifact.id,
           uri: finalFile.uri,
           sizeBytes: finalSize,
+          sha256,
           installedAt,
         } satisfies LocalAiInstallRecord;
       } finally {

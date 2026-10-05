@@ -157,6 +157,12 @@ export type BreakLog = {
   minutes: number;
 };
 
+export type AssistantRequestReceipt = {
+  requestId: string;
+  digest: string;
+  appliedAt: number;
+};
+
 export type WorkspaceSettings = {
   dailyMinutes: number;
   focusMinutes: number;
@@ -182,6 +188,7 @@ export type WorkspaceState = {
   tasks: StudyTask[];
   commitments: Commitment[];
   focusOutcomes?: FocusOutcome[];
+  assistantReceipts?: AssistantRequestReceipt[];
   settings: WorkspaceSettings;
 };
 
@@ -211,6 +218,7 @@ export function createEmptyWorkspace(now = Date.now()): WorkspaceState {
     tasks: [],
     commitments: [],
     focusOutcomes: [],
+    assistantReceipts: [],
     settings: defaultWorkspaceSettings(),
   };
 }

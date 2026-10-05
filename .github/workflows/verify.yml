@@ -78,6 +78,9 @@ jobs:
       - name: Exam capacity, safe buffers and workload strain
         run: npm run verify:exam-plan
 
+      - name: Assistant action protocol and safety boundary
+        run: npm run verify:assistant-actions
+
       - name: Progress and calibration evidence
         run: npm run verify:progress
 

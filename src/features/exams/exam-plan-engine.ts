@@ -7,6 +7,10 @@ import {
   scheduledTasksForDay,
   startOfLocalDay,
 } from '@/src/features/planning/day-engine';
+import {
+  CapacityFeasibilityAnalysis,
+  analyzeCapacityFeasibility,
+} from '@/src/features/planning/capacity-feasibility';
 
 export type ExamPlanStrain = 'comfortable' | 'balanced' | 'tight' | 'overloaded';
 export type CapacitySource = 'default' | 'personalized';
@@ -114,6 +118,7 @@ export type ExamPreparationPlan = {
   strain: ExamPlanStrain;
   days: ExamPlanDay[];
   warnings: string[];
+  feasibility: CapacityFeasibilityAnalysis;
 };
 
 const DAY_MS = 86_400_000;
@@ -847,6 +852,24 @@ export function buildExamPreparationPlan(
     );
   }
 
+  const feasibility = analyzeCapacityFeasibility(
+    topics.map((topic) => ({
+      id: `exam-topic:${topic.topicId}`,
+      label: topic.topicName,
+      kind: 'exam-preparation' as const,
+      requiredMinutes: topic.totalRequiredMinutes,
+      priority: topic.importance,
+      availableFrom: startOfLocalDay(now),
+      deadlineAt: topic.requiredBy,
+      capacityUntil: startOfLocalDay(topic.requiredBy),
+      movable: topic.importance < 3,
+    })),
+    days.map((day) => ({
+      day: day.day,
+      usableMinutes: day.usableCapacityMinutes,
+    })),
+  );
+
   return {
     examId: exam.id,
     examName: exam.name,
@@ -865,6 +888,7 @@ export function buildExamPreparationPlan(
     strain: strainForRatio(strainRatio),
     days,
     warnings,
+    feasibility,
   };
 }
 
@@ -956,6 +980,7 @@ export type JointExamPreparationPlan = {
   strain: ExamPlanStrain;
   days: JointExamPlanDay[];
   warnings: string[];
+  feasibility: CapacityFeasibilityAnalysis;
 };
 
 type JointTopicDemand = {
@@ -1458,6 +1483,39 @@ export function buildJointExamPreparationPlan(
   const hasUnallocated =
     unallocatedPreparationMinutes > 0 || unallocatedRevisionMinutes > 0;
 
+  const feasibility = analyzeCapacityFeasibility(
+    [
+      ...topicDemands.map((demand) => ({
+        id: `joint-prep:${demand.topic.topicId}`,
+        label: demand.topic.topicName,
+        kind: 'exam-preparation' as const,
+        requiredMinutes: demand.topic.totalRequiredMinutes,
+        priority: demand.topic.importance,
+        availableFrom: startOfLocalDay(now),
+        deadlineAt: demand.topic.requiredBy,
+        capacityUntil: startOfLocalDay(demand.topic.requiredBy),
+        movable: demand.topic.importance < 3,
+      })),
+      ...revisionDemands
+        .filter((demand) => demand.requiredMinutes > 0)
+        .map((demand) => ({
+          id: `joint-revision:${demand.examId}`,
+          label: `Final revision · ${demand.examName}`,
+          kind: 'exam-revision' as const,
+          requiredMinutes: demand.requiredMinutes,
+          priority: 3 as const,
+          availableFrom: demand.startDay,
+          deadlineAt: demand.examDate,
+          capacityUntil: startOfLocalDay(demand.examDate),
+          movable: false,
+        })),
+    ],
+    days.map((day) => ({
+      day: day.day,
+      usableMinutes: day.usableCapacityMinutes,
+    })),
+  );
+
   return {
     generatedAt: now,
     capacityProfile: profile,
@@ -1477,5 +1535,6 @@ export function buildJointExamPreparationPlan(
     strain: hasUnallocated ? 'overloaded' : strainForRatio(strainRatio),
     days,
     warnings,
+    feasibility,
   };
 }

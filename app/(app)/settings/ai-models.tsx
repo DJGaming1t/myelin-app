@@ -90,6 +90,9 @@ export default function AiModelsScreen() {
       ) ?? null,
     [models, snapshot.selectedModelId],
   );
+  const selectedReady = Boolean(
+    selected?.state.install && selected.state.compatibility.runtimeId,
+  );
 
   async function run(label: string, action: () => Promise<unknown>) {
     setBusy(label);
@@ -181,6 +184,30 @@ export default function AiModelsScreen() {
             trackColor={{ false: '#29292B', true: '#5C3024' }}
             thumbColor={snapshot.preferences.autoUnload ? colors.accent : '#B8B8B4'}
           />
+        </View>
+
+        <View style={styles.tryCard}>
+          <View style={styles.tryCopy}>
+            <Text style={styles.tryKicker}>PREVIEW-FIRST ASSISTANT</Text>
+            <Text style={styles.tryTitle}>Try the selected model with MYELIN.</Text>
+            <Text style={styles.tryText}>
+              Ask it to interpret a study request, review the exact proposed actions, then choose whether MYELIN applies them.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try selected local AI model"
+            disabled={!selectedReady || Boolean(busy)}
+            onPress={() => router.push('/(app)/settings/ai-assistant')}
+            style={({ pressed }) => [
+              styles.tryButton,
+              (!selectedReady || Boolean(busy)) && styles.disabled,
+              pressed && selectedReady && !busy && styles.pressed,
+            ]}>
+            <Text style={styles.tryButtonText}>
+              {selectedReady ? 'Try selected model' : 'Install a selected model first'}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.sectionHeader}>
@@ -523,6 +550,27 @@ const styles = StyleSheet.create({
   settingCopy: { flex: 1 },
   settingTitle: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
   settingText: { color: colors.muted, fontSize: 11.5, lineHeight: 17, marginTop: 3 },
+  tryCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.28)',
+    backgroundColor: colors.panel,
+    padding: spacing.md,
+    gap: 12,
+  },
+  tryCopy: { gap: 4 },
+  tryKicker: { color: colors.accent, fontSize: 9.5, lineHeight: 13, fontWeight: '900', letterSpacing: 0.55 },
+  tryTitle: { color: colors.text, fontSize: 15.5, lineHeight: 21, fontWeight: '800' },
+  tryText: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
+  tryButton: {
+    minHeight: layout.minTouch,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  tryButtonText: { color: '#150B08', fontSize: 12, fontWeight: '900' },
   sectionHeader: { marginTop: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { color: colors.subtle, fontSize: 10.5, lineHeight: 14, fontWeight: '800', letterSpacing: 0.6 },
   refresh: { minHeight: layout.minTouch, justifyContent: 'center', paddingHorizontal: 4 },

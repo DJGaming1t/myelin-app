@@ -6,17 +6,14 @@ import {
   examCalendarDaysUntil,
   examStatus,
 } from '@/src/features/exams/exam-engine';
-import { buildExamCapacityProfile } from '@/src/features/exams/exam-plan-engine';
+import { buildJointExamPreparationPlan } from '@/src/features/exams/exam-plan-engine';
 import {
-  addLocalDays,
   freeStudyWindows,
   localDayKey,
   taskPlanningScore,
 } from '@/src/features/planning/day-engine';
-import {
-  CapacityFeasibilityAnalysis,
-  analyzeCapacityFeasibility,
-} from '@/src/features/planning/capacity-feasibility';
+import { CapacityFeasibilityAnalysis } from '@/src/features/planning/capacity-feasibility';
+import { UnifiedWorkloadLedger } from '@/src/features/planning/workload-ledger';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
 export type PlanMode = 'study' | 'review';
@@ -54,6 +51,7 @@ export type TodayPlan = {
   inboxTaskCount: number;
   overdueTaskCount: number;
   deadlineFeasibility: CapacityFeasibilityAnalysis;
+  workloadLedger: UnifiedWorkloadLedger;
 };
 
 type Candidate = {
@@ -315,77 +313,6 @@ function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number):
 }
 
 const DEADLINE_FEASIBILITY_HORIZON_DAYS = 30;
-const DEADLINE_FEASIBILITY_BUFFER_RATIO = 0.12;
-
-function buildTaskDeadlineFeasibility(
-  workspace: WorkspaceState,
-  now: number,
-): CapacityFeasibilityAnalysis {
-  const today = startOfLocalDay(now);
-  const horizonEnd = addLocalDays(today, DEADLINE_FEASIBILITY_HORIZON_DAYS + 1);
-  const profile = buildExamCapacityProfile(workspace, now);
-  const demands = workspace.tasks
-    .filter(
-      (task) =>
-        task.status === 'open' &&
-        task.dueAt > 0 &&
-        task.dueAt < horizonEnd,
-    )
-    .map((task) => {
-      const overdue = task.dueAt < now;
-      const capacityUntil = overdue
-        ? addLocalDays(today, 1)
-        : addLocalDays(startOfLocalDay(task.dueAt), 1);
-      const postponedStart =
-        task.postponedUntil > now
-          ? startOfLocalDay(task.postponedUntil)
-          : today;
-      return {
-        id: `task:${task.id}`,
-        label: task.title,
-        kind: 'task' as const,
-        requiredMinutes:
-          taskRemainingMinutes(task) || task.estimatedMinutes || 25,
-        priority: task.priority,
-        availableFrom: postponedStart,
-        deadlineAt: task.dueAt,
-        capacityUntil,
-        movable: task.priority < 3,
-      };
-    });
-
-  const maxCutoff = demands.reduce(
-    (max, demand) => Math.max(max, demand.capacityUntil),
-    addLocalDays(today, 1),
-  );
-  const usedToday = minutesUsedToday(workspace, now);
-  const days = [];
-  for (
-    let day = today;
-    day < maxCutoff;
-    day = addLocalDays(day, 1)
-  ) {
-    const from = day === today ? now : day;
-    const freeMinutes = freeStudyWindows(workspace, day, {
-      includeScheduledTasks: false,
-      from,
-      minMinutes: 5,
-    }).reduce((sum, window) => sum + window.minutes, 0);
-    const sustainableRemaining = Math.max(
-      0,
-      profile.sustainableDailyMinutes - (day === today ? usedToday : 0),
-    );
-    const gross = Math.max(0, Math.min(freeMinutes, sustainableRemaining));
-    days.push({
-      day,
-      usableMinutes: Math.floor(
-        gross * (1 - DEADLINE_FEASIBILITY_BUFFER_RATIO),
-      ),
-    });
-  }
-
-  return analyzeCapacityFeasibility(demands, days);
-}
 
 export function buildTodayPlan(
   workspace: WorkspaceState,
@@ -543,7 +470,10 @@ export function buildTodayPlan(
   const plannedBreakMinutes = Math.max(0, blocks.length - 1) * breakMinutes;
   const usedTopicIds = new Set(blocks.flatMap((block) => (block.topicId ? [block.topicId] : [])));
   const todayStart = startOfLocalDay(now);
-  const deadlineFeasibility = buildTaskDeadlineFeasibility(workspace, now);
+  const workloadPlan = buildJointExamPreparationPlan(workspace, now, {
+    maxDays: DEADLINE_FEASIBILITY_HORIZON_DAYS,
+  });
+  const deadlineFeasibility = workloadPlan.feasibility;
 
   return {
     generatedAt: now,
@@ -570,5 +500,6 @@ export function buildTodayPlan(
         task.dueAt < todayStart,
     ).length,
     deadlineFeasibility,
+    workloadLedger: workloadPlan.workloadLedger,
   };
 }

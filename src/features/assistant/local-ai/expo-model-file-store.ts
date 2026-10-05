@@ -65,6 +65,7 @@ function modelPaths(modelId: LocalAiModelId, artifact: LocalAiArtifactDescriptor
     partialFile: new File(directory, `${artifact.fileName}.partial`),
     manifestFile: new File(directory, MANIFEST_NAME),
     checkpointFile: new File(directory, CHECKPOINT_NAME),
+    importFile: new File(directory, `${artifact.fileName}.importing`),
   };
 }
 
@@ -441,6 +442,107 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
       } finally {
         options.signal?.removeEventListener('abort', pauseForAbort);
         task.release();
+      }
+    },
+
+    async importFile(model, artifact, source) {
+      if (Platform.OS === 'web') {
+        throw new Error('Local model import is not available on web.');
+      }
+      if (artifact.format !== 'litertlm') {
+        throw new Error('MYELIN can only import .litertlm model artifacts.');
+      }
+      if (!source.name.toLowerCase().endsWith('.litertlm')) {
+        throw new Error('Choose a .litertlm model file.');
+      }
+
+      const sourceFile = new File(source.uri);
+      if (!sourceFile.exists) {
+        throw new Error('The selected model file is no longer readable.');
+      }
+
+      const sourceSize = sourceFile.size;
+      if (sourceSize <= 0) {
+        throw new Error('The selected model file is empty.');
+      }
+      if (
+        source.sizeBytes != null &&
+        Number.isFinite(source.sizeBytes) &&
+        source.sizeBytes > 0 &&
+        source.sizeBytes !== sourceSize
+      ) {
+        throw new Error(
+          'The selected model file changed before MYELIN could import it.',
+        );
+      }
+      if (!expectedSizeMatches(sourceSize, artifact.sizeBytes)) {
+        throw new Error(
+          'The selected model size did not match the expected artifact.',
+        );
+      }
+
+      const headroom = Math.max(
+        MIN_HEADROOM_BYTES,
+        Math.ceil(sourceSize * 0.1),
+      );
+      if (Paths.availableDiskSpace < sourceSize + headroom) {
+        throw new Error(
+          'Not enough free storage to copy this model into MYELIN safely.',
+        );
+      }
+
+      const paths = modelPaths(model.id, artifact);
+      deleteFile(paths.importFile);
+
+      try {
+        await sourceFile.copy(paths.importFile, { overwrite: true });
+
+        const staged = new File(paths.importFile.uri);
+        const stagedSize = staged.exists ? staged.size : 0;
+        if (
+          !staged.exists ||
+          stagedSize !== sourceSize ||
+          !expectedSizeMatches(stagedSize, artifact.sizeBytes)
+        ) {
+          throw new Error('The imported model failed its staged size check.');
+        }
+
+        await staged.move(paths.finalFile, { overwrite: true });
+
+        const finalFile = new File(paths.finalFile.uri);
+        const finalSize = finalFile.exists ? finalFile.size : 0;
+        if (
+          !finalFile.exists ||
+          finalSize !== sourceSize ||
+          !expectedSizeMatches(finalSize, artifact.sizeBytes)
+        ) {
+          deleteFile(finalFile);
+          throw new Error('The imported model failed the final size check.');
+        }
+
+        const installedAt = Date.now();
+        writeJson(paths.manifestFile, {
+          version: MANIFEST_VERSION,
+          modelId: model.id,
+          artifactId: artifact.id,
+          fileName: artifact.fileName,
+          uri: finalFile.uri,
+          sizeBytes: finalSize,
+          installedAt,
+        } satisfies InstallManifest);
+
+        deleteFile(paths.checkpointFile);
+        deleteFile(paths.partialFile);
+
+        return {
+          modelId: model.id,
+          artifactId: artifact.id,
+          uri: finalFile.uri,
+          sizeBytes: finalSize,
+          installedAt,
+        } satisfies LocalAiInstallRecord;
+      } finally {
+        deleteFile(paths.importFile);
       }
     },
 

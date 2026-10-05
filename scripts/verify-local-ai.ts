@@ -303,8 +303,8 @@ async function main() {
     assert.match(nativeBuildSource, /litertlm-android:0\.16\.1/);
     assert.match(nativeConfigSource, /MyelinLiteRtLmModule/);
     assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
-    assert.match(kotlinPluginSource, /android\\.kotlinVersion/);
-    assert.match(kotlinPluginSource, /2\\.3\\.0/);
+    assert.match(kotlinPluginSource, /android\.kotlinVersion/);
+    assert.match(kotlinPluginSource, /2\.3\.0/);
     assert.ok(
       appConfig.expo.plugins.some(
         (entry: unknown) =>

@@ -119,6 +119,8 @@ export type AssistantActionResult = {
 
 export type AssistantActionBatchResult = {
   requestId: string;
+  requestDigest: string;
+  duplicate: boolean;
   requiresConfirmation: boolean;
   hasMutations: boolean;
   results: AssistantActionResult[];
@@ -578,6 +580,23 @@ function normalized(value: string) {
   return value.trim().toLocaleLowerCase();
 }
 
+function assistantRequestDigest(batch: AssistantActionBatch) {
+  const input = JSON.stringify(batch);
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= BigInt(input.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * prime);
+  }
+  return `fnv1a64:${hash.toString(16).padStart(16, '0')}`;
+}
+
+function requestReceipt(workspace: WorkspaceState, requestId: string) {
+  return (workspace.assistantReceipts ?? []).find(
+    (receipt) => receipt.requestId === requestId,
+  ) ?? null;
+}
+
 function resolveTopic(
   workspace: WorkspaceState,
   ref: AssistantTopicRef,
@@ -888,9 +907,28 @@ export function runAssistantActionBatch(
   options: AssistantActionRunOptions = {},
 ): AssistantActionBatchResult {
   const batch = parseAssistantActionBatch(rawBatch);
+  const requestDigest = assistantRequestDigest(batch);
   const mode = options.mode ?? 'preview';
   const hasMutations = batch.actions.some((action) => actionRisk(action) === 'confirm');
   const requiresConfirmation = hasMutations;
+  const prior = requestReceipt(workspace, batch.requestId);
+
+  if (prior) {
+    if (prior.digest !== requestDigest) {
+      throw new AssistantActionError(
+        `Assistant request ID "${batch.requestId}" was already applied with different content.`,
+      );
+    }
+    return {
+      requestId: batch.requestId,
+      requestDigest,
+      duplicate: true,
+      requiresConfirmation: false,
+      hasMutations,
+      results: [],
+      nextWorkspace: cloneWorkspace(workspace),
+    };
+  }
 
   if (mode === 'apply' && hasMutations && options.confirmed !== true) {
     throw new AssistantActionError(
@@ -901,15 +939,23 @@ export function runAssistantActionBatch(
   const now = options.now ?? Date.now();
   const executed = executeParsedBatch(workspace, batch, now);
 
+  if (mode === 'apply' && hasMutations) {
+    const receipts = [
+      ...(executed.draft.assistantReceipts ?? []),
+      { requestId: batch.requestId, digest: requestDigest, appliedAt: now },
+    ];
+    executed.draft.assistantReceipts = receipts.slice(-200);
+    validateWorkspaceV2(executed.draft);
+  }
+
   return {
     requestId: batch.requestId,
+    requestDigest,
+    duplicate: false,
     requiresConfirmation,
     hasMutations,
     results: executed.results,
-    nextWorkspace:
-      mode === 'apply' || !hasMutations
-        ? executed.draft
-        : executed.draft,
+    nextWorkspace: executed.draft,
   };
 }
 

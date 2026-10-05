@@ -1,5 +1,6 @@
 import { parseLocalDate } from '@/src/features/planning/commitment-dates';
 import {
+  AssistantRequestReceipt,
   BreakLog,
   Commitment,
   CommitmentKind,
@@ -404,6 +405,15 @@ function commitment(raw: unknown): Commitment {
   };
 }
 
+function assistantReceipt(raw: unknown): AssistantRequestReceipt {
+  const r = object(raw, 'assistant request receipt');
+  return {
+    requestId: nonEmpty(r.requestId, 'assistant request ID', 120),
+    digest: nonEmpty(r.digest, 'assistant request digest', 120),
+    appliedAt: number(r.appliedAt, 'assistant request applied date', 1),
+  };
+}
+
 function settings(raw: unknown): WorkspaceSettings {
   if (raw == null) return defaultWorkspaceSettings();
   const s = object(raw, 'settings');
@@ -460,6 +470,15 @@ export function validateWorkspaceV2(raw: unknown): WorkspaceState {
   const focusOutcomes = array(root.focusOutcomes ?? [], 'focus outcomes', 2000).map(outcome);
   uniqueIds(focusOutcomes, 'focus outcome');
 
+  const assistantReceipts = array(
+    root.assistantReceipts ?? [],
+    'assistant request receipts',
+    200,
+  ).map(assistantReceipt);
+  if (new Set(assistantReceipts.map((item) => item.requestId)).size !== assistantReceipts.length) {
+    throw new Error('Duplicate assistant request receipt IDs.');
+  }
+
   return {
     format: WORKSPACE_FORMAT,
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -473,6 +492,7 @@ export function validateWorkspaceV2(raw: unknown): WorkspaceState {
     tasks,
     commitments,
     focusOutcomes,
+    assistantReceipts,
     settings: settings(root.settings),
   };
 }

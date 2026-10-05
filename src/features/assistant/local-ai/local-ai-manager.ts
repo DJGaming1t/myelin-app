@@ -18,6 +18,7 @@ export type LocalAiInstallRecord = {
   artifactId: string;
   uri: string;
   sizeBytes: number | null;
+  sha256: string;
   installedAt: number;
 };
 
@@ -117,6 +118,12 @@ function defaultPreferences(): LocalAiPreferences {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Local AI operation failed.';
+}
+
+function normalizeSha256(value?: string) {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  return /^[a-f0-9]{64}$/.test(normalized) ? normalized : null;
 }
 
 export class LocalAiManager {
@@ -312,6 +319,12 @@ export class LocalAiManager {
         'artifact_unconfigured',
       );
     }
+    if (!normalizeSha256(model.artifact.sha256)) {
+      throw new LocalAiManagerError(
+        'This model artifact does not have a trusted SHA-256 fingerprint yet.',
+        'invalid_artifact',
+      );
+    }
     if (!state.compatibility.compatible) {
       throw new LocalAiManagerError(
         state.compatibility.issues[0]?.message ?? 'This model is blocked on this device.',
@@ -374,6 +387,12 @@ export class LocalAiManager {
     if (model.artifact.format !== 'litertlm') {
       throw new LocalAiManagerError(
         'This model does not use a LiteRT-LM artifact that MYELIN can import.',
+        'invalid_artifact',
+      );
+    }
+    if (!normalizeSha256(model.artifact.sha256)) {
+      throw new LocalAiManagerError(
+        'MYELIN does not have a trusted SHA-256 fingerprint for this model artifact.',
         'invalid_artifact',
       );
     }
@@ -462,8 +481,16 @@ export class LocalAiManager {
 
     if (!state.install || !model.artifact) {
       throw new LocalAiManagerError(
-        'Download this model before loading it.',
+        'Download or import this model before loading it.',
         'not_installed',
+      );
+    }
+
+    const expectedSha256 = normalizeSha256(model.artifact.sha256);
+    if (!expectedSha256 || state.install.sha256.toLowerCase() !== expectedSha256) {
+      throw new LocalAiManagerError(
+        'The installed model is not SHA-256 verified against MYELIN\'s expected artifact.',
+        'invalid_artifact',
       );
     }
 

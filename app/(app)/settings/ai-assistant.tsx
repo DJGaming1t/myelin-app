@@ -148,6 +148,46 @@ function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
         </View>
       </View>
 
+      {plan.feasibility.firstOverloadedDeadline ? (
+        <View style={styles.capacityBreak}>
+          <Text style={styles.capacityBreakKicker}>FIRST CAPACITY BREAK</Text>
+          <Text style={styles.capacityBreakTitle}>
+            By {planDateLabel(plan.feasibility.firstOverloadedDeadline.deadlineAt)}, MYELIN is short by{' '}
+            {minutesLabel(plan.feasibility.firstOverloadedDeadline.overloadMinutes)}.
+          </Text>
+          <Text style={styles.capacityBreakText}>
+            {minutesLabel(plan.feasibility.firstOverloadedDeadline.requiredMinutes)} is forced into a window with only{' '}
+            {minutesLabel(plan.feasibility.firstOverloadedDeadline.capacityMinutes)} of safe capacity.
+            {plan.feasibility.firstOverloadedDeadline.extraMinutesPerAvailableDay
+              ? ` That is about ${minutesLabel(plan.feasibility.firstOverloadedDeadline.extraMinutesPerAvailableDay)} extra per available day if nothing moves.`
+              : ''}
+          </Text>
+
+          {plan.feasibility.firstOverloadedDeadline.reliefCandidates.length ? (
+            <View style={styles.reliefList}>
+              <Text style={styles.planSubhead}>WHAT WOULD MAKE IT FIT</Text>
+              {plan.feasibility.firstOverloadedDeadline.reliefCandidates
+                .slice(0, 4)
+                .map((candidate) => (
+                  <View key={candidate.demandId} style={styles.reliefRow}>
+                    <Text style={styles.reliefMinutes}>
+                      {minutesLabel(candidate.suggestedMinutes)}
+                    </Text>
+                    <View style={styles.reliefCopy}>
+                      <Text style={styles.reliefLabel}>{candidate.label}</Text>
+                      <Text style={styles.reliefMeta}>
+                        {candidate.movable
+                          ? 'Move later, reduce scope, or deprioritize'
+                          : 'Protected work — add capacity or reduce scope'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       {plan.warnings.length ? (
         <View style={styles.planWarnings}>
           <Text style={styles.planSubhead}>CAPACITY WARNINGS</Text>
@@ -704,6 +744,29 @@ const styles = StyleSheet.create({
   mileageItem: { flex: 1, minHeight: 49, padding: 8, justifyContent: 'center' },
   mileageLabel: { color: colors.subtle, fontSize: 7.5, lineHeight: 10, fontWeight: '800', letterSpacing: 0.35 },
   mileageValue: { color: colors.textDim, fontSize: 11, lineHeight: 15, fontWeight: '800', marginTop: 2 },
+  capacityBreak: {
+    marginTop: 11,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,165,150,0.20)',
+    backgroundColor: 'rgba(255,165,150,0.055)',
+    padding: 10,
+  },
+  capacityBreakKicker: { color: colors.danger, fontSize: 8.5, lineHeight: 12, fontWeight: '900', letterSpacing: 0.5 },
+  capacityBreakTitle: { color: colors.text, fontSize: 12, lineHeight: 17, fontWeight: '800', marginTop: 4 },
+  capacityBreakText: { color: colors.textDim, fontSize: 10, lineHeight: 15, marginTop: 4 },
+  reliefList: { marginTop: 9 },
+  reliefRow: {
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 7,
+  },
+  reliefMinutes: { width: 42, color: colors.accent, fontSize: 10, lineHeight: 15, fontWeight: '900' },
+  reliefCopy: { flex: 1 },
+  reliefLabel: { color: colors.textDim, fontSize: 10.5, lineHeight: 15, fontWeight: '700' },
+  reliefMeta: { color: colors.subtle, fontSize: 9, lineHeight: 13, marginTop: 1 },
   planWarnings: {
     marginTop: 11,
     borderRadius: radius.sm,

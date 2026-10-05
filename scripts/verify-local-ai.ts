@@ -259,11 +259,6 @@ async function main() {
       'scripts/check-native-runtime-boundary.cjs',
       'utf8',
     );
-    const appConfig = JSON.parse(readFileSync('app.json', 'utf8'));
-    const nativeBoundarySource = readFileSync(
-      'scripts/check-native-runtime-boundary.cjs',
-      'utf8',
-    );
 
     assert.match(storageSource, /Paths\.document/);
     assert.match(storageSource, /Paths\.availableDiskSpace/);

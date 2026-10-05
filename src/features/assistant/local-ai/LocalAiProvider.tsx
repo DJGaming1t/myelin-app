@@ -12,6 +12,9 @@ import {
 } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { WorkspaceState } from '@/src/data/schema';
+import { PreparedAssistantActionBatch } from '@/src/features/assistant/assistant-action-session';
+
 import {
   LocalAiManager,
   LocalAiManagerSnapshot,
@@ -30,6 +33,7 @@ import {
   liteRtLmRuntimeAdapter,
   liteRtLmRuntimeIds,
 } from './litert-lm-runtime';
+import { prepareLocalAssistantActions } from './local-assistant-bridge';
 
 export type LocalAiModelView = {
   definition: LocalAiModelDefinition;
@@ -52,6 +56,13 @@ type LocalAiContextValue = {
   acceptLicense: (modelId: LocalAiModelId) => Promise<void>;
   setAutoUnload: (value: boolean) => Promise<void>;
   smokeTestModel: (modelId: LocalAiModelId) => Promise<string>;
+  prepareAssistantActions: (request: {
+    workspace: WorkspaceState;
+    userRequest: string;
+    currentRoute?: string;
+    requestId?: string;
+    signal?: AbortSignal;
+  }) => Promise<PreparedAssistantActionBatch>;
 };
 
 const EMPTY_SNAPSHOT: LocalAiManagerSnapshot = {
@@ -304,6 +315,43 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     [manager, updateStorage],
   );
 
+  const prepareAssistantActions = useCallback(
+    async (request: {
+      workspace: WorkspaceState;
+      userRequest: string;
+      currentRoute?: string;
+      requestId?: string;
+      signal?: AbortSignal;
+    }) => {
+      setError('');
+      setMessage('');
+
+      const selectedModelId = manager.snapshot().selectedModelId;
+      if (!selectedModelId) {
+        const cause = new Error('Choose a local AI model before using the assistant.');
+        setError(friendlyError(cause));
+        throw cause;
+      }
+
+      try {
+        const session = await manager.load(selectedModelId);
+        const prepared = await prepareLocalAssistantActions({
+          ...request,
+          session,
+        });
+        const count = prepared.preview.results.length;
+        setMessage(
+          `Local AI prepared ${count} ${count === 1 ? 'action' : 'actions'}. Review before applying.`,
+        );
+        return prepared;
+      } catch (cause) {
+        setError(friendlyError(cause));
+        throw cause;
+      }
+    },
+    [manager],
+  );
+
   const models = useMemo(
     () =>
       LOCAL_AI_MODELS.map((definition) => ({
@@ -342,6 +390,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       acceptLicense,
       setAutoUnload,
       smokeTestModel,
+      prepareAssistantActions,
     }),
     [
       acceptLicense,
@@ -358,6 +407,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       selectModel,
       setAutoUnload,
       smokeTestModel,
+      prepareAssistantActions,
       snapshot,
     ],
   );

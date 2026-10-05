@@ -37,7 +37,8 @@ export const liteRtLmRuntimeAdapter: LocalAiRuntimeAdapter = {
       );
     }
 
-    const nativeSessionId = await MyelinLiteRtLm.load(request.artifactUri);
+    const nativeModule = MyelinLiteRtLm;
+    const nativeSessionId = await nativeModule.load(request.artifactUri);
 
     const session: LocalAiRuntimeSession = {
       modelId: request.model.id,
@@ -52,12 +53,12 @@ export const liteRtLmRuntimeAdapter: LocalAiRuntimeAdapter = {
         let cancelled = false;
         const onAbort = () => {
           cancelled = true;
-          void MyelinLiteRtLm.cancel(nativeSessionId).catch(() => undefined);
+          void nativeModule.cancel(nativeSessionId).catch(() => undefined);
         };
         generation.signal?.addEventListener('abort', onAbort, { once: true });
 
         try {
-          const text = await MyelinLiteRtLm.generate(
+          const text = await nativeModule.generate(
             nativeSessionId,
             generation.prompt,
             clampOutputTokens(generation.maxOutputTokens),
@@ -82,7 +83,7 @@ export const liteRtLmRuntimeAdapter: LocalAiRuntimeAdapter = {
       },
 
       async close() {
-        await MyelinLiteRtLm.close(nativeSessionId);
+        await nativeModule.close(nativeSessionId);
       },
     };
 

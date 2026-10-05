@@ -75,6 +75,9 @@ jobs:
       - name: Exam scope and planner pressure
         run: npm run verify:exams
 
+      - name: Exam capacity, safe buffers and workload strain
+        run: npm run verify:exam-plan
+
       - name: Progress and calibration evidence
         run: npm run verify:progress
 

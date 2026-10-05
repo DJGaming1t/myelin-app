@@ -291,7 +291,7 @@ export class LocalAiManager {
     if (model.license === 'Apache-2.0') return;
     if (!this.preferences.acceptedLicenseModelIds.includes(model.id)) {
       throw new LocalAiManagerError(
-        'This model requires its license terms to be accepted before download.',
+        'This model requires its licence terms to be accepted before installing it.',
         'license_required',
       );
     }
@@ -417,7 +417,11 @@ export class LocalAiManager {
       return install;
     } catch (error) {
       this.update(modelId, {
-        lifecycle: state.install ? 'installed' : 'not-installed',
+        lifecycle: state.install
+          ? 'installed'
+          : state.compatibility.compatible
+            ? 'not-installed'
+            : 'blocked',
         progress: null,
         error: errorMessage(error),
       });

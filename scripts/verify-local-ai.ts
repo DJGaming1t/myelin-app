@@ -270,6 +270,10 @@ async function main() {
       'utf8',
     );
     const appConfig = JSON.parse(readFileSync('app.json', 'utf8'));
+    const kotlinPluginSource = readFileSync(
+      'plugins/with-myelin-kotlin-version.js',
+      'utf8',
+    );
 
     assert.match(storageSource, /Paths\.document/);
     assert.match(storageSource, /Paths\.availableDiskSpace/);
@@ -299,8 +303,19 @@ async function main() {
     assert.match(nativeBuildSource, /litertlm-android:0\.16\.1/);
     assert.match(nativeConfigSource, /MyelinLiteRtLmModule/);
     assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
-    assert.equal(appConfig.expo.version, '0.2.9');
-    assert.equal(appConfig.expo.android.versionCode, 6);
+    assert.match(kotlinPluginSource, /android\\.kotlinVersion/);
+    assert.match(kotlinPluginSource, /2\\.3\\.0/);
+    assert.ok(
+      appConfig.expo.plugins.some(
+        (entry: unknown) =>
+          Array.isArray(entry) &&
+          entry[0] === './plugins/with-myelin-kotlin-version' &&
+          (entry[1] as { kotlinVersion?: string } | undefined)?.kotlinVersion === '2.3.0',
+      ),
+      'Expo config must pin Kotlin 2.3.0 for LiteRT-LM metadata compatibility.',
+    );
+    assert.equal(appConfig.expo.version, '0.2.10');
+    assert.equal(appConfig.expo.android.versionCode, 7);
   }
 
   {

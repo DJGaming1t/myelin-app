@@ -880,3 +880,602 @@ export function examPlanTopicRemainingMinutes(
     .reduce((sum, block) => sum + block.minutes, 0);
   return Math.max(0, required - planned);
 }
+
+
+export type JointExamPlanOptions = {
+  examIds?: string[];
+  topicOverrides?: ExamPlanTopicOverride[];
+  bufferRatio?: number;
+  maxDays?: number;
+  revisionRatio?: number;
+  revisionLeadDays?: number;
+  minRevisionMinutes?: number;
+  maxRevisionMinutes?: number;
+};
+
+export type JointExamPlanBlock = {
+  id: string;
+  day: number;
+  kind: 'preparation' | 'revision';
+  topicId: string;
+  topicName: string;
+  subject: string;
+  minutes: number;
+  mode: 'study' | 'review';
+  examIds: string[];
+  examId: string | null;
+  reasons: string[];
+};
+
+export type JointExamPlanDay = {
+  day: number;
+  freeClockMinutes: number;
+  existingStudyMinutes: number;
+  scheduledStudyMinutes: number;
+  sustainableRemainingMinutes: number;
+  grossCapacityMinutes: number;
+  reservedBufferMinutes: number;
+  usableCapacityMinutes: number;
+  plannedPreparationMinutes: number;
+  plannedRevisionMinutes: number;
+  hardStudyMinutes: number;
+  hardStudyLimitMinutes: number;
+  totalStudyLoadMinutes: number;
+  loadRatio: number;
+  strain: ExamPlanStrain;
+  blocks: JointExamPlanBlock[];
+};
+
+export type JointExamPlanExamSummary = {
+  examId: string;
+  examName: string;
+  examDate: number;
+  topicIds: string[];
+  revisionRequiredMinutes: number;
+  revisionPlannedMinutes: number;
+  revisionUnallocatedMinutes: number;
+  preparationUnallocatedMinutes: number;
+};
+
+export type JointExamPreparationPlan = {
+  generatedAt: number;
+  capacityProfile: ExamCapacityProfile;
+  bufferRatio: number;
+  revisionRatio: number;
+  revisionLeadDays: number;
+  exams: JointExamPlanExamSummary[];
+  uniqueTopicCount: number;
+  totalPreparationRequiredMinutes: number;
+  totalRevisionRequiredMinutes: number;
+  totalUsableCapacityMinutes: number;
+  plannedPreparationMinutes: number;
+  plannedRevisionMinutes: number;
+  unallocatedPreparationMinutes: number;
+  unallocatedRevisionMinutes: number;
+  strainRatio: number;
+  strain: ExamPlanStrain;
+  days: JointExamPlanDay[];
+  warnings: string[];
+};
+
+type JointTopicDemand = {
+  topic: ExamPlanTopic;
+  examIds: string[];
+  examNames: string[];
+  remainingMinutes: number;
+};
+
+type JointRevisionDemand = {
+  examId: string;
+  examName: string;
+  examDate: number;
+  startDay: number;
+  topicIds: string[];
+  requiredMinutes: number;
+  remainingMinutes: number;
+};
+
+function selectedUpcomingExams(
+  workspace: WorkspaceState,
+  now: number,
+  examIds: string[] | undefined,
+  maxDays: number,
+) {
+  const requested = examIds?.length ? new Set(examIds) : null;
+  return workspace.exams
+    .filter((exam) => {
+      if (requested && !requested.has(exam.id)) return false;
+      const days = examCalendarDaysUntil(exam.date, now);
+      return days >= 0 && days <= maxDays;
+    })
+    .sort((a, b) => a.date - b.date || a.name.localeCompare(b.name));
+}
+
+function jointTopicDemands(
+  workspace: WorkspaceState,
+  exams: WorkspaceState['exams'],
+  now: number,
+  profile: ExamCapacityProfile,
+  overrides: Map<string, ExamPlanTopicOverride>,
+): JointTopicDemand[] {
+  const byTopic = new Map<string, JointTopicDemand>();
+
+  for (const topic of workspace.topics) {
+    const matching = exams
+      .filter((exam) => examAppliesToTopic(exam, topic))
+      .sort((a, b) => a.date - b.date);
+    if (!matching.length) continue;
+
+    const earliest = matching[0]!;
+    const workload = topicWorkload(
+      workspace,
+      topic,
+      now,
+      profile,
+      overrides.get(topic.id),
+      earliest.date,
+      earliest.name,
+    );
+
+    byTopic.set(topic.id, {
+      topic: workload,
+      examIds: matching.map((exam) => exam.id),
+      examNames: matching.map((exam) => exam.name),
+      remainingMinutes: workload.totalRequiredMinutes,
+    });
+  }
+
+  return [...byTopic.values()];
+}
+
+function jointRevisionDemands(
+  exams: WorkspaceState['exams'],
+  topicDemands: JointTopicDemand[],
+  revisionRatio: number,
+  revisionLeadDays: number,
+  minRevisionMinutes: number,
+  maxRevisionMinutes: number,
+): JointRevisionDemand[] {
+  return exams.map((exam) => {
+    const matching = topicDemands.filter((demand) => demand.examIds.includes(exam.id));
+    const baseMinutes = matching.reduce(
+      (sum, demand) => sum + demand.topic.estimatedMinutes,
+      0,
+    );
+    const requiredMinutes = matching.length
+      ? clamp(
+          Math.round(baseMinutes * revisionRatio),
+          minRevisionMinutes,
+          maxRevisionMinutes,
+        )
+      : 0;
+
+    return {
+      examId: exam.id,
+      examName: exam.name,
+      examDate: exam.date,
+      startDay: addLocalDays(startOfLocalDay(exam.date), -revisionLeadDays),
+      topicIds: matching.map((demand) => demand.topic.topicId),
+      requiredMinutes,
+      remainingMinutes: requiredMinutes,
+    };
+  });
+}
+
+function jointTopicPriority(
+  demand: JointTopicDemand,
+  day: number,
+  dayIndex: number,
+  totalDays: number,
+) {
+  return topicPriorityScore(demand.topic, dayIndex, totalDays, day);
+}
+
+function activeRevisionDemand(
+  demand: JointRevisionDemand,
+  day: number,
+) {
+  return (
+    demand.remainingMinutes > 0 &&
+    day >= demand.startDay &&
+    day < startOfLocalDay(demand.examDate)
+  );
+}
+
+function jointExamSummary(
+  exams: WorkspaceState['exams'],
+  topicDemands: JointTopicDemand[],
+  revisionDemands: JointRevisionDemand[],
+  days: JointExamPlanDay[],
+): JointExamPlanExamSummary[] {
+  return exams.map((exam) => {
+    const topics = topicDemands.filter((demand) => demand.examIds.includes(exam.id));
+    const revision = revisionDemands.find((demand) => demand.examId === exam.id);
+    const revisionPlannedMinutes = days
+      .flatMap((day) => day.blocks)
+      .filter((block) => block.kind === 'revision' && block.examId === exam.id)
+      .reduce((sum, block) => sum + block.minutes, 0);
+
+    return {
+      examId: exam.id,
+      examName: exam.name,
+      examDate: exam.date,
+      topicIds: topics.map((demand) => demand.topic.topicId),
+      revisionRequiredMinutes: revision?.requiredMinutes ?? 0,
+      revisionPlannedMinutes,
+      revisionUnallocatedMinutes: revision?.remainingMinutes ?? 0,
+      preparationUnallocatedMinutes: topics.reduce(
+        (sum, demand) => sum + Math.max(0, demand.remainingMinutes),
+        0,
+      ),
+    };
+  });
+}
+
+export function buildJointExamPreparationPlan(
+  workspace: WorkspaceState,
+  now = Date.now(),
+  options: JointExamPlanOptions = {},
+): JointExamPreparationPlan {
+  const maxDays = clamp(Math.round(options.maxDays ?? 45), 1, 120);
+  const exams = selectedUpcomingExams(workspace, now, options.examIds, maxDays);
+  const profile = buildExamCapacityProfile(workspace, now);
+  const bufferRatio = dynamicBufferRatio(profile, options.bufferRatio);
+  const revisionRatio = clamp(options.revisionRatio ?? 0.18, 0.08, 0.35);
+  const revisionLeadDays = clamp(Math.round(options.revisionLeadDays ?? 2), 1, 5);
+  const minRevisionMinutes = clamp(Math.round(options.minRevisionMinutes ?? 20), 5, 120);
+  const maxRevisionMinutes = Math.max(
+    minRevisionMinutes,
+    clamp(Math.round(options.maxRevisionMinutes ?? 90), 10, 240),
+  );
+  const overrides = new Map(
+    (options.topicOverrides ?? []).map((override) => [override.topicId, override]),
+  );
+
+  const topicDemands = jointTopicDemands(
+    workspace,
+    exams,
+    now,
+    profile,
+    overrides,
+  );
+  const revisionDemands = jointRevisionDemands(
+    exams,
+    topicDemands,
+    revisionRatio,
+    revisionLeadDays,
+    minRevisionMinutes,
+    maxRevisionMinutes,
+  );
+
+  const today = startOfLocalDay(now);
+  const lastExam = exams[exams.length - 1] ?? null;
+  const daysAvailable = lastExam
+    ? Math.min(
+        maxDays,
+        Math.max(1, examCalendarDaysUntil(lastExam.date, now)),
+      )
+    : 0;
+
+  const days: JointExamPlanDay[] = [];
+  for (let offset = 0; offset < daysAvailable; offset += 1) {
+    const day = addLocalDays(today, offset);
+    const from = offset === 0 ? now : day;
+    const freeClockMinutes = freeStudyWindows(workspace, day, {
+      includeScheduledTasks: true,
+      from,
+      minMinutes: 10,
+    }).reduce((sum, window) => sum + window.minutes, 0);
+    const existingStudyMinutes = actualStudyMinutesForDay(workspace, day);
+    const scheduledStudyMinutes = scheduledStudyMinutesForDay(workspace, day);
+    const sustainableRemainingMinutes = Math.max(
+      0,
+      profile.sustainableDailyMinutes -
+        existingStudyMinutes -
+        scheduledStudyMinutes,
+    );
+    const grossCapacityMinutes = Math.max(
+      0,
+      Math.min(freeClockMinutes, sustainableRemainingMinutes),
+    );
+    const usableCapacityMinutes = Math.max(
+      0,
+      Math.floor(grossCapacityMinutes * (1 - bufferRatio)),
+    );
+    const reservedBufferMinutes = Math.max(
+      0,
+      grossCapacityMinutes - usableCapacityMinutes,
+    );
+    const hardStudyLimitMinutes = Math.min(
+      usableCapacityMinutes,
+      Math.max(
+        Math.min(
+          usableCapacityMinutes,
+          Math.round(workspace.settings.focusMinutes || 45),
+        ),
+        Math.floor(usableCapacityMinutes * profile.hardStudyShareLimit),
+      ),
+    );
+
+    days.push({
+      day,
+      freeClockMinutes,
+      existingStudyMinutes,
+      scheduledStudyMinutes,
+      sustainableRemainingMinutes,
+      grossCapacityMinutes,
+      reservedBufferMinutes,
+      usableCapacityMinutes,
+      plannedPreparationMinutes: 0,
+      plannedRevisionMinutes: 0,
+      hardStudyMinutes: 0,
+      hardStudyLimitMinutes,
+      totalStudyLoadMinutes: existingStudyMinutes + scheduledStudyMinutes,
+      loadRatio:
+        profile.sustainableDailyMinutes > 0
+          ? (existingStudyMinutes + scheduledStudyMinutes) /
+            profile.sustainableDailyMinutes
+          : 0,
+      strain: strainForRatio(
+        profile.sustainableDailyMinutes > 0
+          ? (existingStudyMinutes + scheduledStudyMinutes) /
+            profile.sustainableDailyMinutes
+          : 0,
+      ),
+      blocks: [],
+    });
+  }
+
+  const focusChunk = clamp(Math.round(workspace.settings.focusMinutes || 45), 10, 90);
+  const revisionChunk = Math.min(25, focusChunk);
+  let fatigueLimited = false;
+
+  for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
+    const day = days[dayIndex]!;
+    const completedBeforeDay = new Set(
+      topicDemands
+        .filter((demand) => demand.remainingMinutes <= 0)
+        .map((demand) => demand.topic.topicId),
+    );
+    const activeRevision = revisionDemands
+      .filter((demand) => activeRevisionDemand(demand, day.day))
+      .sort((a, b) => a.examDate - b.examDate);
+
+    const revisionNeedToday = activeRevision.reduce((sum, demand) => {
+      const eligible = demand.topicIds.some((topicId) => completedBeforeDay.has(topicId));
+      if (!eligible) return sum;
+      const daysLeft = Math.max(1, examCalendarDaysUntil(demand.examDate, day.day));
+      return sum + Math.ceil(demand.remainingMinutes / daysLeft);
+    }, 0);
+    const revisionReserve = Math.min(
+      Math.floor(day.usableCapacityMinutes * 0.4),
+      revisionNeedToday,
+    );
+
+    let preparationAvailable = Math.max(
+      0,
+      day.usableCapacityMinutes - revisionReserve,
+    );
+
+    while (preparationAvailable >= 5) {
+      const candidates = topicDemands
+        .filter(
+          (demand) =>
+            demand.remainingMinutes > 0 &&
+            day.day < startOfLocalDay(demand.topic.requiredBy),
+        )
+        .sort(
+          (a, b) =>
+            jointTopicPriority(b, day.day, dayIndex, days.length) -
+              jointTopicPriority(a, day.day, dayIndex, days.length) ||
+            a.topic.topicName.localeCompare(b.topic.topicName),
+        );
+
+      if (!candidates.length) break;
+      let progressed = false;
+
+      for (const demand of candidates) {
+        if (preparationAvailable < 5) break;
+        const topic = demand.topic;
+        const hardRemaining =
+          topic.difficulty === 3
+            ? Math.max(0, day.hardStudyLimitMinutes - day.hardStudyMinutes)
+            : Number.POSITIVE_INFINITY;
+
+        if (topic.difficulty === 3 && hardRemaining < 5) {
+          fatigueLimited = true;
+          continue;
+        }
+
+        const minutes = Math.min(
+          focusChunk,
+          demand.remainingMinutes,
+          preparationAvailable,
+          hardRemaining,
+        );
+        if (minutes < 5) continue;
+
+        day.blocks.push({
+          id: `joint:prep:${dayIndex}:${topic.topicId}:${day.blocks.length}`,
+          day: day.day,
+          kind: 'preparation',
+          topicId: topic.topicId,
+          topicName: topic.topicName,
+          subject: topic.subject,
+          minutes,
+          mode: topic.mode,
+          examIds: demand.examIds,
+          examId: null,
+          reasons: topic.reasons.slice(0, 3),
+        });
+        day.plannedPreparationMinutes += minutes;
+        if (topic.difficulty === 3) day.hardStudyMinutes += minutes;
+        demand.remainingMinutes -= minutes;
+        preparationAvailable -= minutes;
+        progressed = true;
+      }
+
+      if (!progressed) break;
+    }
+
+    let revisionAvailable =
+      day.usableCapacityMinutes - day.plannedPreparationMinutes;
+    for (const demand of activeRevision) {
+      if (revisionAvailable < 5 || demand.remainingMinutes < 5) continue;
+
+      const candidates = topicDemands
+        .filter(
+          (topicDemand) =>
+            demand.topicIds.includes(topicDemand.topic.topicId) &&
+            completedBeforeDay.has(topicDemand.topic.topicId),
+        )
+        .sort(
+          (a, b) =>
+            b.topic.importance - a.topic.importance ||
+            b.topic.difficulty - a.topic.difficulty ||
+            b.topic.forgettingRisk - a.topic.forgettingRisk ||
+            a.topic.topicName.localeCompare(b.topic.topicName),
+        );
+
+      for (const candidate of candidates) {
+        if (revisionAvailable < 5 || demand.remainingMinutes < 5) break;
+        if (
+          day.blocks.some(
+            (block) =>
+              block.kind === 'revision' &&
+              block.examId === demand.examId &&
+              block.topicId === candidate.topic.topicId,
+          )
+        ) {
+          continue;
+        }
+
+        const minutes = Math.min(
+          revisionChunk,
+          demand.remainingMinutes,
+          revisionAvailable,
+        );
+        if (minutes < 5) continue;
+
+        day.blocks.push({
+          id: `joint:review:${demand.examId}:${dayIndex}:${candidate.topic.topicId}`,
+          day: day.day,
+          kind: 'revision',
+          topicId: candidate.topic.topicId,
+          topicName: candidate.topic.topicName,
+          subject: candidate.topic.subject,
+          minutes,
+          mode: 'review',
+          examIds: [demand.examId],
+          examId: demand.examId,
+          reasons: [`final revision for ${demand.examName}`],
+        });
+        day.plannedRevisionMinutes += minutes;
+        demand.remainingMinutes -= minutes;
+        revisionAvailable -= minutes;
+      }
+    }
+
+    day.totalStudyLoadMinutes =
+      day.existingStudyMinutes +
+      day.scheduledStudyMinutes +
+      day.plannedPreparationMinutes +
+      day.plannedRevisionMinutes;
+    day.loadRatio =
+      profile.sustainableDailyMinutes > 0
+        ? day.totalStudyLoadMinutes / profile.sustainableDailyMinutes
+        : 0;
+    day.strain = strainForRatio(day.loadRatio);
+  }
+
+  const totalPreparationRequiredMinutes = topicDemands.reduce(
+    (sum, demand) => sum + demand.topic.totalRequiredMinutes,
+    0,
+  );
+  const totalRevisionRequiredMinutes = revisionDemands.reduce(
+    (sum, demand) => sum + demand.requiredMinutes,
+    0,
+  );
+  const totalUsableCapacityMinutes = days.reduce(
+    (sum, day) => sum + day.usableCapacityMinutes,
+    0,
+  );
+  const plannedPreparationMinutes = days.reduce(
+    (sum, day) => sum + day.plannedPreparationMinutes,
+    0,
+  );
+  const plannedRevisionMinutes = days.reduce(
+    (sum, day) => sum + day.plannedRevisionMinutes,
+    0,
+  );
+  const unallocatedPreparationMinutes = topicDemands.reduce(
+    (sum, demand) => sum + Math.max(0, demand.remainingMinutes),
+    0,
+  );
+  const unallocatedRevisionMinutes = revisionDemands.reduce(
+    (sum, demand) => sum + Math.max(0, demand.remainingMinutes),
+    0,
+  );
+  const requiredTotal =
+    totalPreparationRequiredMinutes + totalRevisionRequiredMinutes;
+  const strainRatio =
+    totalUsableCapacityMinutes > 0
+      ? requiredTotal / totalUsableCapacityMinutes
+      : requiredTotal > 0
+        ? Number.POSITIVE_INFINITY
+        : 0;
+  const warnings: string[] = [];
+
+  if (!exams.length) {
+    warnings.push('There are no upcoming exams to plan yet.');
+  }
+  if (profile.source === 'default' && exams.length) {
+    warnings.push('Capacity is using your daily setting until MYELIN has enough study history.');
+  }
+  if (topicDemands.some((demand) => demand.examIds.length > 1)) {
+    warnings.push('Shared topics are planned once and reused across every matching exam.');
+  }
+  if (fatigueLimited) {
+    warnings.push('High-effort topics are being spread out instead of being packed into one day.');
+  }
+  if (unallocatedPreparationMinutes > 0) {
+    warnings.push(
+      `About ${unallocatedPreparationMinutes} minutes of preparation cannot fit before the relevant exam deadlines.`,
+    );
+  }
+  if (unallocatedRevisionMinutes > 0) {
+    warnings.push(
+      `About ${unallocatedRevisionMinutes} minutes of final revision could not fit after the core preparation work.`,
+    );
+  }
+
+  const examSummaries = jointExamSummary(
+    exams,
+    topicDemands,
+    revisionDemands,
+    days,
+  );
+  const hasUnallocated =
+    unallocatedPreparationMinutes > 0 || unallocatedRevisionMinutes > 0;
+
+  return {
+    generatedAt: now,
+    capacityProfile: profile,
+    bufferRatio,
+    revisionRatio,
+    revisionLeadDays,
+    exams: examSummaries,
+    uniqueTopicCount: topicDemands.length,
+    totalPreparationRequiredMinutes,
+    totalRevisionRequiredMinutes,
+    totalUsableCapacityMinutes,
+    plannedPreparationMinutes,
+    plannedRevisionMinutes,
+    unallocatedPreparationMinutes,
+    unallocatedRevisionMinutes,
+    strainRatio,
+    strain: hasUnallocated ? 'overloaded' : strainForRatio(strainRatio),
+    days,
+    warnings,
+  };
+}

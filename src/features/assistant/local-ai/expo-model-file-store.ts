@@ -12,16 +12,29 @@ import {
   LocalAiModelId,
 } from './model-catalog';
 import { LocalAiDeviceCapabilities } from './local-ai-runtime';
+import { Sha256 } from './sha256';
 
 const ROOT_NAME = 'myelin-ai-models';
 const MANIFEST_NAME = 'install.json';
 const CHECKPOINT_NAME = 'download.json';
 const CHECKPOINT_VERSION = 1 as const;
-const MANIFEST_VERSION = 1 as const;
+const MANIFEST_VERSION = 2 as const;
+const LEGACY_MANIFEST_VERSION = 1 as const;
 const MIN_HEADROOM_BYTES = 64 * 1024 * 1024;
 
 type InstallManifest = {
   version: typeof MANIFEST_VERSION;
+  modelId: LocalAiModelId;
+  artifactId: string;
+  fileName: string;
+  uri: string;
+  sizeBytes: number;
+  sha256: string;
+  installedAt: number;
+};
+
+type LegacyInstallManifest = {
+  version: typeof LEGACY_MANIFEST_VERSION;
   modelId: LocalAiModelId;
   artifactId: string;
   fileName: string;
@@ -91,6 +104,50 @@ function deleteDirectory(directory: Directory) {
   if (directory.exists) directory.delete();
 }
 
+function normalizeSha256(value?: string) {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  return /^[a-f0-9]{64}$/.test(normalized) ? normalized : null;
+}
+
+async function sha256FileHex(file: File) {
+  const reader = file.readableStream().getReader();
+  const digest = new Sha256();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value && value.byteLength > 0) digest.update(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return digest.digestHex();
+}
+
+async function verifyArtifactFingerprint(
+  file: File,
+  artifact: LocalAiArtifactDescriptor,
+) {
+  const expected = normalizeSha256(artifact.sha256);
+  if (!expected) {
+    throw new Error(
+      'MYELIN does not have a trusted SHA-256 fingerprint for this model artifact.',
+    );
+  }
+
+  const actual = await sha256FileHex(file);
+  if (actual !== expected) {
+    throw new Error(
+      'The model SHA-256 fingerprint did not match MYELIN\'s expected artifact.',
+    );
+  }
+
+  return actual;
+}
+
 function validManifest(
   raw: unknown,
   modelId: LocalAiModelId,
@@ -98,8 +155,40 @@ function validManifest(
 ): InstallManifest | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const value = raw as Record<string, unknown>;
+  const expectedSha256 = normalizeSha256(artifact.sha256);
+  const manifestSha256 =
+    typeof value.sha256 === 'string' ? normalizeSha256(value.sha256) : null;
   if (
     value.version !== MANIFEST_VERSION ||
+    value.modelId !== modelId ||
+    value.artifactId !== artifact.id ||
+    value.fileName !== artifact.fileName ||
+    typeof value.uri !== 'string' ||
+    typeof value.sizeBytes !== 'number' ||
+    !Number.isFinite(value.sizeBytes) ||
+    value.sizeBytes <= 0 ||
+    !expectedSha256 ||
+    manifestSha256 !== expectedSha256 ||
+    typeof value.installedAt !== 'number' ||
+    !Number.isFinite(value.installedAt)
+  ) {
+    return null;
+  }
+  return {
+    ...(value as InstallManifest),
+    sha256: manifestSha256,
+  };
+}
+
+function validLegacyManifest(
+  raw: unknown,
+  modelId: LocalAiModelId,
+  artifact: LocalAiArtifactDescriptor,
+): LegacyInstallManifest | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  if (
+    value.version !== LEGACY_MANIFEST_VERSION ||
     value.modelId !== modelId ||
     value.artifactId !== artifact.id ||
     value.fileName !== artifact.fileName ||
@@ -112,7 +201,7 @@ function validManifest(
   ) {
     return null;
   }
-  return value as InstallManifest;
+  return value as LegacyInstallManifest;
 }
 
 function validCheckpoint(
@@ -196,15 +285,47 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
       if (Platform.OS === 'web') return null;
 
       const paths = modelPaths(model.id, artifact);
-      const manifest = validManifest(
-        readJson(paths.manifestFile),
-        model.id,
-        artifact,
-      );
+      const rawManifest = readJson(paths.manifestFile);
+      let manifest = validManifest(rawManifest, model.id, artifact);
 
       if (!manifest) {
-        if (paths.manifestFile.exists) deleteFile(paths.manifestFile);
-        return null;
+        const legacy = validLegacyManifest(rawManifest, model.id, artifact);
+        if (legacy) {
+          const legacyFile = new File(legacy.uri);
+          const legacySize = legacyFile.exists ? legacyFile.size : 0;
+          const legacySizeValid =
+            legacyFile.exists &&
+            legacySize === legacy.sizeBytes &&
+            expectedSizeMatches(legacySize, artifact.sizeBytes);
+
+          if (!legacySizeValid) {
+            deleteFile(legacyFile);
+            deleteFile(paths.manifestFile);
+            return null;
+          }
+
+          try {
+            const sha256 = await verifyArtifactFingerprint(legacyFile, artifact);
+            manifest = {
+              version: MANIFEST_VERSION,
+              modelId: model.id,
+              artifactId: artifact.id,
+              fileName: artifact.fileName,
+              uri: legacyFile.uri,
+              sizeBytes: legacySize,
+              sha256,
+              installedAt: legacy.installedAt,
+            };
+            writeJson(paths.manifestFile, manifest);
+          } catch {
+            deleteFile(legacyFile);
+            deleteFile(paths.manifestFile);
+            return null;
+          }
+        } else {
+          if (paths.manifestFile.exists) deleteFile(paths.manifestFile);
+          return null;
+        }
       }
 
       const installedFile = new File(manifest.uri);
@@ -225,6 +346,7 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
         artifactId: artifact.id,
         uri: installedFile.uri,
         sizeBytes: actualSize,
+        sha256: manifest.sha256,
         installedAt: manifest.installedAt,
       };
     },
@@ -403,6 +525,8 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
           );
         }
 
+        const sha256 = await verifyArtifactFingerprint(downloaded, artifact);
+
         deleteFile(paths.finalFile);
         await downloaded.move(paths.finalFile);
 
@@ -426,6 +550,7 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
           fileName: artifact.fileName,
           uri: finalFile.uri,
           sizeBytes: finalSize,
+          sha256,
           installedAt,
         } satisfies InstallManifest);
         deleteFile(paths.checkpointFile);
@@ -436,6 +561,7 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
           artifactId: artifact.id,
           uri: finalFile.uri,
           sizeBytes: finalSize,
+          sha256,
           installedAt,
         };
         return record;
@@ -506,6 +632,8 @@ export function createExpoLocalAiModelFileStore(): LocalAiModelFileStore {
         ) {
           throw new Error('The imported model failed its staged size check.');
         }
+
+        const sha256 = await verifyArtifactFingerprint(staged, artifact);
 
         await staged.move(paths.finalFile, { overwrite: true });
 

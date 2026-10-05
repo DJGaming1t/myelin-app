@@ -7,10 +7,11 @@ import {
   scheduledTasksForDay,
   startOfLocalDay,
 } from '@/src/features/planning/day-engine';
+import { CapacityFeasibilityAnalysis } from '@/src/features/planning/capacity-feasibility';
 import {
-  CapacityFeasibilityAnalysis,
-  analyzeCapacityFeasibility,
-} from '@/src/features/planning/capacity-feasibility';
+  UnifiedWorkloadLedger,
+  buildUnifiedWorkloadLedger,
+} from '@/src/features/planning/workload-ledger';
 
 export type ExamPlanStrain = 'comfortable' | 'balanced' | 'tight' | 'overloaded';
 export type CapacitySource = 'default' | 'personalized';
@@ -119,6 +120,7 @@ export type ExamPreparationPlan = {
   days: ExamPlanDay[];
   warnings: string[];
   feasibility: CapacityFeasibilityAnalysis;
+  workloadLedger: UnifiedWorkloadLedger;
 };
 
 const DAY_MS = 86_400_000;
@@ -852,8 +854,11 @@ export function buildExamPreparationPlan(
     );
   }
 
-  const feasibility = analyzeCapacityFeasibility(
-    topics.map((topic) => ({
+  const workloadLedger = buildUnifiedWorkloadLedger(workspace, now, {
+    sustainableDailyMinutes: capacityProfile.sustainableDailyMinutes,
+    bufferRatio,
+    horizonDays: maxDays,
+    examDemands: topics.map((topic) => ({
       id: `exam-topic:${topic.topicId}`,
       label: topic.topicName,
       kind: 'exam-preparation' as const,
@@ -863,12 +868,12 @@ export function buildExamPreparationPlan(
       deadlineAt: topic.requiredBy,
       capacityUntil: startOfLocalDay(topic.requiredBy),
       movable: topic.importance < 3,
+      topicId: topic.topicId,
+      examId: exam.id,
+      examIds: [exam.id],
     })),
-    days.map((day) => ({
-      day: day.day,
-      usableMinutes: day.usableCapacityMinutes,
-    })),
-  );
+  });
+  const feasibility = workloadLedger.feasibility;
 
   return {
     examId: exam.id,
@@ -889,6 +894,7 @@ export function buildExamPreparationPlan(
     days,
     warnings,
     feasibility,
+    workloadLedger,
   };
 }
 
@@ -981,6 +987,7 @@ export type JointExamPreparationPlan = {
   days: JointExamPlanDay[];
   warnings: string[];
   feasibility: CapacityFeasibilityAnalysis;
+  workloadLedger: UnifiedWorkloadLedger;
 };
 
 type JointTopicDemand = {
@@ -1483,8 +1490,11 @@ export function buildJointExamPreparationPlan(
   const hasUnallocated =
     unallocatedPreparationMinutes > 0 || unallocatedRevisionMinutes > 0;
 
-  const feasibility = analyzeCapacityFeasibility(
-    [
+  const workloadLedger = buildUnifiedWorkloadLedger(workspace, now, {
+    sustainableDailyMinutes: profile.sustainableDailyMinutes,
+    bufferRatio,
+    horizonDays: maxDays,
+    examDemands: [
       ...topicDemands.map((demand) => ({
         id: `joint-prep:${demand.topic.topicId}`,
         label: demand.topic.topicName,
@@ -1495,6 +1505,8 @@ export function buildJointExamPreparationPlan(
         deadlineAt: demand.topic.requiredBy,
         capacityUntil: startOfLocalDay(demand.topic.requiredBy),
         movable: demand.topic.importance < 3,
+        topicId: demand.topic.topicId,
+        examIds: demand.examIds,
       })),
       ...revisionDemands
         .filter((demand) => demand.requiredMinutes > 0)
@@ -1508,13 +1520,11 @@ export function buildJointExamPreparationPlan(
           deadlineAt: demand.examDate,
           capacityUntil: startOfLocalDay(demand.examDate),
           movable: false,
+          examId: demand.examId,
         })),
     ],
-    days.map((day) => ({
-      day: day.day,
-      usableMinutes: day.usableCapacityMinutes,
-    })),
-  );
+  });
+  const feasibility = workloadLedger.feasibility;
 
   return {
     generatedAt: now,
@@ -1536,5 +1546,6 @@ export function buildJointExamPreparationPlan(
     days,
     warnings,
     feasibility,
+    workloadLedger,
   };
 }

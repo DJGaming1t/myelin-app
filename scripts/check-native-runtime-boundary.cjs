@@ -29,6 +29,7 @@ const nativeSensitive = changed.filter((file) =>
   file === 'app.config.js' ||
   file === 'app.config.ts' ||
   file.startsWith('plugins/') ||
+  file.startsWith('modules/') ||
   file.startsWith('android/') ||
   file.startsWith('ios/')
 );

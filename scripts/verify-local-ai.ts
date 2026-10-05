@@ -177,7 +177,15 @@ const androidCapabilities: LocalAiDeviceCapabilities = {
   assert.equal(functionGemma.requiresTaskFineTune, true);
   assert.equal(functionGemma.license, 'Gemma');
   assert.equal(qwen.license, 'Apache-2.0');
-  assert.equal(functionGemma.artifact, null);
+  assert.equal(functionGemma.artifact?.runtimeId, 'litert-lm');
+  assert.equal(functionGemma.artifact?.format, 'litertlm');
+  assert.equal(functionGemma.artifact?.sizeBytes, 288_964_608);
+  assert.equal(
+    functionGemma.artifact?.sha256,
+    '33e295cbd996b419bb1de8f3f85c5b6b01ee058a2c89bdb2173cf3e6ff4ce9d0',
+  );
+  assert.equal(functionGemma.artifact?.downloadUrl, undefined);
+  assert.deepEqual(qwen.runtimeCandidates, ['litert-lm']);
   assert.equal(qwen.artifact, null);
 
   const blocked = checkLocalAiCompatibility(functionGemma, {
@@ -241,6 +249,27 @@ async function main() {
       'utf8',
     );
     const rootLayoutSource = readFileSync('app/_layout.tsx', 'utf8');
+    const liteRtAdapterSource = readFileSync(
+      'src/features/assistant/local-ai/litert-lm-runtime.ts',
+      'utf8',
+    );
+    const nativeModuleSource = readFileSync(
+      'modules/myelin-litertlm/android/src/main/java/com/djgaming1t/myelin/litertlm/MyelinLiteRtLmModule.kt',
+      'utf8',
+    );
+    const nativeBuildSource = readFileSync(
+      'modules/myelin-litertlm/android/build.gradle',
+      'utf8',
+    );
+    const nativeConfigSource = readFileSync(
+      'modules/myelin-litertlm/expo-module.config.json',
+      'utf8',
+    );
+    const nativeBoundarySource = readFileSync(
+      'scripts/check-native-runtime-boundary.cjs',
+      'utf8',
+    );
+    const appConfig = JSON.parse(readFileSync('app.json', 'utf8'));
 
     assert.match(storageSource, /Paths\.document/);
     assert.match(storageSource, /Paths\.availableDiskSpace/);
@@ -257,6 +286,21 @@ async function main() {
     assert.match(settingsSource, /Manage AI models/);
     assert.match(modelScreenSource, /Unload AI in background/);
     assert.match(modelScreenSource, /downloadModel/);
+    assert.match(modelScreenSource, /Run test/);
+    assert.match(providerSource, /liteRtLmRuntimeAdapter/);
+    assert.match(providerSource, /smokeTestModel/);
+    assert.match(liteRtAdapterSource, /id: 'litert-lm'/);
+    assert.match(liteRtAdapterSource, /MyelinLiteRtLm\.generate/);
+    assert.match(nativeModuleSource, /Name\("MyelinLiteRtLm"\)/);
+    assert.match(nativeModuleSource, /automaticToolCalling = false/);
+    assert.match(nativeModuleSource, /Backend\.CPU\(\)/);
+    assert.match(nativeModuleSource, /conversation\.sendMessage/);
+    assert.match(nativeModuleSource, /cancelProcess\(\)/);
+    assert.match(nativeBuildSource, /litertlm-android:0\.17\.1/);
+    assert.match(nativeConfigSource, /MyelinLiteRtLmModule/);
+    assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
+    assert.equal(appConfig.expo.version, '0.2.8');
+    assert.equal(appConfig.expo.android.versionCode, 5);
   }
 
   {
@@ -366,6 +410,9 @@ async function main() {
     );
   }
   
+  console.log('✓ LiteRT-LM Android bridge is autolinked and pinned to 0.17.1');
+  console.log('✓ FunctionGemma candidate fingerprint is recorded without bypassing its gated download');
+  console.log('✓ native inference stays CPU-first with automatic native tool execution disabled');
   console.log('✓ model storage uses persistent documents, size validation and resumable checkpoints');
   console.log('✓ app background pauses active downloads and mounts the local AI provider globally');
   console.log('✓ Settings exposes a dedicated model management screen');

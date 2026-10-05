@@ -23,8 +23,10 @@ import {
   createLocalAiPreferenceStore,
   normalizeLocalAiPreferences,
 } from '../src/features/assistant/local-ai/local-ai-preferences';
+import { Sha256, sha256Hex } from '../src/features/assistant/local-ai/sha256';
 
 const MB = 1024 * 1024;
+const FAKE_SHA_256 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 class MemoryKeyValueStore {
   values = new Map<string, string>();
@@ -78,6 +80,7 @@ class FakeFileStore implements LocalAiModelFileStore {
       artifactId: artifact.id,
       uri: `file:///models/${model.id}/${artifact.fileName}`,
       sizeBytes: artifact.sizeBytes ?? null,
+      sha256: artifact.sha256 ?? FAKE_SHA_256,
       installedAt: 1_760_000_000_000,
     };
     this.records.set(model.id, record);
@@ -95,6 +98,7 @@ class FakeFileStore implements LocalAiModelFileStore {
       artifactId: artifact.id,
       uri: `file:///models/${model.id}/${artifact.fileName}`,
       sizeBytes: source.sizeBytes ?? artifact.sizeBytes ?? null,
+      sha256: artifact.sha256 ?? FAKE_SHA_256,
       installedAt: 1_760_000_000_100,
     };
     this.records.set(model.id, record);
@@ -155,6 +159,7 @@ function configuredModels(): LocalAiModelDefinition[] {
         fileName: 'functiongemma.test',
         downloadUrl: 'https://example.invalid/functiongemma.test',
         sizeBytes: 300 * MB,
+        sha256: FAKE_SHA_256,
         releaseStage: 'candidate',
         notes: ['verification fixture'],
       },
@@ -169,6 +174,7 @@ function configuredModels(): LocalAiModelDefinition[] {
         fileName: 'qwen.test',
         downloadUrl: 'https://example.invalid/qwen.test',
         sizeBytes: 520 * MB,
+        sha256: FAKE_SHA_256,
         releaseStage: 'candidate',
         notes: ['verification fixture'],
       },
@@ -201,6 +207,26 @@ const androidCapabilities: LocalAiDeviceCapabilities = {
   freeStorageBytes: 4 * 1024 * MB,
   totalMemoryBytes: 8 * 1024 * MB,
 };
+
+{
+  const encoder = new TextEncoder();
+  assert.equal(
+    sha256Hex(new Uint8Array()),
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  );
+  assert.equal(
+    sha256Hex(encoder.encode('abc')),
+    'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+  );
+  const chunked = new Sha256();
+  chunked.update(encoder.encode('a'));
+  chunked.update(encoder.encode('b'));
+  chunked.update(encoder.encode('c'));
+  assert.equal(
+    chunked.digestHex(),
+    'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+  );
+}
 
 {
   assert.deepEqual(
@@ -308,6 +334,10 @@ async function main() {
     assert.match(storageSource, /sourceFile\.copy/);
     assert.match(storageSource, /\.litertlm/);
     assert.match(storageSource, /selected model size did not match the expected artifact/i);
+    assert.match(storageSource, /verifyArtifactFingerprint/);
+    assert.match(storageSource, /readableStream\(\)/);
+    assert.match(storageSource, /SHA-256 fingerprint did not match/i);
+    assert.match(storageSource, /MANIFEST_VERSION = 2/);
     assert.match(providerSource, /AppState\.addEventListener/);
     assert.match(providerSource, /controller\.abort\(\)/);
     assert.match(rootLayoutSource, /<LocalAiProvider>/);
@@ -546,6 +576,7 @@ async function main() {
     );
   }
   
+  console.log('✓ streamed SHA-256 matches standard vectors and chunk boundaries');
   console.log('✓ maintained react-native-litert-lm 0.7.0 replaces the custom Kotlin bridge');
   console.log('✓ FunctionGemma candidate fingerprint is recorded without bypassing its gated download');
   console.log('✓ native inference stays CPU-first, structured, and isolated between MYELIN requests');

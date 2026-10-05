@@ -296,11 +296,11 @@ async function main() {
     assert.match(nativeModuleSource, /Backend\.CPU\(\)/);
     assert.match(nativeModuleSource, /conversation\.sendMessage/);
     assert.match(nativeModuleSource, /cancelProcess\(\)/);
-    assert.match(nativeBuildSource, /litertlm-android:0\.17\.1/);
+    assert.match(nativeBuildSource, /litertlm-android:0\.16\.1/);
     assert.match(nativeConfigSource, /MyelinLiteRtLmModule/);
     assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
-    assert.equal(appConfig.expo.version, '0.2.8');
-    assert.equal(appConfig.expo.android.versionCode, 5);
+    assert.equal(appConfig.expo.version, '0.2.9');
+    assert.equal(appConfig.expo.android.versionCode, 6);
   }
 
   {
@@ -410,7 +410,7 @@ async function main() {
     );
   }
   
-  console.log('✓ LiteRT-LM Android bridge is autolinked and pinned to 0.17.1');
+  console.log('✓ LiteRT-LM Android bridge is autolinked and pinned to Expo-compatible 0.16.1');
   console.log('✓ FunctionGemma candidate fingerprint is recorded without bypassing its gated download');
   console.log('✓ native inference stays CPU-first with automatic native tool execution disabled');
   console.log('✓ model storage uses persistent documents, size validation and resumable checkpoints');

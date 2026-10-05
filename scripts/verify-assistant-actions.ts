@@ -109,6 +109,10 @@ const now = local(2026, 10, 5, 15);
   assert.equal(data.revisionLeadDays, 2);
   assert.equal(data.feasibility.feasible, true);
   assert.equal(data.feasibility.firstOverloadedDeadline, null);
+  assert.ok(data.feasibility.totalRequiredMinutes > 0);
+  assert.ok(data.feasibility.totalCapacityMinutes >= data.feasibility.totalRequiredMinutes);
+  assert.equal(data.workload.deduplicatedMinutes, 0);
+  assert.equal(data.workload.demandCount > 0, true);
   assert.equal(data.exams[0]?.examName, 'Maths exam');
   assert.ok(
     data.days.flatMap((day) => day.blocks).some((block) => block.topicName === 'Trigonometry'),

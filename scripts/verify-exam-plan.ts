@@ -6,6 +6,7 @@ import { createExam } from '../src/features/exams/exam-engine';
 import {
   buildExamCapacityProfile,
   buildExamPreparationPlan,
+  buildJointExamPreparationPlan,
   examPlanTopicRemainingMinutes,
 } from '../src/features/exams/exam-plan-engine';
 import { addLocalDays, startOfLocalDay } from '../src/features/planning/day-engine';
@@ -477,6 +478,210 @@ const now = local(2026, 10, 5, 15, 0);
   );
 }
 
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 150;
+  workspace.settings.focusMinutes = 45;
+
+  const shared = makeTopic('shared', 'Trigonometry', 'Mathematics', 'learning', 90, 3);
+  const physics = makeTopic('physics-joint', 'Electricity', 'Physics', 'learning', 90, 2);
+  const chemistry = makeTopic('chem-joint', 'Acids Bases and Salts', 'Chemistry', 'learning', 75, 2);
+  workspace.topics.push(shared, physics, chemistry);
+
+  const mathsExamDate = addLocalDays(startOfLocalDay(now), 3) + 12 * 60 * 60 * 1000;
+  const physicsExamDate = addLocalDays(startOfLocalDay(now), 5) + 12 * 60 * 60 * 1000;
+  const chemExamDate = addLocalDays(startOfLocalDay(now), 6) + 12 * 60 * 60 * 1000;
+
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Maths exam',
+        date: mathsExamDate,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['shared'],
+      },
+      now,
+      'joint_math',
+    ),
+    createExam(
+      {
+        name: 'Physics exam',
+        date: physicsExamDate,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['shared', 'physics-joint'],
+      },
+      now,
+      'joint_physics',
+    ),
+    createExam(
+      {
+        name: 'Chemistry exam',
+        date: chemExamDate,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['chem-joint'],
+      },
+      now,
+      'joint_chem',
+    ),
+  );
+
+  const joint = buildJointExamPreparationPlan(workspace, now, {
+    revisionRatio: 0.2,
+    revisionLeadDays: 2,
+  });
+
+  assert.equal(joint.exams.length, 3);
+  assert.equal(joint.uniqueTopicCount, 3, 'Shared syllabus must be represented by one joint topic demand.');
+  assert.equal(
+    joint.days
+      .flatMap((day) => day.blocks)
+      .filter((block) => block.kind === 'preparation' && block.topicId === 'shared')
+      .reduce((sum, block) => sum + block.minutes, 0),
+    joint.totalPreparationRequiredMinutes -
+      joint.days
+        .flatMap((day) => day.blocks)
+        .filter((block) => block.kind === 'preparation' && block.topicId !== 'shared')
+        .reduce((sum, block) => sum + block.minutes, 0),
+    'A shared topic must not be duplicated just because two exams include it.',
+  );
+  assert.ok(
+    joint.days
+      .flatMap((day) => day.blocks)
+      .filter((block) => block.kind === 'preparation' && block.topicId === 'shared')
+      .every((block) => block.day < startOfLocalDay(mathsExamDate)),
+    'Shared preparation must obey the earliest matching exam deadline.',
+  );
+  assert.ok(
+    joint.days.every(
+      (day) =>
+        day.plannedPreparationMinutes + day.plannedRevisionMinutes <=
+        day.usableCapacityMinutes,
+    ),
+    'Joint preparation and revision blocks must stay inside safe daily capacity.',
+  );
+  assert.ok(
+    joint.warnings.some((warning) => /shared topics are planned once/i.test(warning)),
+    'The joint planner should explain deduplication instead of hiding it.',
+  );
+}
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 180;
+  workspace.settings.focusMinutes = 45;
+
+  const history = makeTopic('joint-history', 'Nationalism in India', 'History', 'learning', 60, 2);
+  const geography = makeTopic('joint-geography', 'Resources and Development', 'Geography', 'learning', 60, 2);
+  workspace.topics.push(history, geography);
+
+  const examDate = addLocalDays(startOfLocalDay(now), 5) + 12 * 60 * 60 * 1000;
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Social Science exam',
+        date: examDate,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['joint-history', 'joint-geography'],
+      },
+      now,
+      'joint_revision_exam',
+    ),
+  );
+
+  const joint = buildJointExamPreparationPlan(workspace, now, {
+    revisionRatio: 0.25,
+    revisionLeadDays: 2,
+    minRevisionMinutes: 30,
+  });
+
+  const revisionBlocks = joint.days
+    .flatMap((day) => day.blocks)
+    .filter((block) => block.kind === 'revision');
+  assert.ok(revisionBlocks.length > 0, 'A feasible plan should include explicit final revision blocks.');
+
+  const revisionStart = addLocalDays(startOfLocalDay(examDate), -2);
+  assert.ok(
+    revisionBlocks.every(
+      (block) =>
+        block.day >= revisionStart &&
+        block.day < startOfLocalDay(examDate),
+    ),
+    'Final revision must stay inside the configured pre-exam revision window.',
+  );
+
+  for (const block of revisionBlocks) {
+    const earlierPreparation = joint.days
+      .flatMap((day) => day.blocks)
+      .filter(
+        (candidate) =>
+          candidate.kind === 'preparation' &&
+          candidate.topicId === block.topicId &&
+          candidate.day < block.day,
+      )
+      .reduce((sum, candidate) => sum + candidate.minutes, 0);
+    assert.ok(
+      earlierPreparation > 0,
+      'Revision must not be scheduled before the topic has had preparation on an earlier day.',
+    );
+  }
+
+  const examSummary = joint.exams.find((exam) => exam.examId === 'joint_revision_exam')!;
+  assert.equal(examSummary.revisionUnallocatedMinutes, 0);
+  assert.equal(
+    examSummary.revisionPlannedMinutes,
+    examSummary.revisionRequiredMinutes,
+    'A feasible plan should protect the full requested revision buffer.',
+  );
+}
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 45;
+  workspace.settings.focusMinutes = 30;
+
+  workspace.topics.push(
+    makeTopic('joint-over-a', 'Magnetic Effects', 'Physics', 'new', 240, 3),
+    makeTopic('joint-over-b', 'Carbon and Compounds', 'Chemistry', 'new', 240, 3),
+  );
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Physics soon',
+        date: addLocalDays(startOfLocalDay(now), 2) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['joint-over-a'],
+      },
+      now,
+      'joint_over_a',
+    ),
+    createExam(
+      {
+        name: 'Chemistry soon',
+        date: addLocalDays(startOfLocalDay(now), 3) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['joint-over-b'],
+      },
+      now,
+      'joint_over_b',
+    ),
+  );
+
+  const joint = buildJointExamPreparationPlan(workspace, now);
+  assert.equal(joint.strain, 'overloaded');
+  assert.ok(joint.unallocatedPreparationMinutes > 0);
+  assert.ok(
+    joint.warnings.some((warning) => /cannot fit before the relevant exam deadlines/i.test(warning)),
+    'The joint planner must surface cross-exam overload instead of silently dropping work.',
+  );
+}
+
 console.log('✓ exam scope limits planning to included topics');
 console.log('✓ per-exam workload estimates override generic Topic estimates');
 console.log('✓ feasible workload is split into focus-sized blocks within safe daily capacity');
@@ -485,6 +690,10 @@ console.log('✓ planned-vs-actual pace corrects future topic estimates');
 console.log('✓ completion reliability and postponements make capacity more conservative');
 console.log('✓ high-effort topics are spread with a daily fatigue guardrail');
 console.log('✓ nearby exams reserve capacity without double-counting shared topics');
+console.log('✓ joint multi-exam planning creates real blocks for every exam');
+console.log('✓ shared syllabus is deduplicated and obeys the earliest deadline');
+console.log('✓ explicit revision buffers are scheduled only after earlier preparation');
+console.log('✓ joint overload is surfaced instead of silently dropping exam work');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

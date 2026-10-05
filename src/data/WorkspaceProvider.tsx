@@ -14,6 +14,7 @@ import { useAuth } from '@/src/features/auth/AuthProvider';
 import { workspaceOwnerKey } from './owner';
 import { WorkspaceState, cloneWorkspace, createEmptyWorkspace } from './schema';
 import { workspaceStorage } from './storage';
+import { validateWorkspaceV2 } from './validation';
 
 type WorkspaceStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -29,6 +30,10 @@ type WorkspaceContextValue = {
   resetWorkspace: () => Promise<void>;
   retryWorkspace: () => Promise<void>;
   replaceWorkspace: (next: WorkspaceState, expectedRevision: number) => Promise<WorkspaceState>;
+  commitAssistantWorkspace: (
+    next: WorkspaceState,
+    expectedRevision: number,
+  ) => Promise<WorkspaceState>;
   restoreImportRecovery: (expectedRevision: number) => Promise<WorkspaceState | null>;
   hasImportRecovery: boolean;
 };
@@ -243,6 +248,46 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     [],
   );
 
+  const commitAssistantWorkspace = useCallback(
+    async (incoming: WorkspaceState, expectedRevision: number) => {
+      const currentOwner = ownerKeyRef.current;
+      const current = workspaceRef.current;
+      if (!currentOwner || !current) throw new Error('No workspace is open.');
+      if (current.revision !== expectedRevision) {
+        throw new Error(
+          'This workspace changed after the assistant preview. Preview the actions again before applying them.',
+        );
+      }
+
+      await saveQueue.current;
+
+      const latest = workspaceRef.current;
+      if (!latest || latest.revision !== expectedRevision) {
+        throw new Error(
+          'This workspace changed while the assistant action was preparing. No assistant changes were applied.',
+        );
+      }
+
+      const replacement = validateWorkspaceV2(cloneWorkspace(incoming));
+      if (replacement.revision !== expectedRevision + 1) {
+        throw new Error('Assistant workspace revision is invalid.');
+      }
+
+      const saved = await workspaceStorage.save(currentOwner, replacement);
+      if (ownerKeyRef.current !== currentOwner) {
+        throw new Error('The active workspace changed before assistant changes were saved.');
+      }
+
+      workspaceRef.current = saved;
+      setWorkspace(saved);
+      setRecovered(false);
+      setResetBecauseCorrupt(false);
+      setSaveError('');
+      return saved;
+    },
+    [],
+  );
+
   const restoreImportRecovery = useCallback(async (expectedRevision: number) => {
     const currentOwner = ownerKeyRef.current;
     const current = workspaceRef.current;
@@ -290,6 +335,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       resetWorkspace,
       retryWorkspace,
       replaceWorkspace,
+      commitAssistantWorkspace,
       restoreImportRecovery,
       hasImportRecovery,
     }),
@@ -299,6 +345,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       recovered,
       resetBecauseCorrupt,
       replaceWorkspace,
+      commitAssistantWorkspace,
       resetWorkspace,
       retryWorkspace,
       restoreImportRecovery,

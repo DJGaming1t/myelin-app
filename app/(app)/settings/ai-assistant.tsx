@@ -68,10 +68,9 @@ function strainText(strain: AssistantExamPlanSummary['strain']) {
 }
 
 function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
-  const required =
-    plan.totalPreparationRequiredMinutes + plan.totalRevisionRequiredMinutes;
-  const unallocated =
-    plan.unallocatedPreparationMinutes + plan.unallocatedRevisionMinutes;
+  const required = plan.feasibility.totalRequiredMinutes;
+  const usableCapacity = plan.feasibility.totalCapacityMinutes;
+  const unallocated = plan.feasibility.totalOverloadMinutes;
   const activeDays = plan.days.filter((day) => day.blocks.length > 0);
   const visibleDays = activeDays.slice(0, 7);
   const hiddenDays = Math.max(0, activeDays.length - visibleDays.length);
@@ -113,7 +112,7 @@ function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
         </View>
         <View style={styles.planStat}>
           <Text style={styles.planStatLabel}>USABLE CAPACITY</Text>
-          <Text style={styles.planStatValue}>{minutesLabel(plan.totalUsableCapacityMinutes)}</Text>
+          <Text style={styles.planStatValue}>{minutesLabel(usableCapacity)}</Text>
           <Text style={styles.planStatMeta}>{Math.round(plan.bufferRatio * 100)}% buffer protected</Text>
         </View>
         <View style={styles.planStat}>
@@ -124,6 +123,19 @@ function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
           <Text style={styles.planStatMeta}>{unallocated > 0 ? 'Needs adjustment' : 'Within capacity'}</Text>
         </View>
       </View>
+
+      {plan.workload.taskRemainingMinutes > 0 ||
+      plan.workload.deduplicatedMinutes > 0 ? (
+        <View style={styles.ledgerSummary}>
+          <Text style={styles.ledgerSummaryTitle}>ONE WORKLOAD LEDGER</Text>
+          <Text style={styles.ledgerSummaryText}>
+            Tasks and exam work are sharing the same mileage.
+            {plan.workload.deduplicatedMinutes > 0
+              ? ` MYELIN merged ${minutesLabel(plan.workload.deduplicatedMinutes)} that was already represented by linked tasks instead of counting it twice.`
+              : ''}
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.mileageStrip}>
         <View style={styles.mileageItem}>
@@ -733,6 +745,16 @@ const styles = StyleSheet.create({
   planStatValue: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '900', marginTop: 3 },
   planStatMeta: { color: colors.muted, fontSize: 9.5, lineHeight: 13, marginTop: 2 },
   planDanger: { color: colors.danger },
+  ledgerSummary: {
+    marginTop: 9,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    padding: 9,
+  },
+  ledgerSummaryTitle: { color: colors.accent, fontSize: 8.5, lineHeight: 12, fontWeight: '900', letterSpacing: 0.45 },
+  ledgerSummaryText: { color: colors.textDim, fontSize: 10, lineHeight: 15, marginTop: 3 },
   mileageStrip: {
     flexDirection: 'row',
     marginTop: 9,

@@ -123,6 +123,21 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         run: echo "Fast PR gate passed. Firebase security rules and native Android generation run after merge before preview OTA publishing."
 
+      - name: Use Java for native AI bridge check
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Generate Android project for native AI bridge
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Compile native AI bridge
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
+        run: cd android && ./gradlew :app:compileDebugKotlin --no-daemon
+
       - name: Expo Doctor
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
         run: npx expo-doctor

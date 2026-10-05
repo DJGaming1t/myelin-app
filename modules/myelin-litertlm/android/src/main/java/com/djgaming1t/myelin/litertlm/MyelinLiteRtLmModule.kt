@@ -103,7 +103,7 @@ class MyelinLiteRtLmModule : Module() {
             cleanPrompt,
             maxOutputToken = maxOutputTokens?.takeIf { it > 0 },
           )
-        response.text
+        response.toString()
       } finally {
         synchronized(record) {
           record.activeConversation = null

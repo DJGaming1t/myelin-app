@@ -74,6 +74,8 @@ export default function LocalAiAssistantScreen() {
     );
   }
 
+  const currentWorkspace = workspace;
+
   async function prepare() {
     const userRequest = request.trim();
     if (!userRequest || !available || busy) return;
@@ -88,7 +90,7 @@ export default function LocalAiAssistantScreen() {
 
     try {
       const next = await prepareAssistantActions({
-        workspace,
+        workspace: currentWorkspace,
         userRequest,
         currentRoute: '/(app)/settings/ai-assistant',
         signal: controller.signal,
@@ -113,7 +115,7 @@ export default function LocalAiAssistantScreen() {
 
     try {
       const applied = applyPreparedAssistantActionBatch(
-        workspace,
+        currentWorkspace,
         prepared,
         prepared.confirmationKey,
       );

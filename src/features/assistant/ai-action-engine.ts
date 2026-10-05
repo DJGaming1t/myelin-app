@@ -124,6 +124,28 @@ export type AssistantExamPlanSummary = {
   bufferRatio: number;
   revisionRatio: number;
   revisionLeadDays: number;
+  feasibility: {
+    feasible: boolean;
+    totalOverloadMinutes: number;
+    firstOverloadedDeadline: null | {
+      deadlineAt: number;
+      intervalStart: number;
+      requiredMinutes: number;
+      capacityMinutes: number;
+      overloadMinutes: number;
+      availableDayCount: number;
+      extraMinutesPerAvailableDay: number | null;
+      reliefCandidates: Array<{
+        demandId: string;
+        label: string;
+        kind: 'task' | 'exam-preparation' | 'exam-revision' | 'other';
+        priority: Priority;
+        requiredMinutes: number;
+        suggestedMinutes: number;
+        movable: boolean;
+      }>;
+    };
+  };
   capacity: {
     source: 'default' | 'personalized';
     sustainableDailyMinutes: number;
@@ -188,6 +210,7 @@ export function isAssistantExamPlanSummary(
     typeof item.unallocatedPreparationMinutes === 'number' &&
     typeof item.unallocatedRevisionMinutes === 'number' &&
     Boolean(item.capacity) &&
+    Boolean(item.feasibility) &&
     Array.isArray(item.exams) &&
     Array.isArray(item.warnings) &&
     Array.isArray(item.days)
@@ -764,6 +787,27 @@ function planSummary(plan: JointExamPreparationPlan): AssistantExamPlanSummary {
     bufferRatio: plan.bufferRatio,
     revisionRatio: plan.revisionRatio,
     revisionLeadDays: plan.revisionLeadDays,
+    feasibility: {
+      feasible: plan.feasibility.feasible,
+      totalOverloadMinutes: plan.feasibility.totalOverloadMinutes,
+      firstOverloadedDeadline: plan.feasibility.firstOverloadedDeadline
+        ? {
+            deadlineAt: plan.feasibility.firstOverloadedDeadline.deadlineAt,
+            intervalStart: plan.feasibility.firstOverloadedDeadline.intervalStart,
+            requiredMinutes: plan.feasibility.firstOverloadedDeadline.requiredMinutes,
+            capacityMinutes: plan.feasibility.firstOverloadedDeadline.capacityMinutes,
+            overloadMinutes: plan.feasibility.firstOverloadedDeadline.overloadMinutes,
+            availableDayCount:
+              plan.feasibility.firstOverloadedDeadline.availableDayCount,
+            extraMinutesPerAvailableDay:
+              plan.feasibility.firstOverloadedDeadline.extraMinutesPerAvailableDay,
+            reliefCandidates:
+              plan.feasibility.firstOverloadedDeadline.reliefCandidates.map(
+                (candidate) => ({ ...candidate }),
+              ),
+          }
+        : null,
+    },
     capacity: {
       source: plan.capacityProfile.source,
       sustainableDailyMinutes: plan.capacityProfile.sustainableDailyMinutes,

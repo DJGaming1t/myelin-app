@@ -177,6 +177,47 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
         run: npx expo prebuild --platform android --clean --no-install
 
+  persist_litert_dependency:
+    name: Persist LiteRT dependency
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Generate exact npm dependency state
+        run: >
+          npm install react-native-litert-lm@0.7.0
+          --save-exact
+          --package-lock-only
+          --ignore-scripts
+          --no-audit
+          --no-fund
+
+      - name: Commit dependency files once
+        shell: bash
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "LiteRT dependency is already persisted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Add maintained LiteRT runtime dependency"
+          git push origin HEAD:codex/exam-autopilot-capacity-v1
+
   publish_preview:
     name: Publish preview OTA
     needs: verify

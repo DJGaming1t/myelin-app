@@ -290,7 +290,7 @@ async function main() {
     assert.match(providerSource, /liteRtLmRuntimeAdapter/);
     assert.match(providerSource, /smokeTestModel/);
     assert.match(liteRtAdapterSource, /id: 'litert-lm'/);
-    assert.match(liteRtAdapterSource, /MyelinLiteRtLm\.generate/);
+    assert.match(liteRtAdapterSource, /nativeModule\.generate/);
     assert.match(nativeModuleSource, /Name\("MyelinLiteRtLm"\)/);
     assert.match(nativeModuleSource, /automaticToolCalling = false/);
     assert.match(nativeModuleSource, /Backend\.CPU\(\)/);

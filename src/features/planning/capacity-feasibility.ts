@@ -60,14 +60,20 @@ function finiteMinutes(value: number) {
 
 function normalizedDemands(demands: CapacityFeasibilityDemand[]) {
   return demands
-    .map((demand) => ({
-      ...demand,
-      requiredMinutes: finiteMinutes(demand.requiredMinutes),
-      availableFrom: Math.round(demand.availableFrom),
-      deadlineAt: Math.round(demand.deadlineAt),
-      capacityUntil: Math.round(demand.capacityUntil),
-      movable: demand.movable ?? demand.priority < 3,
-    }))
+    .map((demand) => {
+      const capacityUntil = Math.round(demand.capacityUntil);
+      return {
+        ...demand,
+        requiredMinutes: finiteMinutes(demand.requiredMinutes),
+        availableFrom: Math.min(
+          Math.round(demand.availableFrom),
+          capacityUntil,
+        ),
+        deadlineAt: Math.round(demand.deadlineAt),
+        capacityUntil,
+        movable: demand.movable ?? demand.priority < 3,
+      };
+    })
     .filter(
       (demand) =>
         demand.id &&
@@ -75,8 +81,7 @@ function normalizedDemands(demands: CapacityFeasibilityDemand[]) {
         demand.requiredMinutes > 0 &&
         Number.isFinite(demand.availableFrom) &&
         Number.isFinite(demand.deadlineAt) &&
-        Number.isFinite(demand.capacityUntil) &&
-        demand.capacityUntil > demand.availableFrom,
+        Number.isFinite(demand.capacityUntil),
     );
 }
 
@@ -142,7 +147,7 @@ function checkpointForDeadline(
     ...new Set(
       endingDemands
         .map((demand) => demand.availableFrom)
-        .filter((value) => value < capacityUntil),
+        .filter((value) => value <= capacityUntil),
     ),
   ].sort((a, b) => a - b);
 

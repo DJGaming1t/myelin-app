@@ -229,6 +229,65 @@ function main() {
     'Subject changes alone should not override the higher-priority next task.',
   );
 
+  const feedbackAdaptive = createEmptyWorkspace(now - DAY);
+  feedbackAdaptive.settings.dailyMinutes = 90;
+  feedbackAdaptive.settings.focusMinutes = 45;
+  feedbackAdaptive.settings.breakMinutes = 10;
+  feedbackAdaptive.topics.push(
+    topic('feedback_hard', 'Hard feedback topic', 'Mathematics', {
+      priority: 1,
+      status: 'learning',
+      estimate: 90,
+    }),
+    topic('feedback_generic', 'Generic high priority', 'Physics', {
+      priority: 3,
+      status: 'learning',
+      estimate: 90,
+    }),
+  );
+  feedbackAdaptive.history.push(
+    {
+      id: 'feedback_focus',
+      topicId: 'feedback_hard',
+      at: now - DAY + 12 * 60 * 60 * 1000,
+      kind: 'study',
+      minutes: 40,
+      grade: 0,
+      effort: 5,
+      prompt: '',
+      response: '',
+      confidence: 'partial',
+      plannedMinutes: 30,
+    },
+    {
+      id: 'feedback_recall',
+      topicId: 'feedback_hard',
+      at: now - DAY + 13 * 60 * 60 * 1000,
+      kind: 'review',
+      minutes: 3,
+      grade: 1,
+      effort: 3,
+      prompt: 'Recall',
+      response: 'Missed',
+      confidence: 'unsure',
+    },
+  );
+
+  const feedbackPlan = buildTodayPlan(feedbackAdaptive, now);
+  assert.equal(
+    feedbackPlan.nextBlock?.topicId,
+    'feedback_hard',
+    'Repeated difficult focus + weak recall should raise this topic above generic priority alone.',
+  );
+  assert.ok(
+    (feedbackPlan.nextBlock?.minutes ?? 45) < 45,
+    'A topic repeatedly experienced as difficult should get a shorter next focus block.',
+  );
+  assert.ok(
+    feedbackPlan.nextBlock?.reasons.some((reason) => /demanding|reinforcement/i.test(reason)),
+    'The adapted Today recommendation should explain the feedback signal.',
+  );
+
   const lowEnergy = createEmptyWorkspace(now - DAY);
   lowEnergy.settings.dailyMinutes = 90;
   lowEnergy.settings.focusMinutes = 45;
@@ -364,6 +423,7 @@ function main() {
   console.log('✓ due-review priority');
   console.log('✓ meaningful priority instead of arbitrary subject alternation');
   console.log('✓ low-energy block shortening');
+  console.log('✓ repeated effort + recall feedback raises topic priority while shortening its next block');
   console.log('✓ breaks fit inside the time budget');
   console.log('✓ already-used time reduces remaining capacity');
   console.log('✓ standalone task focus reduces remaining capacity');

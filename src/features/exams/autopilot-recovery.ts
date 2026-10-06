@@ -11,6 +11,7 @@ import {
 import {
   addLocalDays,
   commitmentOccurrencesForDay,
+  freeStudyWindows,
   localDayKey,
   startOfLocalDay,
 } from '@/src/features/planning/day-engine';
@@ -360,6 +361,44 @@ function scopeRecoveryOptions(
   return options;
 }
 
+function reclaimedAvailableSegments(
+  workspace: WorkspaceState,
+  occurrenceStart: number,
+  occurrenceEnd: number,
+  earliestStart = occurrenceStart,
+) {
+  const from = Math.max(occurrenceStart, earliestStart);
+  if (occurrenceEnd - from < 5 * 60_000) {
+    return [] as Array<{ start: number; end: number }>;
+  }
+
+  const segments: Array<{ start: number; end: number }> = [];
+  let day = startOfLocalDay(from);
+  const finalDay = startOfLocalDay(
+    Math.max(from, occurrenceEnd - 1),
+  );
+
+  while (day <= finalDay) {
+    const windows = freeStudyWindows(workspace, day, {
+      includeScheduledTasks: true,
+      from: day === startOfLocalDay(from) ? from : day,
+      minMinutes: 5,
+    });
+
+    for (const window of windows) {
+      const start = Math.max(from, occurrenceStart, window.start);
+      const end = Math.min(occurrenceEnd, window.end);
+      if (end - start >= 5 * 60_000) {
+        segments.push({ start, end });
+      }
+    }
+
+    day = addLocalDays(day, 1);
+  }
+
+  return segments.sort((a, b) => a.start - b.start);
+}
+
 function reclaimedDayPlacements(
   before: JointExamPreparationPlan,
   after: JointExamPreparationPlan,
@@ -367,6 +406,12 @@ function reclaimedDayPlacements(
   occurrenceEnd: number,
   capacityGainedMinutes: number,
   earliestStart = occurrenceStart,
+  availableSegments: Array<{ start: number; end: number }> = [
+    {
+      start: Math.max(occurrenceStart, earliestStart),
+      end: occurrenceEnd,
+    },
+  ],
 ) {
   const day = startOfLocalDay(occurrenceStart);
   const beforeDay = before.days.find((item) => item.day === day);
@@ -406,45 +451,104 @@ function reclaimedDayPlacements(
     if (gained >= 5) positiveDelta.set(key, gained);
   }
 
-  let cursor = Math.max(occurrenceStart, earliestStart);
+  const normalizedSegments = availableSegments
+    .map((segment) => ({
+      start: Math.max(
+        occurrenceStart,
+        earliestStart,
+        segment.start,
+      ),
+      end: Math.min(occurrenceEnd, segment.end),
+    }))
+    .filter(
+      (segment) => segment.end - segment.start >= 5 * 60_000,
+    )
+    .sort((a, b) => a.start - b.start);
+
   let remaining = Math.min(
     capacityGainedMinutes,
-    Math.max(
+    normalizedSegments.reduce(
+      (sum, segment) =>
+        sum +
+        Math.floor((segment.end - segment.start) / 60_000),
       0,
-      Math.floor(
-        (occurrenceEnd - cursor) / 60_000,
-      ),
     ),
   );
   const placements: ReclaimedStudyPlacement[] = [];
+  let segmentIndex = 0;
+  let cursor = normalizedSegments[0]?.start ?? occurrenceEnd;
 
   for (const block of afterDay.blocks) {
     if (remaining < 5) break;
     const key = keyFor(block);
-    const delta = positiveDelta.get(key) ?? 0;
+    let delta = positiveDelta.get(key) ?? 0;
     if (delta < 5) continue;
 
-    const minutes = Math.min(
+    let blockRemaining = Math.min(
       block.minutes,
       delta,
       remaining,
-      Math.floor((occurrenceEnd - cursor) / 60_000),
     );
-    if (minutes < 5) continue;
 
-    const end = cursor + minutes * 60_000;
-    placements.push({
-      topicId: block.topicId,
-      topicName: block.topicName,
-      subject: block.subject,
-      kind: block.kind,
-      minutes,
-      start: cursor,
-      end,
-    });
-    cursor = end;
-    remaining -= minutes;
-    positiveDelta.set(key, delta - minutes);
+    while (
+      blockRemaining >= 5 &&
+      remaining >= 5 &&
+      segmentIndex < normalizedSegments.length
+    ) {
+      const segment = normalizedSegments[segmentIndex]!;
+      cursor = Math.max(cursor, segment.start);
+
+      if (cursor >= segment.end) {
+        segmentIndex += 1;
+        cursor =
+          normalizedSegments[segmentIndex]?.start ??
+          occurrenceEnd;
+        continue;
+      }
+
+      const segmentMinutes = Math.floor(
+        (segment.end - cursor) / 60_000,
+      );
+      if (segmentMinutes < 5) {
+        segmentIndex += 1;
+        cursor =
+          normalizedSegments[segmentIndex]?.start ??
+          occurrenceEnd;
+        continue;
+      }
+
+      const minutes = Math.min(
+        blockRemaining,
+        remaining,
+        segmentMinutes,
+      );
+      if (minutes < 5) break;
+
+      const end = cursor + minutes * 60_000;
+      placements.push({
+        topicId: block.topicId,
+        topicName: block.topicName,
+        subject: block.subject,
+        kind: block.kind,
+        minutes,
+        start: cursor,
+        end,
+      });
+
+      cursor = end;
+      blockRemaining -= minutes;
+      remaining -= minutes;
+      delta -= minutes;
+
+      if (cursor >= segment.end) {
+        segmentIndex += 1;
+        cursor =
+          normalizedSegments[segmentIndex]?.start ??
+          occurrenceEnd;
+      }
+    }
+
+    positiveDelta.set(key, Math.max(0, delta));
   }
 
   return placements;
@@ -513,13 +617,23 @@ export function buildAppliedReclaimedWindows(
       const impact = effect(before, after);
       if (impact.capacityGainedMinutes < 5) continue;
 
+      const earliestStart = Math.max(
+        now,
+        occurrence.start,
+      );
       const placements = reclaimedDayPlacements(
         before,
         after,
         occurrence.start,
         occurrence.end,
         impact.capacityGainedMinutes,
-        Math.max(now, occurrence.start),
+        earliestStart,
+        reclaimedAvailableSegments(
+          workspace,
+          occurrence.start,
+          occurrence.end,
+          earliestStart,
+        ),
       );
       if (!placements.length) continue;
 
@@ -625,6 +739,13 @@ function reclaimableCommitmentOptions(
         occurrence.start,
         occurrence.end,
         impact.capacityGainedMinutes,
+        occurrence.start,
+        reclaimedAvailableSegments(
+          preview,
+          occurrence.start,
+          occurrence.end,
+          occurrence.start,
+        ),
       );
       if (!placements.length) continue;
 

@@ -34,7 +34,9 @@ import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotic
 import {
   AutopilotRecoveryOption,
   AutopilotRecoveryUndo,
+  ReclaimedStudyPlacement,
   applyAutopilotRecoveryOption,
+  buildAppliedReclaimedWindows,
   buildAutopilotRecoveryOptions,
   undoAutopilotRecovery,
 } from '@/src/features/exams/autopilot-recovery';
@@ -94,6 +96,14 @@ export default function DayMapScreen() {
     [now, reflow, workspace],
   );
 
+  const reclaimedWindows = useMemo(
+    () =>
+      workspace
+        ? buildAppliedReclaimedWindows(workspace, now)
+        : [],
+    [now, workspace],
+  );
+
   if (!workspace || !map) return null;
 
   function updateWithReflow(change: Parameters<typeof updateWorkspace>[0]) {
@@ -144,6 +154,21 @@ export default function DayMapScreen() {
       if (task) postponeTask(task, tomorrow);
     });
     setNow(Date.now());
+  }
+
+  function startReclaimedPlacement(
+    placement: ReclaimedStudyPlacement,
+  ) {
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        topicId: placement.topicId,
+        minutes: String(placement.minutes),
+        breakMinutes: String(
+          workspace!.settings.breakMinutes,
+        ),
+      },
+    });
   }
 
   function previewRecovery(option: AutopilotRecoveryOption) {
@@ -255,6 +280,74 @@ export default function DayMapScreen() {
                 : undefined
             }
           />
+
+          {reclaimedWindows.length ? (
+            <View style={styles.reclaimedSection}>
+              <Text style={styles.sectionLabel}>RECOVERED AUTOPILOT WINDOW</Text>
+              <Text style={styles.reclaimedIntro}>
+                These blocks are reserved by Autopilot from skipped tuition/coaching time.
+                They are not task records.
+              </Text>
+              {reclaimedWindows.map((window) => (
+                <View
+                  key={`${window.commitmentId}:${window.occurrenceDateKey}`}
+                  style={styles.reclaimedWindow}>
+                  <View style={styles.reclaimedWindowHeader}>
+                    <View style={styles.reclaimedHeaderCopy}>
+                      <Text style={styles.reclaimedWindowTitle}>
+                        {window.commitmentTitle} cancelled
+                      </Text>
+                      <Text style={styles.reclaimedWindowMeta}>
+                        {timeLabel(window.start)}–{timeLabel(window.end)} · Autopilot reserved
+                      </Text>
+                    </View>
+                    <Text style={styles.reclaimedBadge}>RECOVERED</Text>
+                  </View>
+
+                  {window.placements.map((placement, index) => (
+                    <View
+                      key={`${placement.kind}:${placement.topicId}:${placement.start}:${index}`}
+                      style={styles.reclaimedRow}>
+                      <View style={styles.reclaimedTimeCol}>
+                        <Text style={styles.reclaimedTime}>
+                          {timeLabel(placement.start)}
+                        </Text>
+                        <Text style={styles.reclaimedEnd}>
+                          {timeLabel(placement.end)}
+                        </Text>
+                      </View>
+                      <View style={styles.reclaimedRail}>
+                        <View style={styles.reclaimedDot} />
+                        <View style={styles.railLine} />
+                      </View>
+                      <View style={styles.reclaimedBlock}>
+                        <Text style={styles.blockKicker}>
+                          {placement.subject.toUpperCase()}
+                        </Text>
+                        <Text style={styles.blockTitle}>{placement.topicName}</Text>
+                        <Text style={styles.blockMeta}>
+                          {placement.minutes}m ·{' '}
+                          {placement.kind === 'revision' ? 'revision' : 'preparation'} ·
+                          no task created
+                        </Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Start ${placement.minutes} minute focus for ${placement.topicName}`}
+                          onPress={() => startReclaimedPlacement(placement)}
+                          style={({ pressed }) => [
+                            styles.reclaimedStart,
+                            pressed && styles.pressed,
+                          ]}>
+                          <Text style={styles.reclaimedStartText}>Start focus</Text>
+                          <Text style={styles.reclaimedStartArrow}>→</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           <AnimatedDisclosure visible={map.overloadMinutes > 0}>
             <View style={styles.overload}>
@@ -568,6 +661,115 @@ const styles = StyleSheet.create({
   daySummaryText: { color: colors.textDim, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
   daySummaryMeta: { color: colors.muted, fontSize: 10.5, lineHeight: 15 },
   daySummaryWarning: { color: colors.accent, fontWeight: '700' },
+  reclaimedSection: {
+    marginTop: spacing.md,
+  },
+  reclaimedIntro: {
+    color: colors.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  reclaimedWindow: {
+    marginTop: 9,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panel,
+    overflow: 'hidden',
+  },
+  reclaimedWindowHeader: {
+    minHeight: 54,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.accentFaint,
+  },
+  reclaimedHeaderCopy: { flex: 1, minWidth: 0 },
+  reclaimedWindowTitle: {
+    color: colors.text,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '800',
+  },
+  reclaimedWindowMeta: {
+    color: colors.muted,
+    fontSize: 9,
+    lineHeight: 13,
+    marginTop: 2,
+  },
+  reclaimedBadge: {
+    color: colors.accent,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  reclaimedRow: {
+    minHeight: 88,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingHorizontal: 10,
+  },
+  reclaimedTimeCol: {
+    width: 62,
+    paddingTop: 12,
+  },
+  reclaimedTime: {
+    color: colors.accent,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  reclaimedEnd: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 2,
+  },
+  reclaimedRail: {
+    width: 18,
+    alignItems: 'center',
+  },
+  reclaimedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    marginTop: 16,
+  },
+  reclaimedBlock: {
+    flex: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+    paddingVertical: 10,
+    paddingLeft: 8,
+  },
+  reclaimedStart: {
+    minHeight: 40,
+    marginTop: 8,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reclaimedStartText: {
+    color: colors.accent,
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '900',
+  },
+  reclaimedStartArrow: {
+    color: colors.accent,
+    fontSize: 16,
+    lineHeight: 18,
+  },
   overload: { marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: colors.accentFaint, padding: spacing.md },
   overloadLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   overloadTitle: { color: colors.text, fontSize: 12, lineHeight: 18, fontWeight: '700', marginTop: 5 },

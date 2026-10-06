@@ -264,6 +264,32 @@ function main() {
 
   assert.equal(minutesUsedToday(used, now), 40);
 
+  const reviewMileage = createEmptyWorkspace(now - DAY);
+  reviewMileage.settings.dailyMinutes = 60;
+  reviewMileage.topics.push(topic('reviewed_topic', 'Reviewed topic', 'Science'));
+  reviewMileage.history.push({
+    id: 'review_minutes',
+    topicId: 'reviewed_topic',
+    at: todayStart + 30 * 60 * 1000,
+    kind: 'review',
+    minutes: 7,
+    grade: 3,
+    effort: 3,
+    prompt: 'Recall prompt',
+    response: 'Recall answer',
+    confidence: 'sure',
+  });
+  assert.equal(
+    minutesUsedToday(reviewMileage, now),
+    7,
+    'Post-focus retrieval time must feed back into Today mileage.',
+  );
+  assert.equal(
+    buildTodayPlan(reviewMileage, now).remainingBudgetMinutes,
+    53,
+    'Review history should reduce the remaining daily mileage pool.',
+  );
+
   const standaloneFocused = createEmptyWorkspace(now - DAY);
   standaloneFocused.settings.dailyMinutes = 90;
   const focusedTask = createStudyTask({
@@ -341,6 +367,7 @@ function main() {
   console.log('✓ breaks fit inside the time budget');
   console.log('✓ already-used time reduces remaining capacity');
   console.log('✓ standalone task focus reduces remaining capacity');
+  console.log('✓ post-focus retrieval minutes feed back into the same Today mileage pool');
   console.log('✓ snoozed topics stay out');
   console.log('✓ exhausted budget adds no fake work');
   const snapshot = JSON.stringify(plan);

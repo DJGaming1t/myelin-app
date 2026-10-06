@@ -1,5 +1,6 @@
 import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
 import { forgettingPressure } from '@/src/features/adaptive/memory-engine';
+import { buildTopicFeedbackProfile } from '@/src/features/adaptive/topic-feedback';
 import { StudyTask, Topic, WorkspaceState } from '@/src/data/schema';
 import {
   examAppliesToTopic,
@@ -70,6 +71,7 @@ type Candidate = {
   remainingMinutes: number;
   autopilotMinutes: number;
   autopilotKind: 'preparation' | 'revision' | null;
+  blockMultiplier: number;
 };
 
 export function startOfLocalDay(now: number) {
@@ -237,6 +239,14 @@ function topicCandidate(
     );
   }
 
+  const feedback = buildTopicFeedbackProfile(workspace, topic.id, now);
+  if (feedback.priorityBoost > 0) {
+    score += feedback.priorityBoost;
+    for (const reason of feedback.reasons.slice(0, 2).reverse()) {
+      reasons.unshift(reason);
+    }
+  }
+
   const mode: PlanMode =
     topicDue ||
     questionCount > 0 ||
@@ -271,6 +281,7 @@ function topicCandidate(
         ? 'revision'
         : 'preparation'
       : null,
+    blockMultiplier: feedback.blockMultiplier,
   };
 }
 
@@ -334,6 +345,16 @@ function taskCandidate(
     );
   }
 
+  const feedback = linkedTopic
+    ? buildTopicFeedbackProfile(workspace, linkedTopic.id, now)
+    : null;
+  if (feedback?.priorityBoost) {
+    score += feedback.priorityBoost;
+    for (const reason of feedback.reasons.slice(0, 2).reverse()) {
+      reasons.unshift(reason);
+    }
+  }
+
   const questionCount = linkedTopic ? dueQuestions(linkedTopic, now) : 0;
   const mode: PlanMode =
     task.type === 'revision' && linkedTopic && questionCount > 0 ? 'review' : 'study';
@@ -362,6 +383,7 @@ function taskCandidate(
         ? 'revision'
         : 'preparation'
       : null,
+    blockMultiplier: feedback?.blockMultiplier ?? 1,
   };
 }
 
@@ -507,8 +529,12 @@ export function buildTodayPlan(
       minimumUsefulBlock,
       chosen.candidate.remainingMinutes - alreadyAllocated,
     );
+    const adaptiveTargetMinutes = Math.max(
+      minimumUsefulBlock,
+      Math.round(targetFocusMinutes * chosen.candidate.blockMultiplier),
+    );
     const minutes = Math.floor(
-      Math.min(targetFocusMinutes, candidateRemaining, availableForStudy),
+      Math.min(adaptiveTargetMinutes, candidateRemaining, availableForStudy),
     );
     if (minutes < minimumUsefulBlock) {
       deduped.splice(deduped.indexOf(chosen.candidate), 1);

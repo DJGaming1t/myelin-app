@@ -2,8 +2,8 @@ import { localDateKey } from '@/src/features/planning/commitment-dates';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 
-import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -30,6 +30,12 @@ import {
   scheduleTask,
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
+import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
+import {
+  AutopilotReflowSummary,
+  buildAutopilotReflowSummary,
+  parseAutopilotReflow,
+} from '@/src/features/exams/autopilot-reflow';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function timeLabel(timestamp: number) {
@@ -44,12 +50,21 @@ function durationLabel(start: number, end: number) {
 }
 
 export default function DayMapScreen() {
+  const params = useLocalSearchParams<{ reflow?: string | string[] }>();
   const { workspace, updateWorkspace } = useWorkspace();
   const clock = useScreenClock();
   const [refresh, setNow] = useState(Date.now());
   const now = Math.max(clock, refresh);
   const [proposal, setProposal] = useState<ReturnType<typeof rebuildRemainingDay> | null>(null);
   const [showPlanning, setShowPlanning] = useState(false);
+  const [reflow, setReflow] = useState<AutopilotReflowSummary | null>(() =>
+    parseAutopilotReflow(params.reflow),
+  );
+
+  useEffect(() => {
+    const incoming = parseAutopilotReflow(params.reflow);
+    if (incoming) setReflow(incoming);
+  }, [params.reflow]);
 
   const map = useMemo(
     () => (workspace ? buildDayMap(workspace, now) : null),
@@ -57,6 +72,17 @@ export default function DayMapScreen() {
   );
 
   if (!workspace || !map) return null;
+
+  function updateWithReflow(change: Parameters<typeof updateWorkspace>[0]) {
+    const before = workspace!;
+    const next = updateWorkspace(change);
+    if (next) {
+      setReflow(
+        buildAutopilotReflowSummary(before, next, Date.now()),
+      );
+    }
+    return next;
+  }
 
   const flexible = workspace.tasks
     .filter(
@@ -68,7 +94,7 @@ export default function DayMapScreen() {
     .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
 
   function skipOccurrence(id: string, date: string, restore = false) {
-    updateWorkspace(draft => {
+    updateWithReflow(draft => {
       const item = draft.commitments.find(item => item.id === id);
       if (!item || !item.recurrenceDays.length) return;
       item.skippedDates = restore ? (item.skippedDates ?? []).filter(value => value !== date) : [...new Set([...(item.skippedDates ?? []), date])];
@@ -81,7 +107,7 @@ export default function DayMapScreen() {
     if (!task) return;
     const slot = suggestTaskSlots(workspace!, task, Date.now(), 1)[0];
     if (!slot) return;
-    updateWorkspace((draft) => {
+    updateWithReflow((draft) => {
       const target = draft.tasks.find((item) => item.id === taskId);
       if (target) scheduleTask(target, slot.start, slot.end);
     });
@@ -90,7 +116,7 @@ export default function DayMapScreen() {
 
   function skipToday(taskId: string) {
     const tomorrow = addLocalDays(startOfLocalDay(Date.now()), 1);
-    updateWorkspace((draft) => {
+    updateWithReflow((draft) => {
       const task = draft.tasks.find((item) => item.id === taskId);
       if (task) postponeTask(task, tomorrow);
     });
@@ -103,7 +129,7 @@ export default function DayMapScreen() {
 
   function applyProposal() {
     if (!proposal) return;
-    updateWorkspace((draft) => {
+    updateWithReflow((draft) => {
       for (const move of proposal.moves) {
         const task = draft.tasks.find((item) => item.id === move.taskId);
         if (task) scheduleTask(task, move.start, move.end);
@@ -136,6 +162,8 @@ export default function DayMapScreen() {
               {map.overloadMinutes > 0 ? `${map.overloadMinutes}m over capacity` : `${map.free.length} free ${map.free.length === 1 ? 'window' : 'windows'}`}
             </Text>
           </View>
+
+          <AutopilotReflowNotice summary={reflow} />
 
           <AnimatedDisclosure visible={map.overloadMinutes > 0}>
             <View style={styles.overload}>

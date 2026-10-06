@@ -114,3 +114,162 @@ export function buildTopicFeedbackProfile(
     reasons,
   };
 }
+
+
+export type TopicAdaptationInsight = {
+  topicId: string;
+  topicName: string;
+  subject: string;
+  tone: 'adjustment' | 'progress';
+  title: string;
+  detail: string;
+  evidence: string;
+  priority: number;
+};
+
+function strongRecall(entry: WorkspaceState['history'][number]) {
+  return entry.grade >= 2 && !entry.hintUsed;
+}
+
+function recallImprovement(
+  workspace: WorkspaceState,
+  topicId: string,
+  now: number,
+) {
+  const reviews = workspace.history
+    .filter(
+      (entry) =>
+        entry.topicId === topicId &&
+        entry.kind === 'review' &&
+        entry.at <= now &&
+        entry.at >= now - 30 * DAY_MS,
+    )
+    .sort((a, b) => a.at - b.at)
+    .slice(-6);
+
+  if (reviews.length < 4) return null;
+
+  const recent = reviews.slice(-2);
+  const previous = reviews.slice(-4, -2);
+  const recentRate = recent.filter(strongRecall).length / recent.length;
+  const previousRate = previous.filter(strongRecall).length / previous.length;
+
+  if (recentRate < 1 || recentRate - previousRate < 0.5) return null;
+
+  return {
+    sampleCount: 4,
+    recentRate,
+    previousRate,
+  };
+}
+
+export function buildTopicAdaptationInsight(
+  workspace: WorkspaceState,
+  topicId: string,
+  now = Date.now(),
+): TopicAdaptationInsight | null {
+  const topic = workspace.topics.find((item) => item.id === topicId);
+  if (!topic) return null;
+
+  const profile = buildTopicFeedbackProfile(workspace, topicId, now);
+  if (profile.evidenceCount < 2) return null;
+
+  const improvement = recallImprovement(workspace, topicId, now);
+  if (improvement) {
+    return {
+      topicId,
+      topicName: topic.name,
+      subject: topic.subject,
+      tone: 'progress',
+      title: 'Recall is improving',
+      detail:
+        'Your latest two recall attempts were stronger than the two before them. MYELIN will keep adapting from new evidence rather than locking in the older pattern.',
+      evidence: '4 recent recall attempts',
+      priority: 32,
+    };
+  }
+
+  if (profile.blockMultiplier <= 0.88 && profile.highEffortShare >= 0.5) {
+    const target = Math.max(
+      5,
+      Math.round(workspace.settings.focusMinutes * profile.blockMultiplier),
+    );
+    return {
+      topicId,
+      topicName: topic.name,
+      subject: topic.subject,
+      tone: 'adjustment',
+      title: 'Blocks shortened',
+      detail:
+        `Recent sessions often felt demanding, so MYELIN is aiming for about ${target}-minute blocks here while keeping the remaining workload visible.`,
+      evidence:
+        `${profile.focusSamples} focus ${profile.focusSamples === 1 ? 'sample' : 'samples'}`,
+      priority: 30,
+    };
+  }
+
+  if (profile.paceMultiplier >= 1.1 && profile.focusSamples >= 2) {
+    const percent = Math.round((profile.paceMultiplier - 1) * 100);
+    return {
+      topicId,
+      topicName: topic.name,
+      subject: topic.subject,
+      tone: 'adjustment',
+      title: 'Taking longer than expected',
+      detail:
+        `Recent focus blocks took about ${percent}% longer than planned. Autopilot is allowing more working time without changing your saved topic estimate.`,
+      evidence: `${profile.focusSamples} recent focus samples`,
+      priority: 26,
+    };
+  }
+
+  if (profile.lowRecallShare >= 0.5 && profile.reviewSamples >= 2) {
+    return {
+      topicId,
+      topicName: topic.name,
+      subject: topic.subject,
+      tone: 'adjustment',
+      title: 'Recall needs reinforcement',
+      detail:
+        'Several recent retrievals needed another attempt or felt uncertain, so MYELIN is reserving extra recall time and raising this topic sooner.',
+      evidence: `${profile.reviewSamples} recent recall samples`,
+      priority: 24,
+    };
+  }
+
+  if (
+    profile.reasons.includes('repeatedly postponed') &&
+    profile.evidenceCount >= 2
+  ) {
+    return {
+      topicId,
+      topicName: topic.name,
+      subject: topic.subject,
+      tone: 'adjustment',
+      title: 'Repeated postponement noticed',
+      detail:
+        'This topic has been deferred several times. MYELIN is increasing its recommendation pressure while still allowing short first steps.',
+      evidence: 'Repeated postponements + study evidence',
+      priority: 18,
+    };
+  }
+
+  return null;
+}
+
+export function buildTopicAdaptationInsights(
+  workspace: WorkspaceState,
+  now = Date.now(),
+  limit = 3,
+) {
+  return workspace.topics
+    .map((topic) => buildTopicAdaptationInsight(workspace, topic.id, now))
+    .filter((insight): insight is TopicAdaptationInsight => Boolean(insight))
+    .sort(
+      (a, b) =>
+        b.priority - a.priority ||
+        a.topicName.localeCompare(b.topicName) ||
+        a.topicId.localeCompare(b.topicId),
+    )
+    .slice(0, Math.max(1, Math.min(5, limit)));
+}

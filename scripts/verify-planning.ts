@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createEmptyWorkspace } from '../src/data/schema';
@@ -351,3 +353,25 @@ import { taskUrgency } from '../src/features/planning/task-urgency';
   assert.equal(taskUrgency(task, now), null);
 }
 console.log('✓ skipped dates survive reload, free time is reclaimed, overnight skips restore correctly, and due cues follow actual deadlines');
+
+{
+  const dayMapSource = fs.readFileSync(
+    path.join(process.cwd(), 'app/(app)/today/day-map.tsx'),
+    'utf8',
+  );
+  assert.ok(
+    dayMapSource.includes('buildAppliedReclaimedWindows') &&
+      dayMapSource.includes('RECOVERED AUTOPILOT WINDOW'),
+    'Day Map should visibly project reclaimed Autopilot reservations after recovery Apply.',
+  );
+  assert.ok(
+    dayMapSource.includes("pathname: '/(app)/focus'") &&
+      dayMapSource.includes('startReclaimedPlacement'),
+    'A reclaimed Autopilot reservation should launch Focus directly.',
+  );
+  assert.ok(
+    dayMapSource.includes('no task created'),
+    'Day Map should make it explicit that reclaimed Autopilot reservations are projection-only, not duplicate tasks.',
+  );
+}
+console.log('✓ reclaimed Autopilot reservations are visible in Day Map and launch Focus directly without task duplication');

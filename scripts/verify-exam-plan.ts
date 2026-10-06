@@ -640,6 +640,134 @@ const now = local(2026, 10, 5, 15, 0);
 }
 
 {
+  function feedbackRedistributionWorkspace(withFeedback: boolean) {
+    const workspace = createEmptyWorkspace(now);
+    workspace.settings.dailyMinutes = 45;
+    workspace.settings.focusMinutes = 45;
+
+    const competitor = makeTopic(
+      'redistribute-competitor',
+      'A competing topic',
+      'Physics',
+      'learning',
+      120,
+      2,
+    );
+    const weak = makeTopic(
+      'redistribute-weak',
+      'Z weak topic',
+      'Mathematics',
+      'learning',
+      120,
+      2,
+    );
+    workspace.topics.push(competitor, weak);
+    workspace.exams.push(
+      createExam(
+        {
+          name: 'Combined exam',
+          date: addLocalDays(startOfLocalDay(now), 4) + 12 * 60 * 60 * 1000,
+          scope: 'topics',
+          subjects: [],
+          topicIds: [competitor.id, weak.id],
+        },
+        now,
+        'redistribution_exam',
+      ),
+    );
+
+    if (withFeedback) {
+      const previous = addLocalDays(startOfLocalDay(now), -1);
+      workspace.history.push(
+        {
+          id: 'redistribution-hard-focus',
+          topicId: weak.id,
+          at: previous + 17 * 60 * 60 * 1000,
+          kind: 'study',
+          minutes: 35,
+          grade: 0,
+          effort: 5,
+          prompt: '',
+          response: '',
+          confidence: 'partial',
+          plannedMinutes: 25,
+        },
+        {
+          id: 'redistribution-weak-recall',
+          topicId: weak.id,
+          at: previous + 18 * 60 * 60 * 1000,
+          kind: 'review',
+          minutes: 3,
+          grade: 1,
+          effort: 3,
+          prompt: 'Recall',
+          response: 'Missed',
+          confidence: 'unsure',
+        },
+      );
+    }
+
+    return workspace;
+  }
+
+  const baseline = buildJointExamPreparationPlan(
+    feedbackRedistributionWorkspace(false),
+    now,
+  );
+  const adapted = buildJointExamPreparationPlan(
+    feedbackRedistributionWorkspace(true),
+    now,
+  );
+
+  const tomorrow = addLocalDays(startOfLocalDay(now), 1);
+  const baselineTomorrow = baseline.days.find((day) => day.day === tomorrow)!;
+  const adaptedTomorrow = adapted.days.find((day) => day.day === tomorrow)!;
+
+  const baselineWeak = baselineTomorrow.blocks
+    .filter(
+      (block) =>
+        block.kind === 'preparation' &&
+        block.topicId === 'redistribute-weak',
+    )
+    .reduce((sum, block) => sum + block.minutes, 0);
+  const adaptedWeak = adaptedTomorrow.blocks
+    .filter(
+      (block) =>
+        block.kind === 'preparation' &&
+        block.topicId === 'redistribute-weak',
+    )
+    .reduce((sum, block) => sum + block.minutes, 0);
+  const adaptedCompetitor = adaptedTomorrow.blocks
+    .filter(
+      (block) =>
+        block.kind === 'preparation' &&
+        block.topicId === 'redistribute-competitor',
+    )
+    .reduce((sum, block) => sum + block.minutes, 0);
+
+  assert.ok(
+    adaptedWeak > baselineWeak,
+    'New topic feedback should immediately move more of tomorrow\'s limited Mileage toward the weaker topic.',
+  );
+  assert.ok(
+    adaptedCompetitor >= 5,
+    'Feedback redistribution must preserve minimum coverage for another active exam topic when capacity allows it.',
+  );
+  assert.ok(
+    adapted.warnings.some((warning) => /feedback is reshaping the order/i.test(warning)),
+    'The joint planner should explain when feedback changes future allocation.',
+  );
+  assert.ok(
+    adapted.days.every(
+      (day) =>
+        day.plannedPreparationMinutes + day.plannedRevisionMinutes <=
+        day.usableCapacityMinutes,
+    ),
+    'Feedback redistribution must stay inside the same safe daily Mileage capacity.',
+  );
+}
+
+{
   const workspace = createEmptyWorkspace(now);
   workspace.settings.dailyMinutes = 180;
   workspace.settings.focusMinutes = 45;
@@ -762,6 +890,7 @@ console.log('✓ completion reliability and postponements make capacity more con
 console.log('✓ high-effort topics are spread with a daily fatigue guardrail');
 console.log('✓ nearby exams reserve capacity without double-counting shared topics');
 console.log('✓ joint multi-exam planning creates real blocks for every exam');
+console.log('✓ new topic feedback redistributes tomorrow\'s limited Mileage without starving competing exam work');
 console.log('✓ shared syllabus is deduplicated and obeys the earliest deadline');
 console.log('✓ explicit revision buffers are scheduled only after earlier preparation');
 console.log('✓ joint overload is surfaced instead of silently dropping exam work');

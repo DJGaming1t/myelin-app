@@ -29,6 +29,11 @@ import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
+import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
+import {
+  AutopilotReflowSummary,
+  buildAutopilotReflowSummary,
+} from '@/src/features/exams/autopilot-reflow';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
@@ -50,6 +55,7 @@ export default function TodayScreen() {
   const [showRest, setShowRest] = useState(false);
   const [showOverdue, setShowOverdue] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
+  const [reflow, setReflow] = useState<AutopilotReflowSummary | null>(null);
   const [lastDeferred, setLastDeferred] = useState<
     | {
         source: 'topic';
@@ -137,10 +143,19 @@ export default function TodayScreen() {
         previousScheduledStart: task.scheduledStart,
         previousScheduledEnd: task.scheduledEnd,
       });
-      updateWorkspace((draft) => {
+      const nextWorkspace = updateWorkspace((draft) => {
         const target = draft.tasks.find((item) => item.id === task.id);
         if (target) postponeTask(target, nextLocalDayStart(Date.now()));
       });
+      if (nextWorkspace) {
+        setReflow(
+          buildAutopilotReflowSummary(
+            currentWorkspace,
+            nextWorkspace,
+            Date.now(),
+          ),
+        );
+      }
       return;
     }
 
@@ -149,10 +164,19 @@ export default function TodayScreen() {
     if (!topic) return;
 
     const previousSnoozeUntil = topic.snoozeUntil;
-    updateWorkspace((draft) => {
+    const nextWorkspace = updateWorkspace((draft) => {
       const target = draft.topics.find((item) => item.id === block.topicId);
       if (target) { target.snoozeUntil = nextLocalDayStart(Date.now()); target.postponements = Math.min(100000, (target.postponements ?? 0) + 1); }
     });
+    if (nextWorkspace) {
+      setReflow(
+        buildAutopilotReflowSummary(
+          currentWorkspace,
+          nextWorkspace,
+          Date.now(),
+        ),
+      );
+    }
     setLastDeferred({
       source: 'topic',
       id: topic.id,
@@ -169,7 +193,7 @@ export default function TodayScreen() {
 
   function undoDefer() {
     if (!lastDeferred) return;
-    updateWorkspace((draft) => {
+    const nextWorkspace = updateWorkspace((draft) => {
       if (lastDeferred.source === 'topic') {
         const target = draft.topics.find((item) => item.id === lastDeferred.id);
         if (target) { target.snoozeUntil = lastDeferred.previousSnoozeUntil; target.postponements = lastDeferred.previousPostponements; }
@@ -186,6 +210,15 @@ export default function TodayScreen() {
       target.scheduledEnd = lastDeferred.previousScheduledEnd;
       target.updatedAt = Date.now();
     });
+    if (nextWorkspace) {
+      setReflow(
+        buildAutopilotReflowSummary(
+          currentWorkspace,
+          nextWorkspace,
+          Date.now(),
+        ),
+      );
+    }
     setLastDeferred(null);
   }
 
@@ -428,6 +461,8 @@ export default function TodayScreen() {
           ) : null}
 
           {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>Save issue: {saveError}</Text> : null}
+
+          <AutopilotReflowNotice summary={reflow} />
 
           <View style={styles.capacity}>
             <View style={styles.capacityTop}>

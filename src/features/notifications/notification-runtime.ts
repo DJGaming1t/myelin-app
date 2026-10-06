@@ -235,8 +235,19 @@ export async function sendReminderPreview(
   });
 }
 
+export type ReminderOpenPayload = {
+  kind: 'review' | 'exam' | 'study';
+  href?: string;
+  recovered?: boolean;
+  commitmentId?: string;
+  occurrenceDateKey?: string;
+  topicId?: string;
+  scheduledStart?: number;
+  scheduledEnd?: number;
+};
+
 export async function subscribeToReminderResponses(
-  onOpen: (kind: 'review' | 'exam' | 'study') => void,
+  onOpen: (payload: ReminderOpenPayload) => void,
 ) {
   if (Platform.OS === 'web') return () => undefined;
 
@@ -254,7 +265,34 @@ export async function subscribeToReminderResponses(
     const data = response.notification.request.content.data;
     if (!data || data.myelin !== true) return;
     if (data.kind === 'review' || data.kind === 'exam' || data.kind === 'study') {
-      onOpen(data.kind);
+      onOpen({
+        kind: data.kind,
+        href:
+          typeof data.href === 'string'
+            ? data.href
+            : undefined,
+        recovered: data.recovered === 1 || data.recovered === true,
+        commitmentId:
+          typeof data.commitmentId === 'string'
+            ? data.commitmentId
+            : undefined,
+        occurrenceDateKey:
+          typeof data.occurrenceDateKey === 'string'
+            ? data.occurrenceDateKey
+            : undefined,
+        topicId:
+          typeof data.topicId === 'string'
+            ? data.topicId
+            : undefined,
+        scheduledStart:
+          typeof data.scheduledStart === 'number'
+            ? data.scheduledStart
+            : undefined,
+        scheduledEnd:
+          typeof data.scheduledEnd === 'number'
+            ? data.scheduledEnd
+            : undefined,
+      });
       // Consuming the response prevents the same old notification tap from
       // routing the user again on a later ordinary app launch.
       void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);

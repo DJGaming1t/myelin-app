@@ -13,6 +13,7 @@ import {
   commitmentOccurrencesForDay,
   freeStudyWindows,
   localDayKey,
+  scheduledTasksForDay,
   startOfLocalDay,
 } from '@/src/features/planning/day-engine';
 import { postponeTask } from '@/src/features/planning/task-engine';
@@ -29,6 +30,13 @@ export type MissedRecoveredWindowSummary = {
   deadlineTightened: boolean;
 };
 
+export type ReclaimedWindowProtection = {
+  reason: 'active-focus' | 'schedule-change';
+  protectedUntil: number | null;
+  protectedMinutes: number;
+  displacedMinutes: number;
+};
+
 export type AppliedReclaimedWindow = {
   commitmentId: string;
   commitmentTitle: string;
@@ -37,6 +45,14 @@ export type AppliedReclaimedWindow = {
   end: number;
   placements: ReclaimedStudyPlacement[];
   missed: MissedRecoveredWindowSummary | null;
+  protection: ReclaimedWindowProtection | null;
+};
+
+export type ReclaimedWindowBuildOptions = {
+  unavailableUntil?: number;
+  activeFocusTopicId?: string | null;
+  activeFocusStartedAt?: number | null;
+  protectionLeadMinutes?: number;
 };
 
 export type ReclaimedStudyPlacement = {
@@ -410,6 +426,32 @@ function reclaimedAvailableSegments(
   }
 
   return segments.sort((a, b) => a.start - b.start);
+}
+
+function placementMinutes(
+  placements: ReclaimedStudyPlacement[],
+) {
+  return placements.reduce(
+    (sum, placement) => sum + placement.minutes,
+    0,
+  );
+}
+
+function workspaceBeforeLaterScheduleChanges(
+  workspace: WorkspaceState,
+  recoveryAppliedAt: number,
+) {
+  const baseline = cloneWorkspace(workspace);
+  baseline.commitments = baseline.commitments.filter(
+    (commitment) =>
+      commitment.updatedAt <= recoveryAppliedAt,
+  );
+  baseline.tasks = baseline.tasks.filter(
+    (task) =>
+      task.planState !== 'scheduled' ||
+      task.updatedAt <= recoveryAppliedAt,
+  );
+  return baseline;
 }
 
 function reclaimedDayPlacements(
@@ -834,6 +876,7 @@ function missedRecoveredSummary(
 export function buildAppliedReclaimedWindows(
   workspace: WorkspaceState,
   now = Date.now(),
+  options: ReclaimedWindowBuildOptions = {},
 ) {
   const day = startOfLocalDay(now);
   const dayKey = localDayKey(day);
@@ -906,25 +949,168 @@ export function buildAppliedReclaimedWindows(
         now,
         occurrence.start,
       );
-      const placements =
+      const currentSegments = reclaimedAvailableSegments(
+        workspace,
+        occurrence.start,
+        occurrence.end,
+        earliestStart,
+      );
+      const normalPlacements =
         impact.capacityGainedMinutes >= 5 &&
         occurrence.end > earliestStart
           ? reclaimedDayPlacements(
-        before,
-        after,
-        occurrence.start,
-        occurrence.end,
-        impact.capacityGainedMinutes,
-        earliestStart,
-        reclaimedAvailableSegments(
+              before,
+              after,
+              occurrence.start,
+              occurrence.end,
+              impact.capacityGainedMinutes,
+              earliestStart,
+              currentSegments,
+            )
+          : [];
+
+      const leadMs =
+        Math.max(
+          0,
+          options.protectionLeadMinutes ?? 10,
+        ) * 60_000;
+      const nextNormal = normalPlacements[0] ?? null;
+      const unavailableUntil = Math.max(
+        now,
+        options.unavailableUntil ?? now,
+      );
+      const activeFocusLooksLikeThisReservation =
+        Boolean(
+          nextNormal &&
+            options.activeFocusTopicId &&
+            options.activeFocusTopicId === nextNormal.topicId &&
+            options.activeFocusStartedAt != null &&
+            options.activeFocusStartedAt >=
+              nextNormal.start - 5 * 60_000 &&
+            options.activeFocusStartedAt < nextNormal.end,
+        );
+      const protectForActiveFocus =
+        Boolean(
+          nextNormal &&
+            unavailableUntil > nextNormal.start &&
+            nextNormal.start <= now + leadMs &&
+            !activeFocusLooksLikeThisReservation,
+        );
+
+      let placements = normalPlacements;
+      let protection: ReclaimedWindowProtection | null = null;
+
+      if (protectForActiveFocus) {
+        const protectedSegments = reclaimedAvailableSegments(
           workspace,
           occurrence.start,
           occurrence.end,
-          earliestStart,
-        ),
-      )
-          : [];
-      if (!placements.length && !missed) continue;
+          unavailableUntil,
+        );
+        placements = reclaimedDayPlacements(
+          before,
+          after,
+          occurrence.start,
+          occurrence.end,
+          impact.capacityGainedMinutes,
+          unavailableUntil,
+          protectedSegments,
+        );
+        protection = {
+          reason: 'active-focus',
+          protectedUntil: unavailableUntil,
+          protectedMinutes: placementMinutes(placements),
+          displacedMinutes: Math.max(
+            0,
+            placementMinutes(normalPlacements) -
+              placementMinutes(placements),
+          ),
+        };
+      } else if (
+        commitment.updatedAt > 0 &&
+        occurrence.end > earliestStart
+      ) {
+        const baselineWorkspace =
+          workspaceBeforeLaterScheduleChanges(
+            workspace,
+            commitment.updatedAt,
+          );
+        const baselinePlacements =
+          impact.capacityGainedMinutes >= 5
+            ? reclaimedDayPlacements(
+                before,
+                after,
+                occurrence.start,
+                occurrence.end,
+                impact.capacityGainedMinutes,
+                earliestStart,
+                reclaimedAvailableSegments(
+                  baselineWorkspace,
+                  occurrence.start,
+                  occurrence.end,
+                  earliestStart,
+                ),
+              )
+            : [];
+        const baselineMinutes =
+          placementMinutes(baselinePlacements);
+        const currentMinutes = placementMinutes(
+          normalPlacements,
+        );
+        const baselineShape = baselinePlacements
+          .map(
+            (placement) =>
+              placement.start + ':' + placement.end,
+          )
+          .join('|');
+        const currentShape = normalPlacements
+          .map(
+            (placement) =>
+              placement.start + ':' + placement.end,
+          )
+          .join('|');
+
+        const laterFixedConflict =
+          workspace.commitments.some(
+            (item) =>
+              item.id !== commitment.id &&
+              item.updatedAt > commitment.updatedAt &&
+              commitmentOccurrencesForDay(
+                [item],
+                startOfLocalDay(occurrence.start),
+              ).some(
+                (itemOccurrence) =>
+                  itemOccurrence.end > occurrence.start &&
+                  itemOccurrence.start < occurrence.end,
+              ),
+          ) ||
+          scheduledTasksForDay(
+            workspace,
+            startOfLocalDay(occurrence.start),
+          ).some(
+            (task) =>
+              task.updatedAt > commitment.updatedAt &&
+              task.scheduledEnd > occurrence.start &&
+              task.scheduledStart < occurrence.end,
+          );
+
+        if (
+          laterFixedConflict &&
+          baselineShape !== currentShape
+        ) {
+          protection = {
+            reason: 'schedule-change',
+            protectedUntil: null,
+            protectedMinutes: currentMinutes,
+            displacedMinutes: Math.max(
+              0,
+              baselineMinutes - currentMinutes,
+            ),
+          };
+        }
+      }
+
+      if (!placements.length && !missed && !protection) continue;
 
       windows.push({
         commitmentId: commitment.id,
@@ -934,6 +1120,7 @@ export function buildAppliedReclaimedWindows(
         end: occurrence.end,
         placements,
         missed,
+        protection,
       });
     }
   }

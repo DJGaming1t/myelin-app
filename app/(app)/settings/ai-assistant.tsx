@@ -428,6 +428,21 @@ export default function LocalAiAssistantScreen() {
             </Text>
           </View>
 
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Import a syllabus with local AI"
+            onPress={() => router.push('/(app)/settings/ai-syllabus')}
+            style={({ pressed }) => [styles.syllabusEntry, pressed && styles.pressed]}>
+            <View style={styles.syllabusEntryCopy}>
+              <Text style={styles.syllabusEntryKicker}>STRUCTURED IMPORT</Text>
+              <Text style={styles.syllabusEntryTitle}>Import a syllabus</Text>
+              <Text style={styles.syllabusEntryText}>
+                Extract subjects and topics locally, review defaults and warnings, then apply once.
+              </Text>
+            </View>
+            <Text style={styles.syllabusEntryArrow}>→</Text>
+          </Pressable>
+
           {!available ? (
             <Pressable
               accessibilityRole="button"
@@ -613,6 +628,23 @@ const styles = StyleSheet.create({
   },
   readyBadge: { color: colors.success, backgroundColor: 'rgba(116,201,152,0.10)' },
   blockedBadge: { color: colors.subtle, backgroundColor: colors.bg },
+  syllabusEntry: {
+    minHeight: 72,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  syllabusEntryCopy: { flex: 1, minWidth: 0 },
+  syllabusEntryKicker: { color: colors.accent, fontSize: 9, lineHeight: 12, fontWeight: '900', letterSpacing: 0.55 },
+  syllabusEntryTitle: { color: colors.text, fontSize: 14, lineHeight: 19, fontWeight: '800', marginTop: 2 },
+  syllabusEntryText: { color: colors.muted, fontSize: 10.5, lineHeight: 15, marginTop: 3 },
+  syllabusEntryArrow: { color: colors.accent, fontSize: 18, flexShrink: 0 },
   requestCard: {
     borderRadius: radius.lg,
     borderWidth: 1,

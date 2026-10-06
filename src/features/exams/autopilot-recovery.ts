@@ -366,6 +366,7 @@ function reclaimedDayPlacements(
   occurrenceStart: number,
   occurrenceEnd: number,
   capacityGainedMinutes: number,
+  earliestStart = occurrenceStart,
 ) {
   const day = startOfLocalDay(occurrenceStart);
   const beforeDay = before.days.find((item) => item.day === day);
@@ -405,13 +406,13 @@ function reclaimedDayPlacements(
     if (gained >= 5) positiveDelta.set(key, gained);
   }
 
-  let cursor = occurrenceStart;
+  let cursor = Math.max(occurrenceStart, earliestStart);
   let remaining = Math.min(
     capacityGainedMinutes,
     Math.max(
       0,
       Math.floor(
-        (occurrenceEnd - occurrenceStart) / 60_000,
+        (occurrenceEnd - cursor) / 60_000,
       ),
     ),
   );
@@ -518,6 +519,7 @@ export function buildAppliedReclaimedWindows(
         occurrence.start,
         occurrence.end,
         impact.capacityGainedMinutes,
+        Math.max(now, occurrence.start),
       );
       if (!placements.length) continue;
 

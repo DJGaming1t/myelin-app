@@ -15,6 +15,16 @@ import {
 } from '@/src/features/planning/day-engine';
 import { postponeTask } from '@/src/features/planning/task-engine';
 
+export type ReclaimedStudyPlacement = {
+  topicId: string;
+  topicName: string;
+  subject: string;
+  kind: 'preparation' | 'revision';
+  minutes: number;
+  start: number;
+  end: number;
+};
+
 export type AutopilotRecoveryEffect = {
   beforeOverloadMinutes: number;
   afterOverloadMinutes: number;
@@ -63,6 +73,7 @@ export type AutopilotRecoveryOption =
       occurrenceStart: number;
       occurrenceEnd: number;
       reclaimedClockMinutes: number;
+      placements: ReclaimedStudyPlacement[];
       effect: AutopilotRecoveryEffect;
     }
   | {
@@ -339,6 +350,95 @@ function scopeRecoveryOptions(
   return options;
 }
 
+function reclaimedDayPlacements(
+  before: JointExamPreparationPlan,
+  after: JointExamPreparationPlan,
+  occurrenceStart: number,
+  occurrenceEnd: number,
+  capacityGainedMinutes: number,
+) {
+  const day = startOfLocalDay(occurrenceStart);
+  const beforeDay = before.days.find((item) => item.day === day);
+  const afterDay = after.days.find((item) => item.day === day);
+  if (!afterDay || capacityGainedMinutes < 5) {
+    return [] as ReclaimedStudyPlacement[];
+  }
+
+  const keyFor = (
+    block: JointExamPreparationPlan['days'][number]['blocks'][number],
+  ) => block.kind + ':' + block.topicId;
+
+  const beforeTotals = new Map<string, number>();
+  for (const block of beforeDay?.blocks ?? []) {
+    const key = keyFor(block);
+    beforeTotals.set(
+      key,
+      (beforeTotals.get(key) ?? 0) + block.minutes,
+    );
+  }
+
+  const afterTotals = new Map<string, number>();
+  for (const block of afterDay.blocks) {
+    const key = keyFor(block);
+    afterTotals.set(
+      key,
+      (afterTotals.get(key) ?? 0) + block.minutes,
+    );
+  }
+
+  const positiveDelta = new Map<string, number>();
+  for (const [key, total] of afterTotals) {
+    const gained = Math.max(
+      0,
+      total - (beforeTotals.get(key) ?? 0),
+    );
+    if (gained >= 5) positiveDelta.set(key, gained);
+  }
+
+  let cursor = occurrenceStart;
+  let remaining = Math.min(
+    capacityGainedMinutes,
+    Math.max(
+      0,
+      Math.floor(
+        (occurrenceEnd - occurrenceStart) / 60_000,
+      ),
+    ),
+  );
+  const placements: ReclaimedStudyPlacement[] = [];
+
+  for (const block of afterDay.blocks) {
+    if (remaining < 5) break;
+    const key = keyFor(block);
+    const delta = positiveDelta.get(key) ?? 0;
+    if (delta < 5) continue;
+
+    const minutes = Math.min(
+      block.minutes,
+      delta,
+      remaining,
+      Math.floor((occurrenceEnd - cursor) / 60_000),
+    );
+    if (minutes < 5) continue;
+
+    const end = cursor + minutes * 60_000;
+    placements.push({
+      topicId: block.topicId,
+      topicName: block.topicName,
+      subject: block.subject,
+      kind: block.kind,
+      minutes,
+      start: cursor,
+      end,
+    });
+    cursor = end;
+    remaining -= minutes;
+    positiveDelta.set(key, delta - minutes);
+  }
+
+  return placements;
+}
+
 function reclaimableCommitmentOptions(
   workspace: WorkspaceState,
   before: JointExamPreparationPlan,
@@ -370,6 +470,7 @@ function reclaimableCommitmentOptions(
     ).filter(
       (occurrence) =>
         occurrence.recurring &&
+        occurrence.start >= now &&
         occurrence.end > now &&
         (occurrence.kind === 'tuition' ||
           occurrence.kind === 'coaching'),
@@ -414,6 +515,14 @@ function reclaimableCommitmentOptions(
           (occurrence.end - occurrence.start) / 60_000,
         ),
       );
+      const placements = reclaimedDayPlacements(
+        before,
+        after,
+        occurrence.start,
+        occurrence.end,
+        impact.capacityGainedMinutes,
+      );
+      if (!placements.length) continue;
 
       options.push({
         id:
@@ -431,6 +540,7 @@ function reclaimableCommitmentOptions(
         occurrenceStart: occurrence.start,
         occurrenceEnd: occurrence.end,
         reclaimedClockMinutes,
+        placements,
         effect: impact,
       });
 

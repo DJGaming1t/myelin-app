@@ -1,5 +1,6 @@
 import { Topic, WorkspaceState } from '@/src/data/schema';
 import { forgettingPressure } from '@/src/features/adaptive/memory-engine';
+import { buildTopicFeedbackProfile } from '@/src/features/adaptive/topic-feedback';
 import { examAppliesToTopic, examCalendarDaysUntil } from '@/src/features/exams/exam-engine';
 import {
   addLocalDays,
@@ -382,15 +383,33 @@ function topicWorkload(
           : workspace.settings.focusMinutes,
     ),
   );
+  const feedback = buildTopicFeedbackProfile(workspace, topic.id, now);
+  const effectiveEstimateMultiplier =
+    explicitEstimate && explicitEstimate > 0
+      ? 1
+      : Math.max(capacityProfile.estimateMultiplier, feedback.workloadMultiplier);
   const estimatedMinutes = Math.max(
     10,
-    Math.round(baseEstimatedMinutes * capacityProfile.estimateMultiplier),
+    Math.round(baseEstimatedMinutes * effectiveEstimateMultiplier),
   );
+  const feedbackRetrievalReserve =
+    feedback.evidenceCount >= 2 && feedback.lowRecallShare >= 0.5
+      ? feedback.lowRecallShare >= 0.75
+        ? 15
+        : 10
+      : 0;
   const retrievalReserveMinutes = Math.min(
     30,
-    dueCount > 0 ? Math.max(10, dueCount * 5) : risk >= 0.25 ? 10 : 0,
+    Math.max(
+      feedbackRetrievalReserve,
+      dueCount > 0 ? Math.max(10, dueCount * 5) : risk >= 0.25 ? 10 : 0,
+    ),
   );
-  const difficulty = override?.difficulty ?? derivedDifficulty(topic, risk);
+  const derived = derivedDifficulty(topic, risk);
+  const feedbackDifficulty = feedback.difficulty;
+  const difficulty =
+    override?.difficulty ??
+    (Math.max(derived, feedbackDifficulty) as 1 | 2 | 3);
   const importance = override?.importance ?? topic.priority;
   const mode: 'study' | 'review' =
     topic.status === 'review' || dueCount > 0 ? 'review' : 'study';
@@ -400,7 +419,10 @@ function topicWorkload(
   if (importance === 3) reasons.push('high priority');
   if (dueCount > 0) reasons.push('retrieval due');
   if (risk >= 0.25) reasons.push('recall may be fading');
-  if (capacityProfile.estimateMultiplier >= 1.1) reasons.push('adjusted to your recent pace');
+  if (effectiveEstimateMultiplier >= 1.1) reasons.push('adjusted to your recent pace');
+  for (const reason of feedback.reasons) {
+    if (!reasons.includes(reason)) reasons.push(reason);
+  }
   if (Number.isFinite(requiredBy) && requiredByExamName) {
     reasons.push(`needed by ${requiredByExamName}`);
   }
@@ -411,7 +433,7 @@ function topicWorkload(
     topicName: topic.name,
     subject: topic.subject,
     baseEstimatedMinutes,
-    estimateMultiplier: capacityProfile.estimateMultiplier,
+    estimateMultiplier: effectiveEstimateMultiplier,
     estimatedMinutes,
     retrievalReserveMinutes,
     totalRequiredMinutes: estimatedMinutes + retrievalReserveMinutes,

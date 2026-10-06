@@ -12,6 +12,8 @@ import {
 import { Platform } from 'react-native';
 
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
+import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 
 import {
   ReminderPermission,
@@ -83,6 +85,7 @@ function runtimeError(error: unknown) {
 
 export function ReminderProvider({ children }: PropsWithChildren) {
   const { ownerKey, workspace } = useWorkspace();
+  const { session: focusSession } = useFocus();
 
   const [state, setState] = useState<ReminderDeviceState>(freshState);
   const [ready, setReady] = useState(false);
@@ -97,6 +100,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const stateRef = useRef(state);
   const ownerRef = useRef<string | null>(null);
   const workspaceRef = useRef(workspace);
+  const focusSessionRef = useRef(focusSession);
   const scheduleQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -106,6 +110,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     workspaceRef.current = workspace;
   }, [workspace]);
+
+  useEffect(() => {
+    focusSessionRef.current = focusSession;
+  }, [focusSession]);
 
   const persist = useCallback(
     async (next: ReminderDeviceState, owner = ownerRef.current) => {
@@ -247,10 +255,27 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    const planNow = Date.now();
+    const activeFocus = focusSessionRef.current;
+    const activeFocusRemaining =
+      activeFocus?.phase === 'focus'
+        ? timerRemainingMs(activeFocus, planNow)
+        : 0;
     const plan = buildReminderPlan(
       currentWorkspace,
       current.settings,
-      Date.now(),
+      planNow,
+      {
+        activeFocus:
+          activeFocus && activeFocusRemaining > 0
+            ? {
+                topicId: activeFocus.topicId ?? null,
+                startedAt: activeFocus.startedAt,
+                unavailableUntil:
+                  planNow + activeFocusRemaining,
+              }
+            : null,
+      },
     );
     const signature = reminderPlanSignature(plan);
 
@@ -322,6 +347,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     reschedule,
     state.settings,
     workspace?.revision,
+    focusSession?.phase,
+    focusSession?.startedAt,
+    focusSession?.topicId,
+    focusSession?.runningSince,
+    focusSession?.elapsedMs,
+    focusSession?.plannedFocusMinutes,
   ]);
 
   const updateSettings = useCallback(
@@ -460,12 +491,37 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   const plannedCount = useMemo(() => {
     if (!workspace) return 0;
+    const planNow = Date.now();
+    const activeFocusRemaining =
+      focusSession?.phase === 'focus'
+        ? timerRemainingMs(focusSession, planNow)
+        : 0;
     return buildReminderPlan(
       workspace,
       { ...state.settings, enabled: true },
-      Date.now(),
+      planNow,
+      {
+        activeFocus:
+          focusSession && activeFocusRemaining > 0
+            ? {
+                topicId: focusSession.topicId ?? null,
+                startedAt: focusSession.startedAt,
+                unavailableUntil:
+                  planNow + activeFocusRemaining,
+              }
+            : null,
+      },
     ).length;
-  }, [state.settings, workspace]);
+  }, [
+    focusSession?.phase,
+    focusSession?.startedAt,
+    focusSession?.topicId,
+    focusSession?.runningSince,
+    focusSession?.elapsedMs,
+    focusSession?.plannedFocusMinutes,
+    state.settings,
+    workspace,
+  ]);
 
   const value = useMemo<ReminderContextValue>(
     () => ({

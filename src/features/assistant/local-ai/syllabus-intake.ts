@@ -12,19 +12,23 @@ export const MAX_SYLLABUS_SOURCE_CHARS = 24_000 as const;
 export const MAX_SYLLABUS_TOPICS = 90 as const;
 export const SYLLABUS_SOURCE_CHUNK_CHARS = 1_100 as const;
 
-type Priority = 1 | 2 | 3;
-type TopicStatus = 'new' | 'learning' | 'review';
+export type SyllabusPriority = 1 | 2 | 3;
+export type SyllabusTopicStatus = 'new' | 'learning' | 'review';
 
 export type SyllabusTopicDraft = {
   name: string;
   estimatedMinutes: number | null;
-  priority: Priority | null;
-  status: TopicStatus | null;
+  priority: SyllabusPriority | null;
+  status: SyllabusTopicStatus | null;
 };
 
 export type SyllabusSubjectDraft = {
   name: string;
   topics: SyllabusTopicDraft[];
+};
+
+export type SyllabusReviewTopicDraft = SyllabusTopicDraft & {
+  subject: string;
 };
 
 export type SyllabusExtractionDraft = {
@@ -253,7 +257,7 @@ export function parseSyllabusExtractionDraft(
                 'topic priority',
                 1,
                 3,
-              ) as Priority | null,
+              ) as SyllabusPriority | null,
               status: nullableEnum(
                 topic.status,
                 'topic status',
@@ -459,25 +463,88 @@ function requestIdFor(workspace: WorkspaceState, now: number) {
   return `syllabus:${workspace.revision}:${now.toString(36)}`.slice(0, 120);
 }
 
-export async function prepareLocalSyllabusImport(
-  request: IntakeRequest,
-): Promise<PreparedSyllabusImport> {
-  const sourceText = request.sourceText.trim();
-  if (!sourceText) {
+type BuildSyllabusImportRequest = {
+  workspace: WorkspaceState;
+  examName: string;
+  examDate: string;
+  subjects: SyllabusSubjectDraft[];
+  sourceChunkCount: number;
+  duplicateInputCount?: number;
+  extraWarnings?: string[];
+  requestId?: string;
+  now?: number;
+};
+
+function normalizeReviewedSubjects(topics: SyllabusReviewTopicDraft[]) {
+  if (!topics.length) {
     throw new SyllabusIntakeError(
-      'Paste syllabus text before asking MYELIN to extract it.',
-      'empty_source',
+      'Keep at least one topic in the syllabus before applying it.',
+      'invalid_draft',
     );
   }
-  if (sourceText.length > MAX_SYLLABUS_SOURCE_CHARS) {
+  if (topics.length > MAX_SYLLABUS_TOPICS) {
     throw new SyllabusIntakeError(
-      `This syllabus is too large for one import. Keep it under ${MAX_SYLLABUS_SOURCE_CHARS.toLocaleString()} characters or split it into parts.`,
-      'source_too_large',
+      `This import contains ${topics.length} topics. Keep at most ${MAX_SYLLABUS_TOPICS} in one import.`,
+      'too_many_topics',
     );
   }
 
+  const subjectMap = new Map<string, SyllabusSubjectDraft>();
+  const seenTopics = new Set<string>();
+
+  for (const raw of topics) {
+    const subject = cleanString(raw.subject, 'subject name', 120);
+    const name = cleanString(raw.name, 'topic name', 300);
+    const estimatedMinutes = nullableInteger(
+      raw.estimatedMinutes,
+      'topic estimated minutes',
+      5,
+      240,
+    );
+    const priority = nullableInteger(
+      raw.priority,
+      'topic priority',
+      1,
+      3,
+    ) as SyllabusPriority | null;
+    const status = nullableEnum(
+      raw.status,
+      'topic status',
+      ['new', 'learning', 'review'] as const,
+    );
+
+    const topicKey = `${normalized(subject)}::${normalized(name)}`;
+    if (seenTopics.has(topicKey)) {
+      throw new SyllabusIntakeError(
+        `${name} appears more than once in ${subject}. Remove or rename the duplicate before applying.`,
+        'invalid_draft',
+      );
+    }
+    seenTopics.add(topicKey);
+
+    const subjectKey = normalized(subject);
+    let target = subjectMap.get(subjectKey);
+    if (!target) {
+      target = { name: subject, topics: [] };
+      subjectMap.set(subjectKey, target);
+    }
+    target.topics.push({
+      name,
+      estimatedMinutes,
+      priority,
+      status,
+    });
+  }
+
+  return [...subjectMap.values()];
+}
+
+function buildPreparedSyllabusImport(
+  request: BuildSyllabusImportRequest,
+): PreparedSyllabusImport {
   const examName = cleanExamName(request.examName);
   const examDate = cleanExamDate(request.examDate);
+
   if (
     request.workspace.exams.some(
       (exam) =>
@@ -491,48 +558,13 @@ export async function prepareLocalSyllabusImport(
     );
   }
 
-  const chunks = chunkSyllabusSource(sourceText);
-  const drafts: SyllabusExtractionDraft[] = [];
-
-  for (let index = 0; index < chunks.length; index += 1) {
-    if (request.signal?.aborted) {
-      throw new SyllabusIntakeError(
-        'Syllabus extraction was cancelled.',
-        'cancelled',
-      );
-    }
-
-    const result = await request.session.generate({
-      prompt: buildExtractionPrompt(chunks[index]!, index, chunks.length),
-      maxOutputTokens: 420,
-      jsonSchema: syllabusIntakeJsonSchema(),
-      signal: request.signal,
-    });
-
-    if (result.finishReason === 'cancelled' || request.signal?.aborted) {
-      throw new SyllabusIntakeError(
-        'Syllabus extraction was cancelled.',
-        'cancelled',
-      );
-    }
-    if (result.finishReason !== 'stop') {
-      throw new SyllabusIntakeError(
-        'The local model did not finish extracting this syllabus section.',
-        'generation_failed',
-      );
-    }
-
-    drafts.push(parseSyllabusExtractionDraft(exactJson(result.text)));
-  }
-
-  const merged = mergeDrafts(drafts);
-  const flattened = merged.subjects.flatMap((subject) =>
+  const flattened = request.subjects.flatMap((subject) =>
     subject.topics.map((topic) => ({ subject: subject.name, topic })),
   );
 
   if (!flattened.length) {
     throw new SyllabusIntakeError(
-      'MYELIN could not find any syllabus topics in that text.',
+      'Keep at least one topic in the syllabus before applying it.',
       'invalid_draft',
     );
   }
@@ -600,10 +632,11 @@ export async function prepareLocalSyllabusImport(
     now,
   );
 
-  const warnings = [...merged.uncertainties];
-  if (merged.duplicateInputCount) {
+  const duplicateInputCount = request.duplicateInputCount ?? 0;
+  const warnings = [...(request.extraWarnings ?? [])];
+  if (duplicateInputCount) {
     warnings.push(
-      `${merged.duplicateInputCount} duplicate syllabus ${merged.duplicateInputCount === 1 ? 'entry was' : 'entries were'} merged before preview.`,
+      `${duplicateInputCount} duplicate syllabus ${duplicateInputCount === 1 ? 'entry was' : 'entries were'} merged before preview.`,
     );
   }
   if (existingTopicCount) {
@@ -620,14 +653,116 @@ export async function prepareLocalSyllabusImport(
   return {
     examName,
     examDate: examDate.value,
-    sourceChunkCount: chunks.length,
-    subjects: merged.subjects,
+    sourceChunkCount: Math.max(0, Math.trunc(request.sourceChunkCount)),
+    subjects: request.subjects,
     topicCount: flattened.length,
     newTopicCount,
     existingTopicCount,
-    duplicateInputCount: merged.duplicateInputCount,
+    duplicateInputCount,
     defaultEstimateCount,
     warnings,
     prepared,
   };
+}
+
+export function prepareReviewedSyllabusImport(request: {
+  workspace: WorkspaceState;
+  examName: string;
+  examDate: string;
+  topics: SyllabusReviewTopicDraft[];
+  sourceChunkCount?: number;
+  requestId?: string;
+  now?: number;
+}) {
+  const subjects = normalizeReviewedSubjects(request.topics);
+  return buildPreparedSyllabusImport({
+    workspace: request.workspace,
+    examName: request.examName,
+    examDate: request.examDate,
+    subjects,
+    sourceChunkCount: request.sourceChunkCount ?? 0,
+    requestId: request.requestId,
+    now: request.now,
+  });
+}
+
+export async function prepareLocalSyllabusImport(
+  request: IntakeRequest,
+): Promise<PreparedSyllabusImport> {
+  const sourceText = request.sourceText.trim();
+  if (!sourceText) {
+    throw new SyllabusIntakeError(
+      'Paste syllabus text before asking MYELIN to extract it.',
+      'empty_source',
+    );
+  }
+  if (sourceText.length > MAX_SYLLABUS_SOURCE_CHARS) {
+    throw new SyllabusIntakeError(
+      `This syllabus is too large for one import. Keep it under ${MAX_SYLLABUS_SOURCE_CHARS.toLocaleString()} characters or split it into parts.`,
+      'source_too_large',
+    );
+  }
+
+  const examName = cleanExamName(request.examName);
+  const examDate = cleanExamDate(request.examDate);
+  if (
+    request.workspace.exams.some(
+      (exam) =>
+        normalized(exam.name) === normalized(examName) &&
+        exam.date === examDate.timestamp,
+    )
+  ) {
+    throw new SyllabusIntakeError(
+      `${examName} already exists on ${examDate.value}. Edit the existing exam instead of importing a duplicate.`,
+      'exam_exists',
+    );
+  }
+
+  const chunks = chunkSyllabusSource(sourceText);
+  const drafts: SyllabusExtractionDraft[] = [];
+
+  for (let index = 0; index < chunks.length; index += 1) {
+    if (request.signal?.aborted) {
+      throw new SyllabusIntakeError(
+        'Syllabus extraction was cancelled.',
+        'cancelled',
+      );
+    }
+
+    const result = await request.session.generate({
+      prompt: buildExtractionPrompt(chunks[index]!, index, chunks.length),
+      maxOutputTokens: 420,
+      jsonSchema: syllabusIntakeJsonSchema(),
+      signal: request.signal,
+    });
+
+    if (result.finishReason === 'cancelled' || request.signal?.aborted) {
+      throw new SyllabusIntakeError(
+        'Syllabus extraction was cancelled.',
+        'cancelled',
+      );
+    }
+    if (result.finishReason !== 'stop') {
+      throw new SyllabusIntakeError(
+        'The local model did not finish extracting this syllabus section.',
+        'generation_failed',
+      );
+    }
+
+    drafts.push(parseSyllabusExtractionDraft(exactJson(result.text)));
+  }
+
+  const merged = mergeDrafts(drafts);
+
+  return buildPreparedSyllabusImport({
+    workspace: request.workspace,
+    examName,
+    examDate: examDate.value,
+    subjects: merged.subjects,
+    sourceChunkCount: chunks.length,
+    duplicateInputCount: merged.duplicateInputCount,
+    extraWarnings: merged.uncertainties,
+    requestId: request.requestId,
+    now: request.now,
+  });
 }

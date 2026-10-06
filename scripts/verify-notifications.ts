@@ -211,6 +211,160 @@ function main() {
   assert.equal(studyReminder!.href, '/(app)/today/day-map');
   assert.equal(studyReminder!.data.taskId, 'task_math_homework');
 
+  const recoveredWorkspace = createEmptyWorkspace(now);
+  recoveredWorkspace.settings.dailyMinutes = 120;
+  recoveredWorkspace.settings.focusMinutes = 45;
+  recoveredWorkspace.topics.push({
+    id: 'recovered_topic',
+    name: 'Quadratics',
+    subject: 'Mathematics',
+    createdAt: now - 86_400_000,
+    status: 'learning',
+    priority: 3,
+    estimate: 240,
+    notes: '',
+    dueAt: 0,
+    intervalDays: 0,
+    lastGrade: 0,
+    lastReviewed: 0,
+    snoozeUntil: 0,
+    cards: [],
+  });
+  recoveredWorkspace.exams.push({
+    id: 'recovered_exam',
+    name: 'Recovered-window exam',
+    date: local(2026, 10, 2, 12, 0),
+    subjects: [],
+    scope: 'topics',
+    topicIds: ['recovered_topic'],
+  });
+  recoveredWorkspace.commitments.push(
+    {
+      id: 'recovered_school',
+      title: 'School',
+      kind: 'school',
+      startAt: local(2026, 10, 1, 6, 0),
+      endAt: local(2026, 10, 1, 16, 0),
+      startMinutes: 6 * 60,
+      endMinutes: 16 * 60,
+      recurrenceDays: [],
+      skippedDates: [],
+      createdAt: now - 5000,
+      updatedAt: now - 5000,
+    },
+    {
+      id: 'recovered_tuition',
+      title: 'Maths tuition',
+      kind: 'tuition',
+      startAt: local(2026, 10, 1, 16, 0),
+      endAt: local(2026, 10, 1, 22, 0),
+      startMinutes: 16 * 60,
+      endMinutes: 22 * 60,
+      recurrenceDays: [4],
+      skippedDates: ['2026-10-01'],
+      createdAt: now - 4000,
+      updatedAt: now - 4000,
+    },
+  );
+
+  const recoveredPlan = buildReminderPlan(
+    recoveredWorkspace,
+    {
+      ...settings,
+      reviewEnabled: false,
+      examEnabled: false,
+    },
+    now,
+  );
+  const recoveredReminders = recoveredPlan.filter(
+    (item) => item.data.recovered === 1,
+  );
+  assert.equal(
+    recoveredReminders.length,
+    1,
+    'A recovered window should create one calm heads-up for its first upcoming Autopilot block, not one notification per mini-plan segment.',
+  );
+  const recoveredReminder = recoveredReminders[0]!;
+  assert.equal(
+    recoveredReminder.href,
+    '/(app)/today/day-map',
+  );
+  assert.equal(
+    recoveredReminder.at,
+    Number(recoveredReminder.data.scheduledStart) -
+      settings.studyLeadMinutes * 60_000,
+  );
+  assert.ok(
+    recoveredReminder.body.includes('Recovered window'),
+    'Recovered study reminders should explain why this study block exists.',
+  );
+
+  const recoveredSignature = reminderPlanSignature(
+    recoveredPlan,
+  );
+  recoveredWorkspace.commitments.push({
+    id: 'recovered_later_conflict',
+    title: 'New appointment',
+    kind: 'other',
+    startAt: local(2026, 10, 1, 16, 0),
+    endAt: local(2026, 10, 1, 16, 30),
+    startMinutes: 16 * 60,
+    endMinutes: 16 * 60 + 30,
+    recurrenceDays: [],
+    skippedDates: [],
+    createdAt: now - 1000,
+    updatedAt: now - 1000,
+  });
+  const reflowedRecoveredPlan = buildReminderPlan(
+    recoveredWorkspace,
+    {
+      ...settings,
+      reviewEnabled: false,
+      examEnabled: false,
+    },
+    now,
+  );
+  const reflowedRecovered = reflowedRecoveredPlan.find(
+    (item) => item.data.recovered === 1,
+  );
+  assert.ok(reflowedRecovered);
+  assert.ok(
+    Number(reflowedRecovered!.data.scheduledStart) >=
+      local(2026, 10, 1, 16, 30),
+    'A later schedule conflict should move the recovered reminder with the protected Autopilot block.',
+  );
+  assert.notEqual(
+    reminderPlanSignature(reflowedRecoveredPlan),
+    recoveredSignature,
+    'Reflowing a recovered block must invalidate the old device reminder signature.',
+  );
+
+  const suppressedRecoveredPlan = buildReminderPlan(
+    recoveredWorkspace,
+    {
+      ...settings,
+      reviewEnabled: false,
+      examEnabled: false,
+    },
+    now,
+    {
+      activeFocus: {
+        topicId: 'another_topic',
+        startedAt: now,
+        unavailableUntil:
+          Number(reflowedRecovered!.data.scheduledStart) +
+          20 * 60_000,
+      },
+    },
+  );
+  assert.equal(
+    suppressedRecoveredPlan.some(
+      (item) => item.data.recovered === 1,
+    ),
+    false,
+    'An overlapping active Focus session should suppress the recovered reminder instead of leaving a stale notification scheduled.',
+  );
+
   const beforeMove = reminderPlanSignature(studyPlan);
   studyWorkspace.tasks[0]!.scheduledStart = local(2026, 9, 30, 17, 0);
   studyWorkspace.tasks[0]!.scheduledEnd = local(2026, 9, 30, 17, 35);
@@ -378,6 +532,17 @@ function main() {
     blockedPermissions.includes('android.permission.USE_EXACT_ALARM'),
   );
 
+  const reminderProviderSource = fs.readFileSync(
+    'src/features/notifications/ReminderProvider.tsx',
+    'utf8',
+  );
+  assert.ok(
+    reminderProviderSource.includes('useFocus()') &&
+      reminderProviderSource.includes('timerRemainingMs') &&
+      reminderProviderSource.includes('activeFocus:'),
+    'ReminderProvider should reschedule recovered heads-ups from the live Focus session instead of using stale workspace-only timing.',
+  );
+
   const runtimeSource = fs.readFileSync(
     'src/features/notifications/notification-runtime.ts',
     'utf8',
@@ -407,6 +572,7 @@ function main() {
   console.log('✓ overnight quiet hours shift reminders to the quiet-end boundary');
   console.log('✓ exam reminders use only configured lead times before the exam');
   console.log('✓ scheduled Day Map tasks create one calm lead-time reminder');
+  console.log('✓ recovered Autopilot windows create one calm heads-up, reflow it after schedule edits, and suppress it during overlapping Focus');
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');

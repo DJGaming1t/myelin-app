@@ -1535,8 +1535,8 @@ const now = local(2026, 10, 5, 15, 0);
     endMinutes: 17 * 60,
     recurrenceDays: [],
     skippedDates: [],
-    createdAt: now,
-    updatedAt: now,
+    createdAt: now + 1,
+    updatedAt: now + 1,
   });
 
   const reservationNow = tomorrow + 15 * 60 * 60 * 1000;
@@ -1581,6 +1581,50 @@ const now = local(2026, 10, 5, 15, 0);
         (placement) => placement.start >= conflictEnd,
       ),
     'A later fixed commitment inside the recovered window should split and reflow study around the conflict.',
+  );
+  assert.equal(
+    liveReservation!.protection?.reason,
+    'schedule-change',
+    'A later fixed commitment that reshapes the recovered window should be surfaced as pre-miss protection rather than waiting for a miss.',
+  );
+  assert.equal(
+    liveReservation!.missed,
+    null,
+    'Schedule protection before a recovered slot passes must not be recorded as a miss.',
+  );
+
+  const preMissNow = tomorrow + 15 * 60 * 60 * 1000 + 55 * 60 * 1000;
+  const activeFocusUntil =
+    tomorrow + 16 * 60 * 60 * 1000 + 15 * 60 * 1000;
+  const protectedByFocus = buildAppliedReclaimedWindows(
+    previewWorkspace,
+    preMissNow,
+    {
+      unavailableUntil: activeFocusUntil,
+      activeFocusTopicId: 'another-focus-topic',
+      activeFocusStartedAt: preMissNow - 10 * 60 * 1000,
+      protectionLeadMinutes: 10,
+    },
+  ).find(
+    (window) =>
+      window.commitmentId === 'tuition-reclaim-test' &&
+      window.occurrenceDateKey === occurrenceKey,
+  );
+  assert.equal(
+    protectedByFocus?.protection?.reason,
+    'active-focus',
+    'An already-running Focus session near the next recovered block should proactively protect and reflow the reservation.',
+  );
+  assert.equal(
+    protectedByFocus?.missed,
+    null,
+    'Pre-miss protection caused by another Focus session must not be labeled as a miss.',
+  );
+  assert.ok(
+    (protectedByFocus?.placements ?? []).every(
+      (placement) => placement.start >= activeFocusUntil,
+    ),
+    'Recovered blocks should be repacked only after the current Focus session is expected to finish.',
   );
   assert.ok(
     liveReservation!.placements.length >= 2,
@@ -1764,6 +1808,7 @@ console.log('✓ reclaimed windows preview exact exam blocks inside the freed cl
 console.log('✓ applied reclaimed windows reconstruct as live Day Map reservations without persisted task duplicates');
 console.log('✓ completing a recovered Focus block removes it and reflows the remaining window from the current time');
 console.log('✓ later fixed commitments split recovered windows and remain respected after Focus completion');
+console.log('✓ pre-miss protection reflows recovered windows around later schedule edits and active Focus before a slot expires');
 console.log('✓ expired recovered blocks are marked missed, reflowed forward, and report any renewed deadline pressure');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');

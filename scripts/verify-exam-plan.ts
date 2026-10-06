@@ -15,6 +15,10 @@ import {
   buildAutopilotReflowSummary,
   hasMeaningfulAutopilotReflow,
 } from '../src/features/exams/autopilot-reflow';
+import {
+  applyAutopilotRecoveryOption,
+  buildAutopilotRecoveryOptions,
+} from '../src/features/exams/autopilot-recovery';
 
 function local(
   year: number,
@@ -1056,6 +1060,174 @@ const now = local(2026, 10, 5, 15, 0);
   assert.ok(reflow.firstBrokenDeadline !== null);
 }
 
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 45;
+  workspace.settings.focusMinutes = 30;
+
+  const examTopic = makeTopic(
+    'recover-task-exam-topic',
+    'Quadratics',
+    'Mathematics',
+    'learning',
+    90,
+    3,
+  );
+  examTopic.createdAt = addLocalDays(startOfLocalDay(now), -4);
+  workspace.topics.push(examTopic);
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Maths recovery test',
+        date: addLocalDays(startOfLocalDay(now), 2) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: [examTopic.id],
+      },
+      now,
+      'recover_task_exam',
+    ),
+  );
+
+  const movable = createStudyTask({
+    title: 'Decorate project cover',
+    type: 'personal',
+    planState: 'scheduled',
+    dueAt: addLocalDays(startOfLocalDay(now), 6) + 20 * 60 * 60 * 1000,
+    estimatedMinutes: 30,
+    priority: 1,
+    now,
+  });
+  scheduleTask(
+    movable,
+    now + 60 * 60 * 1000,
+    now + 90 * 60 * 1000,
+    now,
+  );
+  workspace.tasks.push(movable);
+
+  const options = buildAutopilotRecoveryOptions(workspace, now, 4);
+  const taskOption = options.find(
+    (option) =>
+      option.kind === 'defer-task' &&
+      option.taskId === movable.id,
+  );
+  assert.ok(
+    taskOption,
+    'Recovery should offer moving a lower-priority non-urgent scheduled task when it improves a broken exam window.',
+  );
+  assert.ok(
+    taskOption!.effect.feasibleAfter ||
+      taskOption!.effect.overloadReducedMinutes > 0 ||
+      taskOption!.effect.unallocatedReducedMinutes > 0,
+    'Every shown task recovery must have a simulated positive effect.',
+  );
+
+  const previewWorkspace = cloneWorkspace(workspace);
+  assert.equal(
+    applyAutopilotRecoveryOption(
+      previewWorkspace,
+      taskOption!,
+      now,
+    ),
+    true,
+  );
+  const movedTask = previewWorkspace.tasks.find(
+    (task) => task.id === movable.id,
+  )!;
+  assert.equal(movedTask.planState, 'postponed');
+  assert.ok(
+    movedTask.postponedUntil >
+      startOfLocalDay(workspace.exams[0]!.date),
+  );
+  assert.equal(
+    workspace.tasks.find((task) => task.id === movable.id)!.planState,
+    'scheduled',
+    'Preview/apply testing must not mutate the source workspace.',
+  );
+}
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 35;
+  workspace.settings.focusMinutes = 30;
+
+  const essential = makeTopic(
+    'recover-essential',
+    'Light',
+    'Science',
+    'learning',
+    90,
+    3,
+  );
+  const movableTopic = makeTopic(
+    'recover-movable',
+    'Extra worksheet',
+    'Science',
+    'learning',
+    90,
+    1,
+  );
+  essential.createdAt = movableTopic.createdAt =
+    addLocalDays(startOfLocalDay(now), -5);
+  workspace.topics.push(essential, movableTopic);
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Science scope recovery',
+        date: addLocalDays(startOfLocalDay(now), 2) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: [essential.id, movableTopic.id],
+      },
+      now,
+      'recover_scope_exam',
+    ),
+  );
+
+  const options = buildAutopilotRecoveryOptions(workspace, now, 4);
+  const scopeOption = options.find(
+    (option) =>
+      option.kind === 'reduce-exam-scope' &&
+      option.topicId === movableTopic.id,
+  );
+  assert.ok(
+    scopeOption,
+    'Explicit multi-topic exams may offer a low-priority scope reduction when simulation shows it helps.',
+  );
+
+  const previewWorkspace = cloneWorkspace(workspace);
+  assert.equal(
+    applyAutopilotRecoveryOption(
+      previewWorkspace,
+      scopeOption!,
+      now,
+    ),
+    true,
+  );
+  assert.deepEqual(
+    previewWorkspace.exams[0]!.topicIds,
+    [essential.id],
+  );
+  assert.equal(
+    workspace.exams[0]!.topicIds.length,
+    2,
+    'Recovery scope preview must not mutate the original exam.',
+  );
+
+  const subjectScoped = cloneWorkspace(workspace);
+  subjectScoped.exams[0]!.scope = 'subjects';
+  subjectScoped.exams[0]!.subjects = ['Science'];
+  subjectScoped.exams[0]!.topicIds = [];
+  assert.equal(
+    buildAutopilotRecoveryOptions(subjectScoped, now, 4).some(
+      (option) => option.kind === 'reduce-exam-scope',
+    ),
+    false,
+    'MYELIN must not silently invent topic exclusions for subject-scoped exams.',
+  );
+}
+
 console.log('✓ exam scope limits planning to included topics');
 console.log('✓ per-exam workload estimates override generic Topic estimates');
 console.log('✓ feasible workload is split into focus-sized blocks within safe daily capacity');
@@ -1073,6 +1245,8 @@ console.log('✓ joint overload is surfaced instead of silently dropping exam wo
 console.log('✓ completed Focus reduces remaining exam preparation demand');
 console.log('✓ snoozed exam work reflows to later days instead of staying on today');
 console.log('✓ new commitments reflow unfinished work and surface newly impossible deadlines');
+console.log('✓ recovery previews can move safe low-priority tasks without touching urgent exam work');
+console.log('✓ scope recovery is previewed only for explicit multi-topic exams and never invented for subject scope');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

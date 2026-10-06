@@ -8,7 +8,11 @@ import {
   JointExamPreparationPlan,
   buildJointExamPreparationPlan,
 } from '@/src/features/exams/exam-plan-engine';
-import { addLocalDays, startOfLocalDay } from '@/src/features/planning/day-engine';
+import {
+  addLocalDays,
+  commitmentOccurrencesForDay,
+  startOfLocalDay,
+} from '@/src/features/planning/day-engine';
 import { postponeTask } from '@/src/features/planning/task-engine';
 
 export type AutopilotRecoveryEffect = {
@@ -20,6 +24,9 @@ export type AutopilotRecoveryEffect = {
   unallocatedReducedMinutes: number;
   beforeStrain: ExamPlanStrain;
   afterStrain: ExamPlanStrain;
+  beforeSafeCapacityMinutes: number;
+  afterSafeCapacityMinutes: number;
+  capacityGainedMinutes: number;
   feasibleAfter: boolean;
 };
 
@@ -43,6 +50,19 @@ export type AutopilotRecoveryOption =
       examName: string;
       topicId: string;
       topicName: string;
+      effect: AutopilotRecoveryEffect;
+    }
+  | {
+      id: string;
+      kind: 'reclaim-commitment';
+      title: string;
+      detail: string;
+      commitmentId: string;
+      commitmentTitle: string;
+      occurrenceDateKey: string;
+      occurrenceStart: number;
+      occurrenceEnd: number;
+      reclaimedClockMinutes: number;
       effect: AutopilotRecoveryEffect;
     }
   | {
@@ -77,6 +97,13 @@ export type AutopilotRecoveryUndo =
       previousIndex: number;
     }
   | {
+      kind: 'reclaim-commitment';
+      commitmentId: string;
+      occurrenceDateKey: string;
+      previousSkippedDates: string[];
+      previousUpdatedAt: number;
+    }
+  | {
       kind: 'split-topic';
       topicId: string;
       previousPreferredBlockMinutes: number | null;
@@ -97,6 +124,13 @@ function feasible(plan: JointExamPreparationPlan) {
   return plan.feasibility.feasible && unallocated(plan) === 0;
 }
 
+function safeCapacity(plan: JointExamPreparationPlan) {
+  return plan.days.reduce(
+    (sum, day) => sum + day.usableCapacityMinutes,
+    0,
+  );
+}
+
 function effect(
   before: JointExamPreparationPlan,
   after: JointExamPreparationPlan,
@@ -105,6 +139,8 @@ function effect(
   const afterOverloadMinutes = after.feasibility.totalOverloadMinutes;
   const beforeUnallocatedMinutes = unallocated(before);
   const afterUnallocatedMinutes = unallocated(after);
+  const beforeSafeCapacityMinutes = safeCapacity(before);
+  const afterSafeCapacityMinutes = safeCapacity(after);
 
   return {
     beforeOverloadMinutes,
@@ -121,6 +157,12 @@ function effect(
     ),
     beforeStrain: before.strain,
     afterStrain: after.strain,
+    beforeSafeCapacityMinutes,
+    afterSafeCapacityMinutes,
+    capacityGainedMinutes: Math.max(
+      0,
+      afterSafeCapacityMinutes - beforeSafeCapacityMinutes,
+    ),
     feasibleAfter: feasible(after),
   };
 }
@@ -130,6 +172,7 @@ function usefulEffect(value: AutopilotRecoveryEffect) {
     value.feasibleAfter ||
     value.overloadReducedMinutes > 0 ||
     value.unallocatedReducedMinutes > 0 ||
+    value.capacityGainedMinutes > 0 ||
     value.afterStrain !== value.beforeStrain
   );
 }
@@ -296,6 +339,110 @@ function scopeRecoveryOptions(
   return options;
 }
 
+function reclaimableCommitmentOptions(
+  workspace: WorkspaceState,
+  before: JointExamPreparationPlan,
+  now: number,
+  brokenDeadline: number,
+) {
+  const options: AutopilotRecoveryOption[] = [];
+  const today = startOfLocalDay(now);
+  const finalDay = startOfLocalDay(brokenDeadline);
+  const maxDays = Math.min(
+    30,
+    Math.max(
+      0,
+      Math.round((finalDay - today) / 86_400_000),
+    ),
+  );
+  const seen = new Set<string>();
+
+  for (let offset = 0; offset <= maxDays; offset += 1) {
+    const day = addLocalDays(today, offset);
+    const occurrences = commitmentOccurrencesForDay(
+      workspace.commitments,
+      day,
+    ).filter(
+      (occurrence) =>
+        occurrence.recurring &&
+        occurrence.end > now &&
+        (occurrence.kind === 'tuition' ||
+          occurrence.kind === 'coaching'),
+    );
+
+    for (const occurrence of occurrences) {
+      const key =
+        occurrence.commitmentId +
+        ':' +
+        occurrence.occurrenceDateKey;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const preview = cloneWorkspace(workspace);
+      const commitment = preview.commitments.find(
+        (item) => item.id === occurrence.commitmentId,
+      );
+      if (!commitment) continue;
+
+      commitment.skippedDates = [
+        ...new Set([
+          ...(commitment.skippedDates ?? []),
+          occurrence.occurrenceDateKey,
+        ]),
+      ];
+      commitment.updatedAt = now;
+
+      const after = buildJointExamPreparationPlan(preview, now, {
+        maxDays: 120,
+      });
+      const impact = effect(before, after);
+      if (
+        impact.capacityGainedMinutes <= 0 ||
+        !usefulEffect(impact)
+      ) {
+        continue;
+      }
+
+      const reclaimedClockMinutes = Math.max(
+        0,
+        Math.round(
+          (occurrence.end - occurrence.start) / 60_000,
+        ),
+      );
+
+      options.push({
+        id:
+          'reclaim-commitment:' +
+          occurrence.commitmentId +
+          ':' +
+          occurrence.occurrenceDateKey,
+        kind: 'reclaim-commitment',
+        title: 'If cancelled, reclaim ' + occurrence.title,
+        detail:
+          'This marks only this recurring occurrence as skipped. MYELIN previews the safe capacity actually gained, which may be less than the full clock time.',
+        commitmentId: occurrence.commitmentId,
+        commitmentTitle: occurrence.title,
+        occurrenceDateKey: occurrence.occurrenceDateKey,
+        occurrenceStart: occurrence.start,
+        occurrenceEnd: occurrence.end,
+        reclaimedClockMinutes,
+        effect: impact,
+      });
+
+      if (options.length >= 6) return options;
+    }
+  }
+
+  return options.sort(
+    (a, b) =>
+      b.effect.capacityGainedMinutes -
+        a.effect.capacityGainedMinutes ||
+      b.effect.overloadReducedMinutes -
+        a.effect.overloadReducedMinutes ||
+      a.occurrenceStart - b.occurrenceStart,
+  );
+}
+
 function splitTopicRecoveryOptions(
   workspace: WorkspaceState,
   before: JointExamPreparationPlan,
@@ -411,6 +558,12 @@ export function buildAutopilotRecoveryOptions(
 
   const safeLimit = Math.max(1, Math.min(4, limit));
   const relief = [
+    ...reclaimableCommitmentOptions(
+      workspace,
+      before,
+      now,
+      brokenDeadline,
+    ),
     ...taskRecoveryOptions(
       workspace,
       before,
@@ -466,6 +619,48 @@ export function applyAutopilotRecoveryOption(
     };
     postponeTask(task, option.until, now);
     return undo;
+  }
+
+  if (option.kind === 'reclaim-commitment') {
+    const commitment = workspace.commitments.find(
+      (item) => item.id === option.commitmentId,
+    );
+    if (
+      !commitment ||
+      !commitment.recurrenceDays.length ||
+      (commitment.kind !== 'tuition' &&
+        commitment.kind !== 'coaching')
+    ) {
+      return null;
+    }
+
+    const previousSkippedDates = [
+      ...(commitment.skippedDates ?? []),
+    ];
+    if (
+      previousSkippedDates.includes(
+        option.occurrenceDateKey,
+      )
+    ) {
+      return null;
+    }
+
+    const previousUpdatedAt = commitment.updatedAt;
+    commitment.skippedDates = [
+      ...new Set([
+        ...previousSkippedDates,
+        option.occurrenceDateKey,
+      ]),
+    ];
+    commitment.updatedAt = now;
+
+    return {
+      kind: 'reclaim-commitment',
+      commitmentId: commitment.id,
+      occurrenceDateKey: option.occurrenceDateKey,
+      previousSkippedDates,
+      previousUpdatedAt,
+    };
   }
 
   if (option.kind === 'reduce-exam-scope') {
@@ -532,6 +727,19 @@ export function undoAutopilotRecovery(
     } else {
       task.lastPostponedAt = undo.previous.lastPostponedAt;
     }
+    return true;
+  }
+
+  if (undo.kind === 'reclaim-commitment') {
+    const commitment = workspace.commitments.find(
+      (item) => item.id === undo.commitmentId,
+    );
+    if (!commitment) return false;
+
+    commitment.skippedDates = [
+      ...undo.previousSkippedDates,
+    ];
+    commitment.updatedAt = undo.previousUpdatedAt;
     return true;
   }
 

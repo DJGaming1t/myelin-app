@@ -139,6 +139,16 @@ function topic(raw: unknown): Topic {
     lastGrade: integer(t.lastGrade ?? 0, 'topic grade', 0, 3) as ReviewGrade,
     lastReviewed: number(t.lastReviewed ?? 0, 'topic review date'),
     snoozeUntil: number(t.snoozeUntil ?? 0, 'topic snooze date'),
+    ...(t.preferredBlockMinutes == null
+      ? {}
+      : {
+          preferredBlockMinutes: integer(
+            t.preferredBlockMinutes,
+            'topic preferred block minutes',
+            5,
+            90,
+          ),
+        }),
     ...(t.postponements == null ? {} : { postponements: integer(t.postponements, 'topic postponements', 0, 100000) }),
     cards,
   };

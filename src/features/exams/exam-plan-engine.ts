@@ -62,6 +62,7 @@ export type ExamPlanTopic = {
   dueQuestionCount: number;
   feedbackPriorityBoost: number;
   feedbackEvidenceCount: number;
+  preferredBlockMinutes: number | null;
   mode: 'study' | 'review';
   availableFrom: number;
   requiredBy: number;
@@ -487,6 +488,10 @@ function topicWorkload(
     dueQuestionCount: dueCount,
     feedbackPriorityBoost: feedback.priorityBoost,
     feedbackEvidenceCount: feedback.evidenceCount,
+    preferredBlockMinutes:
+      topic.preferredBlockMinutes == null
+        ? null
+        : clamp(Math.round(topic.preferredBlockMinutes), 5, 90),
     mode,
     availableFrom,
     requiredBy,
@@ -825,8 +830,12 @@ export function buildExamPreparationPlan(
           continue;
         }
 
-        const minutes = Math.min(
+        const topicChunk = Math.min(
           focusChunk,
+          topic.preferredBlockMinutes ?? focusChunk,
+        );
+        const minutes = Math.min(
+          topicChunk,
           left,
           available,
           hardRemaining,
@@ -1409,8 +1418,12 @@ export function buildJointExamPreparationPlan(
           0,
           preparationAvailable - fairnessReserve,
         );
-        const minutes = Math.min(
+        const topicChunk = Math.min(
           focusChunk,
+          topic.preferredBlockMinutes ?? focusChunk,
+        );
+        const minutes = Math.min(
+          topicChunk,
           demand.remainingMinutes,
           allocatable,
           hardRemaining,

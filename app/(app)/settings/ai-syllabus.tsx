@@ -89,6 +89,9 @@ export default function LocalAiSyllabusScreen() {
   const [examDate, setExamDate] = useState('');
   const [sourceText, setSourceText] = useState('');
   const [prepared, setPrepared] = useState<PreparedSyllabusImport | null>(null);
+  const [completedPlan, setCompletedPlan] = useState<
+    PreparedSyllabusImport['autopilotPlan'] | null
+  >(null);
   const [reviewTopics, setReviewTopics] = useState<EditableReviewTopic[]>([]);
   const [reviewDirty, setReviewDirty] = useState(false);
   const [busy, setBusy] = useState<'prepare' | 'validate' | 'apply' | ''>('');
@@ -189,6 +192,7 @@ export default function LocalAiSyllabusScreen() {
     controllerRef.current = controller;
     setBusy('prepare');
     setPrepared(null);
+    setCompletedPlan(null);
     setReviewTopics([]);
     setReviewDirty(false);
     setNotice('');
@@ -269,6 +273,7 @@ export default function LocalAiSyllabusScreen() {
         batch.confirmationKey,
       );
       await commitAssistantWorkspace(applied.nextWorkspace, batch.sourceRevision);
+      setCompletedPlan(latest.autopilotPlan);
       setPrepared(null);
       setReviewTopics([]);
       setReviewDirty(false);
@@ -450,6 +455,14 @@ export default function LocalAiSyllabusScreen() {
                     </View>
                   ) : null}
 
+                  {!reviewDirty ? (
+                    <AutopilotPlanCard
+                      plan={prepared.autopilotPlan}
+                      title="First preparation plan"
+                      subtitle="Calculated from this reviewed syllabus before anything is saved."
+                    />
+                  ) : null}
+
                   <View style={styles.reviewIntro}>
                     <Text style={styles.sectionTitle}>REVIEW TOPICS</Text>
                     <Text style={styles.reviewIntroText}>
@@ -624,6 +637,15 @@ export default function LocalAiSyllabusScreen() {
               {notice}
             </Text>
           ) : null}
+
+          {completedPlan ? (
+            <AutopilotPlanCard
+              plan={completedPlan}
+              title="Autopilot is ready"
+              subtitle="This is MYELIN's first capacity-aware plan for the imported exam."
+              applied
+            />
+          ) : null}
           {error ? (
             <Text accessibilityLiveRegion="polite" style={styles.error}>
               {error}
@@ -634,6 +656,197 @@ export default function LocalAiSyllabusScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function minutesLabel(minutes: number) {
+  const safe = Math.max(0, Math.round(minutes));
+  if (safe < 60) return `${safe}m`;
+  const hours = Math.floor(safe / 60);
+  const rest = safe % 60;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
+
+function planDateLabel(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(timestamp));
+}
+
+function strainText(
+  strain: PreparedSyllabusImport['autopilotPlan']['strain'],
+) {
+  return strain === 'overloaded'
+    ? 'Overloaded'
+    : strain === 'tight'
+      ? 'Tight'
+      : strain === 'balanced'
+        ? 'Balanced'
+        : 'Comfortable';
+}
+
+function AutopilotPlanCard({
+  plan,
+  title,
+  subtitle,
+  applied = false,
+}: {
+  plan: PreparedSyllabusImport['autopilotPlan'];
+  title: string;
+  subtitle: string;
+  applied?: boolean;
+}) {
+  const activeDays = plan.days.filter((day) => day.blocks.length > 0);
+  const visibleDays = activeDays.slice(0, 5);
+  const required = plan.feasibility.totalRequiredMinutes;
+  const capacity = plan.feasibility.totalCapacityMinutes;
+  const shortfall = plan.feasibility.totalOverloadMinutes;
+
+  return (
+    <View
+      testID={applied ? 'syllabus-autopilot-applied' : 'syllabus-autopilot-preview'}
+      style={styles.autopilotCard}>
+      <View style={styles.autopilotTop}>
+        <View style={styles.grow}>
+          <Text style={styles.autopilotKicker}>MILEAGE · EXAM AUTOPILOT</Text>
+          <Text style={styles.autopilotTitle}>{title}</Text>
+          <Text style={styles.autopilotSubtitle}>{subtitle}</Text>
+        </View>
+        <Text
+          style={[
+            styles.autopilotStrain,
+            plan.strain === 'overloaded' || plan.strain === 'tight'
+              ? styles.autopilotStrainHot
+              : styles.autopilotStrainCalm,
+          ]}>
+          {strainText(plan.strain).toUpperCase()}
+        </Text>
+      </View>
+
+      <View style={styles.autopilotStats}>
+        <View style={styles.autopilotStat}>
+          <Text style={styles.autopilotStatLabel}>DAILY MILEAGE</Text>
+          <Text style={styles.autopilotStatValue}>
+            {minutesLabel(plan.capacityProfile.sustainableDailyMinutes)}
+          </Text>
+        </View>
+        <View style={styles.autopilotStat}>
+          <Text style={styles.autopilotStatLabel}>WORK REQUIRED</Text>
+          <Text style={styles.autopilotStatValue}>{minutesLabel(required)}</Text>
+        </View>
+        <View style={styles.autopilotStat}>
+          <Text style={styles.autopilotStatLabel}>SAFE CAPACITY</Text>
+          <Text style={styles.autopilotStatValue}>{minutesLabel(capacity)}</Text>
+        </View>
+        <View style={styles.autopilotStat}>
+          <Text style={styles.autopilotStatLabel}>DOESN'T FIT</Text>
+          <Text
+            style={[
+              styles.autopilotStatValue,
+              shortfall > 0 && styles.autopilotDanger,
+            ]}>
+            {minutesLabel(shortfall)}
+          </Text>
+        </View>
+      </View>
+
+      {plan.exams.length === 0 ? (
+        <View style={styles.autopilotNotice}>
+          <Text style={styles.autopilotNoticeTitle}>LONG-RANGE EXAM</Text>
+          <Text style={styles.autopilotNoticeText}>
+            This exam is outside MYELIN's current 120-day detailed planning horizon.
+            The syllabus is still valid; Autopilot will calculate concrete study
+            blocks once it enters that window.
+          </Text>
+        </View>
+      ) : (
+        <>
+          {plan.workloadLedger.taskRemainingMinutes > 0 ||
+          plan.workloadLedger.deduplicatedMinutes > 0 ? (
+            <View style={styles.autopilotLedger}>
+              <Text style={styles.autopilotLedgerTitle}>ONE WORKLOAD LEDGER</Text>
+              <Text style={styles.autopilotLedgerText}>
+                Existing tasks and this exam share the same daily mileage.
+                {plan.workloadLedger.deduplicatedMinutes > 0
+                  ? ` MYELIN removed ${minutesLabel(plan.workloadLedger.deduplicatedMinutes)} of duplicated work.`
+                  : ''}
+              </Text>
+            </View>
+          ) : null}
+
+          {plan.feasibility.firstOverloadedDeadline ? (
+            <View style={styles.autopilotBreak}>
+              <Text style={styles.autopilotBreakKicker}>FIRST CAPACITY BREAK</Text>
+              <Text style={styles.autopilotBreakTitle}>
+                By {planDateLabel(plan.feasibility.firstOverloadedDeadline.deadlineAt)},
+                {' '}MYELIN is short by{' '}
+                {minutesLabel(plan.feasibility.firstOverloadedDeadline.overloadMinutes)}.
+              </Text>
+              {plan.feasibility.firstOverloadedDeadline.extraMinutesPerAvailableDay ? (
+                <Text style={styles.autopilotBreakText}>
+                  That would require about{' '}
+                  {minutesLabel(
+                    plan.feasibility.firstOverloadedDeadline.extraMinutesPerAvailableDay,
+                  )}{' '}
+                  extra per available day if scope and deadlines stay unchanged.
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={styles.autopilotDays}>
+            <Text style={styles.autopilotDaysTitle}>FIRST PLANNED DAYS</Text>
+            {visibleDays.length ? (
+              visibleDays.map((day) => {
+                const planned =
+                  day.plannedPreparationMinutes + day.plannedRevisionMinutes;
+                return (
+                  <View key={day.day} style={styles.autopilotDay}>
+                    <View style={styles.autopilotDayTop}>
+                      <View>
+                        <Text style={styles.autopilotDayDate}>
+                          {planDateLabel(day.day)}
+                        </Text>
+                        <Text style={styles.autopilotDayMeta}>
+                          {minutesLabel(planned)} planned ·{' '}
+                          {minutesLabel(day.usableCapacityMinutes)} usable
+                        </Text>
+                      </View>
+                      <Text style={styles.autopilotDayStrain}>
+                        {strainText(day.strain)}
+                      </Text>
+                    </View>
+                    {day.blocks.slice(0, 3).map((block) => (
+                      <View key={block.id} style={styles.autopilotBlock}>
+                        <Text style={styles.autopilotBlockMinutes}>
+                          {minutesLabel(block.minutes)}
+                        </Text>
+                        <View style={styles.grow}>
+                          <Text style={styles.autopilotBlockTopic}>
+                            {block.topicName}
+                          </Text>
+                          <Text style={styles.autopilotBlockMeta}>
+                            {block.kind === 'revision' ? 'Revision' : 'Preparation'}
+                            {' · '}
+                            {block.subject}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={styles.autopilotEmpty}>
+                No study blocks fit yet. Check the capacity warning above.
+              </Text>
+            )}
+          </View>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -888,6 +1101,220 @@ const styles = StyleSheet.create({
   warningRow: { flexDirection: 'row', gap: 7, marginTop: 6 },
   warningDot: { color: colors.danger, fontSize: 12, lineHeight: 16 },
   warningText: { flex: 1, color: colors.textDim, fontSize: 10.5, lineHeight: 16 },
+  autopilotCard: {
+    marginTop: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.24)',
+    backgroundColor: colors.bg,
+    padding: 11,
+  },
+  autopilotTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  autopilotKicker: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.55,
+  },
+  autopilotTitle: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  autopilotSubtitle: {
+    color: colors.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+  autopilotStrain: {
+    borderRadius: radius.pill,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    overflow: 'hidden',
+  },
+  autopilotStrainHot: {
+    color: colors.danger,
+    backgroundColor: 'rgba(255,165,150,0.09)',
+  },
+  autopilotStrainCalm: {
+    color: colors.success,
+    backgroundColor: 'rgba(116,201,152,0.09)',
+  },
+  autopilotStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+    marginTop: 11,
+  },
+  autopilotStat: {
+    width: '48%',
+    minHeight: 58,
+    borderRadius: radius.sm,
+    backgroundColor: colors.panel,
+    padding: 8,
+  },
+  autopilotStatLabel: {
+    color: colors.subtle,
+    fontSize: 8,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.38,
+  },
+  autopilotStatValue: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  autopilotDanger: { color: colors.danger },
+  autopilotNotice: {
+    marginTop: 10,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    padding: 9,
+  },
+  autopilotNoticeTitle: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+  },
+  autopilotNoticeText: {
+    color: colors.textDim,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+  autopilotLedger: {
+    marginTop: 9,
+    borderRadius: radius.sm,
+    backgroundColor: colors.panel,
+    padding: 9,
+  },
+  autopilotLedgerTitle: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+  },
+  autopilotLedgerText: {
+    color: colors.textDim,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+  autopilotBreak: {
+    marginTop: 9,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,165,150,0.20)',
+    backgroundColor: 'rgba(255,165,150,0.055)',
+    padding: 9,
+  },
+  autopilotBreakKicker: {
+    color: colors.danger,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+  },
+  autopilotBreakTitle: {
+    color: colors.text,
+    fontSize: 10.5,
+    lineHeight: 15,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  autopilotBreakText: {
+    color: colors.textDim,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 3,
+  },
+  autopilotDays: { marginTop: 11 },
+  autopilotDaysTitle: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+  },
+  autopilotDay: {
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingVertical: 8,
+  },
+  autopilotDayTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  autopilotDayDate: {
+    color: colors.text,
+    fontSize: 10.5,
+    lineHeight: 15,
+    fontWeight: '800',
+  },
+  autopilotDayMeta: {
+    color: colors.muted,
+    fontSize: 9,
+    lineHeight: 13,
+    marginTop: 1,
+  },
+  autopilotDayStrain: {
+    color: colors.subtle,
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: '700',
+  },
+  autopilotBlock: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  autopilotBlockMinutes: {
+    width: 38,
+    color: colors.accent,
+    fontSize: 9.5,
+    lineHeight: 14,
+    fontWeight: '900',
+  },
+  autopilotBlockTopic: {
+    color: colors.textDim,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  autopilotBlockMeta: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 1,
+  },
+  autopilotEmpty: {
+    color: colors.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 6,
+  },
   reviewIntro: { marginTop: 14 },
   reviewIntroText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4 },
   subjects: { marginTop: 9, gap: 9 },

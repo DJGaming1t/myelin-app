@@ -1,4 +1,5 @@
 import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
+import { TodayAdaptationInsight } from '@/src/features/adaptive/AdaptationInsights';
 import { taskUrgency } from '@/src/features/planning/task-urgency';
 import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 import { router } from 'expo-router';
@@ -349,6 +350,14 @@ export default function TodayScreen() {
               </View>
             )}
           </Animated.View>
+
+          {!activeFocus && !activeReview && next?.topicId ? (
+            <TodayAdaptationInsight
+              workspace={currentWorkspace}
+              topicId={next.topicId}
+              now={now}
+            />
+          ) : null}
 
           {deadlineBreak ? (
             <View

@@ -32,6 +32,7 @@ import {
 } from '@/src/features/planning/task-engine';
 import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
 import {
+  AppliedReclaimedWindow,
   AutopilotRecoveryOption,
   AutopilotRecoveryUndo,
   ReclaimedStudyPlacement,
@@ -74,6 +75,7 @@ export default function DayMapScreen() {
     undo: AutopilotRecoveryUndo;
     appliedRevision: number;
     label: string;
+    reclaimedWindow: AppliedReclaimedWindow | null;
   } | null>(null);
 
   useEffect(() => {
@@ -103,6 +105,27 @@ export default function DayMapScreen() {
         : [],
     [now, workspace],
   );
+
+  const visibleReclaimedWindows = useMemo(() => {
+    const windows = [...reclaimedWindows];
+    const immediate =
+      lastRecovery &&
+      workspace &&
+      lastRecovery.appliedRevision === workspace.revision
+        ? lastRecovery.reclaimedWindow
+        : null;
+    if (
+      immediate &&
+      !windows.some(
+        (window) =>
+          window.commitmentId === immediate.commitmentId &&
+          window.occurrenceDateKey === immediate.occurrenceDateKey,
+      )
+    ) {
+      windows.push(immediate);
+    }
+    return windows.sort((a, b) => a.start - b.start);
+  }, [lastRecovery, reclaimedWindows, workspace]);
 
   if (!workspace || !map) return null;
 
@@ -191,6 +214,17 @@ export default function DayMapScreen() {
         undo,
         appliedRevision: next.revision,
         label: option.title,
+        reclaimedWindow:
+          option.kind === 'reclaim-commitment'
+            ? {
+                commitmentId: option.commitmentId,
+                commitmentTitle: option.commitmentTitle,
+                occurrenceDateKey: option.occurrenceDateKey,
+                start: option.occurrenceStart,
+                end: option.occurrenceEnd,
+                placements: option.placements,
+              }
+            : null,
       });
       setSelectedRecoveryId(null);
       setNow(Date.now());
@@ -281,14 +315,14 @@ export default function DayMapScreen() {
             }
           />
 
-          {reclaimedWindows.length ? (
+          {visibleReclaimedWindows.length ? (
             <View style={styles.reclaimedSection}>
               <Text style={styles.sectionLabel}>RECOVERED AUTOPILOT WINDOW</Text>
               <Text style={styles.reclaimedIntro}>
                 These blocks are reserved by Autopilot from skipped tuition/coaching time.
                 They are not task records.
               </Text>
-              {reclaimedWindows.map((window) => (
+              {visibleReclaimedWindows.map((window) => (
                 <View
                   key={`${window.commitmentId}:${window.occurrenceDateKey}`}
                   style={styles.reclaimedWindow}>

@@ -416,8 +416,26 @@ console.log('✓ skipped dates survive reload, free time is reclaimed, overnight
       dayMapSource.includes('recoveredLayoutRef'),
     'Repeated recovered notification taps should be able to target Day Map again while it is already open.',
   );
+  assert.ok(
+    dayMapSource.includes('resolveRecoveredReminderHandoff') &&
+      dayMapSource.includes('PLAN UPDATED SINCE THIS REMINDER') &&
+      dayMapSource.includes('CURRENT PLAN'),
+    'A stale recovered reminder should explicitly explain that the plan changed and highlight the current recovered action.',
+  );
+  assert.ok(
+    dayMapSource.includes('buildTodayPlan') &&
+      dayMapSource.includes('startCurrentTodayAction') &&
+      dayMapSource.includes('current next action'),
+    'If no recovered action survives, Day Map should fall back to the current Today recommendation instead of leaving a dead notification handoff.',
+  );
+  assert.ok(
+    dayMapSource.includes('Start current focus') &&
+      dayMapSource.includes('Current block after your plan changed'),
+    'A reflowed stale reminder should make the live replacement action obvious and directly startable.',
+  );
 }
 console.log('✓ reclaimed Autopilot reservations are visible in Day Map and launch Focus directly without task duplication');
 console.log('✓ missed recovered slots are visible with reflowed minutes and renewed deadline pressure');
 console.log('✓ near-term recovered slots proactively protect against active Focus and later schedule changes');
 console.log('✓ recovered reminder handoff scrolls/highlights the current reservation and offers one-tap Focus');
+console.log('✓ stale recovered reminder taps explain plan changes and fall forward to the best current action');

@@ -18,6 +18,7 @@ import {
 import {
   applyAutopilotRecoveryOption,
   buildAutopilotRecoveryOptions,
+  undoAutopilotRecovery,
 } from '../src/features/exams/autopilot-recovery';
 
 function local(
@@ -1124,14 +1125,12 @@ const now = local(2026, 10, 5, 15, 0);
   );
 
   const previewWorkspace = cloneWorkspace(workspace);
-  assert.equal(
-    applyAutopilotRecoveryOption(
-      previewWorkspace,
-      taskOption!,
-      now,
-    ),
-    true,
+  const taskUndo = applyAutopilotRecoveryOption(
+    previewWorkspace,
+    taskOption!,
+    now,
   );
+  assert.ok(taskUndo);
   const movedTask = previewWorkspace.tasks.find(
     (task) => task.id === movable.id,
   )!;
@@ -1145,6 +1144,17 @@ const now = local(2026, 10, 5, 15, 0);
     'scheduled',
     'Preview/apply testing must not mutate the source workspace.',
   );
+  assert.equal(
+    undoAutopilotRecovery(previewWorkspace, taskUndo!),
+    true,
+  );
+  const restoredTask = previewWorkspace.tasks.find(
+    (task) => task.id === movable.id,
+  )!;
+  assert.equal(restoredTask.planState, movable.planState);
+  assert.equal(restoredTask.scheduledStart, movable.scheduledStart);
+  assert.equal(restoredTask.scheduledEnd, movable.scheduledEnd);
+  assert.equal(restoredTask.postponedUntil, movable.postponedUntil);
 }
 
 {
@@ -1197,14 +1207,12 @@ const now = local(2026, 10, 5, 15, 0);
   );
 
   const previewWorkspace = cloneWorkspace(workspace);
-  assert.equal(
-    applyAutopilotRecoveryOption(
-      previewWorkspace,
-      scopeOption!,
-      now,
-    ),
-    true,
+  const scopeUndo = applyAutopilotRecoveryOption(
+    previewWorkspace,
+    scopeOption!,
+    now,
   );
+  assert.ok(scopeUndo);
   assert.deepEqual(
     previewWorkspace.exams[0]!.topicIds,
     [essential.id],
@@ -1213,6 +1221,15 @@ const now = local(2026, 10, 5, 15, 0);
     workspace.exams[0]!.topicIds.length,
     2,
     'Recovery scope preview must not mutate the original exam.',
+  );
+  assert.equal(
+    undoAutopilotRecovery(previewWorkspace, scopeUndo!),
+    true,
+  );
+  assert.deepEqual(
+    previewWorkspace.exams[0]!.topicIds,
+    [essential.id, movableTopic.id],
+    'Undo must restore the original explicit exam topic order.',
   );
 
   const subjectScoped = cloneWorkspace(workspace);
@@ -1225,6 +1242,109 @@ const now = local(2026, 10, 5, 15, 0);
     ),
     false,
     'MYELIN must not silently invent topic exclusions for subject-scoped exams.',
+  );
+}
+
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 30;
+  workspace.settings.focusMinutes = 45;
+
+  const heavy = makeTopic(
+    'recover-split-heavy',
+    'Organic chemistry',
+    'Chemistry',
+    'learning',
+    140,
+    2,
+  );
+  heavy.createdAt = addLocalDays(startOfLocalDay(now), -4);
+  workspace.topics.push(heavy);
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Chemistry recovery',
+        date: addLocalDays(startOfLocalDay(now), 2) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: [heavy.id],
+      },
+      now,
+      'recover_split_exam',
+    ),
+  );
+
+  const beforePlan = buildJointExamPreparationPlan(workspace, now, {
+    maxDays: 120,
+  });
+  const options = buildAutopilotRecoveryOptions(workspace, now, 4);
+  const splitOption = options.find(
+    (option) =>
+      option.kind === 'split-topic' &&
+      option.topicId === heavy.id,
+  );
+  assert.ok(
+    splitOption,
+    'A heavy topic in a broken plan should offer smaller future blocks without changing scope.',
+  );
+
+  const previewWorkspace = cloneWorkspace(workspace);
+  const splitUndo = applyAutopilotRecoveryOption(
+    previewWorkspace,
+    splitOption!,
+    now,
+  );
+  assert.ok(splitUndo);
+  assert.equal(
+    previewWorkspace.topics[0]!.preferredBlockMinutes,
+    splitOption!.kind === 'split-topic'
+      ? splitOption!.targetBlockMinutes
+      : -1,
+  );
+  assert.equal(
+    previewWorkspace.topics[0]!.estimate,
+    workspace.topics[0]!.estimate,
+    'Split recovery must not rewrite the saved workload estimate.',
+  );
+  assert.deepEqual(
+    previewWorkspace.exams[0]!.topicIds,
+    workspace.exams[0]!.topicIds,
+    'Split recovery must not alter exam scope.',
+  );
+
+  const afterPlan = buildJointExamPreparationPlan(
+    previewWorkspace,
+    now,
+    { maxDays: 120 },
+  );
+  assert.equal(
+    afterPlan.totalPreparationRequiredMinutes,
+    beforePlan.totalPreparationRequiredMinutes,
+    'Smaller blocks must not pretend the topic needs less total work.',
+  );
+  const target =
+    splitOption!.kind === 'split-topic'
+      ? splitOption!.targetBlockMinutes
+      : 90;
+  assert.ok(
+    afterPlan.days
+      .flatMap((day) => day.blocks)
+      .filter(
+        (block) =>
+          block.kind === 'preparation' &&
+          block.topicId === heavy.id,
+      )
+      .every((block) => block.minutes <= target),
+    'Autopilot must respect the smaller recovery block cap.',
+  );
+  assert.equal(
+    undoAutopilotRecovery(previewWorkspace, splitUndo!),
+    true,
+  );
+  assert.equal(
+    previewWorkspace.topics[0]!.preferredBlockMinutes,
+    undefined,
+    'Undo must remove a recovery block preference that did not exist before.',
   );
 }
 
@@ -1247,6 +1367,8 @@ console.log('✓ snoozed exam work reflows to later days instead of staying on t
 console.log('✓ new commitments reflow unfinished work and surface newly impossible deadlines');
 console.log('✓ recovery previews can move safe low-priority tasks without touching urgent exam work');
 console.log('✓ scope recovery is previewed only for explicit multi-topic exams and never invented for subject scope');
+console.log('✓ recovery actions undo their targeted changes without restoring an entire stale workspace');
+console.log('✓ heavy-topic recovery can split future blocks without changing scope, estimate, or total workload');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

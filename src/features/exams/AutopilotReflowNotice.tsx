@@ -140,7 +140,7 @@ export function AutopilotReflowNotice({
         <View style={styles.recoverySection}>
           <Text style={styles.recoveryKicker}>SAFE RECOVERY OPTIONS</Text>
           <Text style={styles.recoveryIntro}>
-            Preview first. MYELIN will not change tasks, exam scope, or block preferences until you apply one option.
+            Preview first. MYELIN will not change tasks, exam scope, commitment occurrences, or block preferences until you apply one option.
           </Text>
 
           {recoveryOptions.map((option) => {
@@ -176,8 +176,22 @@ export function AutopilotReflowNotice({
                         before={option.effect.beforeUnallocatedMinutes}
                         after={option.effect.afterUnallocatedMinutes}
                       />
+                      {option.kind === 'reclaim-commitment' ? (
+                        <View style={styles.effect}>
+                          <Text style={styles.effectLabel}>SAFE CAPACITY GAIN</Text>
+                          <Text style={styles.effectValue}>
+                            +{minutesLabel(option.effect.capacityGainedMinutes)}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
-                    {option.kind === 'split-topic' ? (
+                    {option.kind === 'reclaim-commitment' ? (
+                      <Text style={styles.recoveryOutcome}>
+                        Preview: skipping this {minutesLabel(option.reclaimedClockMinutes)} commitment occurrence adds{' '}
+                        {minutesLabel(option.effect.capacityGainedMinutes)} of safe study capacity inside the exam plan.
+                        Only use this if the occurrence is genuinely cancelled or optional.
+                      </Text>
+                    ) : option.kind === 'split-topic' ? (
                       <Text style={styles.recoveryOutcome}>
                         Preview: total required work stays the same. Future {option.topicName}{' '}
                         blocks are capped at about {option.targetBlockMinutes}m so the topic can

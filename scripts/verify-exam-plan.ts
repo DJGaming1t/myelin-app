@@ -1455,6 +1455,42 @@ const now = local(2026, 10, 5, 15, 0);
         reclaim!.effect.capacityGainedMinutes,
     'When sustainable capacity caps the gain, MYELIN should distinguish reclaimed clock time from usable study capacity.',
   );
+  assert.ok(
+    reclaim!.kind === 'reclaim-commitment' &&
+      reclaim!.placements.length > 0,
+    'Reclaim preview should show which Autopilot blocks would actually use the recovered window.',
+  );
+  const placedMinutes =
+    reclaim!.kind === 'reclaim-commitment'
+      ? reclaim!.placements.reduce(
+          (sum, placement) => sum + placement.minutes,
+          0,
+        )
+      : 0;
+  assert.ok(
+    placedMinutes <= reclaim!.effect.capacityGainedMinutes,
+    'Placed study must never exceed the safe capacity actually gained.',
+  );
+  if (reclaim!.kind === 'reclaim-commitment') {
+    assert.ok(
+      reclaim!.placements.every(
+        (placement) =>
+          placement.start >= reclaim!.occurrenceStart &&
+          placement.end <= reclaim!.occurrenceEnd &&
+          placement.end - placement.start ===
+            placement.minutes * 60_000,
+      ),
+      'Every suggested block must stay inside the exact cancelled commitment window.',
+    );
+    assert.ok(
+      reclaim!.placements.every(
+        (placement) =>
+          placement.topicId === topic.id &&
+          placement.minutes >= 5,
+      ),
+      'The recovered window should contain real exam-plan work, not synthetic filler.',
+    );
+  }
   assert.equal(
     options.some(
       (option) =>
@@ -1466,6 +1502,7 @@ const now = local(2026, 10, 5, 15, 0);
   );
 
   const previewWorkspace = cloneWorkspace(workspace);
+  const taskCountBeforeRecovery = previewWorkspace.tasks.length;
   const undo = applyAutopilotRecoveryOption(
     previewWorkspace,
     reclaim!,
@@ -1478,6 +1515,11 @@ const now = local(2026, 10, 5, 15, 0);
     )!.skippedDates,
     [occurrenceKey],
     'Applying reclaim must skip only the specific recurring occurrence.',
+  );
+  assert.equal(
+    previewWorkspace.tasks.length,
+    taskCountBeforeRecovery,
+    'Applying reclaimed-window recovery must not create duplicate synthetic task records.',
   );
   assert.deepEqual(
     workspace.commitments.find(
@@ -1521,6 +1563,7 @@ console.log('✓ scope recovery is previewed only for explicit multi-topic exams
 console.log('✓ recovery actions undo their targeted changes without restoring an entire stale workspace');
 console.log('✓ heavy-topic recovery can split future blocks without changing scope, estimate, or total workload');
 console.log('✓ recurring tuition/coaching recovery previews real safe capacity gain and stays fully undoable');
+console.log('✓ reclaimed windows preview exact exam blocks inside the freed clock time without synthetic tasks');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

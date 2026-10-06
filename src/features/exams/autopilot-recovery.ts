@@ -773,8 +773,8 @@ function missedRecoveredSummary(
     missedMinutes - newlyUnallocatedMinutes,
   );
   const strainRank: Record<ExamPlanStrain, number> = {
-    balanced: 0,
-    watch: 1,
+    comfortable: 0,
+    balanced: 1,
     tight: 2,
     overloaded: 3,
   };

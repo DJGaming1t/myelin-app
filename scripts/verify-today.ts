@@ -460,6 +460,17 @@ function main() {
     'Today must surface the first impossible deadline from the unified workload ledger.',
   );
   assert.ok(
+    todayScreen.includes('RECOVERED WINDOW') &&
+      todayScreen.includes('buildAppliedReclaimedWindows') &&
+      todayScreen.includes('timerRemainingMs'),
+    'Today should surface the next recovered Autopilot block and keep it protection-aware while Focus is active.',
+  );
+  assert.ok(
+    todayScreen.includes('Start recovered focus') &&
+      todayScreen.includes('View in Day Map'),
+    'Today should launch a ready recovered block directly but hand protected/future blocks to Day Map.',
+  );
+  assert.ok(
     todayScreen.includes('Move or reduce') &&
       todayScreen.includes('Review tasks'),
     'Today capacity pressure must provide a concrete relief direction instead of a generic warning.',
@@ -527,6 +538,7 @@ function main() {
   console.log('✓ small real topics remain schedulable');
   console.log('✓ Today keeps capacity available without making it the primary hierarchy');
   console.log('✓ Today surfaces the first deadline that cannot fit and a deterministic relief target');
+  console.log('✓ Today surfaces the next recovered Autopilot block and respects live pre-miss protection');
   console.log('✓ Today choices meet the 44-point touch target');
   console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
   console.log('✓ Not now animates to the next recommendation or a calm fallback and remains undoable');

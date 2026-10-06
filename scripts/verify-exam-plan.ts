@@ -1573,7 +1573,7 @@ const now = local(2026, 10, 5, 15, 0);
     plannedMinutes: firstRecoveredBlock.minutes,
     startedAt: firstRecoveredBlock.start,
     endedAt: firstRecoveredBlock.end,
-    launchMode: 'normal',
+    launchMode: 'full',
     tinyStep: '',
   });
 

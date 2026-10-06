@@ -766,13 +766,8 @@ export function buildExamPreparationPlan(
 
       if (!candidates.length) break;
       let progressed = false;
-      const fairCandidateCount = Math.min(
-        candidates.length,
-        Math.floor(available / 5),
-      );
 
-      for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
-        const topic = candidates[candidateIndex]!;
+      for (const topic of candidates) {
         if (available < 5) break;
         const left = remaining.get(topic.topicId) ?? 0;
         if (left <= 0) continue;
@@ -786,15 +781,10 @@ export function buildExamPreparationPlan(
           continue;
         }
 
-        const fairnessReserve = Math.max(
-          0,
-          fairCandidateCount - candidateIndex - 1,
-        ) * 5;
-        const allocatable = Math.max(0, available - fairnessReserve);
         const minutes = Math.min(
           focusChunk,
           left,
-          allocatable,
+          available,
           hardRemaining,
         );
         if (minutes < 5) continue;

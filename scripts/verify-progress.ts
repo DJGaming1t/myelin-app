@@ -286,7 +286,37 @@ function main() {
   console.log('✓ sparse confidence data stays explicitly provisional');
   console.log('✓ review-result distribution is counted from graded history');
   console.log('✓ mistake open/due/resolved counts are evidence-based');
+  const adaptationUiSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/features/adaptive/AdaptationInsights.tsx'),
+    'utf8',
+  );
+  const todaySource = fs.readFileSync(
+    path.join(process.cwd(), 'app/(app)/today/index.tsx'),
+    'utf8',
+  );
+  const progressScreenSource = fs.readFileSync(
+    path.join(process.cwd(), 'app/(app)/progress/index.tsx'),
+    'utf8',
+  );
+
+  assert.ok(
+    adaptationUiSource.includes('MYELIN LEARNED') &&
+      adaptationUiSource.includes('Only shown when repeated study or recall evidence is strong enough'),
+    'Visible adaptation must explain its evidence threshold instead of presenting guesses as facts.',
+  );
+  assert.ok(
+    todaySource.includes('TodayAdaptationInsight') &&
+      todaySource.includes('topicId={next.topicId}'),
+    'Today should explain adaptation only for the current recommended topic.',
+  );
+  assert.ok(
+    progressScreenSource.includes('AdaptationInsightList') &&
+      progressScreenSource.includes("pathname: '/(app)/topics/[topicId]'"),
+    'Progress should show evidence-backed adaptations and let the user inspect the affected topic.',
+  );
+
   console.log('✓ topic trends compare activity windows without claiming mastery');
+  console.log('✓ MYELIN learned explanations are evidence-gated and visible in Today and Progress');
 }
 
 main();

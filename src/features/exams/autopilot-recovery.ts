@@ -17,6 +17,18 @@ import {
 } from '@/src/features/planning/day-engine';
 import { postponeTask } from '@/src/features/planning/task-engine';
 
+export type MissedRecoveredWindowSummary = {
+  placements: ReclaimedStudyPlacement[];
+  missedMinutes: number;
+  reflowedMinutes: number;
+  newlyUnallocatedMinutes: number;
+  addedOverloadMinutes: number;
+  strainBeforeMiss: ExamPlanStrain;
+  strainAfterMiss: ExamPlanStrain;
+  becameImpossible: boolean;
+  deadlineTightened: boolean;
+};
+
 export type AppliedReclaimedWindow = {
   commitmentId: string;
   commitmentTitle: string;
@@ -24,6 +36,7 @@ export type AppliedReclaimedWindow = {
   start: number;
   end: number;
   placements: ReclaimedStudyPlacement[];
+  missed: MissedRecoveredWindowSummary | null;
 };
 
 export type ReclaimedStudyPlacement = {
@@ -554,6 +567,239 @@ function reclaimedDayPlacements(
   return placements;
 }
 
+function studyCoverageForPlacement(
+  workspace: WorkspaceState,
+  placement: ReclaimedStudyPlacement,
+) {
+  let covered = 0;
+
+  for (const entry of workspace.history) {
+    if (
+      entry.kind !== 'study' ||
+      entry.topicId !== placement.topicId
+    ) {
+      continue;
+    }
+
+    if (
+      entry.startedAt != null &&
+      entry.endedAt != null
+    ) {
+      const overlapStart = Math.max(
+        placement.start,
+        entry.startedAt,
+      );
+      const overlapEnd = Math.min(
+        placement.end,
+        entry.endedAt,
+      );
+      if (overlapEnd > overlapStart) {
+        covered += Math.floor(
+          (overlapEnd - overlapStart) / 60_000,
+        );
+      }
+      continue;
+    }
+
+    if (
+      entry.at >= placement.start &&
+      entry.at <= placement.end
+    ) {
+      covered += entry.minutes;
+    }
+  }
+
+  return Math.min(
+    placement.minutes,
+    Math.max(0, covered),
+  );
+}
+
+function historicalReclaimedPlacements(
+  workspace: WorkspaceState,
+  commitmentId: string,
+  occurrenceDateKey: string,
+  occurrenceStart: number,
+  occurrenceEnd: number,
+) {
+  const historical = cloneWorkspace(workspace);
+  historical.history = historical.history.filter(
+    (entry) =>
+      (entry.endedAt ?? entry.at) < occurrenceStart,
+  );
+  historical.breaks = historical.breaks.filter(
+    (entry) => entry.at < occurrenceStart,
+  );
+  if (historical.focusOutcomes) {
+    historical.focusOutcomes = historical.focusOutcomes.filter(
+      (entry) =>
+        (entry.endedAt ?? entry.startedAt ?? 0) <
+        occurrenceStart,
+    );
+  }
+
+  const restored = cloneWorkspace(historical);
+  const commitment = restored.commitments.find(
+    (item) => item.id === commitmentId,
+  );
+  if (!commitment) {
+    return [] as ReclaimedStudyPlacement[];
+  }
+  commitment.skippedDates = (
+    commitment.skippedDates ?? []
+  ).filter((key) => key !== occurrenceDateKey);
+
+  const before = buildJointExamPreparationPlan(
+    restored,
+    occurrenceStart,
+    { maxDays: 120 },
+  );
+  const after = buildJointExamPreparationPlan(
+    historical,
+    occurrenceStart,
+    { maxDays: 120 },
+  );
+  const impact = effect(before, after);
+  if (impact.capacityGainedMinutes < 5) {
+    return [] as ReclaimedStudyPlacement[];
+  }
+
+  return reclaimedDayPlacements(
+    before,
+    after,
+    occurrenceStart,
+    occurrenceEnd,
+    impact.capacityGainedMinutes,
+    occurrenceStart,
+    reclaimedAvailableSegments(
+      historical,
+      occurrenceStart,
+      occurrenceEnd,
+      occurrenceStart,
+    ),
+  );
+}
+
+function missedRecoveredSummary(
+  workspace: WorkspaceState,
+  currentPlan: JointExamPreparationPlan,
+  commitmentId: string,
+  occurrenceDateKey: string,
+  occurrenceStart: number,
+  occurrenceEnd: number,
+  now: number,
+) {
+  if (now <= occurrenceStart) {
+    return null;
+  }
+
+  const expected = historicalReclaimedPlacements(
+    workspace,
+    commitmentId,
+    occurrenceDateKey,
+    occurrenceStart,
+    occurrenceEnd,
+  );
+
+  const missedPlacements: ReclaimedStudyPlacement[] = [];
+  let missedMinutes = 0;
+
+  for (const placement of expected) {
+    if (placement.end > now) continue;
+    const covered = studyCoverageForPlacement(
+      workspace,
+      placement,
+    );
+    const missing = Math.max(
+      0,
+      placement.minutes - covered,
+    );
+    if (missing < 5) continue;
+
+    missedMinutes += missing;
+    missedPlacements.push({
+      ...placement,
+      minutes: missing,
+    });
+  }
+
+  if (missedMinutes < 5) return null;
+
+  const counterfactual = cloneWorkspace(workspace);
+  missedPlacements.forEach((placement, index) => {
+    counterfactual.history.push({
+      id:
+        'counterfactual-recovered:' +
+        commitmentId +
+        ':' +
+        occurrenceDateKey +
+        ':' +
+        index,
+      topicId: placement.topicId,
+      at: Math.min(now, placement.end),
+      kind: 'study',
+      minutes: placement.minutes,
+      grade: 0,
+      effort: 3,
+      prompt: '',
+      response: '',
+      confidence: 'unsure',
+      plannedMinutes: placement.minutes,
+      startedAt: placement.start,
+      endedAt: placement.end,
+      launchMode: 'full',
+      tinyStep: '',
+    });
+  });
+
+  const onTimePlan = buildJointExamPreparationPlan(
+    counterfactual,
+    now,
+    { maxDays: 120 },
+  );
+  const currentUnallocated = unallocated(currentPlan);
+  const onTimeUnallocated = unallocated(onTimePlan);
+  const newlyUnallocatedMinutes = Math.max(
+    0,
+    currentUnallocated - onTimeUnallocated,
+  );
+  const addedOverloadMinutes = Math.max(
+    0,
+    currentPlan.feasibility.totalOverloadMinutes -
+      onTimePlan.feasibility.totalOverloadMinutes,
+  );
+  const reflowedMinutes = Math.max(
+    0,
+    missedMinutes - newlyUnallocatedMinutes,
+  );
+  const strainRank: Record<ExamPlanStrain, number> = {
+    balanced: 0,
+    watch: 1,
+    tight: 2,
+    overloaded: 3,
+  };
+  const becameImpossible =
+    feasible(onTimePlan) && !feasible(currentPlan);
+  const deadlineTightened =
+    becameImpossible ||
+    newlyUnallocatedMinutes > 0 ||
+    addedOverloadMinutes > 0 ||
+    strainRank[currentPlan.strain] >
+      strainRank[onTimePlan.strain];
+
+  return {
+    placements: missedPlacements,
+    missedMinutes,
+    reflowedMinutes,
+    newlyUnallocatedMinutes,
+    addedOverloadMinutes,
+    strainBeforeMiss: onTimePlan.strain,
+    strainAfterMiss: currentPlan.strain,
+    becameImpossible,
+    deadlineTightened,
+  } satisfies MissedRecoveredWindowSummary;
+}
+
 export function buildAppliedReclaimedWindows(
   workspace: WorkspaceState,
   now = Date.now(),
@@ -598,7 +844,7 @@ export function buildAppliedReclaimedWindows(
           item.recurring &&
           item.occurrenceDateKey === occurrenceDateKey,
       );
-      if (!occurrence || occurrence.end <= now) continue;
+      if (!occurrence) continue;
 
       const restoredWorkspace = cloneWorkspace(workspace);
       const target = restoredWorkspace.commitments.find(
@@ -615,13 +861,24 @@ export function buildAppliedReclaimedWindows(
         { maxDays: 120 },
       );
       const impact = effect(before, after);
-      if (impact.capacityGainedMinutes < 5) continue;
+      const missed = missedRecoveredSummary(
+        workspace,
+        after,
+        commitment.id,
+        occurrenceDateKey,
+        occurrence.start,
+        occurrence.end,
+        now,
+      );
 
       const earliestStart = Math.max(
         now,
         occurrence.start,
       );
-      const placements = reclaimedDayPlacements(
+      const placements =
+        impact.capacityGainedMinutes >= 5 &&
+        occurrence.end > earliestStart
+          ? reclaimedDayPlacements(
         before,
         after,
         occurrence.start,
@@ -634,8 +891,9 @@ export function buildAppliedReclaimedWindows(
           occurrence.end,
           earliestStart,
         ),
-      );
-      if (!placements.length) continue;
+      )
+          : [];
+      if (!placements.length && !missed) continue;
 
       windows.push({
         commitmentId: commitment.id,
@@ -644,6 +902,7 @@ export function buildAppliedReclaimedWindows(
         start: occurrence.start,
         end: occurrence.end,
         placements,
+        missed,
       });
     }
   }

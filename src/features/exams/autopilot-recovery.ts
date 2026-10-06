@@ -345,7 +345,12 @@ function reclaimableCommitmentOptions(
   now: number,
   brokenDeadline: number,
 ) {
-  const options: AutopilotRecoveryOption[] = [];
+  const options: Array<
+    Extract<
+      AutopilotRecoveryOption,
+      { kind: 'reclaim-commitment' }
+    >
+  > = [];
   const today = startOfLocalDay(now);
   const finalDay = startOfLocalDay(brokenDeadline);
   const maxDays = Math.min(
@@ -529,6 +534,8 @@ function reliefSort(
       a.effect.overloadReducedMinutes ||
     b.effect.unallocatedReducedMinutes -
       a.effect.unallocatedReducedMinutes ||
+    b.effect.capacityGainedMinutes -
+      a.effect.capacityGainedMinutes ||
     a.title.localeCompare(b.title)
   );
 }

@@ -1085,7 +1085,7 @@ export function buildAppliedReclaimedWindows(
               ),
           ) ||
           scheduledTasksForDay(
-            workspace,
+            workspace.tasks,
             startOfLocalDay(occurrence.start),
           ).some(
             (task) =>

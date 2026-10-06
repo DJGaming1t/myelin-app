@@ -373,5 +373,16 @@ console.log('✓ skipped dates survive reload, free time is reclaimed, overnight
     dayMapSource.includes('no task created'),
     'Day Map should make it explicit that reclaimed Autopilot reservations are projection-only, not duplicate tasks.',
   );
+  assert.ok(
+    dayMapSource.includes('MISSED RECOVERED SLOT') &&
+      dayMapSource.includes('reflowed into the remaining exam plan'),
+    'Day Map should visibly distinguish a missed recovered slot from the future blocks Autopilot reflowed after it.',
+  );
+  assert.ok(
+    dayMapSource.includes('no longer fits before the deadline') &&
+      dayMapSource.includes('deadline no longer fit at safe capacity'),
+    'Day Map should surface renewed deadline pressure instead of silently hiding missed recovered work.',
+  );
 }
 console.log('✓ reclaimed Autopilot reservations are visible in Day Map and launch Focus directly without task duplication');
+console.log('✓ missed recovered slots are visible with reflowed minutes and renewed deadline pressure');

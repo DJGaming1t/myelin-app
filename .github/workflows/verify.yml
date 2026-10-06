@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - expo-migration
+      - codex/exam-autopilot-capacity-v1
 
 permissions:
   contents: read
@@ -86,6 +87,9 @@ jobs:
 
       - name: Local AI model manager lifecycle
         run: npm run verify:local-ai
+
+      - name: Syllabus text intake and safe import preview
+        run: npm run verify:syllabus-intake
 
       - name: Progress and calibration evidence
         run: npm run verify:progress

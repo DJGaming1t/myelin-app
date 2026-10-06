@@ -394,7 +394,30 @@ console.log('✓ skipped dates survive reload, free time is reclaimed, overnight
       dayMapSource.includes('repacked the reservation around the new fixed time'),
     'Day Map should explain when a later schedule edit proactively reshapes a recovered window before it becomes a miss.',
   );
+  assert.ok(
+    dayMapSource.includes('recoveredCommitmentId') &&
+      dayMapSource.includes('recoveredOccurrenceDateKey') &&
+      dayMapSource.includes('recoveredHandoffTarget'),
+    'Day Map should resolve an exact recovered notification handoff against the current reconstructed reservation.',
+  );
+  assert.ok(
+    dayMapSource.includes('scrollTo({') &&
+      dayMapSource.includes('FROM REMINDER') &&
+      dayMapSource.includes('Opened from your recovered-window reminder'),
+    'Recovered notification handoff should scroll to and visibly emphasize the intended reservation.',
+  );
+  assert.ok(
+    dayMapSource.includes('Start this focus') &&
+      dayMapSource.includes('startReclaimedPlacement(placement)'),
+    'The highlighted recovered reminder block should provide one-tap Focus launch.',
+  );
+  assert.ok(
+    dayMapSource.includes('handoffConsumedRef') &&
+      dayMapSource.includes('recoveredLayoutRef'),
+    'Repeated recovered notification taps should be able to target Day Map again while it is already open.',
+  );
 }
 console.log('✓ reclaimed Autopilot reservations are visible in Day Map and launch Focus directly without task duplication');
 console.log('✓ missed recovered slots are visible with reflowed minutes and renewed deadline pressure');
 console.log('✓ near-term recovered slots proactively protect against active Focus and later schedule changes');
+console.log('✓ recovered reminder handoff scrolls/highlights the current reservation and offers one-tap Focus');

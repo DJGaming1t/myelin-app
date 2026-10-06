@@ -98,6 +98,92 @@ function main() {
     'Breaks must be explicitly budgeted.',
   );
 
+  const autopilotToday = createEmptyWorkspace(now - DAY);
+  autopilotToday.settings.dailyMinutes = 60;
+  autopilotToday.settings.focusMinutes = 45;
+  autopilotToday.settings.breakMinutes = 10;
+  autopilotToday.topics.push(
+    topic('far_exam', 'Far exam topic', 'Mathematics', {
+      priority: 1,
+      status: 'learning',
+      estimate: 90,
+    }),
+    topic('generic_high', 'Generic high priority', 'Physics', {
+      priority: 3,
+      status: 'learning',
+      estimate: 45,
+    }),
+  );
+  autopilotToday.exams.push({
+    id: 'far_exam_id',
+    name: 'Term exam',
+    date: now + 60 * DAY,
+    subjects: [],
+    scope: 'topics',
+    topicIds: ['far_exam'],
+  });
+
+  const autopilotPlan = buildTodayPlan(autopilotToday, now);
+  const autopilotBlock = autopilotPlan.blocks.find(
+    (block) => block.topicId === 'far_exam',
+  );
+  assert.ok(
+    autopilotBlock,
+    'Today should surface a topic that Exam Autopilot actually allocated for today.',
+  );
+  assert.ok(
+    autopilotBlock?.reasons.some((reason) => /Autopilot planned/i.test(reason)),
+    'Autopilot-backed Today work should explain that it came from the capacity plan.',
+  );
+  assert.equal(
+    autopilotPlan.nextBlock?.topicId,
+    'far_exam',
+    'An actual Autopilot block should outrank unrelated generic study when no harder deadline intervenes.',
+  );
+  assert.equal(
+    autopilotToday.tasks.length,
+    0,
+    'Making an Autopilot block actionable must not create synthetic task records.',
+  );
+
+  const linkedAutopilot = createEmptyWorkspace(now - DAY);
+  linkedAutopilot.settings.dailyMinutes = 60;
+  linkedAutopilot.settings.focusMinutes = 45;
+  const linkedTopic = topic('linked_exam_topic', 'Linked exam topic', 'Science', {
+    priority: 1,
+    estimate: 90,
+  });
+  linkedAutopilot.topics.push(linkedTopic);
+  linkedAutopilot.exams.push({
+    id: 'linked_exam',
+    name: 'Science exam',
+    date: now + 45 * DAY,
+    subjects: [],
+    scope: 'topics',
+    topicIds: [linkedTopic.id],
+  });
+  const linkedTask = createStudyTask({
+    title: 'Practice linked exam topic',
+    subject: 'Science',
+    topicId: linkedTopic.id,
+    estimatedMinutes: 45,
+    planState: 'today',
+    now,
+  });
+  linkedAutopilot.tasks.push(linkedTask);
+
+  const linkedPlan = buildTodayPlan(linkedAutopilot, now);
+  assert.equal(
+    linkedPlan.nextBlock?.source,
+    'task',
+    'A concrete linked task should remain the actionable surface instead of duplicating it with a topic block.',
+  );
+  assert.equal(linkedPlan.nextBlock?.taskId, linkedTask.id);
+  assert.ok(
+    linkedPlan.nextBlock?.reasons.some((reason) => /Autopilot planned/i.test(reason)),
+    'Linked concrete work should inherit Autopilot priority without creating a duplicate topic recommendation.',
+  );
+
   const dueOnly = createEmptyWorkspace(now - DAY);
   dueOnly.settings.dailyMinutes = 45;
   dueOnly.topics.push(
@@ -248,6 +334,7 @@ function main() {
   assert.equal(buildTodayPlan(tiny, now).blocks[0]?.minutes, 5);
 
   console.log('✓ exam-aware priority');
+  console.log('✓ Autopilot blocks flow into Today without synthetic tasks or duplicate linked work');
   console.log('✓ due-review priority');
   console.log('✓ meaningful priority instead of arbitrary subject alternation');
   console.log('✓ low-energy block shortening');
@@ -338,6 +425,12 @@ function main() {
     inboxCard.includes('scheduleTask(target, start, end)'),
     'Inbox scheduling does not persist the selected time as a real scheduled task.',
   );
+  const syllabusScreen = read('app/(app)/settings/ai-syllabus.tsx');
+  assert.ok(
+    syllabusScreen.includes('Start in Today') &&
+      syllabusScreen.includes("router.replace('/(app)/today')"),
+    'Applied syllabus Autopilot should hand the user directly into the normal Today flow.',
+  );
   assert.equal(
     inboxCard.includes('if (!slot)') && inboxCard.includes('moveToday(taskId)'),
     false,
@@ -351,6 +444,7 @@ function main() {
   console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
   console.log('✓ Not now animates to the next recommendation or a calm fallback and remains undoable');
   console.log('✓ unscheduled work opens a real scheduling chooser and never auto-falls back to Today');
+  console.log('✓ applied syllabus Autopilot hands off into Today instead of creating a parallel timetable');
 }
 
 main();

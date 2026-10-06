@@ -850,7 +850,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel2,
+    backgroundColor: colors.panelRaised,
     padding: 10,
   },
   reclaimedProtectionKicker: {

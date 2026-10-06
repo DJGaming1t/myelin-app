@@ -58,6 +58,8 @@ export type ExamPlanTopic = {
   importance: 1 | 2 | 3;
   forgettingRisk: number;
   dueQuestionCount: number;
+  feedbackPriorityBoost: number;
+  feedbackEvidenceCount: number;
   mode: 'study' | 'review';
   requiredBy: number;
   requiredByExamName: string;
@@ -441,6 +443,8 @@ function topicWorkload(
     importance,
     forgettingRisk: risk,
     dueQuestionCount: dueCount,
+    feedbackPriorityBoost: feedback.priorityBoost,
+    feedbackEvidenceCount: feedback.evidenceCount,
     mode,
     requiredBy,
     requiredByExamName,
@@ -483,6 +487,7 @@ function topicPriorityScore(
     topic.difficulty * 14 +
     topic.forgettingRisk * 30 +
     Math.min(20, topic.dueQuestionCount * 4) +
+    topic.feedbackPriorityBoost +
     earlyStudyBoost +
     lateReviewBoost +
     deadlineBoost
@@ -761,8 +766,13 @@ export function buildExamPreparationPlan(
 
       if (!candidates.length) break;
       let progressed = false;
+      const fairCandidateCount = Math.min(
+        candidates.length,
+        Math.floor(available / 5),
+      );
 
-      for (const topic of candidates) {
+      for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
+        const topic = candidates[candidateIndex]!;
         if (available < 5) break;
         const left = remaining.get(topic.topicId) ?? 0;
         if (left <= 0) continue;
@@ -776,7 +786,17 @@ export function buildExamPreparationPlan(
           continue;
         }
 
-        const minutes = Math.min(focusChunk, left, available, hardRemaining);
+        const fairnessReserve = Math.max(
+          0,
+          fairCandidateCount - candidateIndex - 1,
+        ) * 5;
+        const allocatable = Math.max(0, available - fairnessReserve);
+        const minutes = Math.min(
+          focusChunk,
+          left,
+          allocatable,
+          hardRemaining,
+        );
         if (minutes < 5) continue;
 
         const block: ExamPlanBlock = {
@@ -1327,8 +1347,13 @@ export function buildJointExamPreparationPlan(
 
       if (!candidates.length) break;
       let progressed = false;
+      const fairCandidateCount = Math.min(
+        candidates.length,
+        Math.floor(preparationAvailable / 5),
+      );
 
-      for (const demand of candidates) {
+      for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
+        const demand = candidates[candidateIndex]!;
         if (preparationAvailable < 5) break;
         const topic = demand.topic;
         const hardRemaining =
@@ -1341,10 +1366,18 @@ export function buildJointExamPreparationPlan(
           continue;
         }
 
+        const fairnessReserve = Math.max(
+          0,
+          fairCandidateCount - candidateIndex - 1,
+        ) * 5;
+        const allocatable = Math.max(
+          0,
+          preparationAvailable - fairnessReserve,
+        );
         const minutes = Math.min(
           focusChunk,
           demand.remainingMinutes,
-          preparationAvailable,
+          allocatable,
           hardRemaining,
         );
         if (minutes < 5) continue;
@@ -1488,6 +1521,16 @@ export function buildJointExamPreparationPlan(
   }
   if (topicDemands.some((demand) => demand.examIds.length > 1)) {
     warnings.push('Shared topics are planned once and reused across every matching exam.');
+  }
+  const feedbackAdjustedTopics = topicDemands.filter(
+    (demand) =>
+      demand.topic.feedbackEvidenceCount >= 2 &&
+      demand.topic.feedbackPriorityBoost > 0,
+  );
+  if (feedbackAdjustedTopics.length) {
+    warnings.push(
+      `Recent focus and recall feedback is reshaping the order of ${feedbackAdjustedTopics.length} ${feedbackAdjustedTopics.length === 1 ? 'topic' : 'topics'} while preserving minimum coverage for other active exam work.`,
+    );
   }
   if (fatigueLimited) {
     warnings.push('High-effort topics are being spread out instead of being packed into one day.');

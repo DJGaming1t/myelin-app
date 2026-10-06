@@ -32,6 +32,11 @@ import {
 } from '@/src/features/planning/task-engine';
 import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
 import {
+  AutopilotRecoveryOption,
+  applyAutopilotRecoveryOption,
+  buildAutopilotRecoveryOptions,
+} from '@/src/features/exams/autopilot-recovery';
+import {
   AutopilotReflowSummary,
   buildAutopilotReflowSummary,
   parseAutopilotReflow,
@@ -60,6 +65,7 @@ export default function DayMapScreen() {
   const [reflow, setReflow] = useState<AutopilotReflowSummary | null>(() =>
     parseAutopilotReflow(params.reflow),
   );
+  const [selectedRecoveryId, setSelectedRecoveryId] = useState<string | null>(null);
 
   useEffect(() => {
     const incoming = parseAutopilotReflow(params.reflow);
@@ -69,6 +75,16 @@ export default function DayMapScreen() {
   const map = useMemo(
     () => (workspace ? buildDayMap(workspace, now) : null),
     [workspace, now],
+  );
+
+  const recoveryOptions = useMemo(
+    () =>
+      workspace &&
+      reflow &&
+      (reflow.becameImpossible || reflow.newlyUnallocatedMinutes > 0)
+        ? buildAutopilotRecoveryOptions(workspace, now, 3)
+        : [],
+    [now, reflow, workspace],
   );
 
   if (!workspace || !map) return null;
@@ -123,6 +139,22 @@ export default function DayMapScreen() {
     setNow(Date.now());
   }
 
+  function previewRecovery(option: AutopilotRecoveryOption) {
+    setSelectedRecoveryId((current) =>
+      current === option.id ? null : option.id,
+    );
+  }
+
+  function applyRecovery(option: AutopilotRecoveryOption) {
+    const next = updateWithReflow((draft) => {
+      applyAutopilotRecoveryOption(draft, option, Date.now());
+    });
+    if (next) {
+      setSelectedRecoveryId(null);
+      setNow(Date.now());
+    }
+  }
+
   function buildProposal() {
     setProposal(rebuildRemainingDay(workspace!, Date.now()));
   }
@@ -163,7 +195,13 @@ export default function DayMapScreen() {
             </Text>
           </View>
 
-          <AutopilotReflowNotice summary={reflow} />
+          <AutopilotReflowNotice
+            summary={reflow}
+            recoveryOptions={recoveryOptions}
+            selectedRecoveryId={selectedRecoveryId}
+            onPreviewRecovery={previewRecovery}
+            onApplyRecovery={applyRecovery}
+          />
 
           <AnimatedDisclosure visible={map.overloadMinutes > 0}>
             <View style={styles.overload}>

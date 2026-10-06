@@ -36,12 +36,16 @@ export function AutopilotReflowNotice({
   selectedRecoveryId = null,
   onPreviewRecovery,
   onApplyRecovery,
+  undoLabel = null,
+  onUndoRecovery,
 }: {
   summary: AutopilotReflowSummary | null;
   recoveryOptions?: AutopilotRecoveryOption[];
   selectedRecoveryId?: string | null;
   onPreviewRecovery?: (option: AutopilotRecoveryOption) => void;
   onApplyRecovery?: (option: AutopilotRecoveryOption) => void;
+  undoLabel?: string | null;
+  onUndoRecovery?: () => void;
 }) {
   if (!summary) return null;
 
@@ -118,11 +122,25 @@ export function AutopilotReflowNotice({
         </Text>
       ) : null}
 
+      {undoLabel && onUndoRecovery ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Undo recovery: ${undoLabel}`}
+          onPress={onUndoRecovery}
+          style={({ pressed }) => [
+            styles.undoButton,
+            pressed && styles.pressed,
+          ]}>
+          <Text style={styles.undoText}>Undo recovery</Text>
+          <Text style={styles.undoMeta}>{undoLabel}</Text>
+        </Pressable>
+      ) : null}
+
       {recoveryOptions.length ? (
         <View style={styles.recoverySection}>
           <Text style={styles.recoveryKicker}>SAFE RECOVERY OPTIONS</Text>
           <Text style={styles.recoveryIntro}>
-            Preview first. MYELIN will not change tasks or exam scope until you apply one option.
+            Preview first. MYELIN will not change tasks, exam scope, or block preferences until you apply one option.
           </Text>
 
           {recoveryOptions.map((option) => {
@@ -159,14 +177,22 @@ export function AutopilotReflowNotice({
                         after={option.effect.afterUnallocatedMinutes}
                       />
                     </View>
-                    <Text style={styles.recoveryOutcome}>
-                      {option.effect.feasibleAfter
-                        ? 'Preview: the current plan becomes feasible.'
-                        : option.effect.overloadReducedMinutes > 0 ||
-                            option.effect.unallocatedReducedMinutes > 0
-                          ? 'Preview: this helps, but some pressure still remains.'
-                          : 'Preview: this does not materially improve the broken deadline.'}
-                    </Text>
+                    {option.kind === 'split-topic' ? (
+                      <Text style={styles.recoveryOutcome}>
+                        Preview: total required work stays the same. Future {option.topicName}{' '}
+                        blocks are capped at about {option.targetBlockMinutes}m so the topic can
+                        interleave with other work. This does not create extra capacity by itself.
+                      </Text>
+                    ) : (
+                      <Text style={styles.recoveryOutcome}>
+                        {option.effect.feasibleAfter
+                          ? 'Preview: the current plan becomes feasible.'
+                          : option.effect.overloadReducedMinutes > 0 ||
+                              option.effect.unallocatedReducedMinutes > 0
+                            ? 'Preview: this helps, but some pressure still remains.'
+                            : 'Preview: this does not materially improve the broken deadline.'}
+                      </Text>
+                    )}
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Apply recovery option: ${option.title}`}
@@ -281,6 +307,29 @@ const styles = StyleSheet.create({
     fontSize: 9,
     lineHeight: 13,
     marginTop: 5,
+  },
+  undoButton: {
+    marginTop: 10,
+    minHeight: 44,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  undoText: {
+    color: colors.accent,
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '900',
+  },
+  undoMeta: {
+    color: colors.muted,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 2,
   },
   recoverySection: {
     marginTop: 12,

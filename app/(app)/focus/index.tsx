@@ -24,6 +24,7 @@ import {
   timerRemainingMs,
 } from '@/src/features/focus/focus-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { buildPostFocusRetrievalSuggestion } from '@/src/features/focus/post-focus-retrieval';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -109,6 +110,18 @@ export default function FocusScreen() {
   const phaseProgress = session
     ? Math.max(0, Math.min(1, 1 - remaining / Math.max(1, phaseDurationMs)))
     : 0;
+  const retrievalSuggestion = useMemo(
+    () =>
+      workspace && session?.phase === 'break'
+        ? buildPostFocusRetrievalSuggestion(
+            workspace,
+            session.topicId,
+            session.focusActualMinutes,
+            now,
+          )
+        : null,
+    [now, session?.focusActualMinutes, session?.phase, session?.topicId, workspace],
+  );
 
   async function begin(launchMode: 'full' | 'five-minute', firstStep = tinyStep) {
     if (!topic && !task) return;
@@ -171,6 +184,25 @@ export default function FocusScreen() {
   async function finishBreak() {
     await completeBreak(Date.now());
     router.replace('/(app)/today');
+  }
+
+  async function finishBreakAndRetrieve() {
+    const suggestion = retrievalSuggestion;
+    if (!suggestion) {
+      await finishBreak();
+      return;
+    }
+
+    await completeBreak(Date.now());
+    router.replace({
+      pathname: '/(app)/review',
+      params: {
+        topicId: suggestion.topicId,
+        autoStart: '1',
+        limit: String(suggestion.count),
+        source: 'focus',
+      },
+    });
   }
 
   async function leaveBreak() {
@@ -352,15 +384,57 @@ export default function FocusScreen() {
             </Text>
             {session.distractions.length ? <ScrollView style={{ maxHeight: 120, alignSelf: 'stretch' }}>{session.distractions.map(item => <Text key={item.id} style={styles.breakPrompt}>• {item.text}</Text>)}</ScrollView> : null}
 
+            {retrievalSuggestion ? (
+              <View style={styles.retrieveCue}>
+                <Text style={styles.retrieveCueKicker}>AFTER THE BREAK · RETRIEVE</Text>
+                <Text style={styles.retrieveCueTitle}>
+                  {retrievalSuggestion.count} quick recall{' '}
+                  {retrievalSuggestion.count === 1 ? 'prompt' : 'prompts'} ·{' '}
+                  {retrievalSuggestion.topicName}
+                </Text>
+                <Text style={styles.retrieveCueText}>
+                  These are already ready in Memory Engine. MYELIN will not pull
+                  future cards forward just to fill this step.
+                </Text>
+              </View>
+            ) : null}
+
             <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6}>
               {timerDone ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={finishBreak}
-                  style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
-                  <Text style={styles.primaryText}>Finish break</Text>
-                  <Text style={styles.buttonArrow}>→</Text>
-                </Pressable>
+                retrievalSuggestion ? (
+                  <View style={styles.retrieveActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Finish break and retrieve ${retrievalSuggestion.count} recall prompts`}
+                      onPress={() => void finishBreakAndRetrieve()}
+                      style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                      <View style={styles.retrieveActionCopy}>
+                        <Text style={styles.primaryText}>
+                          Retrieve {retrievalSuggestion.count}{' '}
+                          {retrievalSuggestion.count === 1 ? 'prompt' : 'prompts'}
+                        </Text>
+                        <Text style={styles.primarySubtext}>
+                          Short recall, then back to Today
+                        </Text>
+                      </View>
+                      <Text style={styles.buttonArrow}>→</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={finishBreak}
+                      style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
+                      <Text style={styles.textButtonText}>Finish break without recall</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={finishBreak}
+                    style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                    <Text style={styles.primaryText}>Finish break</Text>
+                    <Text style={styles.buttonArrow}>→</Text>
+                  </Pressable>
+                )
               ) : (
                 <View style={styles.timerActions}>
                   <Pressable
@@ -805,5 +879,41 @@ const styles = StyleSheet.create({
   discard: { alignSelf: 'center', marginTop: spacing.xl, padding: 9 },
   discardText: { color: colors.danger, fontSize: 12, lineHeight: 16, fontWeight: '600' },
   breakPrompt: { color: colors.muted, fontSize: 13.5, lineHeight: 20, textAlign: 'center', maxWidth: 380, marginTop: spacing.lg },
+  retrieveCue: {
+    width: '100%',
+    maxWidth: 430,
+    marginTop: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.22)',
+    backgroundColor: colors.accentSoft,
+    padding: 12,
+  },
+  retrieveCueKicker: {
+    color: colors.accent,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '800',
+    letterSpacing: 0.65,
+  },
+  retrieveCueTitle: {
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  retrieveCueText: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  retrieveActions: {
+    width: '100%',
+    maxWidth: 430,
+    marginTop: spacing.lg,
+  },
+  retrieveActionCopy: { flex: 1, minWidth: 0 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.994 }] },
 });

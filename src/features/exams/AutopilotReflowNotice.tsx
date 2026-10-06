@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AutopilotReflowSummary } from '@/src/features/exams/autopilot-reflow';
+import { AutopilotRecoveryOption } from '@/src/features/exams/autopilot-recovery';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
 function minutesLabel(minutes: number) {
@@ -31,8 +32,16 @@ function strainLabel(value: AutopilotReflowSummary['afterStrain']) {
 
 export function AutopilotReflowNotice({
   summary,
+  recoveryOptions = [],
+  selectedRecoveryId = null,
+  onPreviewRecovery,
+  onApplyRecovery,
 }: {
   summary: AutopilotReflowSummary | null;
+  recoveryOptions?: AutopilotRecoveryOption[];
+  selectedRecoveryId?: string | null;
+  onPreviewRecovery?: (option: AutopilotRecoveryOption) => void;
+  onApplyRecovery?: (option: AutopilotRecoveryOption) => void;
 }) {
   if (!summary) return null;
 
@@ -108,6 +117,96 @@ export function AutopilotReflowNotice({
           {strainLabel(summary.afterStrain)}
         </Text>
       ) : null}
+
+      {recoveryOptions.length ? (
+        <View style={styles.recoverySection}>
+          <Text style={styles.recoveryKicker}>SAFE RECOVERY OPTIONS</Text>
+          <Text style={styles.recoveryIntro}>
+            Preview first. MYELIN will not change tasks or exam scope until you apply one option.
+          </Text>
+
+          {recoveryOptions.map((option) => {
+            const selected = option.id === selectedRecoveryId;
+            return (
+              <View key={option.id} style={styles.recoveryOption}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: selected }}
+                  onPress={() => onPreviewRecovery?.(option)}
+                  style={({ pressed }) => [
+                    styles.recoveryHeader,
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={styles.recoveryCopy}>
+                    <Text style={styles.recoveryTitle}>{option.title}</Text>
+                    <Text style={styles.recoveryMeta}>Preview effect</Text>
+                  </View>
+                  <Text style={styles.recoveryArrow}>{selected ? '−' : '→'}</Text>
+                </Pressable>
+
+                {selected ? (
+                  <View style={styles.recoveryPreview}>
+                    <Text style={styles.recoveryDetail}>{option.detail}</Text>
+                    <View style={styles.effectRow}>
+                      <Effect
+                        label="OVERLOAD"
+                        before={option.effect.beforeOverloadMinutes}
+                        after={option.effect.afterOverloadMinutes}
+                      />
+                      <Effect
+                        label="UNALLOCATED"
+                        before={option.effect.beforeUnallocatedMinutes}
+                        after={option.effect.afterUnallocatedMinutes}
+                      />
+                    </View>
+                    <Text style={styles.recoveryOutcome}>
+                      {option.effect.feasibleAfter
+                        ? 'Preview: the current plan becomes feasible.'
+                        : option.effect.overloadReducedMinutes > 0 ||
+                            option.effect.unallocatedReducedMinutes > 0
+                          ? 'Preview: this helps, but some pressure still remains.'
+                          : 'Preview: this does not materially improve the broken deadline.'}
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Apply recovery option: ${option.title}`}
+                      onPress={() => onApplyRecovery?.(option)}
+                      style={({ pressed }) => [
+                        styles.applyButton,
+                        pressed && styles.pressed,
+                      ]}>
+                      <Text style={styles.applyText}>Apply this recovery</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      ) : summary.becameImpossible || summary.newlyUnallocatedMinutes > 0 ? (
+        <Text style={styles.noRecovery}>
+          MYELIN could not find a safe automatic recovery. Adjust the deadline, required scope, or fixed commitments manually.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function Effect({
+  label,
+  before,
+  after,
+}: {
+  label: string;
+  before: number;
+  after: number;
+}) {
+  return (
+    <View style={styles.effect}>
+      <Text style={styles.effectLabel}>{label}</Text>
+      <Text style={styles.effectValue}>
+        {minutesLabel(before)} → {minutesLabel(after)}
+      </Text>
     </View>
   );
 }
@@ -182,5 +281,124 @@ const styles = StyleSheet.create({
     fontSize: 9,
     lineHeight: 13,
     marginTop: 5,
+  },
+  recoverySection: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  recoveryKicker: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  recoveryIntro: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 3,
+    marginBottom: 4,
+  },
+  recoveryOption: {
+    marginTop: 7,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    overflow: 'hidden',
+  },
+  recoveryHeader: {
+    minHeight: 48,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recoveryCopy: { flex: 1, minWidth: 0 },
+  recoveryTitle: {
+    color: colors.text,
+    fontSize: 10.5,
+    lineHeight: 15,
+    fontWeight: '800',
+  },
+  recoveryMeta: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 2,
+  },
+  recoveryArrow: {
+    color: colors.accent,
+    fontSize: 16,
+    lineHeight: 18,
+  },
+  recoveryPreview: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    padding: 10,
+  },
+  recoveryDetail: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+  },
+  effectRow: {
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 8,
+  },
+  effect: {
+    flex: 1,
+    borderRadius: radius.sm,
+    backgroundColor: colors.bg,
+    padding: 8,
+  },
+  effectLabel: {
+    color: colors.subtle,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+  },
+  effectValue: {
+    color: colors.text,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  recoveryOutcome: {
+    color: colors.textDim,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 8,
+  },
+  applyButton: {
+    minHeight: 44,
+    marginTop: 9,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  applyText: {
+    color: '#25140e',
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '900',
+  },
+  noRecovery: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 9,
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

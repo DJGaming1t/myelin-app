@@ -68,6 +68,8 @@ type Candidate = {
   examDays: number | null;
   mode: PlanMode;
   remainingMinutes: number;
+  autopilotMinutes: number;
+  autopilotKind: 'preparation' | 'revision' | null;
 };
 
 export function startOfLocalDay(now: number) {
@@ -156,7 +158,18 @@ function dueQuestions(topic: Topic, now: number) {
   }).length;
 }
 
-function topicCandidate(workspace: WorkspaceState, topic: Topic, now: number): Candidate | null {
+type TodayAutopilotAllocation = {
+  minutes: number;
+  preparationMinutes: number;
+  revisionMinutes: number;
+};
+
+function topicCandidate(
+  workspace: WorkspaceState,
+  topic: Topic,
+  now: number,
+  autopilot: TodayAutopilotAllocation | null,
+): Candidate | null {
   if (topic.snoozeUntil > now) return null;
 
   let score = topic.priority * 12 + Math.min(24, (topic.postponements ?? 0) * 6);
@@ -217,8 +230,22 @@ function topicCandidate(workspace: WorkspaceState, topic: Topic, now: number): C
     if (hoursSinceReview < 8) score -= 20;
   }
 
+  if (autopilot) {
+    score += 48 + Math.min(22, Math.round(autopilot.minutes / 5));
+    reasons.unshift(
+      `Autopilot planned ${autopilot.minutes} min for this topic today`,
+    );
+  }
+
   const mode: PlanMode =
-    topicDue || questionCount > 0 || topic.status === 'review' ? 'review' : 'study';
+    topicDue ||
+    questionCount > 0 ||
+    topic.status === 'review' ||
+    (autopilot?.revisionMinutes ?? 0) > 0
+      ? questionCount > 0 || topic.status === 'review'
+        ? 'review'
+        : 'study'
+      : 'study';
 
   if (!reasons.length) reasons.push(topic.status === 'new' ? 'ready to start' : 'worth continuing');
 
@@ -235,11 +262,24 @@ function topicCandidate(workspace: WorkspaceState, topic: Topic, now: number): C
     dueQuestionCount: questionCount,
     examDays,
     mode,
-    remainingMinutes: topic.estimate,
+    remainingMinutes: autopilot
+      ? Math.max(5, Math.min(topic.estimate, autopilot.minutes))
+      : topic.estimate,
+    autopilotMinutes: autopilot?.minutes ?? 0,
+    autopilotKind: autopilot
+      ? autopilot.revisionMinutes > autopilot.preparationMinutes
+        ? 'revision'
+        : 'preparation'
+      : null,
   };
 }
 
-function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number): Candidate | null {
+function taskCandidate(
+  workspace: WorkspaceState,
+  task: StudyTask,
+  now: number,
+  autopilot: TodayAutopilotAllocation | null,
+): Candidate | null {
   if (task.status !== 'open' || task.postponedUntil > now) return null;
   const endToday = nextLocalDayStart(now);
   if (
@@ -287,6 +327,13 @@ function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number):
     reasons.push(examDays === 1 ? `${exam.name} tomorrow` : `${exam.name} in ${examDays} days`);
   }
 
+  if (autopilot) {
+    score += 42 + Math.min(18, Math.round(autopilot.minutes / 5));
+    reasons.unshift(
+      `Autopilot planned ${autopilot.minutes} min for this topic today`,
+    );
+  }
+
   const questionCount = linkedTopic ? dueQuestions(linkedTopic, now) : 0;
   const mode: PlanMode =
     task.type === 'revision' && linkedTopic && questionCount > 0 ? 'review' : 'study';
@@ -309,10 +356,42 @@ function taskCandidate(workspace: WorkspaceState, task: StudyTask, now: number):
     examDays,
     mode,
     remainingMinutes: taskRemainingMinutes(task) || task.estimatedMinutes || 25,
+    autopilotMinutes: autopilot?.minutes ?? 0,
+    autopilotKind: autopilot
+      ? autopilot.revisionMinutes > autopilot.preparationMinutes
+        ? 'revision'
+        : 'preparation'
+      : null,
   };
 }
 
-const DEADLINE_FEASIBILITY_HORIZON_DAYS = 30;
+const AUTOPILOT_HORIZON_DAYS = 120;
+
+function todayAutopilotAllocations(
+  workspace: WorkspaceState,
+  now: number,
+) {
+  const plan = buildJointExamPreparationPlan(workspace, now, {
+    maxDays: AUTOPILOT_HORIZON_DAYS,
+  });
+  const today = startOfLocalDay(now);
+  const planDay = plan.days.find((day) => day.day === today);
+  const allocations = new Map<string, TodayAutopilotAllocation>();
+
+  for (const block of planDay?.blocks ?? []) {
+    const current = allocations.get(block.topicId) ?? {
+      minutes: 0,
+      preparationMinutes: 0,
+      revisionMinutes: 0,
+    };
+    current.minutes += block.minutes;
+    if (block.kind === 'revision') current.revisionMinutes += block.minutes;
+    else current.preparationMinutes += block.minutes;
+    allocations.set(block.topicId, current);
+  }
+
+  return { plan, allocations };
+}
 
 export function buildTodayPlan(
   workspace: WorkspaceState,
@@ -348,12 +427,28 @@ export function buildTodayPlan(
       ? Math.max(configuredBreak, Math.min(12, Math.round(targetFocusMinutes * 0.35)))
       : configuredBreak;
 
+  const autopilot = todayAutopilotAllocations(workspace, now);
+
   const candidates: Candidate[] = [
     ...workspace.tasks
-      .map((task) => taskCandidate(workspace, task, now))
+      .map((task) =>
+        taskCandidate(
+          workspace,
+          task,
+          now,
+          task.topicId ? autopilot.allocations.get(task.topicId) ?? null : null,
+        ),
+      )
       .filter((candidate): candidate is Candidate => Boolean(candidate)),
     ...workspace.topics
-      .map((topic) => topicCandidate(workspace, topic, now))
+      .map((topic) =>
+        topicCandidate(
+          workspace,
+          topic,
+          now,
+          autopilot.allocations.get(topic.id) ?? null,
+        ),
+      )
       .filter((candidate): candidate is Candidate => Boolean(candidate)),
   ];
 
@@ -470,9 +565,7 @@ export function buildTodayPlan(
   const plannedBreakMinutes = Math.max(0, blocks.length - 1) * breakMinutes;
   const usedTopicIds = new Set(blocks.flatMap((block) => (block.topicId ? [block.topicId] : [])));
   const todayStart = startOfLocalDay(now);
-  const workloadPlan = buildJointExamPreparationPlan(workspace, now, {
-    maxDays: DEADLINE_FEASIBILITY_HORIZON_DAYS,
-  });
+  const workloadPlan = autopilot.plan;
   const deadlineFeasibility = workloadPlan.feasibility;
 
   return {

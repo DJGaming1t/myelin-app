@@ -86,6 +86,7 @@ export default function DayMapScreen() {
   const { session: focusSession } = useFocus();
   const scrollRef = useRef<ScrollView | null>(null);
   const handoffConsumedRef = useRef(false);
+  const recoveredLayoutRef = useRef<Record<string, number>>({});
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clock = useScreenClock();
   const [refresh, setNow] = useState(Date.now());
@@ -257,6 +258,37 @@ export default function DayMapScreen() {
         : null,
     };
   }, [recoveredHandoff, visibleReclaimedWindows]);
+
+  useEffect(() => {
+    handoffConsumedRef.current = false;
+    if (!recoveredHandoffTarget) return;
+
+    const y =
+      recoveredLayoutRef.current[
+        recoveredHandoffTarget.windowKey
+      ];
+    if (y == null) return;
+
+    handoffConsumedRef.current = true;
+    setHighlightedRecoveredKey(
+      recoveredHandoffTarget.placementKey ??
+        recoveredHandoffTarget.windowKey,
+    );
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, y - 16),
+      animated: true,
+    });
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(
+      () => setHighlightedRecoveredKey(null),
+      4200,
+    );
+  }, [
+    recoveredHandoffTarget?.placementKey,
+    recoveredHandoffTarget?.windowKey,
+  ]);
 
   useEffect(
     () => () => {
@@ -471,11 +503,15 @@ export default function DayMapScreen() {
                 <View
                   key={`${window.commitmentId}:${window.occurrenceDateKey}`}
                   onLayout={(event) => {
+                    const windowKey =
+                      window.commitmentId +
+                      ':' +
+                      window.occurrenceDateKey;
+                    recoveredLayoutRef.current[windowKey] =
+                      event.nativeEvent.layout.y;
                     const isTarget =
                       recoveredHandoffTarget?.windowKey ===
-                      window.commitmentId +
-                        ':' +
-                        window.occurrenceDateKey;
+                      windowKey;
                     if (
                       !isTarget ||
                       handoffConsumedRef.current
@@ -663,7 +699,16 @@ export default function DayMapScreen() {
                             styles.reclaimedStart,
                             pressed && styles.pressed,
                           ]}>
-                          <Text style={styles.reclaimedStartText}>Start focus</Text>
+                          <Text style={styles.reclaimedStartText}>
+                            {recoveredHandoffTarget?.placementKey ===
+                            placement.kind +
+                              ':' +
+                              placement.topicId +
+                              ':' +
+                              placement.start
+                              ? 'Start this focus'
+                              : 'Start focus'}
+                          </Text>
                           <Text style={styles.reclaimedStartArrow}>→</Text>
                         </Pressable>
                       </View>

@@ -20,6 +20,13 @@ function dayLabel(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
+function timeLabel(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(timestamp));
+}
+
 function strainLabel(value: AutopilotReflowSummary['afterStrain']) {
   return value === 'overloaded'
     ? 'Overloaded'
@@ -186,11 +193,35 @@ export function AutopilotReflowNotice({
                       ) : null}
                     </View>
                     {option.kind === 'reclaim-commitment' ? (
-                      <Text style={styles.recoveryOutcome}>
-                        Preview: skipping this {minutesLabel(option.reclaimedClockMinutes)} commitment occurrence adds{' '}
-                        {minutesLabel(option.effect.capacityGainedMinutes)} of safe study capacity inside the exam plan.
-                        Only use this if the occurrence is genuinely cancelled or optional.
-                      </Text>
+                      <>
+                        <Text style={styles.recoveryOutcome}>
+                          Preview: skipping this {minutesLabel(option.reclaimedClockMinutes)} commitment occurrence adds{' '}
+                          {minutesLabel(option.effect.capacityGainedMinutes)} of safe study capacity inside the exam plan.
+                          Only use this if the occurrence is genuinely cancelled or optional.
+                        </Text>
+                        <View style={styles.reclaimedPlan}>
+                          <Text style={styles.reclaimedPlanKicker}>USE THE RECOVERED WINDOW FOR</Text>
+                          {option.placements.map((placement, index) => (
+                            <View
+                              key={`${placement.kind}:${placement.topicId}:${placement.start}:${index}`}
+                              style={styles.reclaimedPlacement}>
+                              <Text style={styles.reclaimedPlacementTime}>
+                                {timeLabel(placement.start)}–{timeLabel(placement.end)}
+                              </Text>
+                              <View style={styles.recoveryCopy}>
+                                <Text style={styles.reclaimedPlacementTopic}>
+                                  {placement.topicName}
+                                </Text>
+                                <Text style={styles.reclaimedPlacementMeta}>
+                                  {minutesLabel(placement.minutes)} ·{' '}
+                                  {placement.kind === 'revision' ? 'Revision' : 'Preparation'} ·{' '}
+                                  {placement.subject}
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      </>
                     ) : option.kind === 'split-topic' ? (
                       <Text style={styles.recoveryOutcome}>
                         Preview: total required work stays the same. Future {option.topicName}{' '}
@@ -439,6 +470,48 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     lineHeight: 14,
     marginTop: 8,
+  },
+  reclaimedPlan: {
+    marginTop: 9,
+    borderRadius: radius.sm,
+    backgroundColor: colors.bg,
+    padding: 9,
+  },
+  reclaimedPlanKicker: {
+    color: colors.accent,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  reclaimedPlacement: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    paddingVertical: 6,
+  },
+  reclaimedPlacementTime: {
+    width: 88,
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '800',
+  },
+  reclaimedPlacementTopic: {
+    color: colors.text,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  reclaimedPlacementMeta: {
+    color: colors.muted,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 1,
   },
   applyButton: {
     minHeight: 44,

@@ -38,7 +38,10 @@ export function buildTopicFeedbackProfile(
     (entry) => entry.topicId === topicId && entry.at >= since && entry.at <= now,
   );
   const study = history.filter((entry) => entry.kind === 'study' && entry.minutes >= 5);
-  const review = history.filter((entry) => entry.kind === 'review').slice(-8);
+  const review = history
+    .filter((entry) => entry.kind === 'review')
+    .sort((a, b) => a.at - b.at)
+    .slice(-8);
 
   const paceRatios = study
     .filter((entry) => (entry.plannedMinutes ?? 0) >= 5)

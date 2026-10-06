@@ -52,6 +52,8 @@ export type ExamPlanTopic = {
   baseEstimatedMinutes: number;
   estimateMultiplier: number;
   estimatedMinutes: number;
+  completedPreparationMinutes: number;
+  remainingPreparationMinutes: number;
   retrievalReserveMinutes: number;
   totalRequiredMinutes: number;
   difficulty: 1 | 2 | 3;
@@ -61,6 +63,7 @@ export type ExamPlanTopic = {
   feedbackPriorityBoost: number;
   feedbackEvidenceCount: number;
   mode: 'study' | 'review';
+  availableFrom: number;
   requiredBy: number;
   requiredByExamName: string;
   reasons: string[];
@@ -356,6 +359,28 @@ function dueQuestionCount(topic: Topic, now: number) {
   }).length;
 }
 
+function recentTopicStudyMinutes(
+  workspace: WorkspaceState,
+  topic: Topic,
+  now: number,
+) {
+  const windowStart = Math.max(
+    topic.createdAt,
+    now - 120 * DAY_MS,
+  );
+  return Math.round(
+    workspace.history
+      .filter(
+        (entry) =>
+          entry.topicId === topic.id &&
+          entry.kind === 'study' &&
+          entry.at >= windowStart &&
+          entry.at <= now,
+      )
+      .reduce((sum, entry) => sum + Math.max(0, entry.minutes), 0),
+  );
+}
+
 function derivedDifficulty(topic: Topic, risk: number): 1 | 2 | 3 {
   let difficulty: 1 | 2 | 3 =
     topic.status === 'new' ? 3 : topic.status === 'learning' ? 2 : 1;
@@ -394,6 +419,17 @@ function topicWorkload(
     10,
     Math.round(baseEstimatedMinutes * effectiveEstimateMultiplier),
   );
+  const completedPreparationMinutes =
+    explicitEstimate && explicitEstimate > 0
+      ? 0
+      : Math.min(
+          estimatedMinutes,
+          recentTopicStudyMinutes(workspace, topic, now),
+        );
+  const remainingPreparationMinutes = Math.max(
+    0,
+    estimatedMinutes - completedPreparationMinutes,
+  );
   const feedbackRetrievalReserve =
     feedback.evidenceCount >= 2 && feedback.lowRecallShare >= 0.5
       ? feedback.lowRecallShare >= 0.75
@@ -415,6 +451,10 @@ function topicWorkload(
   const importance = override?.importance ?? topic.priority;
   const mode: 'study' | 'review' =
     topic.status === 'review' || dueCount > 0 ? 'review' : 'study';
+  const availableFrom =
+    topic.snoozeUntil > now
+      ? startOfLocalDay(topic.snoozeUntil)
+      : startOfLocalDay(now);
 
   const reasons: string[] = [];
   if (difficulty === 3) reasons.push('high effort');
@@ -437,8 +477,10 @@ function topicWorkload(
     baseEstimatedMinutes,
     estimateMultiplier: effectiveEstimateMultiplier,
     estimatedMinutes,
+    completedPreparationMinutes,
+    remainingPreparationMinutes,
     retrievalReserveMinutes,
-    totalRequiredMinutes: estimatedMinutes + retrievalReserveMinutes,
+    totalRequiredMinutes: remainingPreparationMinutes + retrievalReserveMinutes,
     difficulty,
     importance,
     forgettingRisk: risk,
@@ -446,6 +488,7 @@ function topicWorkload(
     feedbackPriorityBoost: feedback.priorityBoost,
     feedbackEvidenceCount: feedback.evidenceCount,
     mode,
+    availableFrom,
     requiredBy,
     requiredByExamName,
     reasons,
@@ -755,6 +798,7 @@ export function buildExamPreparationPlan(
         .filter(
           (topic) =>
             (remaining.get(topic.topicId) ?? 0) > 0 &&
+            day.day >= topic.availableFrom &&
             day.day < startOfLocalDay(topic.requiredBy),
         )
         .sort(
@@ -896,7 +940,7 @@ export function buildExamPreparationPlan(
       kind: 'exam-preparation' as const,
       requiredMinutes: topic.totalRequiredMinutes,
       priority: topic.importance,
-      availableFrom: startOfLocalDay(now),
+      availableFrom: topic.availableFrom,
       deadlineAt: topic.requiredBy,
       capacityUntil: startOfLocalDay(topic.requiredBy),
       movable: topic.importance < 3,
@@ -1326,6 +1370,7 @@ export function buildJointExamPreparationPlan(
         .filter(
           (demand) =>
             demand.remainingMinutes > 0 &&
+            day.day >= demand.topic.availableFrom &&
             day.day < startOfLocalDay(demand.topic.requiredBy),
         )
         .sort(

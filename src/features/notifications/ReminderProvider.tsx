@@ -209,10 +209,51 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     let unsubscribe: () => void = () => {};
     let active = true;
 
-    subscribeToReminderResponses((kind) => {
-      if (kind === 'review') router.push('/(app)/review');
-      else if (kind === 'exam') router.push('/(app)/exams');
-      else router.push('/(app)/today/day-map');
+    subscribeToReminderResponses((payload) => {
+      if (payload.kind === 'review') {
+        router.push('/(app)/review');
+        return;
+      }
+      if (payload.kind === 'exam') {
+        router.push('/(app)/exams');
+        return;
+      }
+      if (
+        payload.recovered &&
+        payload.commitmentId &&
+        payload.occurrenceDateKey
+      ) {
+        router.push({
+          pathname: '/(app)/today/day-map',
+          params: {
+            recoveredCommitmentId: payload.commitmentId,
+            recoveredOccurrenceDateKey:
+              payload.occurrenceDateKey,
+            ...(payload.topicId
+              ? {
+                  recoveredTopicId: payload.topicId,
+                }
+              : {}),
+            ...(payload.scheduledStart != null
+              ? {
+                  recoveredStart: String(
+                    payload.scheduledStart,
+                  ),
+                }
+              : {}),
+            ...(payload.scheduledEnd != null
+              ? {
+                  recoveredEnd: String(
+                    payload.scheduledEnd,
+                  ),
+                }
+              : {}),
+            recoveredHandoff: 'notification',
+          },
+        });
+        return;
+      }
+      router.push('/(app)/today/day-map');
     })
       .then((next) => {
         if (!active) {

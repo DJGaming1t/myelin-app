@@ -4,6 +4,10 @@ import {
   prepareAssistantActionBatch,
 } from '@/src/features/assistant/assistant-action-session';
 import { parseExamDateInput } from '@/src/features/exams/exam-engine';
+import {
+  JointExamPreparationPlan,
+  buildJointExamPreparationPlan,
+} from '@/src/features/exams/exam-plan-engine';
 
 import { LocalAiRuntimeSession } from './local-ai-runtime';
 
@@ -49,6 +53,7 @@ export type PreparedSyllabusImport = {
   defaultEstimateCount: number;
   warnings: string[];
   prepared: PreparedAssistantActionBatch;
+  autopilotPlan: JointExamPreparationPlan;
 };
 
 export class SyllabusIntakeError extends Error {
@@ -650,6 +655,27 @@ function buildPreparedSyllabusImport(
     );
   }
 
+  const previewExam = prepared.preview.nextWorkspace.exams.find(
+    (exam) =>
+      normalized(exam.name) === normalized(examName) &&
+      exam.date === examDate.timestamp,
+  );
+  if (!previewExam) {
+    throw new SyllabusIntakeError(
+      'MYELIN could not locate the previewed exam for Autopilot planning.',
+      'invalid_draft',
+    );
+  }
+
+  const autopilotPlan = buildJointExamPreparationPlan(
+    prepared.preview.nextWorkspace,
+    now,
+    {
+      examIds: [previewExam.id],
+      maxDays: 120,
+    },
+  );
+
   return {
     examName,
     examDate: examDate.value,
@@ -662,6 +688,7 @@ function buildPreparedSyllabusImport(
     defaultEstimateCount,
     warnings,
     prepared,
+    autopilotPlan,
   };
 }
 

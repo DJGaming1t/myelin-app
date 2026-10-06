@@ -752,6 +752,26 @@ function AutopilotPlanCard({
         </View>
       </View>
 
+      {applied ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Start the Autopilot plan in Today"
+          onPress={() => router.replace('/(app)/today')}
+          style={({ pressed }) => [
+            styles.autopilotTodayButton,
+            pressed && styles.pressed,
+          ]}>
+          <View style={styles.grow}>
+            <Text style={styles.autopilotTodayTitle}>Start in Today</Text>
+            <Text style={styles.autopilotTodayText}>
+              MYELIN will surface the next Autopilot block inside your normal
+              Today → Focus → Review flow.
+            </Text>
+          </View>
+          <Text style={styles.autopilotTodayArrow}>→</Text>
+        </Pressable>
+      ) : null}
+
       {plan.exams.length === 0 ? (
         <View style={styles.autopilotNotice}>
           <Text style={styles.autopilotNoticeTitle}>LONG-RANGE EXAM</Text>
@@ -1180,6 +1200,36 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   autopilotDanger: { color: colors.danger },
+  autopilotTodayButton: {
+    minHeight: 60,
+    marginTop: 10,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.28)',
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  autopilotTodayTitle: {
+    color: colors.text,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '900',
+  },
+  autopilotTodayText: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 2,
+  },
+  autopilotTodayArrow: {
+    color: colors.accent,
+    fontSize: 18,
+    flexShrink: 0,
+  },
   autopilotNotice: {
     marginTop: 10,
     borderRadius: radius.sm,

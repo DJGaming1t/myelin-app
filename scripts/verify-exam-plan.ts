@@ -23,6 +23,7 @@ import {
   applyAutopilotRecoveryOption,
   buildAppliedReclaimedWindows,
   buildAutopilotRecoveryOptions,
+  resolveRecoveredReminderHandoff,
   undoAutopilotRecovery,
 } from '../src/features/exams/autopilot-recovery';
 
@@ -1593,6 +1594,63 @@ const now = local(2026, 10, 5, 15, 0);
     'Schedule protection before a recovered slot passes must not be recorded as a miss.',
   );
 
+  const reminderBlock = liveReservation!.placements[0]!;
+  const reminderHandoff = {
+    commitmentId: 'tuition-reclaim-test',
+    occurrenceDateKey: occurrenceKey,
+    topicId: reminderBlock.topicId,
+    scheduledStart: reminderBlock.start,
+    scheduledEnd: reminderBlock.end,
+  };
+  const exactReminderResolution =
+    resolveRecoveredReminderHandoff(
+      liveReservations,
+      reminderHandoff,
+      reservationNow,
+    );
+  assert.equal(
+    exactReminderResolution.status,
+    'exact',
+    'A notification that still matches the live recovered block should remain an exact handoff.',
+  );
+  assert.equal(
+    exactReminderResolution.placement?.start,
+    reminderBlock.start,
+  );
+
+  const movedWindow = {
+    ...liveReservation!,
+    placements: liveReservation!.placements.map(
+      (placement, index) =>
+        index === 0
+          ? {
+              ...placement,
+              start: placement.start + 10 * 60_000,
+              end: placement.end + 10 * 60_000,
+            }
+          : placement,
+    ),
+  };
+  const movedReminderResolution =
+    resolveRecoveredReminderHandoff(
+      [movedWindow],
+      reminderHandoff,
+      reservationNow,
+    );
+  assert.equal(
+    movedReminderResolution.status,
+    'updated',
+  );
+  assert.equal(
+    movedReminderResolution.reason,
+    'reflowed',
+    'A recovered block moved by more than the handoff tolerance should be treated as a plan update, not as the old exact notification slot.',
+  );
+  assert.equal(
+    movedReminderResolution.placement?.start,
+    reminderBlock.start + 10 * 60_000,
+  );
+
   const preMissNow = tomorrow + 15 * 60 * 60 * 1000 + 55 * 60 * 1000;
   const activeFocusUntil =
     tomorrow + 16 * 60 * 60 * 1000 + 15 * 60 * 1000;
@@ -1703,6 +1761,32 @@ const now = local(2026, 10, 5, 15, 0);
     'The completed recovered block must disappear from the remaining reservation.',
   );
 
+  const completedReminderResolution =
+    resolveRecoveredReminderHandoff(
+      afterFocusReservations,
+      {
+        commitmentId: 'tuition-reclaim-test',
+        occurrenceDateKey: occurrenceKey,
+        topicId: firstRecoveredBlock.topicId,
+        scheduledStart: firstRecoveredBlock.start,
+        scheduledEnd: firstRecoveredBlock.end,
+      },
+      afterFocusNow,
+    );
+  assert.equal(
+    completedReminderResolution.status,
+    'updated',
+  );
+  assert.equal(
+    completedReminderResolution.reason,
+    'passed',
+    'A notification for a completed/passed recovered block should redirect to the latest live block instead of failing.',
+  );
+  assert.ok(
+    completedReminderResolution.placement,
+    'A completed stale reminder should resolve to the best remaining live recovered action when one exists.',
+  );
+
   const missedTarget = afterFocusReservation?.placements[0];
   assert.ok(
     missedTarget,
@@ -1755,6 +1839,80 @@ const now = local(2026, 10, 5, 15, 0);
       afterMissWindow!.missed!.strainBeforeMiss !==
         afterMissWindow!.missed!.strainAfterMiss,
     'The deadline-tightened flag must be derived from measurable feasibility/strain consequences.',
+  );
+
+  const missedReminderResolution =
+    resolveRecoveredReminderHandoff(
+      afterMissWindows,
+      {
+        commitmentId: 'tuition-reclaim-test',
+        occurrenceDateKey: occurrenceKey,
+        topicId: missedTarget!.topicId,
+        scheduledStart: missedTarget!.start,
+        scheduledEnd: missedTarget!.end,
+      },
+      missedNow,
+    );
+  assert.equal(
+    missedReminderResolution.status,
+    'updated',
+  );
+  assert.equal(
+    missedReminderResolution.reason,
+    'missed',
+    'A notification whose recovered slot was missed should explicitly resolve as missed while pointing at the latest action.',
+  );
+
+  const nextWindow = {
+    ...liveReservation!,
+    commitmentId: 'another-recovered-window',
+    occurrenceDateKey: '2099-01-02',
+    start: liveReservation!.start + 86_400_000,
+    end: liveReservation!.end + 86_400_000,
+    placements: liveReservation!.placements.map(
+      (placement) => ({
+        ...placement,
+        start: placement.start + 86_400_000,
+        end: placement.end + 86_400_000,
+      }),
+    ),
+    missed: null,
+    protection: null,
+  };
+  const nextWindowResolution =
+    resolveRecoveredReminderHandoff(
+      [nextWindow],
+      reminderHandoff,
+      reservationNow,
+    );
+  assert.equal(
+    nextWindowResolution.reason,
+    'next-window',
+    'If the original recovered window is gone, a stale notification should fall forward to the next live recovered window.',
+  );
+  assert.equal(
+    nextWindowResolution.window?.commitmentId,
+    'another-recovered-window',
+  );
+
+  const finishedReminderResolution =
+    resolveRecoveredReminderHandoff(
+      [],
+      reminderHandoff,
+      missedNow,
+    );
+  assert.equal(
+    finishedReminderResolution.status,
+    'updated',
+  );
+  assert.equal(
+    finishedReminderResolution.reason,
+    'window-finished',
+  );
+  assert.equal(
+    finishedReminderResolution.placement,
+    null,
+    'When no recovered work remains, the resolver should explicitly return no recovered placement so Day Map can fall back to Today.',
   );
 
   assert.equal(
@@ -1810,6 +1968,7 @@ console.log('✓ completing a recovered Focus block removes it and reflows the r
 console.log('✓ later fixed commitments split recovered windows and remain respected after Focus completion');
 console.log('✓ pre-miss protection reflows recovered windows around later schedule edits and active Focus before a slot expires');
 console.log('✓ expired recovered blocks are marked missed, reflowed forward, and report any renewed deadline pressure');
+console.log('✓ stale recovered reminder handoffs resolve to exact, reflowed, missed, next-window, or finished states deterministically');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

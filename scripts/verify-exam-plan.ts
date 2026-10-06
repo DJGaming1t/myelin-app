@@ -9,7 +9,11 @@ import {
   buildJointExamPreparationPlan,
   examPlanTopicRemainingMinutes,
 } from '../src/features/exams/exam-plan-engine';
-import { addLocalDays, startOfLocalDay } from '../src/features/planning/day-engine';
+import {
+  addLocalDays,
+  localDayKey,
+  startOfLocalDay,
+} from '../src/features/planning/day-engine';
 import { createStudyTask, scheduleTask } from '../src/features/planning/task-engine';
 import {
   buildAutopilotReflowSummary,
@@ -1348,6 +1352,153 @@ const now = local(2026, 10, 5, 15, 0);
   );
 }
 
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 90;
+  workspace.settings.focusMinutes = 45;
+
+  const topic = makeTopic(
+    'recover-reclaim-topic',
+    'Electricity',
+    'Science',
+    'learning',
+    240,
+    3,
+  );
+  topic.createdAt = addLocalDays(startOfLocalDay(now), -5);
+  workspace.topics.push(topic);
+
+  const examDate =
+    addLocalDays(startOfLocalDay(now), 2) +
+    12 * 60 * 60 * 1000;
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Science reclaim test',
+        date: examDate,
+        scope: 'topics',
+        subjects: [],
+        topicIds: [topic.id],
+      },
+      now,
+      'recover_reclaim_exam',
+    ),
+  );
+
+  const tomorrow = addLocalDays(startOfLocalDay(now), 1);
+  const tomorrowDate = new Date(tomorrow);
+  const tomorrowWeekday = tomorrowDate.getDay();
+  const occurrenceKey = localDayKey(tomorrow);
+
+  workspace.commitments.push(
+    {
+      id: 'school-fixed-reclaim-test',
+      title: 'School',
+      kind: 'school',
+      startAt: tomorrow + 6 * 60 * 60 * 1000,
+      endAt: tomorrow + 16 * 60 * 60 * 1000,
+      startMinutes: 6 * 60,
+      endMinutes: 16 * 60,
+      recurrenceDays: [],
+      skippedDates: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: 'tuition-reclaim-test',
+      title: 'Maths tuition',
+      kind: 'tuition',
+      startAt: tomorrow + 16 * 60 * 60 * 1000,
+      endAt: tomorrow + 22 * 60 * 60 * 1000,
+      startMinutes: 16 * 60,
+      endMinutes: 22 * 60,
+      recurrenceDays: [tomorrowWeekday],
+      skippedDates: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+  );
+
+  const baseline = buildJointExamPreparationPlan(
+    workspace,
+    now,
+    { maxDays: 120 },
+  );
+  assert.ok(
+    !baseline.feasibility.feasible ||
+      baseline.unallocatedPreparationMinutes > 0,
+    'The reclaim test must begin with a genuinely broken exam plan.',
+  );
+
+  const options = buildAutopilotRecoveryOptions(
+    workspace,
+    now,
+    4,
+  );
+  const reclaim = options.find(
+    (option) =>
+      option.kind === 'reclaim-commitment' &&
+      option.commitmentId === 'tuition-reclaim-test' &&
+      option.occurrenceDateKey === occurrenceKey,
+  );
+  assert.ok(
+    reclaim,
+    'A recurring tuition occurrence should be previewed as reclaimable when skipping it creates real safe capacity.',
+  );
+  assert.ok(
+    reclaim!.effect.capacityGainedMinutes > 0,
+    'Reclaim preview must report actual safe capacity gained, not only raw clock duration.',
+  );
+  assert.ok(
+    reclaim!.kind === 'reclaim-commitment' &&
+      reclaim!.reclaimedClockMinutes >
+        reclaim!.effect.capacityGainedMinutes,
+    'When sustainable capacity caps the gain, MYELIN should distinguish reclaimed clock time from usable study capacity.',
+  );
+  assert.equal(
+    options.some(
+      (option) =>
+        option.kind === 'reclaim-commitment' &&
+        option.commitmentId === 'school-fixed-reclaim-test',
+    ),
+    false,
+    'School time must never be proposed as automatically reclaimable.',
+  );
+
+  const previewWorkspace = cloneWorkspace(workspace);
+  const undo = applyAutopilotRecoveryOption(
+    previewWorkspace,
+    reclaim!,
+    now,
+  );
+  assert.ok(undo);
+  assert.deepEqual(
+    previewWorkspace.commitments.find(
+      (item) => item.id === 'tuition-reclaim-test',
+    )!.skippedDates,
+    [occurrenceKey],
+    'Applying reclaim must skip only the specific recurring occurrence.',
+  );
+  assert.deepEqual(
+    workspace.commitments.find(
+      (item) => item.id === 'tuition-reclaim-test',
+    )!.skippedDates,
+    [],
+    'Recovery preview/apply must not mutate the source workspace.',
+  );
+  assert.equal(
+    undoAutopilotRecovery(previewWorkspace, undo!),
+    true,
+  );
+  assert.deepEqual(
+    previewWorkspace.commitments.find(
+      (item) => item.id === 'tuition-reclaim-test',
+    )!.skippedDates,
+    [],
+    'Undo must restore the commitment occurrence exactly.',
+  );
+}
+
 console.log('✓ exam scope limits planning to included topics');
 console.log('✓ per-exam workload estimates override generic Topic estimates');
 console.log('✓ feasible workload is split into focus-sized blocks within safe daily capacity');
@@ -1369,6 +1520,7 @@ console.log('✓ recovery previews can move safe low-priority tasks without touc
 console.log('✓ scope recovery is previewed only for explicit multi-topic exams and never invented for subject scope');
 console.log('✓ recovery actions undo their targeted changes without restoring an entire stale workspace');
 console.log('✓ heavy-topic recovery can split future blocks without changing scope, estimate, or total workload');
+console.log('✓ recurring tuition/coaching recovery previews real safe capacity gain and stays fully undoable');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

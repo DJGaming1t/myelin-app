@@ -33,8 +33,10 @@ import {
 import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
 import {
   AutopilotRecoveryOption,
+  AutopilotRecoveryUndo,
   applyAutopilotRecoveryOption,
   buildAutopilotRecoveryOptions,
+  undoAutopilotRecovery,
 } from '@/src/features/exams/autopilot-recovery';
 import {
   AutopilotReflowSummary,
@@ -66,6 +68,11 @@ export default function DayMapScreen() {
     parseAutopilotReflow(params.reflow),
   );
   const [selectedRecoveryId, setSelectedRecoveryId] = useState<string | null>(null);
+  const [lastRecovery, setLastRecovery] = useState<{
+    undo: AutopilotRecoveryUndo;
+    appliedRevision: number;
+    label: string;
+  } | null>(null);
 
   useEffect(() => {
     const incoming = parseAutopilotReflow(params.reflow);
@@ -146,10 +153,44 @@ export default function DayMapScreen() {
   }
 
   function applyRecovery(option: AutopilotRecoveryOption) {
+    let undo: AutopilotRecoveryUndo | null = null;
     const next = updateWithReflow((draft) => {
-      applyAutopilotRecoveryOption(draft, option, Date.now());
+      undo = applyAutopilotRecoveryOption(
+        draft,
+        option,
+        Date.now(),
+      );
     });
-    if (next) {
+    if (next && undo) {
+      setLastRecovery({
+        undo,
+        appliedRevision: next.revision,
+        label: option.title,
+      });
+      setSelectedRecoveryId(null);
+      setNow(Date.now());
+    }
+  }
+
+  function undoRecovery() {
+    const recovery = lastRecovery;
+    if (
+      !recovery ||
+      workspace!.revision !== recovery.appliedRevision
+    ) {
+      setLastRecovery(null);
+      return;
+    }
+
+    let restored = false;
+    const next = updateWithReflow((draft) => {
+      restored = undoAutopilotRecovery(
+        draft,
+        recovery.undo,
+      );
+    });
+    if (next && restored) {
+      setLastRecovery(null);
       setSelectedRecoveryId(null);
       setNow(Date.now());
     }
@@ -201,6 +242,18 @@ export default function DayMapScreen() {
             selectedRecoveryId={selectedRecoveryId}
             onPreviewRecovery={previewRecovery}
             onApplyRecovery={applyRecovery}
+            undoLabel={
+              lastRecovery &&
+              lastRecovery.appliedRevision === workspace.revision
+                ? lastRecovery.label
+                : null
+            }
+            onUndoRecovery={
+              lastRecovery &&
+              lastRecovery.appliedRevision === workspace.revision
+                ? undoRecovery
+                : undefined
+            }
           />
 
           <AnimatedDisclosure visible={map.overloadMinutes > 0}>

@@ -1523,6 +1523,22 @@ const now = local(2026, 10, 5, 15, 0);
     'Applying reclaimed-window recovery must not create duplicate synthetic task records.',
   );
 
+  const conflictStart = tomorrow + 16 * 60 * 60 * 1000 + 20 * 60 * 1000;
+  const conflictEnd = tomorrow + 17 * 60 * 60 * 1000;
+  previewWorkspace.commitments.push({
+    id: 'later-fixed-conflict',
+    title: 'Unexpected appointment',
+    kind: 'other',
+    startAt: conflictStart,
+    endAt: conflictEnd,
+    startMinutes: 16 * 60 + 20,
+    endMinutes: 17 * 60,
+    recurrenceDays: [],
+    skippedDates: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+
   const reservationNow = tomorrow + 15 * 60 * 60 * 1000;
   const liveReservations = buildAppliedReclaimedWindows(
     previewWorkspace,
@@ -1548,6 +1564,23 @@ const now = local(2026, 10, 5, 15, 0);
         placement.end <= liveReservation!.end,
     ),
     'Live recovered reservations must remain inside the cancelled clock window.',
+  );
+  assert.ok(
+    liveReservation!.placements.every(
+      (placement) =>
+        placement.end <= conflictStart ||
+        placement.start >= conflictEnd,
+    ),
+    'Recovered Autopilot blocks must never overlap a later fixed commitment.',
+  );
+  assert.ok(
+    liveReservation!.placements.some(
+      (placement) => placement.end <= conflictStart,
+    ) &&
+      liveReservation!.placements.some(
+        (placement) => placement.start >= conflictEnd,
+      ),
+    'A later fixed commitment inside the recovered window should split and reflow study around the conflict.',
   );
   assert.ok(
     liveReservation!.placements.length >= 2,
@@ -1602,6 +1635,19 @@ const now = local(2026, 10, 5, 15, 0);
       (placement) => placement.start >= afterFocusNow,
     ),
     'After completion, remaining recovered blocks must reflow from the current time and never reappear in the past.',
+  );
+  assert.ok(
+    (afterFocusReservation?.placements ?? []).every(
+      (placement) =>
+        placement.end <= conflictStart ||
+        placement.start >= conflictEnd,
+    ),
+    'Completion reflow must continue respecting schedule conflicts added after the original recovery.',
+  );
+  assert.ok(
+    (afterFocusReservation?.placements[0]?.start ?? conflictEnd) >=
+      conflictEnd,
+    'If Focus finishes while a new commitment is active, the next recovered block must resume only after that commitment ends.',
   );
   assert.equal(
     (afterFocusReservation?.placements ?? []).some(
@@ -1663,6 +1709,7 @@ console.log('✓ recurring tuition/coaching recovery previews real safe capacity
 console.log('✓ reclaimed windows preview exact exam blocks inside the freed clock time without synthetic tasks');
 console.log('✓ applied reclaimed windows reconstruct as live Day Map reservations without persisted task duplicates');
 console.log('✓ completing a recovered Focus block removes it and reflows the remaining window from the current time');
+console.log('✓ later fixed commitments split recovered windows and remain respected after Focus completion');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

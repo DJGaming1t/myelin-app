@@ -18,6 +18,8 @@ import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
+import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 import {
   addLocalDays,
   buildDayMap,
@@ -62,6 +64,7 @@ function durationLabel(start: number, end: number) {
 export default function DayMapScreen() {
   const params = useLocalSearchParams<{ reflow?: string | string[] }>();
   const { workspace, updateWorkspace } = useWorkspace();
+  const { session: focusSession } = useFocus();
   const clock = useScreenClock();
   const [refresh, setNow] = useState(Date.now());
   const now = Math.max(clock, refresh);
@@ -98,13 +101,35 @@ export default function DayMapScreen() {
     [now, reflow, workspace],
   );
 
-  const reclaimedWindows = useMemo(
-    () =>
-      workspace
-        ? buildAppliedReclaimedWindows(workspace, now)
-        : [],
-    [now, workspace],
-  );
+  const reclaimedWindows = useMemo(() => {
+    if (!workspace) return [];
+    const activeFocusRemaining =
+      focusSession?.phase === 'focus'
+        ? timerRemainingMs(focusSession, now)
+        : 0;
+    return buildAppliedReclaimedWindows(workspace, now, {
+      ...(activeFocusRemaining > 0
+        ? {
+            unavailableUntil:
+              now + activeFocusRemaining,
+            activeFocusTopicId:
+              focusSession?.topicId ?? null,
+            activeFocusStartedAt:
+              focusSession?.startedAt ?? null,
+          }
+        : {}),
+      protectionLeadMinutes: 10,
+    });
+  }, [
+    focusSession?.phase,
+    focusSession?.startedAt,
+    focusSession?.topicId,
+    focusSession?.runningSince,
+    focusSession?.elapsedMs,
+    focusSession?.plannedFocusMinutes,
+    now,
+    workspace,
+  ]);
 
   const visibleReclaimedWindows = useMemo(() => {
     const windows = [...reclaimedWindows];
@@ -224,6 +249,7 @@ export default function DayMapScreen() {
                 end: option.occurrenceEnd,
                 placements: option.placements,
                 missed: null,
+                protection: null,
               }
             : null,
       });
@@ -345,6 +371,28 @@ export default function DayMapScreen() {
                     </View>
                     <Text style={styles.reclaimedBadge}>RECOVERED</Text>
                   </View>
+
+                  {window.protection ? (
+                    <View style={styles.reclaimedProtection}>
+                      <Text style={styles.reclaimedProtectionKicker}>
+                        PRE-MISS PROTECTION
+                      </Text>
+                      <Text style={styles.reclaimedProtectionTitle}>
+                        {window.protection.reason === 'active-focus'
+                          ? 'Another Focus session overlaps this recovered block'
+                          : 'A later schedule change shrank this recovered window'}
+                      </Text>
+                      <Text style={styles.reclaimedProtectionText}>
+                        {window.protection.reason === 'active-focus' &&
+                        window.protection.protectedUntil
+                          ? `MYELIN moved the reservation to start after ${timeLabel(window.protection.protectedUntil)} before it could become a miss.`
+                          : 'MYELIN repacked the reservation around the new fixed time before it could become a miss.'}
+                        {window.protection.displacedMinutes > 0
+                          ? ` ${window.protection.displacedMinutes}m no longer fits inside this recovered window and stays in the wider Autopilot plan.`
+                          : ''}
+                      </Text>
+                    </View>
+                  ) : null}
 
                   {window.missed ? (
                     <View style={styles.reclaimedMissed}>
@@ -794,6 +842,36 @@ const styles = StyleSheet.create({
     lineHeight: 10,
     fontWeight: '900',
     letterSpacing: 0.6,
+  },
+  reclaimedProtection: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel2,
+    padding: 10,
+  },
+  reclaimedProtectionKicker: {
+    color: colors.accent,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  reclaimedProtectionTitle: {
+    color: colors.text,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  reclaimedProtectionText: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 3,
   },
   reclaimedMissed: {
     marginHorizontal: 10,

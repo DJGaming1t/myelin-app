@@ -3,7 +3,7 @@ import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -61,10 +61,32 @@ function durationLabel(start: number, end: number) {
   return String(Math.max(0, Math.round((end - start) / 60000))) + 'm';
 }
 
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function numericParam(value: string | string[] | undefined) {
+  const raw = firstParam(value);
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export default function DayMapScreen() {
-  const params = useLocalSearchParams<{ reflow?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    reflow?: string | string[];
+    recoveredCommitmentId?: string | string[];
+    recoveredOccurrenceDateKey?: string | string[];
+    recoveredTopicId?: string | string[];
+    recoveredStart?: string | string[];
+    recoveredEnd?: string | string[];
+    recoveredHandoff?: string | string[];
+  }>();
   const { workspace, updateWorkspace } = useWorkspace();
   const { session: focusSession } = useFocus();
+  const scrollRef = useRef<ScrollView | null>(null);
+  const handoffConsumedRef = useRef(false);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clock = useScreenClock();
   const [refresh, setNow] = useState(Date.now());
   const now = Math.max(clock, refresh);
@@ -74,6 +96,8 @@ export default function DayMapScreen() {
     parseAutopilotReflow(params.reflow),
   );
   const [selectedRecoveryId, setSelectedRecoveryId] = useState<string | null>(null);
+  const [highlightedRecoveredKey, setHighlightedRecoveredKey] =
+    useState<string | null>(null);
   const [lastRecovery, setLastRecovery] = useState<{
     undo: AutopilotRecoveryUndo;
     appliedRevision: number;
@@ -151,6 +175,97 @@ export default function DayMapScreen() {
     }
     return windows.sort((a, b) => a.start - b.start);
   }, [lastRecovery, reclaimedWindows, workspace]);
+
+  const recoveredHandoff = useMemo(() => {
+    if (
+      firstParam(params.recoveredHandoff) !==
+      'notification'
+    ) {
+      return null;
+    }
+
+    const commitmentId = firstParam(
+      params.recoveredCommitmentId,
+    );
+    const occurrenceDateKey = firstParam(
+      params.recoveredOccurrenceDateKey,
+    );
+    if (!commitmentId || !occurrenceDateKey) return null;
+
+    return {
+      commitmentId,
+      occurrenceDateKey,
+      topicId:
+        firstParam(params.recoveredTopicId) ?? null,
+      scheduledStart: numericParam(
+        params.recoveredStart,
+      ),
+      scheduledEnd: numericParam(params.recoveredEnd),
+    };
+  }, [
+    params.recoveredCommitmentId,
+    params.recoveredEnd,
+    params.recoveredHandoff,
+    params.recoveredOccurrenceDateKey,
+    params.recoveredStart,
+    params.recoveredTopicId,
+  ]);
+
+  const recoveredHandoffTarget = useMemo(() => {
+    if (!recoveredHandoff) return null;
+    const window = visibleReclaimedWindows.find(
+      (item) =>
+        item.commitmentId ===
+          recoveredHandoff.commitmentId &&
+        item.occurrenceDateKey ===
+          recoveredHandoff.occurrenceDateKey,
+    );
+    if (!window) return null;
+
+    const candidates = window.placements.filter(
+      (placement) =>
+        !recoveredHandoff.topicId ||
+        placement.topicId ===
+          recoveredHandoff.topicId,
+    );
+    const placement =
+      candidates.sort((a, b) => {
+        const target =
+          recoveredHandoff.scheduledStart ??
+          window.start;
+        return (
+          Math.abs(a.start - target) -
+          Math.abs(b.start - target)
+        );
+      })[0] ??
+      window.placements[0] ??
+      null;
+
+    return {
+      window,
+      placement,
+      windowKey:
+        window.commitmentId +
+        ':' +
+        window.occurrenceDateKey,
+      placementKey: placement
+        ? placement.kind +
+          ':' +
+          placement.topicId +
+          ':' +
+          placement.start
+        : null,
+    };
+  }, [recoveredHandoff, visibleReclaimedWindows]);
+
+  useEffect(
+    () => () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    },
+    [],
+  );
 
   if (!workspace || !map) return null;
 
@@ -310,7 +425,10 @@ export default function DayMapScreen() {
           onBack={() => router.replace('/(app)/today')}
         />
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}>
           <View style={styles.daySummary}>
             <Text style={styles.daySummaryText}>
               {map.plannedStudyMinutes}m planned
@@ -352,7 +470,51 @@ export default function DayMapScreen() {
               {visibleReclaimedWindows.map((window) => (
                 <View
                   key={`${window.commitmentId}:${window.occurrenceDateKey}`}
-                  style={styles.reclaimedWindow}>
+                  onLayout={(event) => {
+                    const isTarget =
+                      recoveredHandoffTarget?.windowKey ===
+                      window.commitmentId +
+                        ':' +
+                        window.occurrenceDateKey;
+                    if (
+                      !isTarget ||
+                      handoffConsumedRef.current
+                    ) {
+                      return;
+                    }
+
+                    handoffConsumedRef.current = true;
+                    const targetKey =
+                      recoveredHandoffTarget?.placementKey ??
+                      recoveredHandoffTarget?.windowKey ??
+                      null;
+                    setHighlightedRecoveredKey(targetKey);
+                    scrollRef.current?.scrollTo({
+                      y: Math.max(
+                        0,
+                        event.nativeEvent.layout.y - 16,
+                      ),
+                      animated: true,
+                    });
+                    if (highlightTimerRef.current) {
+                      clearTimeout(
+                        highlightTimerRef.current,
+                      );
+                    }
+                    highlightTimerRef.current = setTimeout(
+                      () =>
+                        setHighlightedRecoveredKey(null),
+                      4200,
+                    );
+                  }}
+                  style={[
+                    styles.reclaimedWindow,
+                    highlightedRecoveredKey ===
+                      window.commitmentId +
+                        ':' +
+                        window.occurrenceDateKey &&
+                      styles.reclaimedWindowHandoff,
+                  ]}>
                   <View style={styles.reclaimedWindowHeader}>
                     <View style={styles.reclaimedHeaderCopy}>
                       <Text style={styles.reclaimedWindowTitle}>
@@ -369,7 +531,14 @@ export default function DayMapScreen() {
                         {timeLabel(window.start)}–{timeLabel(window.end)} · Autopilot reserved
                       </Text>
                     </View>
-                    <Text style={styles.reclaimedBadge}>RECOVERED</Text>
+                    <Text style={styles.reclaimedBadge}>
+                      {recoveredHandoffTarget?.windowKey ===
+                        window.commitmentId +
+                          ':' +
+                          window.occurrenceDateKey
+                        ? 'FROM REMINDER'
+                        : 'RECOVERED'}
+                    </Text>
                   </View>
 
                   {window.protection ? (
@@ -456,7 +625,17 @@ export default function DayMapScreen() {
                         <View style={styles.reclaimedDot} />
                         <View style={styles.railLine} />
                       </View>
-                      <View style={styles.reclaimedBlock}>
+                      <View
+                        style={[
+                          styles.reclaimedBlock,
+                          highlightedRecoveredKey ===
+                            placement.kind +
+                              ':' +
+                              placement.topicId +
+                              ':' +
+                              placement.start &&
+                            styles.reclaimedBlockHandoff,
+                        ]}>
                         <Text style={styles.blockKicker}>
                           {placement.subject.toUpperCase()}
                         </Text>
@@ -466,6 +645,16 @@ export default function DayMapScreen() {
                           {placement.kind === 'revision' ? 'revision' : 'preparation'} ·
                           no task created
                         </Text>
+                        {recoveredHandoffTarget?.placementKey ===
+                        placement.kind +
+                          ':' +
+                          placement.topicId +
+                          ':' +
+                          placement.start ? (
+                          <Text style={styles.reclaimedHandoffHint}>
+                            Opened from your recovered-window reminder
+                          </Text>
+                        ) : null}
                         <Pressable
                           accessibilityRole="button"
                           accessibilityLabel={`Start ${placement.minutes} minute focus for ${placement.topicName}`}
@@ -814,6 +1003,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panel,
     overflow: 'hidden',
   },
+  reclaimedWindowHandoff: {
+    borderWidth: 2,
+    borderColor: colors.accent,
+  },
   reclaimedWindowHeader: {
     minHeight: 54,
     paddingHorizontal: 12,
@@ -971,6 +1164,22 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
     paddingVertical: 10,
     paddingLeft: 8,
+  },
+  reclaimedBlockHandoff: {
+    marginVertical: 5,
+    marginRight: 4,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.accentFaint,
+    paddingRight: 8,
+  },
+  reclaimedHandoffHint: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '800',
+    marginTop: 5,
   },
   reclaimedStart: {
     minHeight: 40,

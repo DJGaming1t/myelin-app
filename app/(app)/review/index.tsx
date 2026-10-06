@@ -44,8 +44,19 @@ const CONFIDENCE: { value: Confidence; label: string; helper: string }[] = [
 
 export default function ReviewScreen() {
   const celebrate = useAchievement();
-  const params = useLocalSearchParams<{ topicId?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    topicId?: string | string[];
+    autoStart?: string | string[];
+    limit?: string | string[];
+    source?: string | string[];
+  }>();
   const requestedTopicId = param(params.topicId);
+  const autoStartRequested = param(params.autoStart) === '1';
+  const fromFocus = param(params.source) === 'focus';
+  const requestedLimit = Math.max(
+    1,
+    Math.min(3, Number(param(params.limit)) || 3),
+  );
   const { workspace } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const {
@@ -64,6 +75,7 @@ export default function ReviewScreen() {
   const [localAnswer, setLocalAnswer] = useState(session?.answerDraft ?? '');
   const [completedNotice, setCompletedNotice] = useState(false);
   const [grading, setGrading] = useState(false);
+  const [autoStartConsumed, setAutoStartConsumed] = useState(false);
 
   useEffect(() => {
     setLocalAnswer(session?.answerDraft ?? '');
@@ -87,6 +99,51 @@ export default function ReviewScreen() {
     () => (workspace ? reviewCounts(workspace, Date.now()) : { due: 0, total: 0 }),
     [workspace],
   );
+
+  useEffect(() => {
+    if (
+      !autoStartRequested ||
+      autoStartConsumed ||
+      !ready ||
+      !workspace ||
+      session ||
+      activeFocus ||
+      blockedByFocus ||
+      !requestedTopicId
+    ) {
+      return;
+    }
+
+    const requestedTopic = findTopic(workspace, requestedTopicId);
+    if (!requestedTopic) {
+      setAutoStartConsumed(true);
+      return;
+    }
+
+    const readyQueue = buildReviewQueue(workspace, {
+      topicId: requestedTopic.id,
+      limit: requestedLimit,
+    });
+    setAutoStartConsumed(true);
+    if (!readyQueue.length) return;
+
+    setCompletedNotice(false);
+    void startReview({
+      topicId: requestedTopic.id,
+      limit: requestedLimit,
+    });
+  }, [
+    activeFocus,
+    autoStartConsumed,
+    autoStartRequested,
+    blockedByFocus,
+    ready,
+    requestedLimit,
+    requestedTopicId,
+    session,
+    startReview,
+    workspace,
+  ]);
 
   if (!ready || !workspace) {
     return (
@@ -173,7 +230,9 @@ export default function ReviewScreen() {
               </Pressable>
             ) : requestedTopic ? (
               <>
-                <Text style={styles.eyebrow}>TOPIC RECALL</Text>
+                <Text style={styles.eyebrow}>
+                  {fromFocus ? 'POST-FOCUS RETRIEVAL' : 'TOPIC RECALL'}
+                </Text>
                 <Text style={styles.dashboardTitle}>
                   {requestedTopic.cards.length === 0
                     ? 'Add a recall question first.'
@@ -332,8 +391,15 @@ export default function ReviewScreen() {
     try {
       const result = await gradeCurrent(choice);
       if (result?.completed) {
+        celebrate({
+          title: 'Recall complete!',
+          detail: 'Another round remembered. Your next reviews are scheduled.',
+        });
+        if (fromFocus) {
+          router.replace('/(app)/today');
+          return;
+        }
         setCompletedNotice(true);
-        celebrate({ title: 'Recall complete!', detail: 'Another round remembered. Your next reviews are scheduled.' });
       }
     } finally {
       setGrading(false);

@@ -53,6 +53,7 @@ export type ReclaimedWindowBuildOptions = {
   activeFocusTopicId?: string | null;
   activeFocusStartedAt?: number | null;
   protectionLeadMinutes?: number;
+  horizonDays?: number;
 };
 
 export type ReclaimedStudyPlacement = {
@@ -878,16 +879,24 @@ export function buildAppliedReclaimedWindows(
   now = Date.now(),
   options: ReclaimedWindowBuildOptions = {},
 ) {
-  const day = startOfLocalDay(now);
-  const dayKey = localDayKey(day);
-  const previousDay = addLocalDays(day, -1);
-  const previousKey = localDayKey(previousDay);
+  const today = startOfLocalDay(now);
+  const horizonDays = Math.max(
+    0,
+    Math.min(7, Math.round(options.horizonDays ?? 0)),
+  );
   const after = buildJointExamPreparationPlan(workspace, now, {
     maxDays: 120,
   });
   const windows: AppliedReclaimedWindow[] = [];
+  const seen = new Set<string>();
 
-  for (const commitment of workspace.commitments) {
+  for (let offset = 0; offset <= horizonDays; offset += 1) {
+    const day = addLocalDays(today, offset);
+    const dayKey = localDayKey(day);
+    const previousDay = addLocalDays(day, -1);
+    const previousKey = localDayKey(previousDay);
+
+    for (const commitment of workspace.commitments) {
     if (
       !commitment.recurrenceDays.length ||
       (commitment.kind !== 'tuition' &&
@@ -1112,6 +1121,11 @@ export function buildAppliedReclaimedWindows(
 
       if (!placements.length && !missed && !protection) continue;
 
+      const windowKey =
+        commitment.id + ':' + occurrenceDateKey;
+      if (seen.has(windowKey)) continue;
+      seen.add(windowKey);
+
       windows.push({
         commitmentId: commitment.id,
         commitmentTitle: commitment.title,
@@ -1123,6 +1137,7 @@ export function buildAppliedReclaimedWindows(
         protection,
       });
     }
+    }
   }
 
   return windows
@@ -1131,7 +1146,7 @@ export function buildAppliedReclaimedWindows(
         a.start - b.start ||
         a.commitmentTitle.localeCompare(b.commitmentTitle),
     )
-    .slice(0, 4);
+    .slice(0, horizonDays > 0 ? 12 : 4);
 }
 
 function reclaimableCommitmentOptions(

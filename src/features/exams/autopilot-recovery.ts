@@ -1427,6 +1427,203 @@ export function buildAutopilotRecoveryOptions(
   ];
 }
 
+export type RecoveredReminderHandoff = {
+  commitmentId: string;
+  occurrenceDateKey: string;
+  topicId: string | null;
+  scheduledStart: number | null;
+  scheduledEnd: number | null;
+};
+
+export type RecoveredReminderUpdateReason =
+  | 'reflowed'
+  | 'missed'
+  | 'passed'
+  | 'window-finished'
+  | 'next-window';
+
+export type RecoveredReminderResolution = {
+  status: 'exact' | 'updated';
+  reason: RecoveredReminderUpdateReason | null;
+  window: AppliedReclaimedWindow | null;
+  placement: ReclaimedStudyPlacement | null;
+};
+
+const RECOVERED_REMINDER_EXACT_TOLERANCE_MS =
+  5 * 60_000;
+
+function recoveredPlacementDistance(
+  placement: ReclaimedStudyPlacement,
+  handoff: RecoveredReminderHandoff,
+) {
+  const target =
+    handoff.scheduledStart ?? placement.start;
+  return Math.abs(placement.start - target);
+}
+
+function recoveredPlacementStillExact(
+  placement: ReclaimedStudyPlacement,
+  handoff: RecoveredReminderHandoff,
+  now: number,
+) {
+  if (placement.end <= now) return false;
+  if (
+    handoff.topicId &&
+    placement.topicId !== handoff.topicId
+  ) {
+    return false;
+  }
+
+  const startMatches =
+    handoff.scheduledStart == null ||
+    Math.abs(
+      placement.start - handoff.scheduledStart,
+    ) <= RECOVERED_REMINDER_EXACT_TOLERANCE_MS;
+  const endMatches =
+    handoff.scheduledEnd == null ||
+    Math.abs(
+      placement.end - handoff.scheduledEnd,
+    ) <= RECOVERED_REMINDER_EXACT_TOLERANCE_MS;
+
+  return startMatches && endMatches;
+}
+
+function recoveredOriginalWasMissed(
+  window: AppliedReclaimedWindow,
+  handoff: RecoveredReminderHandoff,
+) {
+  return Boolean(
+    window.missed?.placements.some((placement) => {
+      if (
+        handoff.topicId &&
+        placement.topicId !== handoff.topicId
+      ) {
+        return false;
+      }
+      if (handoff.scheduledStart == null) return true;
+      return (
+        Math.abs(
+          placement.start - handoff.scheduledStart,
+        ) <= RECOVERED_REMINDER_EXACT_TOLERANCE_MS
+      );
+    }),
+  );
+}
+
+export function resolveRecoveredReminderHandoff(
+  windows: AppliedReclaimedWindow[],
+  handoff: RecoveredReminderHandoff,
+  now = Date.now(),
+): RecoveredReminderResolution {
+  const exactWindow =
+    windows.find(
+      (window) =>
+        window.commitmentId ===
+          handoff.commitmentId &&
+        window.occurrenceDateKey ===
+          handoff.occurrenceDateKey,
+    ) ?? null;
+
+  if (exactWindow) {
+    const exactPlacement =
+      exactWindow.placements.find((placement) =>
+        recoveredPlacementStillExact(
+          placement,
+          handoff,
+          now,
+        ),
+      ) ?? null;
+
+    if (exactPlacement) {
+      return {
+        status: 'exact',
+        reason: null,
+        window: exactWindow,
+        placement: exactPlacement,
+      };
+    }
+
+    const liveSameWindow =
+      exactWindow.placements
+        .filter((placement) => placement.end > now)
+        .sort((a, b) => {
+          const sameTopicA =
+            handoff.topicId &&
+            a.topicId === handoff.topicId
+              ? 0
+              : 1;
+          const sameTopicB =
+            handoff.topicId &&
+            b.topicId === handoff.topicId
+              ? 0
+              : 1;
+          return (
+            sameTopicA - sameTopicB ||
+            recoveredPlacementDistance(a, handoff) -
+              recoveredPlacementDistance(b, handoff) ||
+            a.start - b.start
+          );
+        })[0] ?? null;
+
+    if (liveSameWindow) {
+      return {
+        status: 'updated',
+        reason: recoveredOriginalWasMissed(
+          exactWindow,
+          handoff,
+        )
+          ? 'missed'
+          : handoff.scheduledEnd != null &&
+              handoff.scheduledEnd <= now
+            ? 'passed'
+            : 'reflowed',
+        window: exactWindow,
+        placement: liveSameWindow,
+      };
+    }
+  }
+
+  const nextRecovered = windows
+    .flatMap((window) =>
+      window.placements
+        .filter((placement) => placement.end > now)
+        .map((placement) => ({
+          window,
+          placement,
+        })),
+    )
+    .sort(
+      (a, b) =>
+        a.placement.start - b.placement.start ||
+        a.placement.topicName.localeCompare(
+          b.placement.topicName,
+        ),
+    )[0];
+
+  if (nextRecovered) {
+    return {
+      status: 'updated',
+      reason: 'next-window',
+      window: nextRecovered.window,
+      placement: nextRecovered.placement,
+    };
+  }
+
+  return {
+    status: 'updated',
+    reason: exactWindow
+      ? recoveredOriginalWasMissed(
+          exactWindow,
+          handoff,
+        )
+        ? 'missed'
+        : 'passed'
+      : 'window-finished',
+    window: null,
+    placement: null,
+  };
+}
+
 export function applyAutopilotRecoveryOption(
   workspace: WorkspaceState,
   option: AutopilotRecoveryOption,

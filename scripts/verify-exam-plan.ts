@@ -1355,7 +1355,7 @@ const now = local(2026, 10, 5, 15, 0);
 
 {
   const workspace = createEmptyWorkspace(now);
-  workspace.settings.dailyMinutes = 90;
+  workspace.settings.dailyMinutes = 120;
   workspace.settings.focusMinutes = 45;
 
   const topic = makeTopic(
@@ -1549,10 +1549,74 @@ const now = local(2026, 10, 5, 15, 0);
     ),
     'Live recovered reservations must remain inside the cancelled clock window.',
   );
+  assert.ok(
+    liveReservation!.placements.length >= 2,
+    'The live-window test needs multiple recovered blocks so completion can reflow the remainder.',
+  );
+
+  const firstRecoveredBlock = liveReservation!.placements[0]!;
+  const beforeRemainingMinutes = liveReservation!.placements.reduce(
+    (sum, placement) => sum + placement.minutes,
+    0,
+  );
+  previewWorkspace.history.push({
+    id: 'reclaimed-focus-complete',
+    topicId: firstRecoveredBlock.topicId,
+    at: firstRecoveredBlock.end,
+    kind: 'study',
+    minutes: firstRecoveredBlock.minutes,
+    grade: 0,
+    effort: 3,
+    prompt: '',
+    response: '',
+    confidence: 'unsure',
+    plannedMinutes: firstRecoveredBlock.minutes,
+    startedAt: firstRecoveredBlock.start,
+    endedAt: firstRecoveredBlock.end,
+    launchMode: 'normal',
+    tinyStep: '',
+  });
+
+  const afterFocusNow = firstRecoveredBlock.end + 60_000;
+  const afterFocusReservations = buildAppliedReclaimedWindows(
+    previewWorkspace,
+    afterFocusNow,
+  );
+  const afterFocusReservation = afterFocusReservations.find(
+    (window) =>
+      window.commitmentId === 'tuition-reclaim-test' &&
+      window.occurrenceDateKey === occurrenceKey,
+  );
+  const afterRemainingMinutes =
+    afterFocusReservation?.placements.reduce(
+      (sum, placement) => sum + placement.minutes,
+      0,
+    ) ?? 0;
+
+  assert.ok(
+    afterRemainingMinutes < beforeRemainingMinutes,
+    'Completing a recovered Focus block must reduce the remaining live reservation.',
+  );
+  assert.ok(
+    (afterFocusReservation?.placements ?? []).every(
+      (placement) => placement.start >= afterFocusNow,
+    ),
+    'After completion, remaining recovered blocks must reflow from the current time and never reappear in the past.',
+  );
+  assert.equal(
+    (afterFocusReservation?.placements ?? []).some(
+      (placement) =>
+        placement.start === firstRecoveredBlock.start &&
+        placement.topicId === firstRecoveredBlock.topicId,
+    ),
+    false,
+    'The completed recovered block must disappear from the remaining reservation.',
+  );
+
   assert.equal(
     previewWorkspace.tasks.length,
     taskCountBeforeRecovery,
-    'Reconstructing a live recovered reservation must remain projection-only and create no task records.',
+    'Reconstructing and reflowing a live recovered reservation must remain projection-only and create no task records.',
   );
   assert.deepEqual(
     workspace.commitments.find(
@@ -1598,6 +1662,7 @@ console.log('✓ heavy-topic recovery can split future blocks without changing s
 console.log('✓ recurring tuition/coaching recovery previews real safe capacity gain and stays fully undoable');
 console.log('✓ reclaimed windows preview exact exam blocks inside the freed clock time without synthetic tasks');
 console.log('✓ applied reclaimed windows reconstruct as live Day Map reservations without persisted task duplicates');
+console.log('✓ completing a recovered Focus block removes it and reflows the remaining window from the current time');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

@@ -332,6 +332,13 @@ export default function DayMapScreen() {
                         {window.commitmentTitle} cancelled
                       </Text>
                       <Text style={styles.reclaimedWindowMeta}>
+                        {localDateKey(window.start) !== localDateKey(now)
+                          ? new Date(window.start).toLocaleDateString(undefined, {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            }) + ' · '
+                          : ''}
                         {timeLabel(window.start)}–{timeLabel(window.end)} · Autopilot reserved
                       </Text>
                     </View>

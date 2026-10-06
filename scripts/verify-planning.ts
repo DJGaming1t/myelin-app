@@ -383,6 +383,18 @@ console.log('✓ skipped dates survive reload, free time is reclaimed, overnight
       dayMapSource.includes('deadline no longer fit at safe capacity'),
     'Day Map should surface renewed deadline pressure instead of silently hiding missed recovered work.',
   );
+  assert.ok(
+    dayMapSource.includes('PRE-MISS PROTECTION') &&
+      dayMapSource.includes('useFocus') &&
+      dayMapSource.includes('timerRemainingMs'),
+    'Day Map should proactively protect a near-term recovered block when another Focus session is still running.',
+  );
+  assert.ok(
+    dayMapSource.includes('later schedule change shrank this recovered window') &&
+      dayMapSource.includes('repacked the reservation around the new fixed time'),
+    'Day Map should explain when a later schedule edit proactively reshapes a recovered window before it becomes a miss.',
+  );
 }
 console.log('✓ reclaimed Autopilot reservations are visible in Day Map and launch Focus directly without task duplication');
 console.log('✓ missed recovered slots are visible with reflowed minutes and renewed deadline pressure');
+console.log('✓ near-term recovered slots proactively protect against active Focus and later schedule changes');

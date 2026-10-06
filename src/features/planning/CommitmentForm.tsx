@@ -99,10 +99,11 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
   const [error, setError] = useState('');
 
   if (!workspace) return null;
+  const currentWorkspace = workspace;
 
   function returnToDayMapWithReflow(nextWorkspace: WorkspaceState) {
     const summary = buildAutopilotReflowSummary(
-      workspace,
+      currentWorkspace,
       nextWorkspace,
       Date.now(),
     );

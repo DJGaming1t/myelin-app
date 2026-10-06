@@ -249,7 +249,7 @@ function main() {
     {
       id: 'feedback_focus',
       topicId: 'feedback_hard',
-      at: now - DAY + 12 * 60 * 60 * 1000,
+      at: now - DAY - 2 * 60 * 60 * 1000,
       kind: 'study',
       minutes: 40,
       grade: 0,
@@ -262,7 +262,7 @@ function main() {
     {
       id: 'feedback_recall',
       topicId: 'feedback_hard',
-      at: now - DAY + 13 * 60 * 60 * 1000,
+      at: now - DAY - 60 * 60 * 1000,
       kind: 'review',
       minutes: 3,
       grade: 1,

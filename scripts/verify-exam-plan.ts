@@ -21,6 +21,7 @@ import {
 } from '../src/features/exams/autopilot-reflow';
 import {
   applyAutopilotRecoveryOption,
+  buildAppliedReclaimedWindows,
   buildAutopilotRecoveryOptions,
   undoAutopilotRecovery,
 } from '../src/features/exams/autopilot-recovery';
@@ -1521,6 +1522,38 @@ const now = local(2026, 10, 5, 15, 0);
     taskCountBeforeRecovery,
     'Applying reclaimed-window recovery must not create duplicate synthetic task records.',
   );
+
+  const reservationNow = tomorrow + 15 * 60 * 60 * 1000;
+  const liveReservations = buildAppliedReclaimedWindows(
+    previewWorkspace,
+    reservationNow,
+  );
+  const liveReservation = liveReservations.find(
+    (window) =>
+      window.commitmentId === 'tuition-reclaim-test' &&
+      window.occurrenceDateKey === occurrenceKey,
+  );
+  assert.ok(
+    liveReservation,
+    'After Apply, Day Map should be able to reconstruct the recovered Autopilot reservation from the skipped occurrence itself.',
+  );
+  assert.ok(
+    liveReservation!.placements.length > 0,
+    'A live recovered window should retain concrete Autopilot study placements.',
+  );
+  assert.ok(
+    liveReservation!.placements.every(
+      (placement) =>
+        placement.start >= liveReservation!.start &&
+        placement.end <= liveReservation!.end,
+    ),
+    'Live recovered reservations must remain inside the cancelled clock window.',
+  );
+  assert.equal(
+    previewWorkspace.tasks.length,
+    taskCountBeforeRecovery,
+    'Reconstructing a live recovered reservation must remain projection-only and create no task records.',
+  );
   assert.deepEqual(
     workspace.commitments.find(
       (item) => item.id === 'tuition-reclaim-test',
@@ -1564,6 +1597,7 @@ console.log('✓ recovery actions undo their targeted changes without restoring 
 console.log('✓ heavy-topic recovery can split future blocks without changing scope, estimate, or total workload');
 console.log('✓ recurring tuition/coaching recovery previews real safe capacity gain and stays fully undoable');
 console.log('✓ reclaimed windows preview exact exam blocks inside the freed clock time without synthetic tasks');
+console.log('✓ applied reclaimed windows reconstruct as live Day Map reservations without persisted task duplicates');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

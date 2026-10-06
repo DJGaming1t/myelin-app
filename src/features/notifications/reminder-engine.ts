@@ -668,75 +668,75 @@ function buildRecoveredWindowReminders(
   const reminders: PlannedReminder[] = [];
 
   for (const window of windows) {
-    for (const placement of window.placements) {
-      if (
-        placement.start <= now + 60_000 ||
-        placement.end <= now ||
-        placement.start > addLocalDays(now, REVIEW_HORIZON_DAYS)
-      ) {
-        continue;
-      }
+    const placement = window.placements.find(
+      (item) =>
+        item.start > now + 60_000 &&
+        item.end > now &&
+        item.start <=
+          addLocalDays(now, REVIEW_HORIZON_DAYS),
+    );
+    if (!placement) continue;
 
-      const activeFocusOverlaps =
-        activeFocus &&
-        activeFocus.unavailableUntil > placement.start &&
-        !(
-          activeFocus.topicId === placement.topicId &&
-          activeFocus.startedAt != null &&
-          activeFocus.startedAt >= placement.start - 5 * 60_000 &&
-          activeFocus.startedAt < placement.end
-        );
-      if (activeFocusOverlaps) continue;
-
-      let at =
-        placement.start -
-        settings.studyLeadMinutes * 60_000;
-      if (at <= now + 60_000) continue;
-
-      const shifted = moveOutOfQuietHours(
-        at,
-        settings.quietStartMinutes,
-        settings.quietEndMinutes,
+    const activeFocusOverlaps =
+      activeFocus &&
+      activeFocus.unavailableUntil > placement.start &&
+      !(
+        activeFocus.topicId === placement.topicId &&
+        activeFocus.startedAt != null &&
+        activeFocus.startedAt >=
+          placement.start - 5 * 60_000 &&
+        activeFocus.startedAt < placement.end
       );
-      if (shifted >= placement.start) continue;
-      at = shifted;
+    if (activeFocusOverlaps) continue;
 
-      const copy = studyReminderCopy(
-        settings,
-        placement.topicName,
-        placement.subject,
-        placement.minutes,
-      );
+    let at =
+      placement.start -
+      settings.studyLeadMinutes * 60_000;
+    if (at <= now + 60_000) continue;
 
-      reminders.push({
-        key:
-          'recovered:' +
-          window.commitmentId +
-          ':' +
-          window.occurrenceDateKey +
-          ':' +
-          placement.topicId +
-          ':' +
-          placement.start,
-        kind: 'study',
-        at,
-        title: copy.title,
-        body:
-          settings.detail === 'brief'
-            ? copy.body
-            : `Recovered window · ${copy.body}`,
-        href: '/(app)/today/day-map',
-        accent: copy.accent,
-        data: {
-          recovered: 1,
-          commitmentId: window.commitmentId,
-          occurrenceDateKey: window.occurrenceDateKey,
-          topicId: placement.topicId,
-          scheduledStart: placement.start,
-          scheduledEnd: placement.end,
-        },
-      });
-    }
+    const shifted = moveOutOfQuietHours(
+      at,
+      settings.quietStartMinutes,
+      settings.quietEndMinutes,
+    );
+    if (shifted >= placement.start) continue;
+    at = shifted;
+
+    const copy = studyReminderCopy(
+      settings,
+      placement.topicName,
+      placement.subject,
+      placement.minutes,
+    );
+
+    reminders.push({
+      key:
+        'recovered:' +
+        window.commitmentId +
+        ':' +
+        window.occurrenceDateKey +
+        ':' +
+        placement.topicId +
+        ':' +
+        placement.start,
+      kind: 'study',
+      at,
+      title: copy.title,
+      body:
+        settings.detail === 'brief'
+          ? copy.body
+          : `Recovered window · ${copy.body}`,
+      href: '/(app)/today/day-map',
+      accent: copy.accent,
+      data: {
+        recovered: 1,
+        commitmentId: window.commitmentId,
+        occurrenceDateKey: window.occurrenceDateKey,
+        topicId: placement.topicId,
+        scheduledStart: placement.start,
+        scheduledEnd: placement.end,
+      },
+    });
   }
 
   return reminders;

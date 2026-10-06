@@ -290,6 +290,22 @@ function main() {
     '/(app)/today/day-map',
   );
   assert.equal(
+    recoveredReminder.data.commitmentId,
+    'recovered_tuition',
+  );
+  assert.equal(
+    recoveredReminder.data.occurrenceDateKey,
+    '2026-10-01',
+  );
+  assert.equal(
+    recoveredReminder.data.topicId,
+    'recovered_topic',
+  );
+  assert.ok(
+    Number(recoveredReminder.data.scheduledStart) > now,
+    'Recovered reminder must carry the exact reserved block start into the notification payload.',
+  );
+  assert.equal(
     recoveredReminder.at,
     Number(recoveredReminder.data.scheduledStart) -
       settings.studyLeadMinutes * 60_000,
@@ -542,10 +558,24 @@ function main() {
       reminderProviderSource.includes('activeFocus:'),
     'ReminderProvider should reschedule recovered heads-ups from the live Focus session instead of using stale workspace-only timing.',
   );
+  assert.ok(
+    reminderProviderSource.includes('recoveredCommitmentId') &&
+      reminderProviderSource.includes('recoveredOccurrenceDateKey') &&
+      reminderProviderSource.includes('recoveredHandoff') &&
+      reminderProviderSource.includes("pathname: '/(app)/today/day-map'"),
+    'Recovered notification taps should route to Day Map with the exact reservation identity.',
+  );
 
   const runtimeSource = fs.readFileSync(
     'src/features/notifications/notification-runtime.ts',
     'utf8',
+  );
+  assert.ok(
+    runtimeSource.includes('ReminderOpenPayload') &&
+      runtimeSource.includes('commitmentId:') &&
+      runtimeSource.includes('scheduledStart:') &&
+      runtimeSource.includes('onOpen({'),
+    'Notification taps should forward recovered reservation identity instead of collapsing every study reminder to a generic kind.',
   );
   assert.equal(runtimeSource.includes('getExpoPushTokenAsync'), false);
   assert.equal(runtimeSource.includes('getDevicePushTokenAsync'), false);
@@ -573,6 +603,7 @@ function main() {
   console.log('✓ exam reminders use only configured lead times before the exam');
   console.log('✓ scheduled Day Map tasks create one calm lead-time reminder');
   console.log('✓ recovered Autopilot windows create one calm heads-up, reflow it after schedule edits, and suppress it during overlapping Focus');
+  console.log('✓ recovered notification taps preserve exact reservation identity through the runtime and provider route');
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');

@@ -16,6 +16,10 @@ import {
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { CommitmentKind } from '@/src/data/schema';
+import {
+  buildAutopilotReflowSummary,
+  serializeAutopilotReflow,
+} from '@/src/features/exams/autopilot-reflow';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const DAYS = [
@@ -96,6 +100,19 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
 
   if (!workspace) return null;
 
+  function returnToDayMapWithReflow(nextWorkspace: typeof workspace) {
+    const summary = buildAutopilotReflowSummary(
+      workspace,
+      nextWorkspace,
+      Date.now(),
+    );
+    const serialized = serializeAutopilotReflow(summary);
+    router.replace({
+      pathname: '/(app)/today/day-map',
+      params: serialized ? { reflow: serialized } : {},
+    });
+  }
+
   function toggleDay(day: number) {
     setDays((current) =>
       current.includes(day)
@@ -136,7 +153,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
     if (endAt <= startAt) endAt = atTime(end, 18, addLocalDays(day, 1));
     const now = Date.now();
 
-    updateWorkspace((draft) => {
+    const nextWorkspace = updateWorkspace((draft) => {
       if (existing) {
         const target = draft.commitments.find((item) => item.id === existing.id);
         if (!target) return;
@@ -165,7 +182,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
         });
       }
     });
-    router.back();
+    if (nextWorkspace) returnToDayMapWithReflow(nextWorkspace);
   }
 
   function remove() {
@@ -179,10 +196,10 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            updateWorkspace((draft) => {
+            const nextWorkspace = updateWorkspace((draft) => {
               draft.commitments = draft.commitments.filter((item) => item.id !== existing.id);
             });
-            router.back();
+            if (nextWorkspace) returnToDayMapWithReflow(nextWorkspace);
           },
         },
       ],

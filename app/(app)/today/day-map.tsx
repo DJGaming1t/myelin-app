@@ -41,6 +41,7 @@ import {
   applyAutopilotRecoveryOption,
   buildAppliedReclaimedWindows,
   buildAutopilotRecoveryOptions,
+  resolveRecoveredReminderHandoff,
   undoAutopilotRecovery,
 } from '@/src/features/exams/autopilot-recovery';
 import {
@@ -48,6 +49,10 @@ import {
   buildAutopilotReflowSummary,
   parseAutopilotReflow,
 } from '@/src/features/exams/autopilot-reflow';
+import {
+  PlanBlock,
+  buildTodayPlan,
+} from '@/src/features/today/planner';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function timeLabel(timestamp: number) {
@@ -113,6 +118,11 @@ export default function DayMapScreen() {
 
   const map = useMemo(
     () => (workspace ? buildDayMap(workspace, now) : null),
+    [workspace, now],
+  );
+  const todayPlan = useMemo(
+    () =>
+      workspace ? buildTodayPlan(workspace, now) : null,
     [workspace, now],
   );
 
@@ -212,35 +222,25 @@ export default function DayMapScreen() {
     params.recoveredTopicId,
   ]);
 
-  const recoveredHandoffTarget = useMemo(() => {
+  const recoveredHandoffResolution = useMemo(() => {
     if (!recoveredHandoff) return null;
-    const window = visibleReclaimedWindows.find(
-      (item) =>
-        item.commitmentId ===
-          recoveredHandoff.commitmentId &&
-        item.occurrenceDateKey ===
-          recoveredHandoff.occurrenceDateKey,
+    return resolveRecoveredReminderHandoff(
+      visibleReclaimedWindows,
+      recoveredHandoff,
+      now,
     );
-    if (!window) return null;
+  }, [
+    now,
+    recoveredHandoff,
+    visibleReclaimedWindows,
+  ]);
 
-    const candidates = window.placements.filter(
-      (placement) =>
-        !recoveredHandoff.topicId ||
-        placement.topicId ===
-          recoveredHandoff.topicId,
-    );
+  const recoveredHandoffTarget = useMemo(() => {
+    const window =
+      recoveredHandoffResolution?.window ?? null;
     const placement =
-      candidates.sort((a, b) => {
-        const target =
-          recoveredHandoff.scheduledStart ??
-          window.start;
-        return (
-          Math.abs(a.start - target) -
-          Math.abs(b.start - target)
-        );
-      })[0] ??
-      window.placements[0] ??
-      null;
+      recoveredHandoffResolution?.placement ?? null;
+    if (!window) return null;
 
     return {
       window,
@@ -257,7 +257,7 @@ export default function DayMapScreen() {
           placement.start
         : null,
     };
-  }, [recoveredHandoff, visibleReclaimedWindows]);
+  }, [recoveredHandoffResolution]);
 
   useEffect(() => {
     handoffConsumedRef.current = false;
@@ -349,6 +349,49 @@ export default function DayMapScreen() {
       if (task) postponeTask(task, tomorrow);
     });
     setNow(Date.now());
+  }
+
+  function startCurrentTodayAction(
+    block: PlanBlock,
+  ) {
+    if (focusSession) {
+      router.push('/(app)/focus');
+      return;
+    }
+
+    if (
+      block.mode === 'review' &&
+      block.dueQuestionCount > 0 &&
+      block.topicId
+    ) {
+      router.push({
+        pathname: '/(app)/review',
+        params: { topicId: block.topicId },
+      });
+      return;
+    }
+
+    if (!block.topicId && !block.taskId) {
+      router.replace('/(app)/today');
+      return;
+    }
+
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        ...(block.topicId
+          ? { topicId: block.topicId }
+          : {}),
+        ...(block.taskId
+          ? { taskId: block.taskId }
+          : {}),
+        minutes: String(block.minutes),
+        breakMinutes: String(
+          todayPlan?.breakMinutes ??
+            workspace!.settings.breakMinutes,
+        ),
+      },
+    });
   }
 
   function startReclaimedPlacement(
@@ -492,6 +535,87 @@ export default function DayMapScreen() {
             }
           />
 
+          {recoveredHandoffResolution?.status ===
+          'updated' ? (
+            <View style={styles.reminderUpdated}>
+              <Text style={styles.reminderUpdatedKicker}>
+                PLAN UPDATED SINCE THIS REMINDER
+              </Text>
+              <Text style={styles.reminderUpdatedTitle}>
+                {recoveredHandoffResolution.placement
+                  ? `The old recovered block is no longer current. MYELIN moved you to ${recoveredHandoffResolution.placement.topicName}.`
+                  : todayPlan?.nextBlock
+                    ? `That recovered block is finished or no longer active. ${todayPlan.nextBlock.topicName} is your current next action.`
+                    : 'That recovered block is finished or no longer active. Your current Day Map is already up to date.'}
+              </Text>
+              <Text style={styles.reminderUpdatedText}>
+                {recoveredHandoffResolution.reason ===
+                'missed'
+                  ? 'The reminded slot was missed, so remaining work was reflowed from the latest plan.'
+                  : recoveredHandoffResolution.reason ===
+                      'reflowed'
+                    ? 'The reservation changed after the reminder was scheduled.'
+                    : recoveredHandoffResolution.reason ===
+                        'next-window'
+                      ? 'The original recovered window has no live block left, so the next recovered action is highlighted.'
+                      : 'MYELIN is using the latest completed work, schedule, and capacity instead of the stale notification time.'}
+              </Text>
+              {recoveredHandoffResolution.placement ? (
+                <Text style={styles.reminderUpdatedMeta}>
+                  Current recovered action ·{' '}
+                  {timeLabel(
+                    recoveredHandoffResolution.placement
+                      .start,
+                  )}{' '}
+                  ·{' '}
+                  {
+                    recoveredHandoffResolution.placement
+                      .minutes
+                  }
+                  m
+                </Text>
+              ) : todayPlan?.nextBlock ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open current next action: ${todayPlan.nextBlock.topicName}`}
+                  onPress={() =>
+                    startCurrentTodayAction(
+                      todayPlan.nextBlock!,
+                    )
+                  }
+                  style={({ pressed }) => [
+                    styles.reminderUpdatedAction,
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      style={
+                        styles.reminderUpdatedActionTitle
+                      }>
+                      {todayPlan.nextBlock.topicName}
+                    </Text>
+                    <Text
+                      style={
+                        styles.reminderUpdatedActionMeta
+                      }>
+                      {todayPlan.nextBlock.minutes}m ·{' '}
+                      {todayPlan.nextBlock.mode ===
+                      'review'
+                        ? 'review'
+                        : 'focus'}
+                    </Text>
+                  </View>
+                  <Text
+                    style={
+                      styles.reminderUpdatedActionArrow
+                    }>
+                    →
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
           {visibleReclaimedWindows.length ? (
             <View style={styles.reclaimedSection}>
               <Text style={styles.sectionLabel}>RECOVERED AUTOPILOT WINDOW</Text>
@@ -572,7 +696,10 @@ export default function DayMapScreen() {
                         window.commitmentId +
                           ':' +
                           window.occurrenceDateKey
-                        ? 'FROM REMINDER'
+                        ? recoveredHandoffResolution?.status ===
+                          'updated'
+                          ? 'CURRENT PLAN'
+                          : 'FROM REMINDER'
                         : 'RECOVERED'}
                     </Text>
                   </View>
@@ -688,7 +815,10 @@ export default function DayMapScreen() {
                           ':' +
                           placement.start ? (
                           <Text style={styles.reclaimedHandoffHint}>
-                            Opened from your recovered-window reminder
+                            {recoveredHandoffResolution?.status ===
+                            'updated'
+                              ? 'Current block after your plan changed'
+                              : 'Opened from your recovered-window reminder'}
                           </Text>
                         ) : null}
                         <Pressable
@@ -706,7 +836,10 @@ export default function DayMapScreen() {
                               placement.topicId +
                               ':' +
                               placement.start
-                              ? 'Start this focus'
+                              ? recoveredHandoffResolution?.status ===
+                                'updated'
+                                ? 'Start current focus'
+                                : 'Start this focus'
                               : 'Start focus'}
                           </Text>
                           <Text style={styles.reclaimedStartArrow}>→</Text>
@@ -1031,6 +1164,70 @@ const styles = StyleSheet.create({
   daySummaryText: { color: colors.textDim, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
   daySummaryMeta: { color: colors.muted, fontSize: 10.5, lineHeight: 15 },
   daySummaryWarning: { color: colors.accent, fontWeight: '700' },
+  reminderUpdated: {
+    marginTop: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    padding: spacing.md,
+  },
+  reminderUpdatedKicker: {
+    color: colors.accent,
+    fontSize: 8,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.65,
+  },
+  reminderUpdatedTitle: {
+    color: colors.text,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  reminderUpdatedText: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 4,
+  },
+  reminderUpdatedMeta: {
+    color: colors.accent,
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  reminderUpdatedAction: {
+    minHeight: layout.minTouch,
+    marginTop: 9,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panel,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reminderUpdatedActionTitle: {
+    color: colors.text,
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  reminderUpdatedActionMeta: {
+    color: colors.muted,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 2,
+  },
+  reminderUpdatedActionArrow: {
+    color: colors.accent,
+    fontSize: 17,
+    lineHeight: 19,
+  },
   reclaimedSection: {
     marginTop: spacing.md,
   },

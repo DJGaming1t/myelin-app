@@ -365,7 +365,7 @@ function recentTopicStudyMinutes(
   now: number,
 ) {
   const windowStart = Math.max(
-    topic.createdAt,
+    Math.min(topic.createdAt || now, now),
     now - 120 * DAY_MS,
   );
   return Math.round(

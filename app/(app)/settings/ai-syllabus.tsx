@@ -17,8 +17,63 @@ import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { applyPreparedAssistantActionBatch } from '@/src/features/assistant/assistant-action-session';
 import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
-import { PreparedSyllabusImport } from '@/src/features/assistant/local-ai/syllabus-intake';
+import {
+  PreparedSyllabusImport,
+  SyllabusPriority,
+  SyllabusReviewTopicDraft,
+  SyllabusTopicStatus,
+  prepareReviewedSyllabusImport,
+} from '@/src/features/assistant/local-ai/syllabus-intake';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+
+type EditableReviewTopic = {
+  key: string;
+  subject: string;
+  name: string;
+  minutes: string;
+  priority: SyllabusPriority | null;
+  status: SyllabusTopicStatus | null;
+};
+
+const PRIORITIES: Array<{ label: string; value: SyllabusPriority | null }> = [
+  { label: 'Auto', value: null },
+  { label: 'Low', value: 1 },
+  { label: 'Normal', value: 2 },
+  { label: 'High', value: 3 },
+];
+
+const STATUSES: Array<{ label: string; value: SyllabusTopicStatus | null }> = [
+  { label: 'Auto', value: null },
+  { label: 'New', value: 'new' },
+  { label: 'Learning', value: 'learning' },
+  { label: 'Review', value: 'review' },
+];
+
+function toReviewTopics(
+  prepared: PreparedSyllabusImport,
+  makeKey: () => string,
+): EditableReviewTopic[] {
+  return prepared.subjects.flatMap((subject) =>
+    subject.topics.map((topic) => ({
+      key: makeKey(),
+      subject: subject.name,
+      name: topic.name,
+      minutes: topic.estimatedMinutes == null ? '' : String(topic.estimatedMinutes),
+      priority: topic.priority,
+      status: topic.status,
+    })),
+  );
+}
+
+function toReviewedDrafts(topics: EditableReviewTopic[]): SyllabusReviewTopicDraft[] {
+  return topics.map((topic) => ({
+    subject: topic.subject,
+    name: topic.name,
+    estimatedMinutes: topic.minutes.trim() ? Number(topic.minutes.trim()) : null,
+    priority: topic.priority,
+    status: topic.status,
+  }));
+}
 
 export default function LocalAiSyllabusScreen() {
   const { workspace, commitAssistantWorkspace } = useWorkspace();
@@ -34,10 +89,13 @@ export default function LocalAiSyllabusScreen() {
   const [examDate, setExamDate] = useState('');
   const [sourceText, setSourceText] = useState('');
   const [prepared, setPrepared] = useState<PreparedSyllabusImport | null>(null);
-  const [busy, setBusy] = useState<'prepare' | 'apply' | ''>('');
+  const [reviewTopics, setReviewTopics] = useState<EditableReviewTopic[]>([]);
+  const [reviewDirty, setReviewDirty] = useState(false);
+  const [busy, setBusy] = useState<'prepare' | 'validate' | 'apply' | ''>('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const controllerRef = useRef<AbortController | null>(null);
+  const nextReviewKeyRef = useRef(1);
 
   const selected = useMemo(
     () => models.find((model) => model.definition.id === snapshot.selectedModelId) ?? null,
@@ -73,10 +131,54 @@ export default function LocalAiSyllabusScreen() {
     sourceText.trim().length > 0 &&
     !busy;
 
+  function makeReviewKey() {
+    const value = nextReviewKeyRef.current;
+    nextReviewKeyRef.current += 1;
+    return `review-topic-${value}`;
+  }
+
   function resetPreview() {
     setPrepared(null);
+    setReviewTopics([]);
+    setReviewDirty(false);
     setNotice('');
     setError('');
+  }
+
+  function markReviewDirty() {
+    setReviewDirty(true);
+    setNotice('');
+    setError('');
+  }
+
+  function editReviewTopic(
+    key: string,
+    patch: Partial<Omit<EditableReviewTopic, 'key'>>,
+  ) {
+    setReviewTopics((current) =>
+      current.map((topic) => (topic.key === key ? { ...topic, ...patch } : topic)),
+    );
+    markReviewDirty();
+  }
+
+  function removeReviewTopic(key: string) {
+    setReviewTopics((current) => current.filter((topic) => topic.key !== key));
+    markReviewDirty();
+  }
+
+  function addReviewTopic() {
+    setReviewTopics((current) => [
+      ...current,
+      {
+        key: makeReviewKey(),
+        subject: current[0]?.subject || 'Unsorted',
+        name: '',
+        minutes: '',
+        priority: null,
+        status: null,
+      },
+    ]);
+    markReviewDirty();
   }
 
   async function prepare() {
@@ -87,6 +189,8 @@ export default function LocalAiSyllabusScreen() {
     controllerRef.current = controller;
     setBusy('prepare');
     setPrepared(null);
+    setReviewTopics([]);
+    setReviewDirty(false);
     setNotice('');
     setError('');
 
@@ -98,7 +202,9 @@ export default function LocalAiSyllabusScreen() {
         examDate: examDate.trim(),
         signal: controller.signal,
       });
-      if (!controller.signal.aborted) setPrepared(next);
+      if (controller.signal.aborted) return;
+      setPrepared(next);
+      setReviewTopics(toReviewTopics(next, makeReviewKey));
     } catch (cause) {
       if (!controller.signal.aborted) {
         setError(
@@ -113,14 +219,50 @@ export default function LocalAiSyllabusScreen() {
     }
   }
 
-  async function apply() {
+  function rebuildReviewedImport() {
+    if (!prepared) {
+      throw new Error('Preview the syllabus before reviewing it.');
+    }
+    return prepareReviewedSyllabusImport({
+      workspace: currentWorkspace,
+      examName: prepared.examName,
+      examDate: prepared.examDate,
+      sourceChunkCount: prepared.sourceChunkCount,
+      topics: toReviewedDrafts(reviewTopics),
+    });
+  }
+
+  function validateReview() {
     if (!prepared || busy) return;
+    setBusy('validate');
+    setError('');
+    setNotice('');
+
+    try {
+      const next = rebuildReviewedImport();
+      setPrepared(next);
+      setReviewDirty(false);
+      setNotice('Review validated. MYELIN rebuilt the import from your edited values.');
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'MYELIN could not validate these syllabus edits.',
+      );
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function apply() {
+    if (!prepared || reviewDirty || busy) return;
     setBusy('apply');
     setError('');
     setNotice('');
 
     try {
-      const batch = prepared.prepared;
+      const latest = rebuildReviewedImport();
+      const batch = latest.prepared;
       const applied = applyPreparedAssistantActionBatch(
         currentWorkspace,
         batch,
@@ -128,17 +270,19 @@ export default function LocalAiSyllabusScreen() {
       );
       await commitAssistantWorkspace(applied.nextWorkspace, batch.sourceRevision);
       setPrepared(null);
+      setReviewTopics([]);
+      setReviewDirty(false);
       setSourceText('');
       setExamName('');
       setExamDate('');
       setNotice(
-        `Imported ${prepared.newTopicCount} new ${prepared.newTopicCount === 1 ? 'topic' : 'topics'} and created ${prepared.examName}.`,
+        `Imported ${latest.newTopicCount} new ${latest.newTopicCount === 1 ? 'topic' : 'topics'} and created ${latest.examName}.`,
       );
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : 'MYELIN could not apply this import. Preview it again.',
+          : 'MYELIN could not apply this import. Validate the review again.',
       );
     } finally {
       setBusy('');
@@ -170,7 +314,8 @@ export default function LocalAiSyllabusScreen() {
               </Text>
               <Text style={styles.body}>
                 MYELIN lets the model read the syllabus, then converts the result
-                into a validated preview. Nothing changes until you apply it.
+                into a validated preview. You can correct that preview before
+                anything changes.
               </Text>
             </View>
             <Text style={[styles.badge, available ? styles.ready : styles.blocked]}>
@@ -187,88 +332,113 @@ export default function LocalAiSyllabusScreen() {
             </Pressable>
           ) : (
             <>
-              <View style={styles.formCard}>
-                <Text style={styles.sectionTitle}>EXAM DETAILS</Text>
-                <TextInput
-                  accessibilityLabel="Exam name"
-                  editable={!busy}
-                  maxLength={200}
-                  value={examName}
-                  onChangeText={(value) => {
-                    setExamName(value);
-                    resetPreview();
-                  }}
-                  placeholder="Example: Half Yearly"
-                  placeholderTextColor={colors.subtle}
-                  style={styles.singleInput}
-                />
-                <TextInput
-                  accessibilityLabel="Exam date"
-                  editable={!busy}
-                  value={examDate}
-                  onChangeText={(value) => {
-                    setExamDate(value);
-                    resetPreview();
-                  }}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.subtle}
-                  autoCapitalize="none"
-                  style={styles.singleInput}
-                />
+              {!prepared ? (
+                <View style={styles.formCard}>
+                  <Text style={styles.sectionTitle}>EXAM DETAILS</Text>
+                  <TextInput
+                    accessibilityLabel="Exam name"
+                    editable={!busy}
+                    maxLength={200}
+                    value={examName}
+                    onChangeText={(value) => {
+                      setExamName(value);
+                      setNotice('');
+                      setError('');
+                    }}
+                    placeholder="Example: Half Yearly"
+                    placeholderTextColor={colors.subtle}
+                    style={styles.singleInput}
+                  />
+                  <TextInput
+                    accessibilityLabel="Exam date"
+                    editable={!busy}
+                    value={examDate}
+                    onChangeText={(value) => {
+                      setExamDate(value);
+                      setNotice('');
+                      setError('');
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={colors.subtle}
+                    autoCapitalize="none"
+                    style={styles.singleInput}
+                  />
 
-                <Text style={[styles.sectionTitle, styles.sourceTitle]}>SYLLABUS TEXT</Text>
-                <TextInput
-                  accessibilityLabel="Syllabus text"
-                  multiline
-                  editable={!busy}
-                  maxLength={24000}
-                  value={sourceText}
-                  onChangeText={(value) => {
-                    setSourceText(value);
-                    resetPreview();
-                  }}
-                  placeholder={'Paste the syllabus text here.\n\nExample:\nMathematics\nReal Numbers\nPolynomials'}
-                  placeholderTextColor={colors.subtle}
-                  style={styles.sourceInput}
-                  textAlignVertical="top"
-                />
-                <View style={styles.formFooter}>
-                  <Text style={styles.counter}>{sourceText.length.toLocaleString()}/24,000</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={!canPrepare}
-                    onPress={() => void prepare()}
-                    style={({ pressed }) => [
-                      styles.prepareButton,
-                      !canPrepare && styles.disabled,
-                      pressed && canPrepare && styles.pressed,
-                    ]}>
-                    <Text style={styles.primaryText}>
-                      {busy === 'prepare' ? 'Reading locally…' : 'Preview import'}
+                  <Text style={[styles.sectionTitle, styles.sourceTitle]}>SYLLABUS TEXT</Text>
+                  <TextInput
+                    accessibilityLabel="Syllabus text"
+                    multiline
+                    editable={!busy}
+                    maxLength={24000}
+                    value={sourceText}
+                    onChangeText={(value) => {
+                      setSourceText(value);
+                      setNotice('');
+                      setError('');
+                    }}
+                    placeholder={'Paste the syllabus text here.\n\nExample:\nMathematics\nReal Numbers\nPolynomials'}
+                    placeholderTextColor={colors.subtle}
+                    style={styles.sourceInput}
+                    textAlignVertical="top"
+                  />
+                  <View style={styles.formFooter}>
+                    <Text style={styles.counter}>
+                      {sourceText.length.toLocaleString()}/24,000
                     </Text>
-                  </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={!canPrepare}
+                      onPress={() => void prepare()}
+                      style={({ pressed }) => [
+                        styles.prepareButton,
+                        !canPrepare && styles.disabled,
+                        pressed && canPrepare && styles.pressed,
+                      ]}>
+                      <Text style={styles.primaryText}>
+                        {busy === 'prepare' ? 'Reading locally…' : 'Preview import'}
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
-
-              {prepared ? (
+              ) : (
                 <View style={styles.previewCard} testID="syllabus-import-preview">
                   <View style={styles.previewTop}>
                     <View style={styles.grow}>
-                      <Text style={styles.previewKicker}>REVIEW BEFORE APPLYING</Text>
+                      <Text style={styles.previewKicker}>EDITABLE REVIEW</Text>
                       <Text style={styles.previewTitle}>{prepared.examName}</Text>
                       <Text style={styles.body}>{prepared.examDate}</Text>
                     </View>
-                    <Text style={styles.previewBadge}>PREVIEW</Text>
+                    <Text
+                      style={[
+                        styles.previewBadge,
+                        reviewDirty && styles.previewBadgeDirty,
+                      ]}>
+                      {reviewDirty ? 'EDITED' : 'VALIDATED'}
+                    </Text>
                   </View>
 
                   <View style={styles.stats}>
-                    <Stat label="TOPICS" value={String(prepared.topicCount)} />
-                    <Stat label="NEW" value={String(prepared.newTopicCount)} />
-                    <Stat label="REUSED" value={String(prepared.existingTopicCount)} />
+                    <Stat label="TOPICS" value={String(reviewTopics.length)} />
+                    <Stat
+                      label="NEW"
+                      value={reviewDirty ? '—' : String(prepared.newTopicCount)}
+                    />
+                    <Stat
+                      label="REUSED"
+                      value={reviewDirty ? '—' : String(prepared.existingTopicCount)}
+                    />
                     <Stat label="CHUNKS" value={String(prepared.sourceChunkCount)} />
                   </View>
 
-                  {prepared.warnings.length ? (
+                  {reviewDirty ? (
+                    <View style={styles.dirtyBox}>
+                      <Text style={styles.dirtyTitle}>CHANGES NEED VALIDATION</Text>
+                      <Text style={styles.dirtyText}>
+                        MYELIN will rebuild the proposed topics and exam from these
+                        fields before Apply is enabled.
+                      </Text>
+                    </View>
+                  ) : prepared.warnings.length ? (
                     <View style={styles.warningBox}>
                       <Text style={styles.warningTitle}>CHECK THESE FIRST</Text>
                       {prepared.warnings.map((warning) => (
@@ -280,37 +450,124 @@ export default function LocalAiSyllabusScreen() {
                     </View>
                   ) : null}
 
+                  <View style={styles.reviewIntro}>
+                    <Text style={styles.sectionTitle}>REVIEW TOPICS</Text>
+                    <Text style={styles.reviewIntroText}>
+                      Fix model mistakes here. Subject changes apply per topic, so
+                      one misplaced topic can move without changing the rest.
+                    </Text>
+                  </View>
+
                   <View style={styles.subjects}>
-                    {prepared.subjects.map((subject) => (
-                      <View key={subject.name} style={styles.subjectCard}>
-                        <Text style={styles.subjectName}>{subject.name}</Text>
-                        {subject.topics.map((topic) => (
-                          <View key={topic.name} style={styles.topicRow}>
-                            <View style={styles.topicDot} />
-                            <View style={styles.grow}>
-                              <Text style={styles.topicName}>{topic.name}</Text>
-                              <Text style={styles.topicMeta}>
-                                {topic.estimatedMinutes
-                                  ? `${topic.estimatedMinutes}m`
-                                  : '45m default'}
-                                {' · '}
-                                {topic.priority ? `priority ${topic.priority}` : 'normal priority'}
-                                {' · '}
-                                {topic.status ?? 'new'}
-                              </Text>
-                            </View>
+                    {reviewTopics.map((topic, index) => (
+                      <View key={topic.key} style={styles.topicEditor}>
+                        <View style={styles.topicEditorTop}>
+                          <Text style={styles.topicNumber}>TOPIC {index + 1}</Text>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove ${topic.name || `topic ${index + 1}`}`}
+                            disabled={Boolean(busy)}
+                            onPress={() => removeReviewTopic(topic.key)}
+                            style={({ pressed }) => [
+                              styles.removeButton,
+                              pressed && !busy && styles.pressed,
+                            ]}>
+                            <Text style={styles.removeText}>Remove</Text>
+                          </Pressable>
+                        </View>
+
+                        <Text style={styles.fieldLabel}>SUBJECT</Text>
+                        <TextInput
+                          accessibilityLabel={`Subject for topic ${index + 1}`}
+                          editable={!busy}
+                          maxLength={120}
+                          value={topic.subject}
+                          onChangeText={(value) =>
+                            editReviewTopic(topic.key, { subject: value })
+                          }
+                          placeholder="Subject"
+                          placeholderTextColor={colors.subtle}
+                          style={styles.reviewInput}
+                        />
+
+                        <Text style={styles.fieldLabel}>TOPIC NAME</Text>
+                        <TextInput
+                          accessibilityLabel={`Topic name ${index + 1}`}
+                          editable={!busy}
+                          maxLength={300}
+                          value={topic.name}
+                          onChangeText={(value) =>
+                            editReviewTopic(topic.key, { name: value })
+                          }
+                          placeholder="Topic name"
+                          placeholderTextColor={colors.subtle}
+                          style={styles.reviewInput}
+                        />
+
+                        <View style={styles.compactFieldRow}>
+                          <View style={styles.minutesField}>
+                            <Text style={styles.fieldLabel}>MINUTES</Text>
+                            <TextInput
+                              accessibilityLabel={`Estimated minutes for ${topic.name || `topic ${index + 1}`}`}
+                              editable={!busy}
+                              keyboardType="number-pad"
+                              maxLength={3}
+                              value={topic.minutes}
+                              onChangeText={(value) =>
+                                editReviewTopic(topic.key, { minutes: value })
+                              }
+                              placeholder="45 auto"
+                              placeholderTextColor={colors.subtle}
+                              style={styles.reviewInput}
+                            />
                           </View>
-                        ))}
+                          <View style={styles.compactHint}>
+                            <Text style={styles.compactHintTitle}>Allowed</Text>
+                            <Text style={styles.compactHintText}>5–240m · blank = 45m</Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.fieldLabel}>PRIORITY</Text>
+                        <ChoiceRow
+                          items={PRIORITIES}
+                          value={topic.priority}
+                          disabled={Boolean(busy)}
+                          onChange={(value) =>
+                            editReviewTopic(topic.key, { priority: value })
+                          }
+                        />
+
+                        <Text style={styles.fieldLabel}>STATUS</Text>
+                        <ChoiceRow
+                          items={STATUSES}
+                          value={topic.status}
+                          disabled={Boolean(busy)}
+                          onChange={(value) =>
+                            editReviewTopic(topic.key, { status: value })
+                          }
+                        />
                       </View>
                     ))}
                   </View>
 
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={Boolean(busy)}
+                    onPress={addReviewTopic}
+                    style={({ pressed }) => [
+                      styles.addTopicButton,
+                      pressed && !busy && styles.pressed,
+                    ]}>
+                    <Text style={styles.addTopicText}>+ Add missing topic</Text>
+                  </Pressable>
+
                   <View style={styles.guardrail}>
-                    <Text style={styles.guardrailTitle}>Safe import</Text>
+                    <Text style={styles.guardrailTitle}>MYELIN rebuilds after edits</Text>
                     <Text style={styles.body}>
-                      Existing topics are reused without overwriting your notes,
-                      status, priority or estimates. The exam and new topics are
-                      applied only after this confirmation.
+                      Your fields are not written directly to storage. They are
+                      normalized, checked for duplicates and limits, converted into
+                      a fresh action batch, then passed through the same confirmation
+                      boundary as the original AI extraction.
                     </Text>
                   </View>
 
@@ -323,39 +580,100 @@ export default function LocalAiSyllabusScreen() {
                         styles.secondaryButton,
                         pressed && !busy && styles.pressed,
                       ]}>
-                      <Text style={styles.secondaryText}>Edit import</Text>
+                      <Text style={styles.secondaryText}>Edit source</Text>
                     </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Apply syllabus import"
-                      disabled={Boolean(busy)}
-                      onPress={() => void apply()}
-                      style={({ pressed }) => [
-                        styles.primaryButton,
-                        Boolean(busy) && styles.disabled,
-                        pressed && !busy && styles.pressed,
-                      ]}>
-                      <Text style={styles.primaryText}>
-                        {busy === 'apply' ? 'Applying…' : 'Apply import'}
-                      </Text>
-                    </Pressable>
+
+                    {reviewDirty ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={Boolean(busy)}
+                        onPress={validateReview}
+                        style={({ pressed }) => [
+                          styles.primaryButton,
+                          Boolean(busy) && styles.disabled,
+                          pressed && !busy && styles.pressed,
+                        ]}>
+                        <Text style={styles.primaryText}>
+                          {busy === 'validate' ? 'Validating…' : 'Validate changes'}
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Apply reviewed syllabus import"
+                        disabled={Boolean(busy)}
+                        onPress={() => void apply()}
+                        style={({ pressed }) => [
+                          styles.primaryButton,
+                          Boolean(busy) && styles.disabled,
+                          pressed && !busy && styles.pressed,
+                        ]}>
+                        <Text style={styles.primaryText}>
+                          {busy === 'apply' ? 'Applying…' : 'Apply import'}
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
                 </View>
-              ) : null}
+              )}
             </>
           )}
 
           {notice ? (
-            <Text accessibilityLiveRegion="polite" style={styles.success}>{notice}</Text>
+            <Text accessibilityLiveRegion="polite" style={styles.success}>
+              {notice}
+            </Text>
           ) : null}
           {error ? (
-            <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text>
+            <Text accessibilityLiveRegion="polite" style={styles.error}>
+              {error}
+            </Text>
           ) : null}
           {!error && modelError ? <Text style={styles.error}>{modelError}</Text> : null}
           {!notice && modelMessage ? <Text style={styles.muted}>{modelMessage}</Text> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function ChoiceRow<T extends string | number | null>({
+  items,
+  value,
+  disabled,
+  onChange,
+}: {
+  items: Array<{ label: string; value: T }>;
+  value: T;
+  disabled: boolean;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.choiceRow}>
+      {items.map((item) => {
+        const active = item.value === value;
+        return (
+          <Pressable
+            key={item.label}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active, disabled }}
+            disabled={disabled}
+            onPress={() => onChange(item.value)}
+            style={({ pressed }) => [
+              styles.choice,
+              active && styles.choiceActive,
+              pressed && !disabled && styles.pressed,
+            ]}>
+            <Text style={[styles.choiceText, active && styles.choiceTextActive]}>
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
 
@@ -393,8 +711,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
   },
-  kicker: { color: colors.subtle, fontSize: 9.5, fontWeight: '900', letterSpacing: 0.55 },
-  statusTitle: { color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: '800', marginTop: 4 },
+  kicker: {
+    color: colors.subtle,
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.55,
+  },
+  statusTitle: {
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '800',
+    marginTop: 4,
+  },
   body: { color: colors.muted, fontSize: 11.5, lineHeight: 17, marginTop: 4 },
   badge: {
     borderRadius: radius.pill,
@@ -414,7 +743,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panel,
     padding: spacing.md,
   },
-  sectionTitle: { color: colors.subtle, fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 0.65 },
+  sectionTitle: {
+    color: colors.subtle,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '900',
+    letterSpacing: 0.65,
+  },
   sourceTitle: { marginTop: 15 },
   singleInput: {
     minHeight: layout.minTouch,
@@ -441,7 +776,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
   },
-  formFooter: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  formFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
   counter: { flex: 1, color: colors.subtle, fontSize: 10.5 },
   prepareButton: {
     minWidth: 132,
@@ -460,11 +800,22 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   previewTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  previewKicker: { color: colors.accent, fontSize: 9.5, fontWeight: '900', letterSpacing: 0.55 },
-  previewTitle: { color: colors.text, fontSize: 19, lineHeight: 24, fontWeight: '900', marginTop: 4 },
-  previewBadge: {
+  previewKicker: {
     color: colors.accent,
-    backgroundColor: colors.accentSoft,
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.55,
+  },
+  previewTitle: {
+    color: colors.text,
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  previewBadge: {
+    color: colors.success,
+    backgroundColor: 'rgba(116,201,152,0.10)',
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 5,
@@ -472,10 +823,53 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.45,
   },
+  previewBadgeDirty: {
+    color: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
   stats: { flexDirection: 'row', gap: 7, marginTop: 13 },
-  stat: { flex: 1, minHeight: 57, borderRadius: radius.sm, backgroundColor: colors.bg, padding: 8, justifyContent: 'space-between' },
-  statLabel: { color: colors.subtle, fontSize: 8.5, lineHeight: 11, fontWeight: '900', letterSpacing: 0.4 },
-  statValue: { color: colors.text, fontSize: 16, lineHeight: 20, fontWeight: '900' },
+  stat: {
+    flex: 1,
+    minHeight: 57,
+    borderRadius: radius.sm,
+    backgroundColor: colors.bg,
+    padding: 8,
+    justifyContent: 'space-between',
+  },
+  statLabel: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  statValue: {
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '900',
+  },
+  dirtyBox: {
+    marginTop: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(255,128,91,0.20)',
+    padding: 10,
+  },
+  dirtyTitle: {
+    color: colors.accent,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+  },
+  dirtyText: {
+    color: colors.textDim,
+    fontSize: 10.5,
+    lineHeight: 16,
+    marginTop: 4,
+  },
   warningBox: {
     marginTop: 12,
     borderRadius: radius.md,
@@ -484,25 +878,136 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,165,150,0.16)',
     padding: 10,
   },
-  warningTitle: { color: colors.danger, fontSize: 9, lineHeight: 12, fontWeight: '900', letterSpacing: 0.45 },
+  warningTitle: {
+    color: colors.danger,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+  },
   warningRow: { flexDirection: 'row', gap: 7, marginTop: 6 },
   warningDot: { color: colors.danger, fontSize: 12, lineHeight: 16 },
   warningText: { flex: 1, color: colors.textDim, fontSize: 10.5, lineHeight: 16 },
-  subjects: { marginTop: 12, gap: 8 },
-  subjectCard: {
+  reviewIntro: { marginTop: 14 },
+  reviewIntroText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4 },
+  subjects: { marginTop: 9, gap: 9 },
+  topicEditor: {
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.bg,
-    padding: 10,
+    padding: 11,
   },
-  subjectName: { color: colors.text, fontSize: 12.5, lineHeight: 17, fontWeight: '900' },
-  topicRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 8 },
-  topicDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.accent, marginTop: 6 },
-  topicName: { color: colors.textDim, fontSize: 11, lineHeight: 16, fontWeight: '700' },
-  topicMeta: { color: colors.subtle, fontSize: 9.5, lineHeight: 14, marginTop: 1 },
-  guardrail: { marginTop: 12, borderRadius: radius.md, backgroundColor: colors.bg, padding: 11 },
-  guardrailTitle: { color: colors.text, fontSize: 11.5, lineHeight: 16, fontWeight: '900' },
+  topicEditorTop: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  topicNumber: {
+    color: colors.accent,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  removeButton: {
+    minHeight: 28,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,165,150,0.20)',
+    paddingHorizontal: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeText: { color: colors.danger, fontSize: 9.5, lineHeight: 13, fontWeight: '800' },
+  fieldLabel: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.45,
+    marginTop: 9,
+  },
+  reviewInput: {
+    minHeight: 42,
+    marginTop: 5,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel,
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 17,
+    paddingHorizontal: 10,
+  },
+  compactFieldRow: {
+    flexDirection: 'row',
+    gap: 9,
+    alignItems: 'flex-end',
+  },
+  minutesField: { flex: 1 },
+  compactHint: {
+    flex: 1,
+    minHeight: 42,
+    marginTop: 5,
+    justifyContent: 'center',
+  },
+  compactHintTitle: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '800',
+  },
+  compactHintText: { color: colors.muted, fontSize: 9.5, lineHeight: 14, marginTop: 2 },
+  choiceRow: { gap: 6, paddingTop: 6, paddingRight: 4 },
+  choice: {
+    minHeight: 34,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceActive: {
+    borderColor: 'rgba(255,128,91,0.36)',
+    backgroundColor: colors.accentSoft,
+  },
+  choiceText: {
+    color: colors.muted,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  choiceTextActive: { color: colors.accent },
+  addTopicButton: {
+    minHeight: layout.minTouch,
+    marginTop: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,128,91,0.28)',
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  addTopicText: { color: colors.accent, fontSize: 11.5, lineHeight: 16, fontWeight: '800' },
+  guardrail: {
+    marginTop: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    padding: 11,
+  },
+  guardrailTitle: {
+    color: colors.text,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '900',
+  },
   actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   primaryButton: {
     flex: 1,

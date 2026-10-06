@@ -1,4 +1,5 @@
 import {
+  StudyTaskPlanState,
   WorkspaceState,
   cloneWorkspace,
 } from '@/src/data/schema';
@@ -43,7 +44,47 @@ export type AutopilotRecoveryOption =
       topicId: string;
       topicName: string;
       effect: AutopilotRecoveryEffect;
+    }
+  | {
+      id: string;
+      kind: 'split-topic';
+      title: string;
+      detail: string;
+      topicId: string;
+      topicName: string;
+      targetBlockMinutes: number;
+      effect: AutopilotRecoveryEffect;
     };
+
+export type AutopilotRecoveryUndo =
+  | {
+      kind: 'defer-task';
+      taskId: string;
+      previous: {
+        planState: StudyTaskPlanState;
+        scheduledStart: number;
+        scheduledEnd: number;
+        postponedUntil: number;
+        postponements: number | null;
+        lastPostponedAt: number | null;
+        updatedAt: number;
+      };
+    }
+  | {
+      kind: 'reduce-exam-scope';
+      examId: string;
+      topicId: string;
+      previousIndex: number;
+    }
+  | {
+      kind: 'split-topic';
+      topicId: string;
+      previousPreferredBlockMinutes: number | null;
+    };
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
 
 function unallocated(plan: JointExamPreparationPlan) {
   return (
@@ -255,6 +296,96 @@ function scopeRecoveryOptions(
   return options;
 }
 
+function splitTopicRecoveryOptions(
+  workspace: WorkspaceState,
+  before: JointExamPreparationPlan,
+  now: number,
+  brokenDeadline: number,
+) {
+  const configuredFocus = clamp(
+    Math.round(workspace.settings.focusMinutes || 45),
+    10,
+    90,
+  );
+  const targetBlockMinutes = clamp(
+    Math.round(configuredFocus * 0.55),
+    10,
+    Math.min(25, configuredFocus),
+  );
+
+  const options: AutopilotRecoveryOption[] = [];
+  const seen = new Set<string>();
+
+  const demands = before.workloadLedger.demands
+    .filter(
+      (demand) =>
+        demand.source === 'exam-preparation' &&
+        demand.topicId &&
+        demand.deadlineAt <= brokenDeadline &&
+        demand.requiredMinutes >= Math.max(40, targetBlockMinutes * 2),
+    )
+    .sort(
+      (a, b) =>
+        b.requiredMinutes - a.requiredMinutes ||
+        b.priority - a.priority ||
+        a.label.localeCompare(b.label),
+    );
+
+  for (const demand of demands) {
+    const topic = workspace.topics.find(
+      (item) => item.id === demand.topicId,
+    );
+    if (!topic || seen.has(topic.id)) continue;
+    seen.add(topic.id);
+
+    const currentCap =
+      topic.preferredBlockMinutes ?? configuredFocus;
+    if (currentCap <= targetBlockMinutes) continue;
+
+    const preview = cloneWorkspace(workspace);
+    const target = preview.topics.find(
+      (item) => item.id === topic.id,
+    );
+    if (!target) continue;
+    target.preferredBlockMinutes = targetBlockMinutes;
+
+    const after = buildJointExamPreparationPlan(preview, now, {
+      maxDays: 120,
+    });
+
+    options.push({
+      id: `split-topic:${topic.id}:${targetBlockMinutes}`,
+      kind: 'split-topic',
+      title: `Split ${topic.name} into ~${targetBlockMinutes}m blocks`,
+      detail:
+        'This keeps the same exam scope and total workload. It only caps future blocks so heavy work is spread into smaller sessions and can interleave with other topics.',
+      topicId: topic.id,
+      topicName: topic.name,
+      targetBlockMinutes,
+      effect: effect(before, after),
+    });
+
+    if (options.length >= 3) break;
+  }
+
+  return options;
+}
+
+function reliefSort(
+  a: AutopilotRecoveryOption,
+  b: AutopilotRecoveryOption,
+) {
+  return (
+    Number(b.effect.feasibleAfter) -
+      Number(a.effect.feasibleAfter) ||
+    b.effect.overloadReducedMinutes -
+      a.effect.overloadReducedMinutes ||
+    b.effect.unallocatedReducedMinutes -
+      a.effect.unallocatedReducedMinutes ||
+    a.title.localeCompare(b.title)
+  );
+}
+
 export function buildAutopilotRecoveryOptions(
   workspace: WorkspaceState,
   now = Date.now(),
@@ -278,7 +409,8 @@ export function buildAutopilotRecoveryOptions(
     return [] as AutopilotRecoveryOption[];
   }
 
-  const candidates = [
+  const safeLimit = Math.max(1, Math.min(4, limit));
+  const relief = [
     ...taskRecoveryOptions(
       workspace,
       before,
@@ -291,50 +423,148 @@ export function buildAutopilotRecoveryOptions(
       now,
       brokenDeadline,
     ),
-  ];
+  ].sort(reliefSort);
+  const split = splitTopicRecoveryOptions(
+    workspace,
+    before,
+    now,
+    brokenDeadline,
+  )[0];
 
-  return candidates
-    .sort(
-      (a, b) =>
-        Number(b.effect.feasibleAfter) -
-          Number(a.effect.feasibleAfter) ||
-        b.effect.overloadReducedMinutes -
-          a.effect.overloadReducedMinutes ||
-        b.effect.unallocatedReducedMinutes -
-          a.effect.unallocatedReducedMinutes ||
-        a.title.localeCompare(b.title),
-    )
-    .slice(0, Math.max(1, Math.min(4, limit)));
+  if (!split) return relief.slice(0, safeLimit);
+  if (safeLimit === 1) return relief.length ? [relief[0]!] : [split];
+
+  return [
+    ...relief.slice(0, safeLimit - 1),
+    split,
+  ];
 }
 
 export function applyAutopilotRecoveryOption(
   workspace: WorkspaceState,
   option: AutopilotRecoveryOption,
   now = Date.now(),
-) {
+): AutopilotRecoveryUndo | null {
   if (option.kind === 'defer-task') {
     const task = workspace.tasks.find(
       (item) => item.id === option.taskId,
     );
-    if (!task || task.status !== 'open' || task.priority >= 3) return false;
+    if (!task || task.status !== 'open' || task.priority >= 3) return null;
+
+    const undo: AutopilotRecoveryUndo = {
+      kind: 'defer-task',
+      taskId: task.id,
+      previous: {
+        planState: task.planState,
+        scheduledStart: task.scheduledStart,
+        scheduledEnd: task.scheduledEnd,
+        postponedUntil: task.postponedUntil,
+        postponements: task.postponements ?? null,
+        lastPostponedAt: task.lastPostponedAt ?? null,
+        updatedAt: task.updatedAt,
+      },
+    };
     postponeTask(task, option.until, now);
+    return undo;
+  }
+
+  if (option.kind === 'reduce-exam-scope') {
+    const exam = workspace.exams.find(
+      (item) => item.id === option.examId,
+    );
+    if (
+      !exam ||
+      exam.scope !== 'topics' ||
+      exam.topicIds.length <= 1 ||
+      !exam.topicIds.includes(option.topicId)
+    ) {
+      return null;
+    }
+
+    const previousIndex = exam.topicIds.indexOf(option.topicId);
+    exam.topicIds = exam.topicIds.filter(
+      (topicId) => topicId !== option.topicId,
+    );
+    return {
+      kind: 'reduce-exam-scope',
+      examId: exam.id,
+      topicId: option.topicId,
+      previousIndex,
+    };
+  }
+
+  const topic = workspace.topics.find(
+    (item) => item.id === option.topicId,
+  );
+  if (!topic) return null;
+  const previousPreferredBlockMinutes =
+    topic.preferredBlockMinutes ?? null;
+  topic.preferredBlockMinutes = option.targetBlockMinutes;
+  return {
+    kind: 'split-topic',
+    topicId: topic.id,
+    previousPreferredBlockMinutes,
+  };
+}
+
+export function undoAutopilotRecovery(
+  workspace: WorkspaceState,
+  undo: AutopilotRecoveryUndo,
+) {
+  if (undo.kind === 'defer-task') {
+    const task = workspace.tasks.find(
+      (item) => item.id === undo.taskId,
+    );
+    if (!task) return false;
+
+    task.planState = undo.previous.planState;
+    task.scheduledStart = undo.previous.scheduledStart;
+    task.scheduledEnd = undo.previous.scheduledEnd;
+    task.postponedUntil = undo.previous.postponedUntil;
+    task.updatedAt = undo.previous.updatedAt;
+    if (undo.previous.postponements == null) {
+      delete task.postponements;
+    } else {
+      task.postponements = undo.previous.postponements;
+    }
+    if (undo.previous.lastPostponedAt == null) {
+      delete task.lastPostponedAt;
+    } else {
+      task.lastPostponedAt = undo.previous.lastPostponedAt;
+    }
     return true;
   }
 
-  const exam = workspace.exams.find(
-    (item) => item.id === option.examId,
-  );
-  if (
-    !exam ||
-    exam.scope !== 'topics' ||
-    exam.topicIds.length <= 1 ||
-    !exam.topicIds.includes(option.topicId)
-  ) {
-    return false;
+  if (undo.kind === 'reduce-exam-scope') {
+    const exam = workspace.exams.find(
+      (item) => item.id === undo.examId,
+    );
+    if (
+      !exam ||
+      exam.scope !== 'topics' ||
+      exam.topicIds.includes(undo.topicId)
+    ) {
+      return false;
+    }
+
+    const index = clamp(
+      undo.previousIndex,
+      0,
+      exam.topicIds.length,
+    );
+    exam.topicIds.splice(index, 0, undo.topicId);
+    return true;
   }
 
-  exam.topicIds = exam.topicIds.filter(
-    (topicId) => topicId !== option.topicId,
+  const topic = workspace.topics.find(
+    (item) => item.id === undo.topicId,
   );
+  if (!topic) return false;
+  if (undo.previousPreferredBlockMinutes == null) {
+    delete topic.preferredBlockMinutes;
+  } else {
+    topic.preferredBlockMinutes =
+      undo.previousPreferredBlockMinutes;
+  }
   return true;
 }

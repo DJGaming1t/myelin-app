@@ -137,6 +137,11 @@ const singleBad = buildTopicFeedbackProfile(adaptiveTopicWorkspace, adaptiveTopi
 assert.equal(singleBad.evidenceCount, 1);
 assert.equal(singleBad.priorityBoost, 0, 'One bad result must not overreact the planner.');
 assert.equal(singleBad.blockMultiplier, 1);
+assert.equal(
+  buildTopicAdaptationInsight(adaptiveTopicWorkspace, adaptiveTopic.id, now),
+  null,
+  'One bad result must not create a visible MYELIN learned claim.',
+);
 
 adaptiveTopicWorkspace.history.unshift({
   id: 'hard-focus',
@@ -151,11 +156,6 @@ adaptiveTopicWorkspace.history.unshift({
   confidence: 'partial',
   plannedMinutes: 25,
 });
-assert.equal(
-  buildTopicAdaptationInsight(adaptiveTopicWorkspace, adaptiveTopic.id, now),
-  null,
-  'One bad result must not create a visible MYELIN learned claim.',
-);
 
 const adapted = buildTopicFeedbackProfile(adaptiveTopicWorkspace, adaptiveTopic.id, now);
 assert.ok(adapted.priorityBoost > 0);

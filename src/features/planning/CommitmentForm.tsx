@@ -15,7 +15,7 @@ import {
 
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
-import { CommitmentKind } from '@/src/data/schema';
+import { CommitmentKind, WorkspaceState } from '@/src/data/schema';
 import {
   buildAutopilotReflowSummary,
   serializeAutopilotReflow,
@@ -100,7 +100,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
 
   if (!workspace) return null;
 
-  function returnToDayMapWithReflow(nextWorkspace: typeof workspace) {
+  function returnToDayMapWithReflow(nextWorkspace: WorkspaceState) {
     const summary = buildAutopilotReflowSummary(
       workspace,
       nextWorkspace,

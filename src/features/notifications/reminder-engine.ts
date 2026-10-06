@@ -2,6 +2,7 @@ import { freeStudyWindows } from '@/src/features/planning/day-engine';
 import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
 import { WorkspaceState } from '@/src/data/schema';
 import { examCalendarDaysUntil } from '@/src/features/exams/exam-engine';
+import { buildAppliedReclaimedWindows } from '@/src/features/exams/autopilot-recovery';
 import { isCardReady } from '@/src/features/review/review-engine';
 
 export type ReminderVoice = 'calm' | 'signal' | 'spark';
@@ -23,6 +24,14 @@ export type ReminderSettings = {
   quietStartMinutes: number;
   quietEndMinutes: number;
   examOffsets: number[];
+};
+
+export type ReminderPlanContext = {
+  activeFocus?: {
+    topicId?: string | null;
+    startedAt?: number | null;
+    unavailableUntil: number;
+  } | null;
 };
 
 export type PlannedReminder = {
@@ -639,6 +648,100 @@ function buildExamReminders(
   return reminders;
 }
 
+function buildRecoveredWindowReminders(
+  workspace: WorkspaceState,
+  settings: ReminderSettings,
+  now: number,
+  context: ReminderPlanContext,
+) {
+  if (!settings.studyBlockEnabled) return [] as PlannedReminder[];
+
+  const activeFocus = context.activeFocus ?? null;
+  const windows = buildAppliedReclaimedWindows(
+    workspace,
+    now,
+    {
+      horizonDays: REVIEW_HORIZON_DAYS,
+      protectionLeadMinutes: settings.studyLeadMinutes,
+    },
+  );
+  const reminders: PlannedReminder[] = [];
+
+  for (const window of windows) {
+    for (const placement of window.placements) {
+      if (
+        placement.start <= now + 60_000 ||
+        placement.end <= now ||
+        placement.start > addLocalDays(now, REVIEW_HORIZON_DAYS)
+      ) {
+        continue;
+      }
+
+      const activeFocusOverlaps =
+        activeFocus &&
+        activeFocus.unavailableUntil > placement.start &&
+        !(
+          activeFocus.topicId === placement.topicId &&
+          activeFocus.startedAt != null &&
+          activeFocus.startedAt >= placement.start - 5 * 60_000 &&
+          activeFocus.startedAt < placement.end
+        );
+      if (activeFocusOverlaps) continue;
+
+      let at =
+        placement.start -
+        settings.studyLeadMinutes * 60_000;
+      if (at <= now + 60_000) continue;
+
+      const shifted = moveOutOfQuietHours(
+        at,
+        settings.quietStartMinutes,
+        settings.quietEndMinutes,
+      );
+      if (shifted >= placement.start) continue;
+      at = shifted;
+
+      const copy = studyReminderCopy(
+        settings,
+        placement.topicName,
+        placement.subject,
+        placement.minutes,
+      );
+
+      reminders.push({
+        key:
+          'recovered:' +
+          window.commitmentId +
+          ':' +
+          window.occurrenceDateKey +
+          ':' +
+          placement.topicId +
+          ':' +
+          placement.start,
+        kind: 'study',
+        at,
+        title: copy.title,
+        body:
+          settings.detail === 'brief'
+            ? copy.body
+            : `Recovered window · ${copy.body}`,
+        href: '/(app)/today/day-map',
+        accent: copy.accent,
+        data: {
+          recovered: 1,
+          commitmentId: window.commitmentId,
+          occurrenceDateKey: window.occurrenceDateKey,
+          topicId: placement.topicId,
+          scheduledStart: placement.start,
+          scheduledEnd: placement.end,
+        },
+      });
+    }
+  }
+
+  return reminders;
+}
+
 function buildStudyBlockReminders(
   workspace: WorkspaceState,
   settings: ReminderSettings,
@@ -780,6 +883,7 @@ export function buildReminderPlan(
   workspace: WorkspaceState,
   settingsInput: ReminderSettings,
   now = Date.now(),
+  context: ReminderPlanContext = {},
 ) {
   const settings = normalizeReminderSettings(settingsInput);
   if (!settings.enabled) return [] as PlannedReminder[];
@@ -788,6 +892,12 @@ export function buildReminderPlan(
     ...buildReviewReminders(workspace, settings, now),
     ...buildExamReminders(workspace, settings, now),
     ...buildStudyBlockReminders(workspace, settings, now),
+    ...buildRecoveredWindowReminders(
+      workspace,
+      settings,
+      now,
+      context,
+    ),
   ], workspace, settings, now));
 }
 

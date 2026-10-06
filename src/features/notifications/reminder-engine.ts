@@ -850,7 +850,10 @@ function adaptReminders(plan: PlannedReminder[], workspace: WorkspaceState, sett
     const sleeping = sleepingAt(workspace.settings, at);
     if (sleeping) at = moveOutOfQuietHours(sleeping.end, settings.quietStartMinutes, settings.quietEndMinutes);
     if (sleepingAt(workspace.settings, at)) return [];
-    if (settings.adaptive !== false) {
+    const recoveredStudy =
+      reminder.kind === 'study' &&
+      reminder.data.recovered === 1;
+    if (settings.adaptive !== false && !recoveredStudy) {
       const earliest = Math.max(now + 60001, at);
       const needed = reminder.kind === 'study' ? 1 : 10;
       const windows = freeStudyWindows(workspace, at, { from: earliest, minMinutes: needed });

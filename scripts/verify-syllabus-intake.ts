@@ -265,6 +265,44 @@ async function main() {
 
   {
     const workspace = createEmptyWorkspace(now);
+    const reviewed = prepareReviewedSyllabusImport({
+      workspace,
+      examName: 'November Test',
+      examDate: '2025-11-01',
+      now,
+      topics: [
+        {
+          subject: 'Mathematics',
+          name: 'Quadratic Equations',
+          estimatedMinutes: 120,
+          priority: 3,
+          status: 'learning',
+        },
+        {
+          subject: 'Science',
+          name: 'Light',
+          estimatedMinutes: 90,
+          priority: 2,
+          status: 'new',
+        },
+      ],
+    });
+
+    assert.equal(reviewed.autopilotPlan.exams.length, 1);
+    assert.equal(reviewed.autopilotPlan.exams[0]!.examName, 'November Test');
+    assert.equal(reviewed.autopilotPlan.uniqueTopicCount, 2);
+    assert.ok(reviewed.autopilotPlan.totalPreparationRequiredMinutes > 0);
+    assert.ok(reviewed.autopilotPlan.feasibility.totalRequiredMinutes > 0);
+    assert.ok(reviewed.autopilotPlan.capacityProfile.sustainableDailyMinutes > 0);
+    assert.ok(
+      reviewed.autopilotPlan.days.some((day) => day.blocks.length > 0),
+      'Autopilot should produce at least one concrete preparation block.',
+    );
+    assert.equal(workspace.exams.length, 0, 'Autopilot preview must not mutate source workspace.');
+  }
+
+  {
+    const workspace = createEmptyWorkspace(now);
     workspace.exams.push({
       id: 'existing-exam',
       name: 'Boards',
@@ -355,6 +393,7 @@ async function main() {
   console.log('✓ syllabus import produces only a previewed create-topic/create-exam action batch');
   console.log('✓ reviewed syllabus edits rebuild a fresh validated action batch');
   console.log('✓ reviewed duplicates and empty imports are rejected before mutation');
+  console.log('✓ reviewed imports immediately calculate deterministic Mileage/Autopilot feasibility');
   console.log('✓ duplicate exams and malformed model output fail before workspace mutation');
 }
 

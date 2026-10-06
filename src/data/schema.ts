@@ -99,6 +99,7 @@ export type Topic = {
   lastGrade: ReviewGrade;
   lastReviewed: number;
   snoozeUntil: number;
+  preferredBlockMinutes?: number;
   postponements?: number;
   cards: RecallQuestion[];
 };

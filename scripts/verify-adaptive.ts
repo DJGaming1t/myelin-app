@@ -9,6 +9,7 @@ import { DAY_MS, nextMemory, retrievability } from '../src/features/adaptive/mem
 import { sleepingAt, sleepWindows, parseClock } from '../src/features/adaptive/sleep-engine';
 import { neuralEvidence, learningInsights } from '../src/features/adaptive/insight-engine';
 import { launchVariant, outcomeSnapshot, recordFocusOutcome } from '../src/features/adaptive/outcome-engine';
+import { buildTopicFeedbackProfile } from '../src/features/adaptive/topic-feedback';
 import { createFocusSession } from '../src/features/focus/focus-engine';
 import { freeStudyWindows, suggestTaskSlots, rebuildRemainingDay } from '../src/features/planning/day-engine';
 import { buildTodayPlan } from '../src/features/today/planner';
@@ -106,6 +107,54 @@ assert.equal(backup.focusOutcomes!.length, 2);
 assert.equal(mergeWorkspaces(backup, backup).workspace.focusOutcomes!.length, 2);
 assert.throws(() => migrateAndValidateWorkspace({ ...w, topics: [{ ...t, cards: [{ ...card, memory: { ...card.memory, stability: NaN } }] }] }));
 console.log('✓ confidence actions, delayed retention, permanent earned evidence, backup/import and invalid data rejection');
+
+const adaptiveTopicWorkspace = createEmptyWorkspace(now);
+const adaptiveTopic = createTopic(
+  { name: 'Quadratics', subject: 'Mathematics', status: 'learning', priority: 2, estimate: 60, notes: '' },
+  now,
+  'adaptive-topic',
+);
+adaptiveTopicWorkspace.topics = [adaptiveTopic];
+adaptiveTopicWorkspace.history = [
+  {
+    id: 'single-bad-review',
+    topicId: adaptiveTopic.id,
+    at: now - 1000,
+    kind: 'review',
+    minutes: 2,
+    grade: 1,
+    effort: 3,
+    prompt: 'x',
+    response: 'y',
+    confidence: 'unsure',
+  },
+];
+const singleBad = buildTopicFeedbackProfile(adaptiveTopicWorkspace, adaptiveTopic.id, now);
+assert.equal(singleBad.evidenceCount, 1);
+assert.equal(singleBad.priorityBoost, 0, 'One bad result must not overreact the planner.');
+assert.equal(singleBad.blockMultiplier, 1);
+
+adaptiveTopicWorkspace.history.unshift({
+  id: 'hard-focus',
+  topicId: adaptiveTopic.id,
+  at: now - 60_000,
+  kind: 'study',
+  minutes: 35,
+  grade: 0,
+  effort: 5,
+  prompt: '',
+  response: '',
+  confidence: 'partial',
+  plannedMinutes: 25,
+});
+const adapted = buildTopicFeedbackProfile(adaptiveTopicWorkspace, adaptiveTopic.id, now);
+assert.ok(adapted.priorityBoost > 0);
+assert.ok(adapted.blockMultiplier < 1, 'Repeated difficulty should shorten the next focus block.');
+assert.ok(adapted.workloadMultiplier > 1, 'Repeated difficulty should increase remaining workload.');
+assert.equal(adapted.difficulty, 3);
+assert.ok(adapted.reasons.includes('recent focus felt demanding'));
+assert.ok(adapted.reasons.includes('recent recall needs reinforcement'));
+console.log('✓ topic feedback waits for evidence, then adapts priority, block size and workload');
 
 const notices = createEmptyWorkspace(now); notices.topics = [structuredClone(t)]; notices.topics[0].cards[0].dueAt = at(1);
 notices.focusOutcomes = [1, 2, 3].map(day => ({ id: `sample_${day}`, startedAt: at(day, 17), endedAt: at(day, 17, 25), status: 'finished' as const, minutes: 25, plannedMinutes: 25, launchMode: 'full' as const, taskOnly: true, overdue: false }));

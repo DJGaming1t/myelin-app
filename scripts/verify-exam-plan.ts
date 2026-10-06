@@ -294,6 +294,76 @@ const now = local(2026, 10, 5, 15, 0);
 }
 
 {
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 120;
+  workspace.settings.focusMinutes = 40;
+  workspace.topics.push(
+    makeTopic('feedback-exam', 'Quadratic Equations', 'Mathematics', 'learning', 60, 2),
+  );
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Feedback-aware maths',
+        date: addLocalDays(startOfLocalDay(now), 5) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: ['feedback-exam'],
+      },
+      now,
+      'exam_feedback',
+    ),
+  );
+
+  const previous = addLocalDays(startOfLocalDay(now), -1);
+  workspace.history.push(
+    {
+      id: 'feedback-exam-focus',
+      topicId: 'feedback-exam',
+      at: previous + 16 * 60 * 60 * 1000,
+      kind: 'study',
+      minutes: 40,
+      grade: 0,
+      effort: 5,
+      prompt: '',
+      response: '',
+      confidence: 'partial',
+      plannedMinutes: 30,
+    },
+    {
+      id: 'feedback-exam-recall',
+      topicId: 'feedback-exam',
+      at: previous + 17 * 60 * 60 * 1000,
+      kind: 'review',
+      minutes: 3,
+      grade: 1,
+      effort: 3,
+      prompt: 'Recall',
+      response: 'Missed',
+      confidence: 'unsure',
+    },
+  );
+
+  const plan = buildExamPreparationPlan(workspace, 'exam_feedback', now)!;
+  const adapted = plan.topics.find((topic) => topic.topicId === 'feedback-exam')!;
+  assert.equal(adapted.baseEstimatedMinutes, 60);
+  assert.ok(
+    adapted.estimatedMinutes > 60,
+    'Repeated topic difficulty should increase that topic workload without rewriting its stored estimate.',
+  );
+  assert.equal(adapted.difficulty, 3);
+  assert.ok(adapted.retrievalReserveMinutes >= 15);
+  assert.ok(
+    adapted.reasons.some((reason) => /demanding|reinforcement/i.test(reason)),
+    'Exam Autopilot should explain when topic feedback changes the workload.',
+  );
+  assert.equal(
+    workspace.topics[0]!.estimate,
+    60,
+    'Feedback adaptation must remain derived and must not silently rewrite the user estimate.',
+  );
+}
+
+{
   const reliable = createEmptyWorkspace(now);
   const unreliable = createEmptyWorkspace(now);
   reliable.settings.dailyMinutes = 120;
@@ -687,6 +757,7 @@ console.log('✓ per-exam workload estimates override generic Topic estimates');
 console.log('✓ feasible workload is split into focus-sized blocks within safe daily capacity');
 console.log('✓ enough study history personalizes sustainable daily capacity');
 console.log('✓ planned-vs-actual pace corrects future topic estimates');
+console.log('✓ per-topic effort + recall feedback increases workload and retrieval reserve without rewriting estimates');
 console.log('✓ completion reliability and postponements make capacity more conservative');
 console.log('✓ high-effort topics are spread with a daily fatigue guardrail');
 console.log('✓ nearby exams reserve capacity without double-counting shared topics');

@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 
-import { createEmptyWorkspace, Topic } from '../src/data/schema';
+import { cloneWorkspace, createEmptyWorkspace, Topic } from '../src/data/schema';
 import { createExam } from '../src/features/exams/exam-engine';
 import {
   buildExamCapacityProfile,
@@ -11,6 +11,10 @@ import {
 } from '../src/features/exams/exam-plan-engine';
 import { addLocalDays, startOfLocalDay } from '../src/features/planning/day-engine';
 import { createStudyTask, scheduleTask } from '../src/features/planning/task-engine';
+import {
+  buildAutopilotReflowSummary,
+  hasMeaningfulAutopilotReflow,
+} from '../src/features/exams/autopilot-reflow';
 
 function local(
   year: number,
@@ -880,6 +884,178 @@ const now = local(2026, 10, 5, 15, 0);
   );
 }
 
+{
+  const workspace = createEmptyWorkspace(now);
+  workspace.settings.dailyMinutes = 120;
+  workspace.settings.focusMinutes = 45;
+  const topic = makeTopic(
+    'progress-topic',
+    'Polynomials',
+    'Mathematics',
+    'learning',
+    90,
+    2,
+  );
+  topic.createdAt = addLocalDays(startOfLocalDay(now), -10);
+  workspace.topics.push(topic);
+  workspace.exams.push(
+    createExam(
+      {
+        name: 'Maths exam',
+        date: addLocalDays(startOfLocalDay(now), 4) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: [topic.id],
+      },
+      now,
+      'progress_exam',
+    ),
+  );
+
+  const baseline = buildExamPreparationPlan(workspace, 'progress_exam', now)!;
+  assert.equal(
+    baseline.topics[0]!.remainingPreparationMinutes,
+    baseline.topics[0]!.estimatedMinutes,
+  );
+
+  workspace.history.push({
+    id: 'progress-focus',
+    topicId: topic.id,
+    at: addLocalDays(startOfLocalDay(now), -1) + 17 * 60 * 60 * 1000,
+    kind: 'study',
+    minutes: 30,
+    grade: 0,
+    effort: 3,
+    prompt: '',
+    response: '',
+    confidence: 'partial',
+    plannedMinutes: 30,
+  });
+
+  const afterFocus = buildExamPreparationPlan(workspace, 'progress_exam', now)!;
+  assert.equal(afterFocus.topics[0]!.completedPreparationMinutes, 30);
+  assert.equal(
+    afterFocus.topics[0]!.remainingPreparationMinutes,
+    Math.max(0, afterFocus.topics[0]!.estimatedMinutes - 30),
+  );
+  assert.ok(
+    afterFocus.totalRequiredMinutes < baseline.totalRequiredMinutes,
+    'Completed Focus must reduce remaining exam preparation instead of being planned again.',
+  );
+}
+
+{
+  const before = createEmptyWorkspace(now);
+  before.settings.dailyMinutes = 60;
+  before.settings.focusMinutes = 45;
+  const first = makeTopic(
+    'reflow-a',
+    'Algebra',
+    'Mathematics',
+    'learning',
+    90,
+    2,
+  );
+  const second = makeTopic(
+    'reflow-b',
+    'Electricity',
+    'Physics',
+    'learning',
+    90,
+    2,
+  );
+  first.createdAt = second.createdAt = addLocalDays(startOfLocalDay(now), -5);
+  before.topics.push(first, second);
+  before.exams.push(
+    createExam(
+      {
+        name: 'Combined test',
+        date: addLocalDays(startOfLocalDay(now), 4) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: [first.id, second.id],
+      },
+      now,
+      'reflow_exam',
+    ),
+  );
+
+  const after = cloneWorkspace(before);
+  after.topics.find((topic) => topic.id === first.id)!.snoozeUntil =
+    addLocalDays(startOfLocalDay(now), 1);
+
+  const reflow = buildAutopilotReflowSummary(before, after, now)!;
+  assert.ok(hasMeaningfulAutopilotReflow(reflow));
+  assert.ok(
+    reflow.movedLaterMinutes > 0,
+    'Snoozing tonight\'s exam work should move some planned work to a later day.',
+  );
+  assert.ok(
+    reflow.moves.some((move) => move.topicId === first.id && move.toDay > move.fromDay),
+    'The reflow summary should name the topic that moved later.',
+  );
+}
+
+{
+  const before = createEmptyWorkspace(now);
+  before.settings.dailyMinutes = 60;
+  before.settings.focusMinutes = 45;
+  const topic = makeTopic(
+    'capacity-loss',
+    'Light',
+    'Science',
+    'learning',
+    90,
+    3,
+  );
+  topic.createdAt = addLocalDays(startOfLocalDay(now), -5);
+  before.topics.push(topic);
+  before.exams.push(
+    createExam(
+      {
+        name: 'Science exam',
+        date: addLocalDays(startOfLocalDay(now), 2) + 12 * 60 * 60 * 1000,
+        scope: 'topics',
+        subjects: [],
+        topicIds: [topic.id],
+      },
+      now,
+      'capacity_loss_exam',
+    ),
+  );
+
+  const after = cloneWorkspace(before);
+  const tomorrow = addLocalDays(startOfLocalDay(now), 1);
+  after.commitments.push({
+    id: 'lost-day',
+    title: 'Unexpected school event',
+    kind: 'school',
+    startAt: tomorrow + 7 * 60 * 60 * 1000,
+    endAt: tomorrow + 22 * 60 * 60 * 1000 + 30 * 60 * 1000,
+    startMinutes: 7 * 60,
+    endMinutes: 22 * 60 + 30,
+    recurrenceDays: [],
+    skippedDates: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const reflow = buildAutopilotReflowSummary(before, after, now)!;
+  assert.ok(
+    reflow.capacityDeltaMinutes < 0,
+    'A new fixed commitment must reduce safe exam-plan capacity.',
+  );
+  assert.ok(
+    reflow.movedLaterMinutes > 0 || reflow.newlyUnallocatedMinutes > 0,
+    'Lost capacity must either move unfinished work later or surface it as unallocated.',
+  );
+  assert.ok(
+    reflow.becameImpossible || reflow.newlyUnallocatedMinutes > 0,
+    'When the remaining deadline window cannot absorb the lost day, Autopilot must surface the break instead of hiding it.',
+  );
+  assert.ok(reflow.firstBrokenDeadline !== null);
+}
+
 console.log('✓ exam scope limits planning to included topics');
 console.log('✓ per-exam workload estimates override generic Topic estimates');
 console.log('✓ feasible workload is split into focus-sized blocks within safe daily capacity');
@@ -894,6 +1070,9 @@ console.log('✓ new topic feedback redistributes tomorrow\'s limited Mileage wi
 console.log('✓ shared syllabus is deduplicated and obeys the earliest deadline');
 console.log('✓ explicit revision buffers are scheduled only after earlier preparation');
 console.log('✓ joint overload is surfaced instead of silently dropping exam work');
+console.log('✓ completed Focus reduces remaining exam preparation demand');
+console.log('✓ snoozed exam work reflows to later days instead of staying on today');
+console.log('✓ new commitments reflow unfinished work and surface newly impossible deadlines');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

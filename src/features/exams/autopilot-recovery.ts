@@ -621,20 +621,21 @@ function historicalReclaimedPlacements(
   occurrenceDateKey: string,
   occurrenceStart: number,
   occurrenceEnd: number,
+  checkpoint = occurrenceStart,
 ) {
   const historical = cloneWorkspace(workspace);
   historical.history = historical.history.filter(
     (entry) =>
-      (entry.endedAt ?? entry.at) < occurrenceStart,
+      (entry.endedAt ?? entry.at) <= checkpoint,
   );
   historical.breaks = historical.breaks.filter(
-    (entry) => entry.at < occurrenceStart,
+    (entry) => entry.at <= checkpoint,
   );
   if (historical.focusOutcomes) {
     historical.focusOutcomes = historical.focusOutcomes.filter(
       (entry) =>
-        (entry.endedAt ?? entry.startedAt ?? 0) <
-        occurrenceStart,
+        (entry.endedAt ?? entry.startedAt ?? 0) <=
+        checkpoint,
     );
   }
 
@@ -651,12 +652,12 @@ function historicalReclaimedPlacements(
 
   const before = buildJointExamPreparationPlan(
     restored,
-    occurrenceStart,
+    checkpoint,
     { maxDays: 120 },
   );
   const after = buildJointExamPreparationPlan(
     historical,
-    occurrenceStart,
+    checkpoint,
     { maxDays: 120 },
   );
   const impact = effect(before, after);
@@ -670,12 +671,12 @@ function historicalReclaimedPlacements(
     occurrenceStart,
     occurrenceEnd,
     impact.capacityGainedMinutes,
-    occurrenceStart,
+    checkpoint,
     reclaimedAvailableSegments(
       historical,
       occurrenceStart,
       occurrenceEnd,
-      occurrenceStart,
+      checkpoint,
     ),
   );
 }
@@ -693,13 +694,43 @@ function missedRecoveredSummary(
     return null;
   }
 
-  const expected = historicalReclaimedPlacements(
-    workspace,
-    commitmentId,
-    occurrenceDateKey,
+  const checkpoints = [
     occurrenceStart,
-    occurrenceEnd,
-  );
+    ...workspace.history
+      .filter(
+        (entry) =>
+          entry.kind === 'study' &&
+          (entry.endedAt ?? entry.at) > occurrenceStart &&
+          (entry.endedAt ?? entry.at) <=
+            Math.min(now, occurrenceEnd),
+      )
+      .map((entry) => entry.endedAt ?? entry.at),
+  ]
+    .filter(
+      (value, index, values) =>
+        values.indexOf(value) === index,
+    )
+    .sort((a, b) => a - b);
+
+  let expected: ReclaimedStudyPlacement[] = [];
+  for (const checkpoint of checkpoints) {
+    expected = expected.filter(
+      (placement) => placement.start < checkpoint,
+    );
+    const snapshot = historicalReclaimedPlacements(
+      workspace,
+      commitmentId,
+      occurrenceDateKey,
+      occurrenceStart,
+      occurrenceEnd,
+      checkpoint,
+    );
+    expected.push(
+      ...snapshot.filter(
+        (placement) => placement.start >= checkpoint,
+      ),
+    );
+  }
 
   const missedPlacements: ReclaimedStudyPlacement[] = [];
   let missedMinutes = 0;

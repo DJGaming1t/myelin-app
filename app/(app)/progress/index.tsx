@@ -1,5 +1,6 @@
 import { NeuralMap } from '@/src/features/adaptive/NeuralMap';
 import { LearningInsights, OutcomeEvidence } from '@/src/features/adaptive/LearningInsights';
+import { AdaptationInsightList } from '@/src/features/adaptive/AdaptationInsights';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -64,6 +65,16 @@ export default function ProgressScreen() {
           showsVerticalScrollIndicator={false}>
           <NeuralMap workspace={workspace} />
           <LearningInsights workspace={workspace} now={now} />
+          <AdaptationInsightList
+            workspace={workspace}
+            now={now}
+            onOpenTopic={(topicId) =>
+              router.push({
+                pathname: '/(app)/topics/[topicId]',
+                params: { topicId },
+              })
+            }
+          />
           <Reveal delay={35} distance={7}>
             <View style={styles.summaryGrid}>
               <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />

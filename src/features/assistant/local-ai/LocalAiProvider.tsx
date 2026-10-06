@@ -34,6 +34,10 @@ import {
   liteRtLmRuntimeIds,
 } from './litert-lm-runtime';
 import { prepareLocalAssistantActions } from './local-assistant-bridge';
+import {
+  PreparedSyllabusImport,
+  prepareLocalSyllabusImport,
+} from './syllabus-intake';
 
 export type LocalAiModelView = {
   definition: LocalAiModelDefinition;
@@ -63,6 +67,14 @@ type LocalAiContextValue = {
     requestId?: string;
     signal?: AbortSignal;
   }) => Promise<PreparedAssistantActionBatch>;
+  prepareSyllabusImport: (request: {
+    workspace: WorkspaceState;
+    sourceText: string;
+    examName: string;
+    examDate: string;
+    requestId?: string;
+    signal?: AbortSignal;
+  }) => Promise<PreparedSyllabusImport>;
 };
 
 const EMPTY_SNAPSHOT: LocalAiManagerSnapshot = {
@@ -352,6 +364,45 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     [manager],
   );
 
+  const prepareSyllabusImport = useCallback(
+    async (request: {
+      workspace: WorkspaceState;
+      sourceText: string;
+      examName: string;
+      examDate: string;
+      requestId?: string;
+      signal?: AbortSignal;
+    }) => {
+      setError('');
+      setMessage('');
+
+      const selectedModelId = manager.snapshot().selectedModelId;
+      if (!selectedModelId) {
+        const cause = new Error(
+          'Choose a local AI model before importing a syllabus.',
+        );
+        setError(friendlyError(cause));
+        throw cause;
+      }
+
+      try {
+        const session = await manager.load(selectedModelId);
+        const prepared = await prepareLocalSyllabusImport({
+          ...request,
+          session,
+        });
+        setMessage(
+          `Syllabus preview: ${prepared.newTopicCount} new, ${prepared.existingTopicCount} existing ${prepared.existingTopicCount === 1 ? 'topic' : 'topics'} reused.`,
+        );
+        return prepared;
+      } catch (cause) {
+        setError(friendlyError(cause));
+        throw cause;
+      }
+    },
+    [manager],
+  );
+
   const models = useMemo(
     () =>
       LOCAL_AI_MODELS.map((definition) => ({
@@ -391,6 +442,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       setAutoUnload,
       smokeTestModel,
       prepareAssistantActions,
+      prepareSyllabusImport,
     }),
     [
       acceptLicense,
@@ -408,6 +460,7 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       setAutoUnload,
       smokeTestModel,
       prepareAssistantActions,
+      prepareSyllabusImport,
       snapshot,
     ],
   );

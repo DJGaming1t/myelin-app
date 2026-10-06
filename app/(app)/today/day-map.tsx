@@ -223,6 +223,7 @@ export default function DayMapScreen() {
                 start: option.occurrenceStart,
                 end: option.occurrenceEnd,
                 placements: option.placements,
+                missed: null,
               }
             : null,
       });
@@ -344,6 +345,52 @@ export default function DayMapScreen() {
                     </View>
                     <Text style={styles.reclaimedBadge}>RECOVERED</Text>
                   </View>
+
+                  {window.missed ? (
+                    <View style={styles.reclaimedMissed}>
+                      <Text style={styles.reclaimedMissedKicker}>
+                        MISSED RECOVERED SLOT
+                      </Text>
+                      <Text style={styles.reclaimedMissedTitle}>
+                        {window.missed.missedMinutes}m passed without a completed Focus
+                      </Text>
+                      <Text style={styles.reclaimedMissedText}>
+                        {window.missed.reflowedMinutes > 0
+                          ? `${window.missed.reflowedMinutes}m has been reflowed into the remaining exam plan.`
+                          : 'No missed minutes could be safely reflowed.'}
+                        {window.missed.newlyUnallocatedMinutes > 0
+                          ? ` ${window.missed.newlyUnallocatedMinutes}m no longer fits before the deadline.`
+                          : ''}
+                      </Text>
+                      {window.missed.becameImpossible ? (
+                        <Text style={styles.reclaimedMissedDanger}>
+                          This miss makes the current deadline no longer fit at safe capacity.
+                        </Text>
+                      ) : window.missed.deadlineTightened ? (
+                        <Text style={styles.reclaimedMissedWarning}>
+                          Plan strain: {window.missed.strainBeforeMiss} →{' '}
+                          {window.missed.strainAfterMiss}
+                          {window.missed.addedOverloadMinutes > 0
+                            ? ` · +${window.missed.addedOverloadMinutes}m overload`
+                            : ''}
+                        </Text>
+                      ) : (
+                        <Text style={styles.reclaimedMissedSafe}>
+                          The deadline still fits; MYELIN absorbed this miss into later capacity.
+                        </Text>
+                      )}
+                      <View style={styles.reclaimedMissedList}>
+                        {window.missed.placements.slice(0, 2).map((placement, index) => (
+                          <Text
+                            key={`missed:${placement.topicId}:${placement.start}:${index}`}
+                            style={styles.reclaimedMissedItem}>
+                            {timeLabel(placement.start)}–{timeLabel(placement.end)} ·{' '}
+                            {placement.topicName} · {placement.minutes}m missed
+                          </Text>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
 
                   {window.placements.map((placement, index) => (
                     <View
@@ -747,6 +794,65 @@ const styles = StyleSheet.create({
     lineHeight: 10,
     fontWeight: '900',
     letterSpacing: 0.6,
+  },
+  reclaimedMissed: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    padding: 10,
+  },
+  reclaimedMissedKicker: {
+    color: colors.accent,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  reclaimedMissedTitle: {
+    color: colors.text,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  reclaimedMissedText: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 3,
+  },
+  reclaimedMissedDanger: {
+    color: colors.accent,
+    fontSize: 9.5,
+    lineHeight: 14,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  reclaimedMissedWarning: {
+    color: colors.textDim,
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  reclaimedMissedSafe: {
+    color: colors.textDim,
+    fontSize: 9,
+    lineHeight: 13,
+    marginTop: 6,
+  },
+  reclaimedMissedList: {
+    marginTop: 6,
+    gap: 3,
+  },
+  reclaimedMissedItem: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
   },
   reclaimedRow: {
     minHeight: 88,

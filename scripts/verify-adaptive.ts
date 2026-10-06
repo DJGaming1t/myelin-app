@@ -9,7 +9,11 @@ import { DAY_MS, nextMemory, retrievability } from '../src/features/adaptive/mem
 import { sleepingAt, sleepWindows, parseClock } from '../src/features/adaptive/sleep-engine';
 import { neuralEvidence, learningInsights } from '../src/features/adaptive/insight-engine';
 import { launchVariant, outcomeSnapshot, recordFocusOutcome } from '../src/features/adaptive/outcome-engine';
-import { buildTopicFeedbackProfile } from '../src/features/adaptive/topic-feedback';
+import {
+  buildTopicAdaptationInsight,
+  buildTopicAdaptationInsights,
+  buildTopicFeedbackProfile,
+} from '../src/features/adaptive/topic-feedback';
 import { createFocusSession } from '../src/features/focus/focus-engine';
 import { freeStudyWindows, suggestTaskSlots, rebuildRemainingDay } from '../src/features/planning/day-engine';
 import { buildTodayPlan } from '../src/features/today/planner';
@@ -147,6 +151,12 @@ adaptiveTopicWorkspace.history.unshift({
   confidence: 'partial',
   plannedMinutes: 25,
 });
+assert.equal(
+  buildTopicAdaptationInsight(adaptiveTopicWorkspace, adaptiveTopic.id, now),
+  null,
+  'One bad result must not create a visible MYELIN learned claim.',
+);
+
 const adapted = buildTopicFeedbackProfile(adaptiveTopicWorkspace, adaptiveTopic.id, now);
 assert.ok(adapted.priorityBoost > 0);
 assert.ok(adapted.blockMultiplier < 1, 'Repeated difficulty should shorten the next focus block.');
@@ -154,7 +164,89 @@ assert.ok(adapted.workloadMultiplier > 1, 'Repeated difficulty should increase r
 assert.equal(adapted.difficulty, 3);
 assert.ok(adapted.reasons.includes('recent focus felt demanding'));
 assert.ok(adapted.reasons.includes('recent recall needs reinforcement'));
+const visibleAdaptation = buildTopicAdaptationInsight(
+  adaptiveTopicWorkspace,
+  adaptiveTopic.id,
+  now,
+);
+assert.ok(visibleAdaptation);
+assert.equal(visibleAdaptation!.title, 'Blocks shortened');
+assert.match(visibleAdaptation!.detail, /demanding/i);
+assert.match(visibleAdaptation!.evidence, /focus/i);
+
+const improvingWorkspace = createEmptyWorkspace(now);
+const improvingTopic = createTopic(
+  { name: 'Electricity', subject: 'Physics', status: 'review', priority: 2, estimate: 45, notes: '' },
+  now,
+  'improving-topic',
+);
+improvingWorkspace.topics = [improvingTopic];
+improvingWorkspace.history = [
+  {
+    id: 'improve-1',
+    topicId: improvingTopic.id,
+    at: now - 4 * DAY_MS,
+    kind: 'review',
+    minutes: 2,
+    grade: 1,
+    effort: 3,
+    prompt: '',
+    response: '',
+    confidence: 'unsure',
+  },
+  {
+    id: 'improve-2',
+    topicId: improvingTopic.id,
+    at: now - 3 * DAY_MS,
+    kind: 'review',
+    minutes: 2,
+    grade: 1,
+    effort: 3,
+    prompt: '',
+    response: '',
+    confidence: 'partial',
+  },
+  {
+    id: 'improve-3',
+    topicId: improvingTopic.id,
+    at: now - 2 * DAY_MS,
+    kind: 'review',
+    minutes: 2,
+    grade: 3,
+    effort: 3,
+    prompt: '',
+    response: '',
+    confidence: 'sure',
+  },
+  {
+    id: 'improve-4',
+    topicId: improvingTopic.id,
+    at: now - DAY_MS,
+    kind: 'review',
+    minutes: 2,
+    grade: 2,
+    effort: 3,
+    prompt: '',
+    response: '',
+    confidence: 'partial',
+  },
+];
+const improvement = buildTopicAdaptationInsight(
+  improvingWorkspace,
+  improvingTopic.id,
+  now,
+);
+assert.ok(improvement);
+assert.equal(improvement!.tone, 'progress');
+assert.equal(improvement!.title, 'Recall is improving');
+assert.match(improvement!.evidence, /4 recent recall attempts/i);
+assert.deepEqual(
+  buildTopicAdaptationInsights(improvingWorkspace, now, 3).map((item) => item.topicId),
+  [improvingTopic.id],
+);
+
 console.log('✓ topic feedback waits for evidence, then adapts priority, block size and workload');
+console.log('✓ visible adaptation stays silent on sparse data and can surface real recall improvement');
 
 const notices = createEmptyWorkspace(now); notices.topics = [structuredClone(t)]; notices.topics[0].cards[0].dueAt = at(1);
 notices.focusOutcomes = [1, 2, 3].map(day => ({ id: `sample_${day}`, startedAt: at(day, 17), endedAt: at(day, 17, 25), status: 'finished' as const, minutes: 25, plannedMinutes: 25, launchMode: 'full' as const, taskOnly: true, overdue: false }));

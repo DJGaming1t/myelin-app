@@ -1659,10 +1659,64 @@ const now = local(2026, 10, 5, 15, 0);
     'The completed recovered block must disappear from the remaining reservation.',
   );
 
+  const missedTarget = afterFocusReservation?.placements[0];
+  assert.ok(
+    missedTarget,
+    'The miss test needs a remaining recovered block after the completed first block.',
+  );
+  const missedNow = missedTarget!.end + 60_000;
+  const afterMissWindows = buildAppliedReclaimedWindows(
+    previewWorkspace,
+    missedNow,
+  );
+  const afterMissWindow = afterMissWindows.find(
+    (window) =>
+      window.commitmentId === 'tuition-reclaim-test' &&
+      window.occurrenceDateKey === occurrenceKey,
+  );
+  assert.ok(
+    afterMissWindow?.missed,
+    'A recovered block whose time passes without Focus must be surfaced as missed.',
+  );
+  assert.ok(
+    afterMissWindow!.missed!.missedMinutes >=
+      missedTarget!.minutes,
+    'Missed recovered minutes must include the expired reserved block.',
+  );
+  assert.equal(
+    afterMissWindow!.missed!.reflowedMinutes +
+      afterMissWindow!.missed!.newlyUnallocatedMinutes,
+    afterMissWindow!.missed!.missedMinutes,
+    'Every missed recovered minute must be explained as either reflowed later or no longer fitting before the deadline.',
+  );
+  assert.ok(
+    afterMissWindow!.placements.every(
+      (placement) => placement.start >= missedNow,
+    ),
+    'After a recovered miss, only future reflowed blocks may remain visible.',
+  );
+  assert.ok(
+    afterMissWindow!.placements.every(
+      (placement) =>
+        placement.end <= conflictStart ||
+        placement.start >= conflictEnd,
+    ),
+    'Miss reflow must continue respecting later fixed commitments.',
+  );
+  assert.equal(
+    afterMissWindow!.missed!.deadlineTightened,
+    afterMissWindow!.missed!.becameImpossible ||
+      afterMissWindow!.missed!.newlyUnallocatedMinutes > 0 ||
+      afterMissWindow!.missed!.addedOverloadMinutes > 0 ||
+      afterMissWindow!.missed!.strainBeforeMiss !==
+        afterMissWindow!.missed!.strainAfterMiss,
+    'The deadline-tightened flag must be derived from measurable feasibility/strain consequences.',
+  );
+
   assert.equal(
     previewWorkspace.tasks.length,
     taskCountBeforeRecovery,
-    'Reconstructing and reflowing a live recovered reservation must remain projection-only and create no task records.',
+    'Reconstructing, completing, and missing recovered reservations must remain projection-only and create no task records.',
   );
   assert.deepEqual(
     workspace.commitments.find(
@@ -1710,6 +1764,7 @@ console.log('✓ reclaimed windows preview exact exam blocks inside the freed cl
 console.log('✓ applied reclaimed windows reconstruct as live Day Map reservations without persisted task duplicates');
 console.log('✓ completing a recovered Focus block removes it and reflows the remaining window from the current time');
 console.log('✓ later fixed commitments split recovered windows and remain respected after Focus completion');
+console.log('✓ expired recovered blocks are marked missed, reflowed forward, and report any renewed deadline pressure');
 console.log('✓ existing scheduled study reduces future exam capacity');
 console.log('✓ impossible workloads are reported as strain instead of being overbooked');
 console.log('✓ past exams do not produce preparation plans');

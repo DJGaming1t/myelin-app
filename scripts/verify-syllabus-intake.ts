@@ -8,6 +8,7 @@ import {
   SyllabusIntakeError,
   chunkSyllabusSource,
   prepareLocalSyllabusImport,
+  prepareReviewedSyllabusImport,
   syllabusIntakeJsonSchema,
 } from '../src/features/assistant/local-ai/syllabus-intake';
 import { LocalAiRuntimeSession } from '../src/features/assistant/local-ai/local-ai-runtime';
@@ -160,6 +161,110 @@ async function main() {
 
   {
     const workspace = createEmptyWorkspace(now);
+    const existing = createTopic(
+      {
+        name: 'Real Numbers',
+        subject: 'Mathematics',
+        status: 'review',
+        priority: 3,
+        estimate: 90,
+        notes: 'Preserve me.',
+      },
+      now,
+    );
+    workspace.topics.push(existing);
+
+    const reviewed = prepareReviewedSyllabusImport({
+      workspace,
+      examName: 'Half Yearly',
+      examDate: '2027-01-15',
+      sourceChunkCount: 2,
+      requestId: 'reviewed-syllabus-test',
+      now,
+      topics: [
+        {
+          subject: 'Mathematics',
+          name: 'Real Numbers',
+          estimatedMinutes: 30,
+          priority: 1,
+          status: 'new',
+        },
+        {
+          subject: 'Mathematics',
+          name: 'Polynomials',
+          estimatedMinutes: 75,
+          priority: 3,
+          status: 'learning',
+        },
+      ],
+    });
+
+    assert.equal(reviewed.topicCount, 2);
+    assert.equal(reviewed.newTopicCount, 1);
+    assert.equal(reviewed.existingTopicCount, 1);
+    assert.equal(reviewed.defaultEstimateCount, 0);
+    assert.equal(reviewed.sourceChunkCount, 2);
+    assert.equal(workspace.topics.length, 1, 'Reviewed preview must stay non-mutating.');
+
+    const nextWorkspace = reviewed.prepared.preview.nextWorkspace;
+    assert.equal(nextWorkspace.topics.length, 2);
+    const polynomial = nextWorkspace.topics.find((topic) => topic.name === 'Polynomials')!;
+    assert.equal(polynomial.subject, 'Mathematics');
+    assert.equal(polynomial.estimate, 75);
+    assert.equal(polynomial.priority, 3);
+    assert.equal(polynomial.status, 'learning');
+
+    const preserved = nextWorkspace.topics.find((topic) => topic.id === existing.id)!;
+    assert.equal(preserved.estimate, 90);
+    assert.equal(preserved.priority, 3);
+    assert.equal(preserved.status, 'review');
+    assert.equal(preserved.notes, 'Preserve me.');
+    assert.equal(nextWorkspace.exams[0]!.topicIds.length, 2);
+
+    assert.throws(
+      () =>
+        prepareReviewedSyllabusImport({
+          workspace,
+          examName: 'Another Exam',
+          examDate: '2027-02-02',
+          now,
+          topics: [
+            {
+              subject: 'Science',
+              name: 'Light',
+              estimatedMinutes: null,
+              priority: null,
+              status: null,
+            },
+            {
+              subject: ' science ',
+              name: ' light ',
+              estimatedMinutes: 45,
+              priority: 2,
+              status: 'new',
+            },
+          ],
+        }),
+      (error: unknown) =>
+        error instanceof SyllabusIntakeError && error.code === 'invalid_draft',
+    );
+
+    assert.throws(
+      () =>
+        prepareReviewedSyllabusImport({
+          workspace,
+          examName: 'Empty Exam',
+          examDate: '2027-02-03',
+          now,
+          topics: [],
+        }),
+      (error: unknown) =>
+        error instanceof SyllabusIntakeError && error.code === 'invalid_draft',
+    );
+  }
+
+  {
+    const workspace = createEmptyWorkspace(now);
     workspace.exams.push({
       id: 'existing-exam',
       name: 'Boards',
@@ -248,6 +353,8 @@ async function main() {
   console.log('✓ duplicate syllabus entries merge deterministically across chunks');
   console.log('✓ existing MYELIN topics are reused without overwriting their metadata');
   console.log('✓ syllabus import produces only a previewed create-topic/create-exam action batch');
+  console.log('✓ reviewed syllabus edits rebuild a fresh validated action batch');
+  console.log('✓ reviewed duplicates and empty imports are rejected before mutation');
   console.log('✓ duplicate exams and malformed model output fail before workspace mutation');
 }
 

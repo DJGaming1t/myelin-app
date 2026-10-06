@@ -72,6 +72,7 @@ type Candidate = {
   autopilotMinutes: number;
   autopilotKind: 'preparation' | 'revision' | null;
   blockMultiplier: number;
+  blockCapMinutes: number | null;
 };
 
 export function startOfLocalDay(now: number) {
@@ -282,6 +283,7 @@ function topicCandidate(
         : 'preparation'
       : null,
     blockMultiplier: feedback.blockMultiplier,
+    blockCapMinutes: topic.preferredBlockMinutes ?? null,
   };
 }
 
@@ -384,6 +386,7 @@ function taskCandidate(
         : 'preparation'
       : null,
     blockMultiplier: feedback?.blockMultiplier ?? 1,
+    blockCapMinutes: linkedTopic?.preferredBlockMinutes ?? null,
   };
 }
 
@@ -533,8 +536,18 @@ export function buildTodayPlan(
       minimumUsefulBlock,
       Math.round(targetFocusMinutes * chosen.candidate.blockMultiplier),
     );
+    const cappedTargetMinutes =
+      chosen.candidate.blockCapMinutes == null
+        ? adaptiveTargetMinutes
+        : Math.min(
+            adaptiveTargetMinutes,
+            Math.max(
+              minimumUsefulBlock,
+              Math.round(chosen.candidate.blockCapMinutes),
+            ),
+          );
     const minutes = Math.floor(
-      Math.min(adaptiveTargetMinutes, candidateRemaining, availableForStudy),
+      Math.min(cappedTargetMinutes, candidateRemaining, availableForStudy),
     );
     if (minutes < minimumUsefulBlock) {
       deduped.splice(deduped.indexOf(chosen.candidate), 1);

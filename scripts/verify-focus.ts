@@ -23,6 +23,10 @@ import {
   FocusKeyValueStore,
   createFocusStorage,
 } from '../src/features/focus/focus-storage';
+import {
+  POST_FOCUS_RETRIEVAL_LIMIT,
+  buildPostFocusRetrievalSuggestion,
+} from '../src/features/focus/post-focus-retrieval';
 
 const MINUTE = 60_000;
 const now = 1_800_000_000_000;
@@ -208,6 +212,114 @@ async function main() {
     tinyStep: 'Start with question 1',
   });
 
+  const retrievalWorkspace = createEmptyWorkspace(now);
+  retrievalWorkspace.topics.push({
+    id: 'retrieve_topic',
+    name: 'Light',
+    subject: 'Physics',
+    createdAt: now,
+    status: 'learning',
+    priority: 2,
+    estimate: 45,
+    notes: '',
+    dueAt: 0,
+    intervalDays: 0,
+    lastGrade: 0,
+    lastReviewed: 0,
+    snoozeUntil: 0,
+    cards: [
+      {
+        id: 'ready_1',
+        prompt: 'What is refraction?',
+        answer: 'Change in direction of light.',
+        hint: '',
+        dueAt: 0,
+        intervalDays: 0,
+        lastGrade: 0,
+        lastReviewed: 0,
+        reps: 0,
+      },
+      {
+        id: 'ready_2',
+        prompt: 'State Snell law.',
+        answer: 'Ratio of sines is constant.',
+        hint: '',
+        dueAt: now - MINUTE,
+        intervalDays: 1,
+        lastGrade: 2,
+        lastReviewed: now - 24 * 60 * MINUTE,
+        reps: 1,
+      },
+      {
+        id: 'ready_3',
+        prompt: 'Define refractive index.',
+        answer: 'Ratio of speeds.',
+        hint: '',
+        dueAt: now - MINUTE,
+        intervalDays: 1,
+        lastGrade: 2,
+        lastReviewed: now - 24 * 60 * MINUTE,
+        reps: 1,
+      },
+      {
+        id: 'ready_4',
+        prompt: 'Why does light bend?',
+        answer: 'Its speed changes between media.',
+        hint: '',
+        dueAt: now - MINUTE,
+        intervalDays: 1,
+        lastGrade: 2,
+        lastReviewed: now - 24 * 60 * MINUTE,
+        reps: 1,
+      },
+      {
+        id: 'future',
+        prompt: 'Future spaced card.',
+        answer: 'Do not force this early.',
+        hint: '',
+        dueAt: now + 5 * 24 * 60 * MINUTE,
+        intervalDays: 5,
+        lastGrade: 3,
+        lastReviewed: now,
+        reps: 3,
+      },
+    ],
+  });
+
+  const retrieval = buildPostFocusRetrievalSuggestion(
+    retrievalWorkspace,
+    'retrieve_topic',
+    25,
+    now,
+  );
+  assert.ok(retrieval);
+  assert.equal(retrieval!.count, POST_FOCUS_RETRIEVAL_LIMIT);
+  assert.equal(retrieval!.cardIds.length, 3);
+  assert.equal(
+    retrieval!.cardIds.includes('future'),
+    false,
+    'Post-focus retrieval must not pull future spaced cards forward.',
+  );
+  assert.equal(
+    buildPostFocusRetrievalSuggestion(
+      retrievalWorkspace,
+      'retrieve_topic',
+      4,
+      now,
+    ),
+    null,
+    'Tiny accidental focus should not trigger a retrieval handoff.',
+  );
+  assert.equal(
+    buildPostFocusRetrievalSuggestion(
+      retrievalWorkspace,
+      'missing_topic',
+      25,
+      now,
+    ),
+    null,
+  );
+
   const validated = migrateAndValidateWorkspace(workspace);
   const history = validated.history[0]!;
   assert.equal(history.plannedMinutes, 45);
@@ -223,6 +335,7 @@ async function main() {
   console.log('✓ active sessions are isolated per workspace owner');
   console.log('✓ invalid active-session state fails safely');
   console.log('✓ planned-vs-actual focus metadata survives workspace validation');
+  console.log('✓ post-focus retrieval is capped, due-only and skipped for tiny/no-topic focus');
 }
 
 main().catch((error) => {
@@ -266,4 +379,34 @@ assert.ok(
 assert.ok(
   focusProviderIdempotencySource.includes('const stableBreakAt = current.phaseStartedAt'),
   'Break logging should use a stable timestamp so retries remain idempotent.',
+);
+
+const focusScreenSource = fs.readFileSync(
+  path.join(process.cwd(), 'app/(app)/focus/index.tsx'),
+  'utf8',
+);
+const reviewScreenSource = fs.readFileSync(
+  path.join(process.cwd(), 'app/(app)/review/index.tsx'),
+  'utf8',
+);
+assert.ok(
+  focusScreenSource.includes('finishBreakAndRetrieve') &&
+    focusScreenSource.includes("autoStart: '1'") &&
+    focusScreenSource.includes("source: 'focus'"),
+  'Focus must finish the break before handing a useful topic into short retrieval.',
+);
+assert.ok(
+  focusScreenSource.includes('Finish break without recall'),
+  'Post-focus retrieval must stay optional.',
+);
+assert.ok(
+  reviewScreenSource.includes('autoStartRequested') &&
+    reviewScreenSource.includes('requestedLimit') &&
+    reviewScreenSource.includes('limit: requestedLimit'),
+  'Review must auto-start only the bounded post-focus topic queue.',
+);
+assert.ok(
+  reviewScreenSource.includes('if (fromFocus)') &&
+    reviewScreenSource.includes("router.replace('/(app)/today')"),
+  'Completing post-focus retrieval must return to Today so Mileage can recalculate.',
 );

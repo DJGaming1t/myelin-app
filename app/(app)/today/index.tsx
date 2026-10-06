@@ -35,6 +35,11 @@ import {
   buildAutopilotReflowSummary,
 } from '@/src/features/exams/autopilot-reflow';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { timerRemainingMs } from '@/src/features/focus/focus-engine';
+import {
+  ReclaimedStudyPlacement,
+  buildAppliedReclaimedWindows,
+} from '@/src/features/exams/autopilot-recovery';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
 import { postponeTask } from '@/src/features/planning/task-engine';
@@ -83,6 +88,36 @@ export default function TodayScreen() {
     () => (workspace ? buildTodayPlan(workspace, now) : null),
     [workspace, now],
   );
+  const recoveredWindows = useMemo(() => {
+    if (!workspace) return [];
+    const activeFocusRemaining =
+      activeFocus?.phase === 'focus'
+        ? timerRemainingMs(activeFocus, now)
+        : 0;
+    return buildAppliedReclaimedWindows(workspace, now, {
+      horizonDays: 1,
+      protectionLeadMinutes: 10,
+      ...(activeFocusRemaining > 0
+        ? {
+            unavailableUntil:
+              now + activeFocusRemaining,
+            activeFocusTopicId:
+              activeFocus?.topicId ?? null,
+            activeFocusStartedAt:
+              activeFocus?.startedAt ?? null,
+          }
+        : {}),
+    });
+  }, [
+    activeFocus?.elapsedMs,
+    activeFocus?.phase,
+    activeFocus?.plannedFocusMinutes,
+    activeFocus?.runningSince,
+    activeFocus?.startedAt,
+    activeFocus?.topicId,
+    now,
+    workspace,
+  ]);
   const mistakeSummary = useMemo(
     () => (workspace ? mistakeCounts(workspace, now) : { due: 0, open: 0, resolved: 0, total: 0 }),
     [workspace, now],
@@ -115,6 +150,42 @@ export default function TodayScreen() {
   const deadlineBreak = currentPlan.deadlineFeasibility.firstOverloadedDeadline;
   const deadlineRelief = deadlineBreak?.reliefCandidates[0] ?? null;
   const restCount = laterBlocks.length + (mistakeSummary.due > 0 ? 1 : 0) + (nextExam ? 1 : 0);
+  const recoveredWindow = recoveredWindows.find(
+    (window) =>
+      window.placements.some(
+        (placement) => placement.end > now,
+      ) ||
+      window.protection,
+  ) ?? null;
+  const recoveredPlacement =
+    recoveredWindow?.placements.find(
+      (placement) => placement.end > now,
+    ) ?? null;
+
+  function openRecoveredPlacement(
+    placement: ReclaimedStudyPlacement,
+  ) {
+    if (
+      activeFocus ||
+      activeReview ||
+      recoveredWindow?.protection ||
+      placement.start > now + 15 * 60_000
+    ) {
+      router.push('/(app)/today/day-map');
+      return;
+    }
+
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        topicId: placement.topicId,
+        minutes: String(placement.minutes),
+        breakMinutes: String(
+          currentWorkspace.settings.breakMinutes,
+        ),
+      },
+    });
+  }
 
   function setBudget(minutes: number) {
     updateWorkspace((draft) => {
@@ -390,6 +461,78 @@ export default function TodayScreen() {
               topicId={next.topicId}
               now={now}
             />
+          ) : null}
+
+          {recoveredWindow && recoveredPlacement ? (
+            <View style={styles.recoveredToday}>
+              <View style={styles.recoveredTodayTop}>
+                <View style={styles.recoveredTodayCopy}>
+                  <Text style={styles.recoveredTodayKicker}>
+                    RECOVERED WINDOW
+                  </Text>
+                  <Text style={styles.recoveredTodayTitle}>
+                    {recoveredPlacement.topicName}
+                  </Text>
+                  <Text style={styles.recoveredTodayMeta}>
+                    {new Date(recoveredPlacement.start).toLocaleDateString(
+                      undefined,
+                      {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      },
+                    )}{' '}
+                    ·{' '}
+                    {new Intl.DateTimeFormat(undefined, {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    }).format(
+                      new Date(recoveredPlacement.start),
+                    )}{' '}
+                    · {recoveredPlacement.minutes}m
+                  </Text>
+                </View>
+                <Text style={styles.recoveredTodayBadge}>
+                  AUTOPILOT
+                </Text>
+              </View>
+              <Text style={styles.recoveredTodayReason}>
+                {recoveredWindow.protection?.reason === 'active-focus'
+                  ? 'Protected from your current Focus session. MYELIN moved this block instead of letting it become a miss.'
+                  : recoveredWindow.protection?.reason === 'schedule-change'
+                    ? 'Repacked around a later schedule change before it could become a miss.'
+                    : 'This block uses time recovered from a skipped tuition/coaching occurrence.'}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  recoveredWindow.protection ||
+                  activeFocus ||
+                  activeReview ||
+                  recoveredPlacement.start >
+                    now + 15 * 60_000
+                    ? 'Open recovered block in Day Map'
+                    : `Start recovered focus for ${recoveredPlacement.topicName}`
+                }
+                onPress={() =>
+                  openRecoveredPlacement(recoveredPlacement)
+                }
+                style={({ pressed }) => [
+                  styles.recoveredTodayAction,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.recoveredTodayActionText}>
+                  {recoveredWindow.protection ||
+                  activeFocus ||
+                  activeReview ||
+                  recoveredPlacement.start >
+                    now + 15 * 60_000
+                    ? 'View in Day Map'
+                    : 'Start recovered focus'}
+                </Text>
+                <Text style={styles.recoveredTodayArrow}>→</Text>
+              </Pressable>
+            </View>
           ) : null}
 
           {deadlineBreak ? (
@@ -713,6 +856,71 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
   loadingText: { color: colors.muted, ...type.meta },
 
+  recoveredToday: {
+    marginTop: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panel,
+    padding: space.md,
+  },
+  recoveredTodayTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.sm,
+  },
+  recoveredTodayCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  recoveredTodayKicker: {
+    color: colors.accent,
+    ...type.label,
+    fontSize: 10,
+  },
+  recoveredTodayTitle: {
+    color: colors.text,
+    ...type.bodyStrong,
+    marginTop: 3,
+  },
+  recoveredTodayMeta: {
+    color: colors.muted,
+    ...type.meta,
+    marginTop: 2,
+  },
+  recoveredTodayBadge: {
+    color: colors.accent,
+    fontSize: 8,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  recoveredTodayReason: {
+    color: colors.textDim,
+    ...type.meta,
+    marginTop: space.sm,
+  },
+  recoveredTodayAction: {
+    minHeight: layout.minTouch,
+    marginTop: space.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    paddingHorizontal: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  recoveredTodayActionText: {
+    color: colors.accent,
+    ...type.label,
+  },
+  recoveredTodayArrow: {
+    color: colors.accent,
+    fontSize: 17,
+    lineHeight: 19,
+  },
   deadlineWarning: {
     marginTop: space.sm,
     borderRadius: radius.md,

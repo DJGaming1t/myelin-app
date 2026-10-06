@@ -11,9 +11,19 @@ import {
 import {
   addLocalDays,
   commitmentOccurrencesForDay,
+  localDayKey,
   startOfLocalDay,
 } from '@/src/features/planning/day-engine';
 import { postponeTask } from '@/src/features/planning/task-engine';
+
+export type AppliedReclaimedWindow = {
+  commitmentId: string;
+  commitmentTitle: string;
+  occurrenceDateKey: string;
+  start: number;
+  end: number;
+  placements: ReclaimedStudyPlacement[];
+};
 
 export type ReclaimedStudyPlacement = {
   topicId: string;
@@ -437,6 +447,98 @@ function reclaimedDayPlacements(
   }
 
   return placements;
+}
+
+export function buildAppliedReclaimedWindows(
+  workspace: WorkspaceState,
+  now = Date.now(),
+) {
+  const day = startOfLocalDay(now);
+  const dayKey = localDayKey(day);
+  const previousDay = addLocalDays(day, -1);
+  const previousKey = localDayKey(previousDay);
+  const after = buildJointExamPreparationPlan(workspace, now, {
+    maxDays: 120,
+  });
+  const windows: AppliedReclaimedWindow[] = [];
+
+  for (const commitment of workspace.commitments) {
+    if (
+      !commitment.recurrenceDays.length ||
+      (commitment.kind !== 'tuition' &&
+        commitment.kind !== 'coaching')
+    ) {
+      continue;
+    }
+
+    const skippedKeys = (commitment.skippedDates ?? []).filter(
+      (key) =>
+        key === dayKey ||
+        (commitment.endMinutes <= commitment.startMinutes &&
+          key === previousKey),
+    );
+
+    for (const occurrenceDateKey of skippedKeys) {
+      const restoredCommitment = {
+        ...commitment,
+        skippedDates: (commitment.skippedDates ?? []).filter(
+          (key) => key !== occurrenceDateKey,
+        ),
+      };
+      const occurrence = commitmentOccurrencesForDay(
+        [restoredCommitment],
+        day,
+      ).find(
+        (item) =>
+          item.recurring &&
+          item.occurrenceDateKey === occurrenceDateKey,
+      );
+      if (!occurrence || occurrence.end <= now) continue;
+
+      const restoredWorkspace = cloneWorkspace(workspace);
+      const target = restoredWorkspace.commitments.find(
+        (item) => item.id === commitment.id,
+      );
+      if (!target) continue;
+      target.skippedDates = (target.skippedDates ?? []).filter(
+        (key) => key !== occurrenceDateKey,
+      );
+
+      const before = buildJointExamPreparationPlan(
+        restoredWorkspace,
+        now,
+        { maxDays: 120 },
+      );
+      const impact = effect(before, after);
+      if (impact.capacityGainedMinutes < 5) continue;
+
+      const placements = reclaimedDayPlacements(
+        before,
+        after,
+        occurrence.start,
+        occurrence.end,
+        impact.capacityGainedMinutes,
+      );
+      if (!placements.length) continue;
+
+      windows.push({
+        commitmentId: commitment.id,
+        commitmentTitle: commitment.title,
+        occurrenceDateKey,
+        start: occurrence.start,
+        end: occurrence.end,
+        placements,
+      });
+    }
+  }
+
+  return windows
+    .sort(
+      (a, b) =>
+        a.start - b.start ||
+        a.commitmentTitle.localeCompare(b.commitmentTitle),
+    )
+    .slice(0, 4);
 }
 
 function reclaimableCommitmentOptions(

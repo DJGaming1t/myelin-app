@@ -17,28 +17,18 @@ const REQUEST_ID = 'mini-test-1';
 
 {
   const prompt = myelinMiniSystemPrompt();
-  assert.match(prompt, /tiny intent and tool-routing model/i);
-  assert.match(prompt, /never calculate the timetable/i);
-  assert.match(prompt, /kind=clarify/i);
-  assert.match(prompt, /kind=escalate/i);
+  assert.match(prompt, /narrow intent and tool-routing model/i);
+  assert.match(prompt, /NOT to calculate the timetable/i);
+  assert.match(prompt, /actions, clarify, or escalate/i);
   assert.match(prompt, /Never invent dates/i);
 }
 
 {
   const schema = myelinMiniDecisionJsonSchema();
   assert.equal(schema.oneOf.length, 3);
-  assert.equal(
-    schema.oneOf[0]!.properties.kind.const,
-    'actions',
-  );
-  assert.equal(
-    schema.oneOf[1]!.properties.kind.const,
-    'clarify',
-  );
-  assert.equal(
-    schema.oneOf[2]!.properties.kind.const,
-    'escalate',
-  );
+  assert.equal(schema.oneOf[0]!.properties.route.const, 'actions');
+  assert.equal(schema.oneOf[1]!.properties.route.const, 'clarify');
+  assert.equal(schema.oneOf[2]!.properties.route.const, 'escalate');
 }
 
 {
@@ -46,23 +36,27 @@ const REQUEST_ID = 'mini-test-1';
     {
       version: 1,
       requestId: REQUEST_ID,
-      kind: 'actions',
+      route: 'actions',
       confidence: 0.94,
-      actions: [
-        {
-          type: 'create_topic',
-          name: 'Quadratic equations',
-          subject: 'Maths',
-          status: 'learning',
-          priority: 2,
-          estimatedMinutes: 45,
-          notes: '',
-        },
-      ],
+      batch: {
+        version: 1,
+        requestId: REQUEST_ID,
+        actions: [
+          {
+            type: 'create_topic',
+            name: 'Quadratic equations',
+            subject: 'Maths',
+            status: 'learning',
+            priority: 2,
+            estimatedMinutes: 45,
+            notes: '',
+          },
+        ],
+      },
     },
     REQUEST_ID,
   );
-  assert.equal(parsed.kind, 'actions');
+  assert.equal(parsed.route, 'actions');
 }
 
 {
@@ -70,25 +64,28 @@ const REQUEST_ID = 'mini-test-1';
     {
       version: 1,
       requestId: REQUEST_ID,
-      kind: 'actions',
-      confidence:
-        MYELIN_MINI_MIN_ACTION_CONFIDENCE - 0.01,
-      actions: [
-        {
-          type: 'create_task',
-          title: 'Revise acids and bases',
-          subject: 'Chemistry',
-          taskType: 'revision',
-          estimatedMinutes: 30,
-          priority: 2,
-          notes: '',
-        },
-      ],
+      route: 'actions',
+      confidence: MYELIN_MINI_MIN_ACTION_CONFIDENCE - 0.01,
+      batch: {
+        version: 1,
+        requestId: REQUEST_ID,
+        actions: [
+          {
+            type: 'create_task',
+            title: 'Revise acids and bases',
+            subject: 'Chemistry',
+            taskType: 'revision',
+            estimatedMinutes: 30,
+            priority: 2,
+            notes: '',
+          },
+        ],
+      },
     },
     REQUEST_ID,
   );
-  assert.equal(parsed.kind, 'escalate');
-  if (parsed.kind === 'escalate') {
+  assert.equal(parsed.route, 'escalate');
+  if (parsed.route === 'escalate') {
     assert.equal(parsed.reason, 'low-confidence');
   }
 }
@@ -98,7 +95,7 @@ const REQUEST_ID = 'mini-test-1';
     {
       version: 1,
       requestId: REQUEST_ID,
-      kind: 'clarify',
+      route: 'clarify',
       confidence: 0.98,
       reason: 'missing-date',
       question: 'What date is your science exam?',
@@ -106,8 +103,8 @@ const REQUEST_ID = 'mini-test-1';
     },
     REQUEST_ID,
   );
-  assert.equal(parsed.kind, 'clarify');
-  if (parsed.kind === 'clarify') {
+  assert.equal(parsed.route, 'clarify');
+  if (parsed.route === 'clarify') {
     assert.deepEqual(parsed.missingFields, ['date']);
   }
 }
@@ -119,10 +116,10 @@ const REQUEST_ID = 'mini-test-1';
         {
           version: 1,
           requestId: 'wrong-id',
-          kind: 'escalate',
+          route: 'escalate',
           confidence: 0.5,
-          reason: 'complex-reasoning',
-          summary: 'Needs a stronger model.',
+          reason: 'ambiguous',
+          note: 'Missing the exam date.',
         },
         REQUEST_ID,
       ),
@@ -137,13 +134,13 @@ const REQUEST_ID = 'mini-test-1';
         {
           version: 1,
           requestId: REQUEST_ID,
-          kind: 'actions',
+          route: 'actions',
           confidence: 0.95,
-          actions: [
-            {
-              type: 'delete_everything',
-            },
-          ],
+          batch: {
+            version: 1,
+            requestId: REQUEST_ID,
+            actions: [{ type: 'delete_everything' }],
+          },
         },
         REQUEST_ID,
       ),
@@ -151,44 +148,100 @@ const REQUEST_ID = 'mini-test-1';
   );
 }
 
-{
-  const raw = readFileSync(
-    'training/myelin-mini/seed-v1.jsonl',
-    'utf8',
-  )
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => JSON.parse(line));
+type SeedExample = {
+  id: string;
+  split: 'train' | 'validation';
+  input: {
+    currentDate: string;
+    userRequest: string;
+  };
+  output: unknown;
+};
 
-  assert.ok(raw.length >= 25);
-  const kinds = new Set<string>();
-  const splits = new Set<string>();
+function verifySeedDataset() {
+  const lines = readFileSync('training/myelin-mini/seed-v1.jsonl', 'utf8')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 
-  for (const example of raw) {
-    const target = example.output;
+  assert.ok(lines.length >= 30, 'MYELIN Mini seed set should contain at least 30 examples.');
+
+  const ids = new Set<string>();
+  const requestIds = new Set<string>();
+  const actionTypes = new Set<string>();
+  const kindCounts = new Map<string, number>();
+  const splitCounts = new Map<string, number>();
+  const validationKinds = new Set<string>();
+
+  for (const [index, line] of lines.entries()) {
+    let example: SeedExample;
+    try {
+      example = JSON.parse(line) as SeedExample;
+    } catch (error) {
+      throw new Error(`Invalid MYELIN Mini JSONL on line ${index + 1}: ${String(error)}`);
+    }
+
+    assert.match(example.id, /^[a-z0-9][a-z0-9-]{2,80}$/);
+    assert.equal(ids.has(example.id), false, `Duplicate training id: ${example.id}`);
+    ids.add(example.id);
+
+    assert.ok(example.split === 'train' || example.split === 'validation');
+    splitCounts.set(example.split, (splitCounts.get(example.split) ?? 0) + 1);
+
+    assert.match(example.input.currentDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(example.input.userRequest.trim().length >= 3);
+
+    const rawOutput = example.output as { requestId?: unknown };
+    assert.equal(typeof rawOutput?.requestId, 'string');
     const parsed = parseMyelinMiniDecision(
-      target,
-      target.requestId,
+      example.output,
+      String(rawOutput.requestId),
     );
-    kinds.add(parsed.kind);
-    splits.add(example.split);
+
+    assert.equal(requestIds.has(parsed.requestId), false, `Duplicate requestId: ${parsed.requestId}`);
+    requestIds.add(parsed.requestId);
+
+    kindCounts.set(parsed.route, (kindCounts.get(parsed.route) ?? 0) + 1);
+    if (example.split === 'validation') validationKinds.add(parsed.route);
+
+    if (parsed.route === 'actions') {
+      for (const action of parsed.batch.actions) actionTypes.add(action.type);
+    } else if (parsed.route === 'clarify') {
+      assert.ok(parsed.question.endsWith('?'));
+      assert.ok(parsed.missingFields.length >= 1);
+    } else {
+      assert.ok(parsed.note.length >= 20);
+    }
   }
 
   assert.deepEqual(
-    [...kinds].sort(),
-    ['actions', 'clarify', 'escalate'],
+    [...actionTypes].sort(),
+    [
+      'create_exam',
+      'create_task',
+      'create_topic',
+      'generate_exam_plan',
+      'update_topic',
+    ],
+    'Seed data must cover every current MYELIN assistant action.',
   );
-  assert.ok(splits.has('train'));
-  assert.ok(splits.has('validation'));
+  assert.ok((splitCounts.get('train') ?? 0) >= 20);
+  assert.ok((splitCounts.get('validation') ?? 0) >= 5);
+  assert.ok((kindCounts.get('actions') ?? 0) >= 15);
+  assert.ok((kindCounts.get('clarify') ?? 0) >= 4);
+  assert.ok((kindCounts.get('escalate') ?? 0) >= 4);
+  assert.deepEqual(
+    [...validationKinds].sort(),
+    ['actions', 'clarify', 'escalate'],
+    'Validation data must cover all three MYELIN Mini routes.',
+  );
+
+  return lines.length;
 }
 
 async function main() {
-  const workspace =
-    createEmptyWorkspace('mini-test-owner');
-  const seen: Parameters<
-    MyelinMiniModelAdapter['generate']
-  >[0][] = [];
+  const workspace = createEmptyWorkspace('mini-test-owner');
+  const seen: Parameters<MyelinMiniModelAdapter['generate']>[0][] = [];
 
   const model: MyelinMiniModelAdapter = {
     id: 'fake-myelin-mini',
@@ -197,27 +250,30 @@ async function main() {
       return {
         version: 1,
         requestId: REQUEST_ID,
-        kind: 'actions',
+        route: 'actions',
         confidence: 0.97,
-        actions: [
-          {
-            type: 'create_topic',
-            name: 'Electricity',
-            subject: 'Physics',
-            status: 'new',
-            priority: 2,
-            estimatedMinutes: 50,
-            notes: '',
-          },
-        ],
+        batch: {
+          version: 1,
+          requestId: REQUEST_ID,
+          actions: [
+            {
+              type: 'create_topic',
+              name: 'Electricity',
+              subject: 'Physics',
+              status: 'new',
+              priority: 2,
+              estimatedMinutes: 50,
+              notes: '',
+            },
+          ],
+        },
       };
     },
   };
 
   const result = await routeWithMyelinMini({
     workspace,
-    userRequest:
-      'Add Electricity in Physics and give it about 50 minutes.',
+    userRequest: 'Add Electricity in Physics and give it about 50 minutes.',
     requestId: REQUEST_ID,
     model,
     now: 1_800_000_000_000,
@@ -225,22 +281,10 @@ async function main() {
 
   assert.equal(result.route, 'actions');
   if (result.route === 'actions') {
-    assert.equal(
-      result.modelId,
-      'fake-myelin-mini',
-    );
-    assert.equal(
-      result.prepared.preview.requiresConfirmation,
-      true,
-    );
-    assert.equal(
-      result.prepared.batch.actions.length,
-      1,
-    );
-    assert.equal(
-      result.prepared.batch.actions[0]!.type,
-      'create_topic',
-    );
+    assert.equal(result.modelId, 'fake-myelin-mini');
+    assert.equal(result.prepared.preview.requiresConfirmation, true);
+    assert.equal(result.prepared.batch.actions.length, 1);
+    assert.equal(result.prepared.batch.actions[0]!.type, 'create_topic');
   }
 
   assert.equal(seen.length, 1);
@@ -256,17 +300,10 @@ async function main() {
       { now: 1_800_000_000_000 },
     ),
   );
-  assert.equal(
-    contextPrompt.requestId,
-    'context-test',
-  );
+  assert.equal(contextPrompt.requestId, 'context-test');
   assert.equal(contextPrompt.context.version, 1);
-  assert.ok(
-    contextPrompt.context.topics.length <= 36,
-  );
-  assert.ok(
-    contextPrompt.context.tasks.length <= 24,
-  );
+  assert.ok(contextPrompt.context.topics.length <= 36);
+  assert.ok(contextPrompt.context.tasks.length <= 24);
 
   const clarifyModel: MyelinMiniModelAdapter = {
     id: 'fake-clarifier',
@@ -274,23 +311,25 @@ async function main() {
       return {
         version: 1,
         requestId: 'clarify-1',
-        kind: 'clarify',
+        route: 'clarify',
         confidence: 0.98,
-        reason: 'missing-target',
-        question:
-          'Which topic do you want to move to review?',
-        missingFields: ['topic'],
+        reason: 'missing-date',
+        question: 'What date is your science exam?',
+        missingFields: ['date'],
       };
     },
   };
 
   const clarification = await routeWithMyelinMini({
     workspace,
-    userRequest: 'Move it to review.',
+    userRequest: 'Add my science exam.',
     requestId: 'clarify-1',
     model: clarifyModel,
   });
   assert.equal(clarification.route, 'clarify');
+  if (clarification.route === 'clarify') {
+    assert.equal(clarification.reason, 'missing-date');
+  }
 
   const escalateModel: MyelinMiniModelAdapter = {
     id: 'fake-escalator',
@@ -298,33 +337,31 @@ async function main() {
       return {
         version: 1,
         requestId: 'escalate-1',
-        kind: 'escalate',
+        route: 'escalate',
         confidence: 0.93,
-        reason: 'concept-explanation',
-        summary:
-          'This needs subject teaching rather than a MYELIN data action.',
+        reason: 'tutoring',
+        note: 'This requires teaching rather than a study-management action.',
       };
     },
   };
 
   const escalation = await routeWithMyelinMini({
     workspace,
-    userRequest:
-      'Explain electromagnetic induction to me.',
+    userRequest: 'Explain electromagnetic induction to me.',
     requestId: 'escalate-1',
     model: escalateModel,
   });
   assert.equal(escalation.route, 'escalate');
   if (escalation.route === 'escalate') {
-    assert.equal(
-      escalation.reason,
-      'concept-explanation',
-    );
+    assert.equal(escalation.reason, 'tutoring');
   }
 
-  console.log(
-    'MYELIN Mini routing verification passed.',
-  );
+  const seedCount = verifySeedDataset();
+
+  console.log('✓ MYELIN Mini runtime routes actions, clarification, and escalation');
+  console.log('✓ low-confidence actions fail over to the stronger-model route');
+  console.log(`✓ MYELIN Mini seed dataset validates: ${seedCount} examples`);
+  console.log('✓ seed outputs use the exact production action protocol');
 }
 
 void main();

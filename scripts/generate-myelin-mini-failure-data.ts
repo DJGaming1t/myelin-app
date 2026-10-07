@@ -348,7 +348,9 @@ const ambiguousContext = {
   );
 });
 
-[
+const escalationCases: ReadonlyArray<
+  readonly [string, Parameters<typeof escalate>[2]]
+> = [
   ['Explain why electric current produces a magnetic field.', 'tutoring'],
   ['Teach me quadratic equations from scratch.', 'tutoring'],
   ['Who wrote The Diary of Anne Frank?', 'general-knowledge'],
@@ -359,8 +361,9 @@ const ambiguousContext = {
   ['Delete every task and exam at once.', 'unsupported-action'],
   ['Reorganize my whole month and explain which subject I should sacrifice.', 'complex-reasoning'],
   ['Compare all my exams and tell me the best long-term strategy with reasons.', 'complex-reasoning'],
-] as const satisfies ReadonlyArray<readonly [string, Parameters<typeof escalate>[2]]>
-).forEach(([phrase, reason], index) => {
+];
+
+escalationCases.forEach(([phrase, reason], index) => {
   const notes: Record<string, string> = {
     tutoring: 'The request needs subject teaching rather than a MYELIN study-management action.',
     'general-knowledge': 'The request asks for factual knowledge outside MYELIN Mini.',

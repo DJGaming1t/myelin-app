@@ -1097,23 +1097,6 @@ function selectCappedPlan(
       continue;
     }
 
-    if (
-      accepted.length >=
-      MAX_SCHEDULED_REMINDERS
-    ) {
-      timeline.set(reminder.key, {
-        reminder,
-        source,
-        decision: 'global-cap',
-        winnerKey: null,
-        usefulnessScore,
-        usefulnessReason,
-        reason:
-          'Not scheduled because MYELIN already has the maximum number of future device reminders queued.',
-      });
-      continue;
-    }
-
     accepted.push({
       reminder,
       usefulnessScore,
@@ -1131,14 +1114,34 @@ function selectCappedPlan(
     });
   }
 
-  return {
-    accepted: accepted
-      .map((item) => item.reminder)
-      .sort(
-        (a, b) =>
-          a.at - b.at ||
-          a.key.localeCompare(b.key),
+  const chronologicalAccepted = [...accepted].sort(
+    (a, b) =>
+      a.reminder.at - b.reminder.at ||
+      a.reminder.key.localeCompare(
+        b.reminder.key,
       ),
+  );
+  const kept = chronologicalAccepted.slice(
+    0,
+    MAX_SCHEDULED_REMINDERS,
+  );
+  for (const overflow of chronologicalAccepted.slice(
+    MAX_SCHEDULED_REMINDERS,
+  )) {
+    timeline.set(overflow.reminder.key, {
+      reminder: overflow.reminder,
+      source: reminderSource(overflow.reminder),
+      decision: 'global-cap',
+      winnerKey: null,
+      usefulnessScore: overflow.usefulnessScore,
+      usefulnessReason: overflow.usefulnessReason,
+      reason:
+        'Not scheduled because MYELIN already has the maximum number of future device reminders queued.',
+    });
+  }
+
+  return {
+    accepted: kept.map((item) => item.reminder),
     timeline: [...timeline.values()].sort(
       (a, b) =>
         a.reminder.at - b.reminder.at ||

@@ -574,7 +574,7 @@ export default function RemindersScreen() {
               </Text>
               <Text style={styles.timelineMeta}>
                 Final ordering after adaptive timing, quiet hours,
-                collisions and the two-per-day cap
+                collisions and the best-two-per-day usefulness cap
               </Text>
             </View>
             <View style={styles.timelineCountPill}>
@@ -683,14 +683,20 @@ export default function RemindersScreen() {
                         </Text>
                       </View>
 
-                      {entry.decision ===
-                        'collision' &&
+                      {(entry.decision ===
+                        'collision' ||
+                        entry.decision ===
+                          'daily-cap') &&
                       winner ? (
                         <Text
                           style={
                             styles.timelineWinner
                           }>
-                          Winner ·{' '}
+                          {entry.decision ===
+                          'daily-cap'
+                            ? 'Highest-ranked day winner'
+                            : 'Winner'}{' '}
+                          ·{' '}
                           {timelineSourceLabel(
                             winner.source,
                           )}{' '}

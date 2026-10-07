@@ -200,6 +200,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       transitionPending || !onboardingShouldShow,
   });
   const scheduleQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const scheduleGenerationRef = useRef(0);
   const legacyOwnerlessCleanupRef =
     useRef<Promise<void> | null>(null);
 
@@ -214,6 +215,19 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     focusSessionRef.current = focusSession;
   }, [focusSession]);
+
+  useEffect(() => {
+    scheduleGenerationRef.current += 1;
+  }, [
+    ownerKey,
+    workspace?.revision,
+    focusSession?.phase,
+    focusSession?.startedAt,
+    focusSession?.topicId,
+    focusSession?.runningSince,
+    focusSession?.elapsedMs,
+    focusSession?.plannedFocusMinutes,
+  ]);
 
   const routeReminderNow = useCallback(
     (payload: ReminderOpenPayload) => {
@@ -553,6 +567,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     const previousOwner = ownerRef.current;
     const previousState = stateRef.current;
 
+    scheduleGenerationRef.current += 1;
     ownerRef.current = ownerKey;
     setReady(false);
     setMessage('');
@@ -678,9 +693,17 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   }, [queueOrRouteReminder]);
 
   const doReschedule = useCallback(async () => {
+    const generation =
+      scheduleGenerationRef.current;
     const owner = ownerRef.current;
     const currentWorkspace = workspaceRef.current;
     const current = stateRef.current;
+
+    const isCurrentScheduleWork = () =>
+      scheduleGenerationRef.current === generation &&
+      ownerRef.current === owner &&
+      workspaceRef.current === currentWorkspace &&
+      stateRef.current === current;
 
     if (
       Platform.OS === 'web' ||
@@ -692,12 +715,15 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     }
 
     const currentPermission = await getReminderPermission();
+    if (!isCurrentScheduleWork()) return;
     setPermission(currentPermission);
 
     if (currentPermission !== 'granted') {
       const cleared =
         await cancelCurrentSchedule(owner, current);
+      if (!isCurrentScheduleWork()) return;
       await persist(cleared, owner);
+      if (!isCurrentScheduleWork()) return;
       setRegisteredCount(0);
       setDeviceScheduleChecked(true);
       setStatus(currentPermission === 'denied' ? 'blocked' : 'ready');
@@ -732,6 +758,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       await getScheduledReminderAudit(owner).catch(
         () => null,
       );
+    if (!isCurrentScheduleWork()) return;
     if (deviceAudit) {
       setRegisteredCount(
         deviceAudit.registeredCount,
@@ -769,6 +796,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         ]),
       ),
     );
+    if (!isCurrentScheduleWork()) return;
 
     try {
       const ids = await scheduleReminderPlan(
@@ -776,10 +804,19 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         current.settings,
         owner,
       );
+      if (!isCurrentScheduleWork()) {
+        await cancelReminderIds(ids);
+        return;
+      }
+
       const readback =
         await getScheduledReminderAudit(owner).catch(
           () => null,
         );
+      if (!isCurrentScheduleWork()) {
+        await cancelReminderIds(ids);
+        return;
+      }
       const registered =
         readback?.registeredCount ?? ids.length;
       const readbackMatches =
@@ -797,7 +834,15 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           ? signature
           : '',
       };
+      if (!isCurrentScheduleWork()) {
+        await cancelReminderIds(ids);
+        return;
+      }
       await persist(next, owner);
+      if (!isCurrentScheduleWork()) {
+        await cancelReminderIds(ids);
+        return;
+      }
       setRegisteredCount(registered);
       setDeviceScheduleChecked(readback != null);
       setStatus(
@@ -815,12 +860,14 @@ export function ReminderProvider({ children }: PropsWithChildren) {
             : 'Reminders are on, but nothing currently needs a notification.',
       );
     } catch (error) {
+      if (!isCurrentScheduleWork()) return;
       const next = {
         ...current,
         scheduledIds: [],
         planSignature: '',
       };
       await persist(next, owner);
+      if (!isCurrentScheduleWork()) return;
       setRegisteredCount(0);
       setDeviceScheduleChecked(false);
       setStatus('error');
@@ -882,6 +929,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         planSignature: '',
       };
 
+      scheduleGenerationRef.current += 1;
       await persist(next, owner);
       if (!settings.enabled) setStatus('off');
     },
@@ -926,6 +974,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         },
         planSignature: '',
       };
+      scheduleGenerationRef.current += 1;
       await persist(next, owner);
       await doReschedule();
       return true;
@@ -940,6 +989,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     const owner = ownerRef.current;
     if (!owner) return;
 
+    scheduleGenerationRef.current += 1;
     const current = stateRef.current;
     const cleared =
       await cancelCurrentSchedule(owner, current);

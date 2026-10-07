@@ -126,6 +126,22 @@ function canRouteReminderPayload(
         payload.ownerKey === gate.ownerKey),
   );
 }
+function canRouteReminderFallback(
+  ownerKey: string | undefined,
+  gate: ReminderRoutingGate,
+) {
+  return Boolean(
+    gate.authReady &&
+      gate.authAllowsApp &&
+      gate.workspaceStatus === 'ready' &&
+      gate.ownerKey &&
+      gate.hasWorkspace &&
+      gate.onboardingReady &&
+      gate.onboardingAllowsApp &&
+      ownerKey === gate.ownerKey,
+  );
+}
+
 
 export function ReminderProvider({ children }: PropsWithChildren) {
   const {
@@ -319,12 +335,47 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      if (
-        canRouteReminderPayload(
-          payload,
-          routingGateRef.current,
-        )
-      ) {
+      const gate = routingGateRef.current;
+
+      // Old MYELIN notifications can lack ownerKey. Never route those
+      // directly into owner-specific destinations; degrade to a safe Today
+      // handoff and bind it to the first known owner.
+      if (!payload.ownerKey) {
+        const fallbackOwner =
+          gate.ownerKey ?? undefined;
+
+        if (
+          canRouteReminderFallback(
+            fallbackOwner,
+            gate,
+          )
+        ) {
+          handledReminderResponsesRef.current.add(
+            payload.responseId,
+          );
+          router.push({
+            pathname: '/(app)/today',
+            params: {
+              reminderExpired: '1',
+              reminderKind: payload.kind,
+            },
+          });
+          return;
+        }
+
+        expiredReminderFallbacksRef.current.set(
+          payload.responseId,
+          {
+            responseId: payload.responseId,
+            ownerKey: fallbackOwner,
+            kind: payload.kind,
+            queuedAt: Date.now(),
+          },
+        );
+        return;
+      }
+
+      if (canRouteReminderPayload(payload, gate)) {
         routeReminderNow(payload);
         return;
       }
@@ -356,19 +407,15 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         responseId,
         pending,
       ] of pendingReminderResponsesRef.current) {
-        const readyWrongOwner =
-          gate.authReady &&
-          gate.authAllowsApp &&
-          gate.workspaceStatus === 'ready' &&
-          gate.ownerKey &&
-          gate.hasWorkspace &&
-          gate.onboardingReady &&
-          gate.onboardingAllowsApp &&
-          pending.payload.ownerKey &&
-          pending.payload.ownerKey !==
-            gate.ownerKey;
+        const wrongOwner =
+          Boolean(
+            gate.ownerKey &&
+              pending.payload.ownerKey &&
+              pending.payload.ownerKey !==
+                gate.ownerKey,
+          );
 
-        if (readyWrongOwner) {
+        if (wrongOwner) {
           pendingReminderResponsesRef.current.delete(
             responseId,
           );
@@ -424,18 +471,18 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           continue;
         }
 
-        const readyWrongOwner =
-          gate.authReady &&
-          gate.authAllowsApp &&
-          gate.workspaceStatus === 'ready' &&
-          gate.ownerKey &&
-          gate.hasWorkspace &&
-          gate.onboardingReady &&
-          gate.onboardingAllowsApp &&
-          fallback.ownerKey &&
-          fallback.ownerKey !== gate.ownerKey;
+        if (!fallback.ownerKey && gate.ownerKey) {
+          fallback.ownerKey = gate.ownerKey;
+        }
 
-        if (readyWrongOwner) {
+        const wrongOwner =
+          Boolean(
+            gate.ownerKey &&
+              fallback.ownerKey &&
+              fallback.ownerKey !== gate.ownerKey,
+          );
+
+        if (wrongOwner) {
           expiredReminderFallbacksRef.current.delete(
             responseId,
           );
@@ -445,18 +492,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           continue;
         }
 
-        const canRouteFallback =
-          gate.authReady &&
-          gate.authAllowsApp &&
-          gate.workspaceStatus === 'ready' &&
-          gate.ownerKey &&
-          gate.hasWorkspace &&
-          gate.onboardingReady &&
-          gate.onboardingAllowsApp &&
-          (!fallback.ownerKey ||
-            fallback.ownerKey === gate.ownerKey);
-
-        if (canRouteFallback) {
+        if (
+          canRouteReminderFallback(
+            fallback.ownerKey,
+            gate,
+          )
+        ) {
           expiredReminderFallbacksRef.current.delete(
             responseId,
           );
@@ -475,6 +516,45 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     }, [routeReminderNow]);
 
   useEffect(() => {
+    const previousOwner =
+      routingGateRef.current.ownerKey;
+
+    if (
+      previousOwner &&
+      previousOwner !== ownerKey
+    ) {
+      for (const [
+        responseId,
+        pending,
+      ] of pendingReminderResponsesRef.current) {
+        if (
+          pending.payload.ownerKey ===
+          previousOwner
+        ) {
+          pendingReminderResponsesRef.current.delete(
+            responseId,
+          );
+          handledReminderResponsesRef.current.add(
+            responseId,
+          );
+        }
+      }
+
+      for (const [
+        responseId,
+        fallback,
+      ] of expiredReminderFallbacksRef.current) {
+        if (fallback.ownerKey === previousOwner) {
+          expiredReminderFallbacksRef.current.delete(
+            responseId,
+          );
+          handledReminderResponsesRef.current.add(
+            responseId,
+          );
+        }
+      }
+    }
+
     routingGateRef.current = {
       authReady,
       authAllowsApp:

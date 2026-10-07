@@ -93,6 +93,8 @@ export default function DayMapScreen() {
   const handoffConsumedRef = useRef(false);
   const recoveredLayoutRef = useRef<Record<string, number>>({});
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handoffCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeHandoffIdentityRef = useRef<string | null>(null);
   const clock = useScreenClock();
   const [refresh, setNow] = useState(Date.now());
   const now = Math.max(clock, refresh);
@@ -222,6 +224,29 @@ export default function DayMapScreen() {
     params.recoveredTopicId,
   ]);
 
+  const recoveredHandoffIdentity = useMemo(
+    () =>
+      recoveredHandoff
+        ? [
+            recoveredHandoff.commitmentId,
+            recoveredHandoff.occurrenceDateKey,
+            recoveredHandoff.topicId ?? '',
+            recoveredHandoff.scheduledStart ?? '',
+            recoveredHandoff.scheduledEnd ?? '',
+          ].join(':')
+        : null,
+    [recoveredHandoff],
+  );
+
+  useEffect(() => {
+    activeHandoffIdentityRef.current =
+      recoveredHandoffIdentity;
+    if (handoffCleanupTimerRef.current) {
+      clearTimeout(handoffCleanupTimerRef.current);
+      handoffCleanupTimerRef.current = null;
+    }
+  }, [recoveredHandoffIdentity]);
+
   const recoveredHandoffResolution = useMemo(() => {
     if (!recoveredHandoff) return null;
     return resolveRecoveredReminderHandoff(
@@ -285,9 +310,33 @@ export default function DayMapScreen() {
       () => setHighlightedRecoveredKey(null),
       4200,
     );
+    if (recoveredHandoffIdentity) {
+      scheduleRecoveredHandoffCleanup(
+        recoveredHandoffIdentity,
+      );
+    }
   }, [
+    recoveredHandoffIdentity,
     recoveredHandoffTarget?.placementKey,
     recoveredHandoffTarget?.windowKey,
+  ]);
+
+  useEffect(() => {
+    if (
+      !recoveredHandoffIdentity ||
+      !recoveredHandoffResolution ||
+      recoveredHandoffTarget
+    ) {
+      return;
+    }
+
+    scheduleRecoveredHandoffCleanup(
+      recoveredHandoffIdentity,
+    );
+  }, [
+    recoveredHandoffIdentity,
+    recoveredHandoffResolution,
+    recoveredHandoffTarget,
   ]);
 
   useEffect(
@@ -295,11 +344,50 @@ export default function DayMapScreen() {
       if (highlightTimerRef.current) {
         clearTimeout(highlightTimerRef.current);
       }
+      if (handoffCleanupTimerRef.current) {
+        clearTimeout(handoffCleanupTimerRef.current);
+      }
     },
     [],
   );
 
   if (!workspace || !map) return null;
+
+  function clearRecoveredHandoffRoute(
+    expectedIdentity: string,
+  ) {
+    if (
+      activeHandoffIdentityRef.current !==
+      expectedIdentity
+    ) {
+      return;
+    }
+
+    activeHandoffIdentityRef.current = null;
+    handoffConsumedRef.current = false;
+    setHighlightedRecoveredKey(null);
+
+    const reflowParam = firstParam(params.reflow);
+    router.replace({
+      pathname: '/(app)/today/day-map',
+      ...(reflowParam
+        ? { params: { reflow: reflowParam } }
+        : {}),
+    });
+  }
+
+  function scheduleRecoveredHandoffCleanup(
+    expectedIdentity: string,
+  ) {
+    if (handoffCleanupTimerRef.current) {
+      clearTimeout(handoffCleanupTimerRef.current);
+    }
+
+    handoffCleanupTimerRef.current = setTimeout(() => {
+      handoffCleanupTimerRef.current = null;
+      clearRecoveredHandoffRoute(expectedIdentity);
+    }, 4400);
+  }
 
   function updateWithReflow(change: Parameters<typeof updateWorkspace>[0]) {
     const before = workspace!;
@@ -666,6 +754,11 @@ export default function DayMapScreen() {
                         setHighlightedRecoveredKey(null),
                       4200,
                     );
+                    if (recoveredHandoffIdentity) {
+                      scheduleRecoveredHandoffCleanup(
+                        recoveredHandoffIdentity,
+                      );
+                    }
                   }}
                   style={[
                     styles.reclaimedWindow,

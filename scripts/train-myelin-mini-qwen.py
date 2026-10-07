@@ -158,12 +158,54 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--max-steps", type=int, default=-1)
+    parser.add_argument("--max-train-samples", type=int, default=0)
+    parser.add_argument("--max-validation-samples", type=int, default=0)
+    parser.add_argument("--allow-cpu", action="store_true")
+    parser.add_argument("--skip-eval", action="store_true")
+    parser.add_argument("--no-gradient-checkpointing", action="store_true")
+    parser.add_argument("--smoke-mode", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
+def to_prompt_completion(
+    rows: list[dict[str, Any]],
+    *,
+    smoke_mode: bool = False,
+) -> list[dict[str, Any]]:
+    converted: list[dict[str, Any]] = []
+    for row in rows:
+        messages = row["messages"]
+        prompt = [dict(message) for message in messages[:2]]
+        if smoke_mode:
+            prompt[0] = {
+                "role": "system",
+                "content": "You are MYELIN Mini. Return only the exact target JSON.",
+            }
+        converted.append(
+            {
+                "id": row["id"],
+                "prompt": prompt,
+                "completion": [dict(messages[2])],
+            }
+        )
+    return converted
+
+
 def main() -> None:
     args = parse_args()
+
+    if args.smoke_mode:
+        args.allow_cpu = True
+        args.skip_eval = True
+        args.no_gradient_checkpointing = True
+        args.max_steps = 1
+        args.max_train_samples = 1
+        args.max_validation_samples = 1
+        args.batch_size = 1
+        args.gradient_accumulation = 1
+        args.max_length = min(args.max_length, 512)
 
     train_rows = read_jsonl(args.train)
     validation_rows = read_jsonl(args.validation)
@@ -188,24 +230,44 @@ def main() -> None:
         print("dry-run=PASS")
         return
 
+    train_rows_for_run = (
+        train_rows[: args.max_train_samples]
+        if args.max_train_samples > 0
+        else train_rows
+    )
+    validation_rows_for_run = (
+        validation_rows[: args.max_validation_samples]
+        if args.max_validation_samples > 0
+        else validation_rows
+    )
+
     # Heavy ML imports intentionally happen only after dry-run validation.
     import torch
     from datasets import Dataset
     from peft import LoraConfig
     from trl import SFTConfig, SFTTrainer
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("A CUDA GPU is required for the MYELIN Mini LoRA training run.")
+    use_cuda = bool(torch.cuda.is_available())
+    if not use_cuda and not args.allow_cpu:
+        raise RuntimeError(
+            "A CUDA GPU is required for a full MYELIN Mini training run. "
+            "Use --smoke-mode only for the one-step CPU training check."
+        )
 
     args.output.mkdir(parents=True, exist_ok=True)
 
-    train_dataset = Dataset.from_list(train_rows)
-    validation_dataset = Dataset.from_list(validation_rows)
+    train_dataset = Dataset.from_list(
+        to_prompt_completion(train_rows_for_run, smoke_mode=args.smoke_mode)
+    )
+    validation_dataset = Dataset.from_list(
+        to_prompt_completion(validation_rows_for_run, smoke_mode=args.smoke_mode)
+    )
 
-    use_bf16 = bool(torch.cuda.is_bf16_supported())
+    use_bf16 = bool(use_cuda and torch.cuda.is_bf16_supported())
     training_args = SFTConfig(
         output_dir=str(args.output),
         num_train_epochs=args.epochs,
+        max_steps=args.max_steps,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
         gradient_accumulation_steps=args.gradient_accumulation,
@@ -215,18 +277,20 @@ def main() -> None:
         weight_decay=0.01,
         logging_steps=5,
         logging_first_step=True,
-        eval_strategy="epoch",
-        save_strategy="epoch",
+        eval_strategy="no" if args.skip_eval else "epoch",
+        save_strategy="no" if args.smoke_mode else "epoch",
         save_total_limit=2,
         report_to="none",
         seed=args.seed,
         data_seed=args.seed,
         max_length=args.max_length,
-        assistant_only_loss=True,
+        completion_only_loss=True,
+        assistant_only_loss=False,
         packing=False,
-        gradient_checkpointing=True,
+        gradient_checkpointing=not args.no_gradient_checkpointing,
+        use_cpu=not use_cuda,
         bf16=use_bf16,
-        fp16=not use_bf16,
+        fp16=bool(use_cuda and not use_bf16),
     )
 
     peft_config = LoraConfig(
@@ -254,8 +318,9 @@ def main() -> None:
         processing_class.save_pretrained(str(args.output))
 
     metrics = dict(result.metrics)
-    eval_metrics = trainer.evaluate()
-    metrics.update({f"final_{key}": value for key, value in eval_metrics.items()})
+    if not args.skip_eval:
+        eval_metrics = trainer.evaluate()
+        metrics.update({f"final_{key}": value for key, value in eval_metrics.items()})
 
     manifest = {
         "schemaVersion": 1,
@@ -267,6 +332,8 @@ def main() -> None:
         "validationSha256": sha256_file(args.validation),
         "trainRows": len(train_rows),
         "validationRows": len(validation_rows),
+        "runTrainRows": len(train_rows_for_run),
+        "runValidationRows": len(validation_rows_for_run),
         "trainRoutes": train_routes,
         "validationRoutes": validation_routes,
         "epochs": args.epochs,
@@ -277,6 +344,9 @@ def main() -> None:
         "loraR": args.lora_r,
         "loraAlpha": args.lora_alpha,
         "seed": args.seed,
+        "maxSteps": args.max_steps,
+        "smokeMode": args.smoke_mode,
+        "device": "cuda" if use_cuda else "cpu",
         "bf16": use_bf16,
         "metrics": metrics,
     }

@@ -45,6 +45,7 @@ jobs:
             --host 0.0.0.0 \
             --port 8080 \
             -c 8192 \
+            --reasoning off \
             -n 512
 
       - name: Wait for model server
@@ -74,7 +75,7 @@ jobs:
           MYELIN_MINI_CONCURRENCY: "1"
           MYELIN_MINI_TIMEOUT_MS: "60000"
           MYELIN_MINI_MAX_OUTPUT_TOKENS: "320"
-          MYELIN_MINI_JSON_OBJECT: "0"
+          MYELIN_MINI_JSON_OBJECT: "1"
           MYELIN_MINI_PREDICTIONS_OUT: artifacts/myelin-mini/qwen3.5-0.8b-q4_0/predictions.jsonl
           MYELIN_MINI_REPORT_OUT: artifacts/myelin-mini/qwen3.5-0.8b-q4_0/report.json
         run: npm run benchmark:myelin-mini

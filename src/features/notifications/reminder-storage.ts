@@ -130,6 +130,37 @@ export const reminderStorage = {
     );
   },
 
+  async clearSchedule(ownerKey: string) {
+    await enqueueOwnerMutation(
+      ownerKey,
+      async () => {
+        const storageKey = key(ownerKey);
+        const raw =
+          await AsyncStorage.getItem(storageKey);
+        let current = normalizeState(null);
+
+        if (raw) {
+          try {
+            current = normalizeState(
+              JSON.parse(raw),
+            );
+          } catch {
+            current = normalizeState(null);
+          }
+        }
+
+        await AsyncStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            ...current,
+            scheduledIds: [],
+            planSignature: '',
+          }),
+        );
+      },
+    );
+  },
+
   async clear(ownerKey: string) {
     await enqueueOwnerMutation(ownerKey, () =>
       AsyncStorage.removeItem(key(ownerKey)),

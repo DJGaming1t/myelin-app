@@ -485,11 +485,7 @@ function main() {
     ),
   );
   const protectedExpectedCopy = studyReminderCopy(
-    {
-      ...settings,
-      reviewEnabled: false,
-      examEnabled: false,
-    },
+    settings,
     protectedRecoveredInsight!.topicName,
     protectedRecoveredInsight!.subject,
     protectedRecoveredInsight!.minutes,

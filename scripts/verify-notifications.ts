@@ -1412,6 +1412,63 @@ function main() {
     'src/features/notifications/ReminderProvider.tsx',
     'utf8',
   );
+  const notificationRuntimeSourceForAudit =
+    fs.readFileSync(
+      'src/features/notifications/notification-runtime.ts',
+      'utf8',
+    );
+  assert.ok(
+    notificationRuntimeSourceForAudit.includes(
+      'getAllScheduledNotificationsAsync',
+    ) &&
+      notificationRuntimeSourceForAudit.includes(
+        'summarizeScheduledReminderRequests',
+      ) &&
+      notificationRuntimeSourceForAudit.includes(
+        'data.ownerKey === ownerKey',
+      ) &&
+      notificationRuntimeSourceForAudit.includes(
+        'data.preview !== true',
+      ),
+    'Device reminder audit should read actual pending notifications and count only non-preview MYELIN reminders owned by the current workspace.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'getScheduledReminderAudit',
+    ) &&
+      reminderProviderSource.includes(
+        'trackedIdsMatchDevice',
+      ) &&
+      reminderProviderSource.includes(
+        'deviceAudit.registeredIds',
+      ) &&
+      reminderProviderSource.includes(
+        'readbackMatches',
+      ) &&
+      reminderProviderSource.includes(
+        'Refresh schedule to repair the difference',
+      ),
+    'ReminderProvider should verify real device registrations before taking the unchanged-plan fast path and after scheduling.',
+  );
+  assert.ok(
+    reminderStudioSource.includes(
+      'label="PLANNED"',
+    ) &&
+      reminderStudioSource.includes(
+        'label="DEVICE"',
+      ) &&
+      reminderStudioSource.includes(
+        'actually registered',
+      ) &&
+      reminderStudioSource.includes(
+        'deviceScheduleChecked',
+      ) &&
+      reminderStudioSource.includes(
+        'trackedScheduledCount',
+      ),
+    'Reminder Studio should distinguish engine-planned reminders from actual device registrations and expose reconciliation state.',
+  );
+
   assert.ok(
     reminderProviderSource.includes('useFocus()') &&
       reminderProviderSource.includes('timerRemainingMs') &&

@@ -39,9 +39,10 @@
     "verify:assistant-actions": "tsx scripts/verify-assistant-actions.ts",
     "verify:local-ai": "tsx scripts/verify-local-ai.ts",
     "verify:syllabus-intake": "tsx scripts/verify-syllabus-intake.ts",
-    "verify:myelin-mini": "tsx scripts/verify-myelin-mini.ts && tsx scripts/build-myelin-mini-dataset.ts --check",
-    "build:myelin-mini-dataset": "tsx scripts/build-myelin-mini-dataset.ts",
-    "benchmark:myelin-mini": "tsx scripts/benchmark-myelin-mini.ts"
+    "verify:myelin-mini": "tsx scripts/verify-myelin-mini.ts && tsx scripts/generate-myelin-mini-failure-data.ts && tsx scripts/build-myelin-mini-dataset.ts --check",
+    "build:myelin-mini-dataset": "tsx scripts/generate-myelin-mini-failure-data.ts && tsx scripts/build-myelin-mini-dataset.ts",
+    "benchmark:myelin-mini": "tsx scripts/benchmark-myelin-mini.ts",
+    "generate:myelin-mini-failure-data": "tsx scripts/generate-myelin-mini-failure-data.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

@@ -23,6 +23,7 @@ import {
   ReminderVoice,
   buildRecoveredReminderInsight,
   buildReminderPlan,
+  buildReminderTimeline,
   formatTimeMinutes,
   normalizeReminderSettings,
   sampleReminderCopy,
@@ -105,6 +106,28 @@ const VOICES: Array<{
     description: 'Warmer, playful nudges without streaks, guilt or urgency tricks.',
   },
 ];
+
+function timelineSourceLabel(
+  source: 'review' | 'exam' | 'study' | 'recovered',
+) {
+  if (source === 'review') return 'REVIEW';
+  if (source === 'exam') return 'EXAM';
+  if (source === 'recovered') return 'RECOVERED';
+  return 'DAY MAP';
+}
+
+function timelineDecisionLabel(
+  decision:
+    | 'scheduled'
+    | 'collision'
+    | 'daily-cap'
+    | 'global-cap',
+) {
+  if (decision === 'scheduled') return 'SCHEDULED';
+  if (decision === 'collision') return 'COLLISION';
+  if (decision === 'daily-cap') return 'DAILY CAP';
+  return 'QUEUE CAP';
+}
 
 function permissionLabel(value: string) {
   if (value === 'granted') return 'Allowed';
@@ -193,6 +216,29 @@ export default function RemindersScreen() {
         : null,
     [now, reminderContext, settings, workspace],
   );
+  const reminderTimeline = useMemo(
+    () =>
+      workspace
+        ? buildReminderTimeline(
+            workspace,
+            normalizedSettings,
+            now,
+            reminderContext,
+            8,
+          )
+        : [],
+    [
+      normalizedSettings,
+      now,
+      reminderContext,
+      workspace,
+    ],
+  );
+  const timelineScheduledCount = reminderTimeline.filter(
+    (item) => item.decision === 'scheduled',
+  ).length;
+  const timelineWithheldCount =
+    reminderTimeline.length - timelineScheduledCount;
 
   const voice = VOICES.find((item) => item.id === settings.voice)!;
   const detail = DETAIL_LEVELS.find((item) => item.id === settings.detail)!;
@@ -516,6 +562,150 @@ export default function RemindersScreen() {
               No recovered Autopilot window currently needs a
               heads-up. When one does, its live state will appear
               here.
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.timelineCard}>
+          <View style={styles.timelineHeader}>
+            <View style={styles.timelineHeaderCopy}>
+              <Text style={styles.sectionEyebrow}>
+                NEXT REMINDERS
+              </Text>
+              <Text style={styles.timelineMeta}>
+                Final ordering after adaptive timing, quiet hours,
+                collisions and the two-per-day cap
+              </Text>
+            </View>
+            <View style={styles.timelineCountPill}>
+              <Text style={styles.timelineCountText}>
+                {timelineScheduledCount} WIN
+              </Text>
+            </View>
+          </View>
+
+          {reminderTimeline.length ? (
+            <>
+              {reminderTimeline.map((entry, index) => {
+                const winner =
+                  entry.winnerKey &&
+                  reminderTimeline.find(
+                    (item) =>
+                      item.reminder.key ===
+                      entry.winnerKey,
+                  );
+                const scheduled =
+                  entry.decision === 'scheduled';
+
+                return (
+                  <View
+                    key={entry.reminder.key}
+                    style={[
+                      styles.timelineRow,
+                      index ===
+                        reminderTimeline.length - 1 &&
+                        styles.timelineRowLast,
+                    ]}>
+                    <View
+                      style={[
+                        styles.timelineRailDot,
+                        scheduled &&
+                          styles.timelineRailDotScheduled,
+                      ]}
+                    />
+                    <View style={styles.timelineRowBody}>
+                      <View style={styles.timelineRowTop}>
+                        <Text style={styles.timelineSource}>
+                          {timelineSourceLabel(
+                            entry.source,
+                          )}
+                        </Text>
+                        <Text style={styles.timelineTime}>
+                          {new Intl.DateTimeFormat(
+                            undefined,
+                            {
+                              weekday: 'short',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            },
+                          ).format(
+                            new Date(
+                              entry.reminder.at,
+                            ),
+                          )}
+                        </Text>
+                      </View>
+
+                      <Text style={styles.timelineTitle}>
+                        {entry.reminder.title}
+                      </Text>
+
+                      <View style={styles.timelineDecisionRow}>
+                        <View
+                          style={[
+                            styles.timelineDecision,
+                            scheduled &&
+                              styles.timelineDecisionScheduled,
+                            entry.decision ===
+                              'collision' &&
+                              styles.timelineDecisionCollision,
+                          ]}>
+                          <Text
+                            style={[
+                              styles.timelineDecisionText,
+                              scheduled &&
+                                styles.timelineDecisionTextScheduled,
+                            ]}>
+                            {timelineDecisionLabel(
+                              entry.decision,
+                            )}
+                          </Text>
+                        </View>
+                        {entry.source === 'recovered' ? (
+                          <Text
+                            style={
+                              styles.timelineRecoveredTag
+                            }>
+                            AUTOPILOT
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      <Text style={styles.timelineReason}>
+                        {entry.reason}
+                      </Text>
+
+                      {entry.decision ===
+                        'collision' &&
+                      winner ? (
+                        <Text
+                          style={
+                            styles.timelineWinner
+                          }>
+                          Winner ·{' '}
+                          {timelineSourceLabel(
+                            winner.source,
+                          )}{' '}
+                          · {winner.reminder.title}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })}
+
+              <Text style={styles.timelineFooter}>
+                {timelineWithheldCount
+                  ? `${timelineWithheldCount} nearby candidate${timelineWithheldCount === 1 ? '' : 's'} withheld by collision/cap rules. They are not scheduled on the device.`
+                  : 'No nearby reminder currently loses to collision or cap rules.'}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.timelineEmpty}>
+              Nothing currently qualifies for the reminder queue.
+              {settings.enabled
+                ? ''
+                : ' This preview updates before you enable reminders.'}
             </Text>
           )}
         </View>
@@ -1157,6 +1347,161 @@ const styles = StyleSheet.create({
   },
   statusPillTextOn: { color: colors.success },
   previewShell: { marginTop: spacing.xl },
+  timelineCard: {
+    marginTop: spacing.xl,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    padding: spacing.md,
+  },
+  timelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  timelineHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  timelineMeta: {
+    color: colors.subtle,
+    fontSize: 10.8,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+  timelineCountPill: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  timelineCountText: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.65,
+  },
+  timelineRow: {
+    position: 'relative',
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 13,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  timelineRowLast: {
+    borderBottomWidth: 0,
+  },
+  timelineRailDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.bgRaised,
+  },
+  timelineRailDotScheduled: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
+  },
+  timelineRowBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  timelineRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  timelineSource: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+  timelineTime: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 13,
+  },
+  timelineTitle: {
+    color: colors.text,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  timelineDecisionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 7,
+  },
+  timelineDecision: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  timelineDecisionScheduled: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+  },
+  timelineDecisionCollision: {
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.bgRaised,
+  },
+  timelineDecisionText: {
+    color: colors.muted,
+    fontSize: 7.8,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.65,
+  },
+  timelineDecisionTextScheduled: {
+    color: colors.accent,
+  },
+  timelineRecoveredTag: {
+    color: colors.accent,
+    fontSize: 7.8,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.65,
+  },
+  timelineReason: {
+    color: colors.textDim,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 6,
+  },
+  timelineWinner: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 4,
+  },
+  timelineFooter: {
+    color: colors.subtle,
+    fontSize: 9.8,
+    lineHeight: 14,
+    marginTop: 10,
+  },
+  timelineEmpty: {
+    color: colors.muted,
+    fontSize: 10.8,
+    lineHeight: 16,
+    marginTop: 12,
+  },
   recoveredInsight: {
     marginTop: spacing.xl,
     borderRadius: radius.lg,

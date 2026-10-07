@@ -358,10 +358,12 @@ export default function FocusScreen() {
           <TopBar
             label="Break"
             onBack={() => router.replace('/(app)/today')}
-            helper="Timer stays active"
+            helper={timerDone ? 'Timer complete' : session.runningSince ? 'Timer stays active' : 'Timer paused'}
           />
 
-          <View style={styles.timerArea}>
+          <ScrollView
+            contentContainerStyle={styles.timerArea}
+            showsVerticalScrollIndicator={false}>
             <Text style={styles.eyebrow}>RECOVERY</Text>
             <Text style={styles.sessionTitle}>Leave the work alone.</Text>
 
@@ -369,7 +371,7 @@ export default function FocusScreen() {
               value={formatTimer(remaining)}
               label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
               complete={timerDone}
-            progress={phaseProgress}
+              progress={phaseProgress}
             />
             <View style={styles.phaseProgress}>
               <AnimatedProgress
@@ -382,7 +384,7 @@ export default function FocusScreen() {
               {session.focusActualMinutes >= 25 ? 'Step away from the screen. Walk a little, stretch gently, or get water.' : 'Let your eyes rest on something far away. Take a few unhurried breaths.'}
               {session.distractions.length ? ` You parked ${session.distractions.length} thought${session.distractions.length === 1 ? '' : 's'}. Check them before leaving this break.` : ' You do not need to earn the break.'}
             </Text>
-            {session.distractions.length ? <ScrollView style={{ maxHeight: 120, alignSelf: 'stretch' }}>{session.distractions.map(item => <Text key={item.id} style={styles.breakPrompt}>• {item.text}</Text>)}</ScrollView> : null}
+            {session.distractions.length ? <ScrollView nestedScrollEnabled style={{ maxHeight: 120, flexShrink: 0, alignSelf: 'stretch' }}>{session.distractions.map(item => <Text key={item.id} style={styles.breakPrompt}>• {item.text}</Text>)}</ScrollView> : null}
 
             {retrievalSuggestion ? (
               <View style={styles.retrieveCue}>
@@ -399,7 +401,7 @@ export default function FocusScreen() {
               </View>
             ) : null}
 
-            <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6}>
+            <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6} style={styles.breakActions}>
               {timerDone ? (
                 retrievalSuggestion ? (
                   <View style={styles.retrieveActions}>
@@ -452,13 +454,14 @@ export default function FocusScreen() {
                 </View>
               )}
             </Reveal>
-          </View>
+          </ScrollView>
         </View>
       </SafeAreaView>
     );
   }
 
   const canExtend =
+    !finishing &&
     session.launchMode === 'five-minute' &&
     session.fullTargetMinutes > session.plannedFocusMinutes &&
     timerDone;
@@ -470,7 +473,7 @@ export default function FocusScreen() {
         <TopBar
           label="Focus"
           onBack={() => router.replace('/(app)/today')}
-          helper="Timer stays active"
+          helper={timerDone ? 'Timer complete' : session.runningSince ? 'Timer stays active' : 'Timer paused'}
         />
 
         <ScrollView
@@ -811,7 +814,8 @@ const styles = StyleSheet.create({
   },
   stepLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.5 },
   stepText: { color: colors.text, fontSize: 14, lineHeight: 20, marginTop: 5, textAlign: 'center' },
-  timerArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  timerArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, paddingBottom: 40 },
+  breakActions: { width: '100%', maxWidth: 430 },
   dial: {
     position: 'relative',
     overflow: 'visible',

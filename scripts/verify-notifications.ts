@@ -8,6 +8,7 @@ import {
   MAX_REMINDERS_PER_DAY,
   MAX_SCHEDULED_REMINDERS,
   REVIEW_HORIZON_DAYS,
+  buildRecoveredReminderInsight,
   buildReminderPlan,
   defaultReminderSettings,
   examReminderCopy,
@@ -314,6 +315,31 @@ function main() {
     recoveredReminder.body.includes('Recovered window'),
     'Recovered study reminders should explain why this study block exists.',
   );
+  const scheduledRecoveredInsight =
+    buildRecoveredReminderInsight(
+      recoveredWorkspace,
+      {
+        ...settings,
+        reviewEnabled: false,
+        examEnabled: false,
+      },
+      now,
+    );
+  assert.equal(
+    scheduledRecoveredInsight?.status,
+    'scheduled',
+    'Reminder Studio should report an eligible recovered heads-up as scheduled.',
+  );
+  assert.equal(
+    scheduledRecoveredInsight?.reminderAt,
+    recoveredReminder.at,
+  );
+  assert.ok(
+    scheduledRecoveredInsight?.why.includes(
+      'Autopilot recovered this study window',
+    ),
+    'Scheduled recovered insight should explain why the reminder exists.',
+  );
 
   const recoveredSignature = reminderPlanSignature(
     recoveredPlan,
@@ -354,6 +380,30 @@ function main() {
     recoveredSignature,
     'Reflowing a recovered block must invalidate the old device reminder signature.',
   );
+  const reflowedRecoveredInsight =
+    buildRecoveredReminderInsight(
+      recoveredWorkspace,
+      {
+        ...settings,
+        reviewEnabled: false,
+        examEnabled: false,
+      },
+      now,
+    );
+  assert.equal(
+    reflowedRecoveredInsight?.status,
+    'reflowed',
+    'Reminder Studio should reveal when a later schedule edit replaced the original recovered reminder time.',
+  );
+  assert.equal(
+    reflowedRecoveredInsight?.reminderAt,
+    reflowedRecovered!.at,
+  );
+  assert.ok(
+    reflowedRecoveredInsight?.why.includes(
+      'later fixed schedule change',
+    ),
+  );
 
   const suppressedRecoveredPlan = buildReminderPlan(
     recoveredWorkspace,
@@ -379,6 +429,64 @@ function main() {
     ),
     false,
     'An overlapping active Focus session should suppress the recovered reminder instead of leaving a stale notification scheduled.',
+  );
+
+  const protectedRecoveredInsight =
+    buildRecoveredReminderInsight(
+      recoveredWorkspace,
+      {
+        ...settings,
+        reviewEnabled: false,
+        examEnabled: false,
+      },
+      now,
+      {
+        activeFocus: {
+          topicId: 'another_topic',
+          startedAt: now,
+          unavailableUntil:
+            Number(
+              reflowedRecovered!.data.scheduledStart,
+            ) +
+            20 * 60_000,
+        },
+      },
+    );
+  assert.equal(
+    protectedRecoveredInsight?.status,
+    'protected',
+    'Reminder Studio should show an active-Focus collision as protected rather than pretending a stale reminder is still scheduled.',
+  );
+  assert.equal(
+    protectedRecoveredInsight?.reminderAt,
+    null,
+  );
+  assert.ok(
+    protectedRecoveredInsight?.why.includes(
+      'Another Focus session overlaps',
+    ),
+  );
+
+  const silentRecoveredInsight =
+    buildRecoveredReminderInsight(
+      recoveredWorkspace,
+      {
+        ...settings,
+        reviewEnabled: false,
+        examEnabled: false,
+        studyBlockEnabled: false,
+      },
+      now,
+    );
+  assert.equal(
+    silentRecoveredInsight?.status,
+    'suppressed',
+    'Reminder Studio should surface recovered study work that is intentionally silent because Day Map reminders are disabled.',
+  );
+  assert.ok(
+    silentRecoveredInsight?.why.includes(
+      'Day Map study reminders are turned off',
+    ),
   );
 
   const beforeMove = reminderPlanSignature(studyPlan);
@@ -741,6 +849,7 @@ function main() {
   console.log('✓ exam reminders use only configured lead times before the exam');
   console.log('✓ scheduled Day Map tasks create one calm lead-time reminder');
   console.log('✓ recovered Autopilot windows create one calm heads-up, reflow it after schedule edits, and suppress it during overlapping Focus');
+  console.log('✓ Reminder Studio explains recovered reminder state as scheduled, reflowed, protected or suppressed from the live planner');
   console.log('✓ recovered notification taps preserve exact reservation identity through the runtime and provider route');
   console.log('✓ cold-launch notification responses are consumed, cleared, listener-safe, and routed exactly once');
   console.log('✓ cold-launch intents wait for matching auth/workspace/onboarding hydration and expire in memory rather than racing redirects');
@@ -781,6 +890,24 @@ assert.ok(reminderStudioSource.includes('DETAIL_LEVELS'));
 assert.ok(reminderStudioSource.includes('settings.detail'));
 assert.ok(reminderStudioSource.includes('sendPreview(previewKind)'));
 assert.ok(reminderStudioSource.includes('sampleReminderCopy(settings, kind)'));
+assert.ok(
+  reminderStudioSource.includes('NEXT RECOVERED REMINDER') &&
+    reminderStudioSource.includes('WHY THIS REMINDER?') &&
+    reminderStudioSource.includes('buildRecoveredReminderInsight'),
+  'Reminder Studio should expose the next recovered notification and explain why MYELIN plans or suppresses it.',
+);
+assert.ok(
+  reminderStudioSource.includes("'scheduled'") &&
+    reminderStudioSource.includes("'reflowed'") &&
+    reminderStudioSource.includes("'protected'") &&
+    reminderStudioSource.includes("'suppressed'"),
+  'Reminder Studio should visibly distinguish scheduled, reflowed, protected and suppressed recovered reminder states.',
+);
+assert.ok(
+  reminderStudioSource.includes('timerRemainingMs') &&
+    reminderStudioSource.includes('reminderContext'),
+  'Reminder Studio live preview should use the same active-Focus context as production reminder planning.',
+);
 assert.equal(reminderStudioSource.includes('notificationDim'), true);
 assert.ok(
   reminderStudioSource.includes("quietGrid: { gap: 1 }"),

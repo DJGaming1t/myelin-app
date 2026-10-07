@@ -442,6 +442,9 @@ function main() {
       recoveredCollisionLoser!.usefulnessScore &&
       recoveredCollisionWinner!.usefulnessReason.includes(
         'Recovered Autopilot exam work',
+      ) &&
+      recoveredCollisionWinner!.usefulnessReason.includes(
+        'in 1 day',
       ),
     'Recovered exam-work should win transparently because its deterministic usefulness score is higher.',
   );
@@ -981,6 +984,137 @@ function main() {
         'Strongest winner',
       ),
     'Daily-cap explanation should expose both the cutoff and strongest winner rationale.',
+  );
+
+
+  const deliveryTimeScoring = createEmptyWorkspace(now);
+  deliveryTimeScoring.exams.push({
+    id: 'delivery_time_exam',
+    name: 'Future science exam',
+    date: local(2026, 10, 9, 12, 0),
+    subjects: ['Science'],
+    scope: 'subjects',
+    topicIds: [],
+  });
+  deliveryTimeScoring.tasks.push(
+    {
+      id: 'delivery_generic_high',
+      title: 'High-priority general study',
+      subject: 'General',
+      topicId: null,
+      examId: null,
+      type: 'homework',
+      status: 'open',
+      planState: 'scheduled',
+      dueAt: 0,
+      estimatedMinutes: 20,
+      actualMinutes: 0,
+      priority: 3,
+      notes: '',
+      scheduledStart: local(2026, 10, 6, 14, 0),
+      scheduledEnd: local(2026, 10, 6, 14, 20),
+      postponedUntil: 0,
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      completedAt: 0,
+    },
+    {
+      id: 'delivery_generic_mid',
+      title: 'Medium-priority general study',
+      subject: 'General',
+      topicId: null,
+      examId: null,
+      type: 'homework',
+      status: 'open',
+      planState: 'scheduled',
+      dueAt: 0,
+      estimatedMinutes: 20,
+      actualMinutes: 0,
+      priority: 2,
+      notes: '',
+      scheduledStart: local(2026, 10, 6, 16, 0),
+      scheduledEnd: local(2026, 10, 6, 16, 20),
+      postponedUntil: 0,
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      completedAt: 0,
+    },
+    {
+      id: 'delivery_exam_linked',
+      title: 'Exam-linked science study',
+      subject: 'Science',
+      topicId: null,
+      examId: 'delivery_time_exam',
+      type: 'exam',
+      status: 'open',
+      planState: 'scheduled',
+      dueAt: 0,
+      estimatedMinutes: 20,
+      actualMinutes: 0,
+      priority: 1,
+      notes: '',
+      scheduledStart: local(2026, 10, 6, 18, 0),
+      scheduledEnd: local(2026, 10, 6, 18, 20),
+      postponedUntil: 0,
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      completedAt: 0,
+    },
+  );
+  const deliveryTimeSettings = {
+    ...settings,
+    adaptive: false,
+    reviewEnabled: false,
+    examEnabled: false,
+  };
+  const deliveryTimePlan = buildReminderPlan(
+    deliveryTimeScoring,
+    deliveryTimeSettings,
+    now,
+  );
+  const deliveryTimeTimeline = buildReminderTimeline(
+    deliveryTimeScoring,
+    deliveryTimeSettings,
+    now,
+    {},
+    10,
+  );
+  const deliveryExamWinner = deliveryTimeTimeline.find(
+    (item) =>
+      item.reminder.data.taskId ===
+        'delivery_exam_linked' &&
+      item.decision === 'scheduled',
+  );
+  const deliveryGenericLoser =
+    deliveryTimeTimeline.find(
+      (item) =>
+        item.reminder.data.taskId ===
+          'delivery_generic_mid' &&
+        item.decision === 'daily-cap',
+    );
+  assert.ok(
+    deliveryExamWinner &&
+      deliveryGenericLoser &&
+      deliveryExamWinner.usefulnessReason.includes(
+        'in 3 days',
+      ),
+    'Exam-linked study usefulness should be scored from when the future reminder fires, not from the current date.',
+  );
+  assert.ok(
+    deliveryExamWinner!.usefulnessScore >
+      deliveryGenericLoser!.usefulnessScore,
+    'Delivery-time exam urgency should let the more relevant future study reminder win the daily cap.',
+  );
+  assert.ok(
+    deliveryTimePlan.some(
+      (item) =>
+        item.data.taskId === 'delivery_exam_linked',
+    ) &&
+      !deliveryTimePlan.some(
+        (item) =>
+          item.data.taskId === 'delivery_generic_mid',
+      ),
+    'The real device plan should preserve the exam-linked reminder chosen with delivery-time urgency.',
   );
 
   const quietExam = createEmptyWorkspace(now);

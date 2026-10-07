@@ -1500,6 +1500,56 @@ function main() {
   );
   assert.ok(
     reminderProviderSource.includes(
+      'const scheduleGenerationRef = useRef(0)',
+    ) &&
+      reminderProviderSource.includes(
+        'const generation =\n      scheduleGenerationRef.current',
+      ) &&
+      reminderProviderSource.includes(
+        'scheduleGenerationRef.current === generation',
+      ) &&
+      reminderProviderSource.includes(
+        'ownerRef.current === owner',
+      ) &&
+      reminderProviderSource.includes(
+        'workspaceRef.current === currentWorkspace',
+      ),
+    'Each reminder reschedule should capture a generation and refuse to commit after owner/workspace state moves on.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'workspace?.revision',
+    ) &&
+      reminderProviderSource.includes(
+        'focusSession?.plannedFocusMinutes',
+      ) &&
+      (
+        reminderProviderSource.match(
+          /scheduleGenerationRef\.current \+= 1;/g,
+        )?.length ?? 0
+      ) >= 4,
+    'Owner/workspace/focus and reminder-setting mutations should invalidate in-flight schedule work.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'if (!isCurrentScheduleWork()) {\n        await cancelReminderIds(ids);\n        return;\n      }',
+    ) &&
+      reminderProviderSource.includes(
+        'if (!isCurrentScheduleWork()) return;',
+      ),
+    'Stale scheduling should cancel notifications it just registered and exit before persisting IDs or UI status.',
+  );
+  assert.equal(
+    reminderProviderSource.includes(
+      'stateRef.current === current',
+    ),
+    false,
+    'The stale-work guard must not compare the captured state object because the schedule operation legitimately replaces that state when it persists its own result.',
+  );
+
+
+  assert.ok(
+    reminderProviderSource.includes(
       '...(audit?.registeredIds ?? [])',
     ) &&
       reminderProviderSource.includes(

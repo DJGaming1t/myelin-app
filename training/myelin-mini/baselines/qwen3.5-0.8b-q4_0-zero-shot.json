@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "candidate": {
+    "id": "qwen3.5-0.8b-q4_0",
+    "family": "Qwen3.5-0.8B",
+    "quantization": "Q4_0",
+    "runtime": "llama.cpp",
+    "reasoning": "off"
+  },
+  "benchmark": {
+    "runId": 37591546858,
+    "commit": "8a79ba9ca8b60134b52c6693c901a2353f53521a",
+    "evaluatedAt": "2026-10-07T08:07:41.613Z",
+    "caseIds": [
+      "e01-topic-shorthand",
+      "e03-practice-tomorrow",
+      "e09-clarify-date",
+      "e11-clarify-reference",
+      "e13-escalate-tutoring",
+      "e15-escalate-reasoning",
+      "e18-hinglish"
+    ],
+    "cases": 7
+  },
+  "metrics": {
+    "parseValidity": 0.14285714285714285,
+    "routeAccuracy": 0,
+    "actionExactAccuracy": 0,
+    "actionTypeSequenceAccuracy": 0,
+    "clarifyReasonAccuracy": 0,
+    "escalateReasonAccuracy": 0,
+    "unsafeActionCount": 0,
+    "unsafeActionRate": 0,
+    "meanLatencyMs": 4875.423603,
+    "p50LatencyMs": 2206.928753000002,
+    "p95LatencyMs": 14092.342768,
+    "releaseGate": false
+  },
+  "findings": [
+    "Zero-shot Qwen3.5-0.8B is not production-ready for the MYELIN Mini contract.",
+    "Reasoning must be disabled for this narrow routing task; with reasoning enabled, generation exhausted the output budget before final JSON.",
+    "The reasoning-off model produced no unsafe actions in this diagnostic.",
+    "Most failures were narrow protocol and routing habits: missing version, using clarification reasons as escalation reasons, and over-escalating valid study-management commands.",
+    "Median CPU latency was about 2.2 seconds after prompt-prefix reuse, which is promising for a tiny specialized router."
+  ],
+  "nextExperiment": "Fine-tune on MYELIN Mini action/clarify/escalate examples, expand examples around observed failure modes, then rerun the same hold-out before comparing a 3B candidate."
+}

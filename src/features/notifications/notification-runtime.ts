@@ -160,6 +160,7 @@ export async function cancelReminderIds(ids: string[]) {
 export async function scheduleReminderPlan(
   plan: PlannedReminder[],
   settings: ReminderSettings,
+  ownerKey?: string | null,
 ) {
   if (Platform.OS === 'web') return [] as string[];
 
@@ -182,6 +183,7 @@ export async function scheduleReminderPlan(
             kind: item.kind,
             href: item.href,
             reminderKey: item.key,
+            ...(ownerKey ? { ownerKey } : {}),
             ...item.data,
           },
         },
@@ -244,6 +246,7 @@ export type ReminderOpenPayload = {
   topicId?: string;
   scheduledStart?: number;
   scheduledEnd?: number;
+  ownerKey?: string;
   responseId: string;
 };
 
@@ -305,6 +308,10 @@ function reminderPayloadFromResponse(
     scheduledEnd:
       typeof data.scheduledEnd === 'number'
         ? data.scheduledEnd
+        : undefined,
+    ownerKey:
+      typeof data.ownerKey === 'string'
+        ? data.ownerKey
         : undefined,
     responseId:
       requestIdentifier + ':' + actionIdentifier,

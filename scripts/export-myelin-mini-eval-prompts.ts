@@ -33,12 +33,15 @@ const outputPath = resolve(
   process.env.MYELIN_MINI_EVAL_PROMPTS_OUT ??
     'training/myelin-mini/compiled/eval-prompts-v1.jsonl',
 );
+const includeSchema =
+  process.env.MYELIN_MINI_INCLUDE_SCHEMA === '1';
 
-const schema = myelinMiniDecisionJsonSchema();
-const system =
-  myelinMiniSystemPrompt() +
-  '\nReturn valid JSON only. The response must match this JSON schema:\n' +
-  JSON.stringify(schema);
+const baseSystem = myelinMiniSystemPrompt();
+const system = includeSchema
+  ? baseSystem +
+    '\nReturn valid JSON only. The response must match this JSON schema:\n' +
+    JSON.stringify(myelinMiniDecisionJsonSchema())
+  : baseSystem;
 
 const rows = readJsonl<EvalExample>(evalPath).map((example) => {
   const expected = example.output as { requestId?: unknown };
@@ -72,5 +75,9 @@ writeFileSync(
 );
 
 console.log(
-  `MYELIN Mini eval prompts: ${rows.length} | output=${outputPath}`,
+  [
+    `MYELIN Mini eval prompts: ${rows.length}`,
+    `schema=${includeSchema ? 'embedded' : 'separate'}`,
+    `output=${outputPath}`,
+  ].join(' | '),
 );

@@ -29,6 +29,7 @@ import {
   getReminderPermission,
   getScheduledReminderAudit,
   requestReminderPermission,
+  removeReminderPreview,
   scheduleReminderPlan,
   sendExactReminderPreview,
   sendReminderPreview,
@@ -1072,61 +1073,117 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     persist,
   ]);
 
-  const sendPreview = useCallback(async (kind: ReminderKind = 'review') => {
-    if (Platform.OS === 'web') return;
-
-    const nextPermission = await getReminderPermission();
-    setPermission(nextPermission);
-    if (nextPermission !== 'granted') {
-      setStatus(nextPermission === 'denied' ? 'blocked' : 'ready');
-      setMessage('Enable reminders first to send a real device preview.');
-      return;
-    }
-
-    try {
-      await configureNotificationRuntime();
-      await sendReminderPreview(stateRef.current.settings, kind);
-      setMessage(
-        `${kind === 'review' ? 'Review' : kind === 'exam' ? 'Exam' : 'Study'} preview sent with your current personality, detail and sound.`,
-      );
-    } catch (error) {
-      setStatus('error');
-      setMessage(runtimeError(error));
-    }
-  }, []);
-
-  const sendExactPreview = useCallback(
-    async (preview: ExactReminderPreview) => {
+  const sendPreview = useCallback(
+    async (kind: ReminderKind = 'review') => {
       if (Platform.OS === 'web') return;
-
-      const nextPermission = await getReminderPermission();
-      setPermission(nextPermission);
-      if (nextPermission !== 'granted') {
-        setStatus(
-          nextPermission === 'denied'
-            ? 'blocked'
-            : 'ready',
-        );
-        setMessage(
-          'Enable reminders first to send a real device preview.',
-        );
-        return;
-      }
+      const action = beginReminderAction();
+      if (!action) return;
+      const { owner } = action;
+      let previewId: string | null = null;
 
       try {
-        await sendExactReminderPreview(
+        const nextPermission =
+          await getReminderPermission();
+        if (!isCurrentReminderAction(action)) return;
+        setPermission(nextPermission);
+
+        if (nextPermission !== 'granted') {
+          setStatus(
+            nextPermission === 'denied'
+              ? 'blocked'
+              : 'ready',
+          );
+          setMessage(
+            'Enable reminders first to send a real device preview.',
+          );
+          return;
+        }
+
+        await configureNotificationRuntime();
+        if (!isCurrentReminderAction(action)) return;
+
+        previewId = await sendReminderPreview(
           stateRef.current.settings,
-          preview,
+          kind,
+          owner,
         );
+        if (!isCurrentReminderAction(action)) {
+          await removeReminderPreview(previewId);
+          return;
+        }
+
         setMessage(
-          'Exact recovered reminder preview sent with the current personality, detail and sound.',
+          `${kind === 'review' ? 'Review' : kind === 'exam' ? 'Exam' : 'Study'} preview sent with your current personality, detail and sound.`,
         );
       } catch (error) {
+        if (previewId && !isCurrentReminderAction(action)) {
+          await removeReminderPreview(previewId);
+          return;
+        }
+        if (!isCurrentReminderAction(action)) return;
         setStatus('error');
         setMessage(runtimeError(error));
       }
     },
-    [],
+    [
+      beginReminderAction,
+      isCurrentReminderAction,
+    ],
+  );
+
+  const sendExactPreview = useCallback(
+    async (preview: ExactReminderPreview) => {
+      if (Platform.OS === 'web') return;
+      const action = beginReminderAction();
+      if (!action) return;
+      const { owner } = action;
+      let previewId: string | null = null;
+
+      try {
+        const nextPermission =
+          await getReminderPermission();
+        if (!isCurrentReminderAction(action)) return;
+        setPermission(nextPermission);
+
+        if (nextPermission !== 'granted') {
+          setStatus(
+            nextPermission === 'denied'
+              ? 'blocked'
+              : 'ready',
+          );
+          setMessage(
+            'Enable reminders first to send a real device preview.',
+          );
+          return;
+        }
+
+        previewId = await sendExactReminderPreview(
+          stateRef.current.settings,
+          preview,
+          owner,
+        );
+        if (!isCurrentReminderAction(action)) {
+          await removeReminderPreview(previewId);
+          return;
+        }
+
+        setMessage(
+          'Exact recovered reminder preview sent with the current personality, detail and sound.',
+        );
+      } catch (error) {
+        if (previewId && !isCurrentReminderAction(action)) {
+          await removeReminderPreview(previewId);
+          return;
+        }
+        if (!isCurrentReminderAction(action)) return;
+        setStatus('error');
+        setMessage(runtimeError(error));
+      }
+    },
+    [
+      beginReminderAction,
+      isCurrentReminderAction,
+    ],
   );
 
   const refreshPermission = useCallback(async () => {

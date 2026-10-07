@@ -1251,6 +1251,15 @@ function main() {
       ),
     'Pinned QUEUE CAP rows must be the real global-cap decisions from the same evaluated queue.',
   );
+  assert.ok(
+    globalCapLosers[0]?.winnerKey &&
+      globalCapOverview.items.some(
+        (item) =>
+          item.reminder.key ===
+          globalCapLosers[0]!.winnerKey,
+      ),
+    'When space allows, the compact preview should also pin the queue cutoff winner so Studio can name the reminder that beat a QUEUE CAP loser.',
+  );
 
   const globalCapPlanTimes = globalCapPlan.map(
     (item) => item.at,

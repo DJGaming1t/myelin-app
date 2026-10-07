@@ -904,6 +904,230 @@ export function buildReminderPlan(
   ], workspace, settings, now));
 }
 
+export type RecoveredReminderInsightStatus =
+  | 'scheduled'
+  | 'reflowed'
+  | 'protected'
+  | 'suppressed';
+
+export type RecoveredReminderInsight = {
+  status: RecoveredReminderInsightStatus;
+  commitmentTitle: string;
+  topicName: string;
+  subject: string;
+  start: number;
+  end: number;
+  minutes: number;
+  reminderAt: number | null;
+  why: string;
+  detail: string;
+};
+
+export function buildRecoveredReminderInsight(
+  workspace: WorkspaceState,
+  settingsInput: ReminderSettings,
+  now = Date.now(),
+  context: ReminderPlanContext = {},
+): RecoveredReminderInsight | null {
+  const settings = normalizeReminderSettings(settingsInput);
+  const activeFocus = context.activeFocus ?? null;
+
+  const baselineWindows = buildAppliedReclaimedWindows(
+    workspace,
+    now,
+    {
+      horizonDays: REVIEW_HORIZON_DAYS,
+      protectionLeadMinutes:
+        settings.studyLeadMinutes,
+    },
+  );
+  const liveWindows = buildAppliedReclaimedWindows(
+    workspace,
+    now,
+    {
+      horizonDays: REVIEW_HORIZON_DAYS,
+      protectionLeadMinutes:
+        settings.studyLeadMinutes,
+      ...(activeFocus
+        ? {
+            unavailableUntil:
+              activeFocus.unavailableUntil,
+            activeFocusTopicId:
+              activeFocus.topicId ?? null,
+            activeFocusStartedAt:
+              activeFocus.startedAt ?? null,
+          }
+        : {}),
+    },
+  );
+
+  const baselineWindow =
+    baselineWindows.find((window) =>
+      window.placements.some(
+        (placement) =>
+          placement.start > now + 60_000 &&
+          placement.end > now,
+      ),
+    ) ?? null;
+  const liveWindow =
+    liveWindows.find(
+      (window) =>
+        window.commitmentId ===
+          baselineWindow?.commitmentId &&
+        window.occurrenceDateKey ===
+          baselineWindow?.occurrenceDateKey,
+    ) ??
+    liveWindows.find((window) =>
+      window.placements.some(
+        (placement) =>
+          placement.start > now + 60_000 &&
+          placement.end > now,
+      ),
+    ) ??
+    null;
+
+  const baselinePlacement =
+    baselineWindow?.placements.find(
+      (placement) =>
+        placement.start > now + 60_000 &&
+        placement.end > now,
+    ) ?? null;
+  const livePlacement =
+    liveWindow?.placements.find(
+      (placement) =>
+        placement.start > now + 60_000 &&
+        placement.end > now,
+    ) ?? baselinePlacement;
+
+  const window = liveWindow ?? baselineWindow;
+  const placement = livePlacement ?? baselinePlacement;
+  if (!window || !placement) return null;
+
+  const scheduled = buildReminderPlan(
+    workspace,
+    settings,
+    now,
+    context,
+  ).find(
+    (item) =>
+      item.data.recovered === 1 &&
+      item.data.commitmentId ===
+        window.commitmentId &&
+      item.data.occurrenceDateKey ===
+        window.occurrenceDateKey,
+  );
+
+  if (
+    liveWindow?.protection?.reason ===
+    'active-focus'
+  ) {
+    return {
+      status: 'protected',
+      commitmentTitle: window.commitmentTitle,
+      topicName: placement.topicName,
+      subject: placement.subject,
+      start: placement.start,
+      end: placement.end,
+      minutes: placement.minutes,
+      reminderAt: null,
+      why:
+        'Another Focus session overlaps the original recovered block, so MYELIN suppresses the stale heads-up and protects the study time first.',
+      detail:
+        'The recovered block has been moved around your live Focus session. Reminder timing will be reconsidered from the updated plan.',
+    };
+  }
+
+  if (scheduled) {
+    const reflowed =
+      liveWindow?.protection?.reason ===
+        'schedule-change' ||
+      baselineWindow?.protection?.reason ===
+        'schedule-change';
+
+    return {
+      status: reflowed
+        ? 'reflowed'
+        : 'scheduled',
+      commitmentTitle: window.commitmentTitle,
+      topicName: placement.topicName,
+      subject: placement.subject,
+      start: Number(
+        scheduled.data.scheduledStart ??
+          placement.start,
+      ),
+      end: Number(
+        scheduled.data.scheduledEnd ??
+          placement.end,
+      ),
+      minutes: placement.minutes,
+      reminderAt: scheduled.at,
+      why: reflowed
+        ? 'A later fixed schedule change reshaped this recovered window, so MYELIN replaced the old reminder with the current block time.'
+        : `Autopilot recovered this study window from ${window.commitmentTitle}. This is the first safe study block in it, so MYELIN plans one heads-up before it starts.`,
+      detail: reflowed
+        ? 'The notification follows the latest Day Map reservation rather than the original recovered time.'
+        : `One calm heads-up is planned ${settings.studyLeadMinutes} minutes before this recovered block.`,
+    };
+  }
+
+  let why =
+    'Recovered study time exists, but MYELIN is not scheduling a notification for it right now.';
+  let detail =
+    'The block remains in the plan even when its notification is suppressed.';
+
+  if (!settings.enabled) {
+    why =
+      'Reminders are turned off, so this recovered block stays visible in the plan without creating a device notification.';
+    detail =
+      'Turn reminders on to allow MYELIN to schedule a heads-up for eligible recovered blocks.';
+  } else if (!settings.studyBlockEnabled) {
+    why =
+      'Day Map study reminders are turned off, so recovered study blocks stay silent.';
+    detail =
+      'The recovered block remains available in Today and Day Map.';
+  } else {
+    const baselineStart =
+      baselinePlacement?.start ?? placement.start;
+    const activeFocusOverlaps =
+      Boolean(
+        activeFocus &&
+          activeFocus.unavailableUntil >
+            baselineStart &&
+          !(
+            activeFocus.topicId ===
+              baselinePlacement?.topicId &&
+            activeFocus.startedAt != null &&
+            baselinePlacement &&
+            activeFocus.startedAt >=
+              baselinePlacement.start -
+                5 * 60_000 &&
+            activeFocus.startedAt <
+              baselinePlacement.end
+          ),
+      );
+
+    if (activeFocusOverlaps) {
+      why =
+        'A live Focus session overlaps the recovered block, so MYELIN suppresses the stale reminder instead of interrupting you.';
+      detail =
+        'The next reminder will be reconsidered after the active Focus session changes the plan.';
+    }
+  }
+
+  return {
+    status: 'suppressed',
+    commitmentTitle: window.commitmentTitle,
+    topicName: placement.topicName,
+    subject: placement.subject,
+    start: placement.start,
+    end: placement.end,
+    minutes: placement.minutes,
+    reminderAt: null,
+    why,
+    detail,
+  };
+}
+
 export function reminderPlanSignature(plan: PlannedReminder[]) {
   return plan
     .map((item) =>

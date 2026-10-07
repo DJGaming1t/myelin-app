@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,6 +42,7 @@ function lifecycleLabel(model: LocalAiModelView) {
   if (state.lifecycle === 'loaded') return 'Loaded';
   if (state.lifecycle === 'installed') return 'Installed';
   if (state.install) return 'Installed';
+  if (model.definition.availability === 'coming-soon') return 'Coming soon';
   if (!model.definition.artifact) return 'Mobile artifact not selected yet';
   if (!state.compatibility.runtimeId) return 'Runtime not in this build';
   if (!model.definition.artifact.downloadUrl) return 'Ready to import';
@@ -48,6 +50,10 @@ function lifecycleLabel(model: LocalAiModelView) {
 }
 
 function blockedReason(model: LocalAiModelView) {
+  if (model.definition.availability === 'coming-soon') {
+    return 'This model is planned, but MYELIN does not have a verified mobile artifact for it yet. It cannot be selected or installed yet.';
+  }
+
   const runtimeIssue =
     model.state.compatibility.issues.find(
       (issue) => issue.code === 'runtime_missing',
@@ -125,6 +131,21 @@ export default function AiModelsScreen() {
         },
       ],
     );
+  }
+
+  async function openModelSource(model: LocalAiModelView) {
+    const url =
+      model.definition.artifactPageUrl ??
+      model.definition.sourceUrl;
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      Alert.alert(
+        'Could not open model page',
+        'Open the model source in your browser, then return to MYELIN to import the downloaded .litertlm file.',
+      );
+      return;
+    }
+    await Linking.openURL(url);
   }
 
   function confirmRemove(modelId: LocalAiModelId, name: string) {
@@ -290,6 +311,9 @@ export default function AiModelsScreen() {
                   selectModel(model.definition.id),
                 )
               }
+              onOpenSource={() =>
+                void openModelSource(model).catch(() => undefined)
+              }
               licenseAccepted={
                 model.definition.license === 'Apache-2.0' ||
                 snapshot.preferences.acceptedLicenseModelIds.includes(
@@ -329,9 +353,9 @@ export default function AiModelsScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.note}>
-          <Text style={styles.noteTitle}>Why are downloads still disabled?</Text>
+          <Text style={styles.noteTitle}>How model installation works</Text>
           <Text style={styles.noteText}>
-            Direct downloads remain disabled for gated or unverified artifacts. For device testing, import a licensed FunctionGemma .litertlm file that matches MYELIN's candidate bundle. MYELIN copies it into private storage, checks the exact size and SHA-256 fingerprint, and only then enables the runtime test.
+            FunctionGemma is currently import-only because its model file is gated by the Gemma licence. Open the model page, accept the licence there, download the matching .litertlm file, then return and tap Import file. Qwen stays visible only as a planned option and cannot be selected until MYELIN has a verified mobile artifact for it.
           </Text>
         </View>
       </ScrollView>
@@ -344,6 +368,7 @@ function ModelCard({
   selected,
   busy,
   onSelect,
+  onOpenSource,
   licenseAccepted,
   onAcceptLicense,
   onImport,
@@ -367,6 +392,8 @@ function ModelCard({
   const downloading = model.state.lifecycle === 'downloading';
   const importing = model.state.lifecycle === 'importing';
   const installed = Boolean(model.state.install);
+  const comingSoon =
+    model.definition.availability === 'coming-soon';
   const artifact = model.definition.artifact;
   const canImport =
     artifact?.format === 'litertlm' &&
@@ -408,6 +435,9 @@ function ModelCard({
         <Text style={styles.chip}>
           {model.definition.capabilities.vision ? 'Vision-capable family' : 'Text only'}
         </Text>
+        <Text style={styles.chip}>
+          {comingSoon ? 'Coming soon' : 'Manual import'}
+        </Text>
       </View>
 
       <View style={styles.statusLine}>
@@ -447,20 +477,28 @@ function ModelCard({
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          disabled={Boolean(busy)}
+          disabled={Boolean(busy) || comingSoon}
           onPress={onSelect}
           style={({ pressed }) => [
             styles.secondaryButton,
             selected && styles.secondaryButtonSelected,
-            Boolean(busy) && styles.disabled,
-            pressed && !busy && styles.pressed,
+            (Boolean(busy) || comingSoon) && styles.disabled,
+            pressed && !busy && !comingSoon && styles.pressed,
           ]}>
           <Text style={styles.secondaryButtonText}>
-            {selected ? 'Selected' : 'Choose'}
+            {comingSoon
+              ? 'Coming soon'
+              : selected
+                ? 'Selected'
+                : 'Choose'}
           </Text>
         </Pressable>
 
-        {downloading ? (
+        {comingSoon ? (
+          <View style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Not available yet</Text>
+          </View>
+        ) : downloading ? (
           <Pressable
             accessibilityRole="button"
             onPress={onCancel}
@@ -502,29 +540,51 @@ function ModelCard({
             </Pressable>
           </>
         ) : !licenseAccepted && model.definition.license !== 'Apache-2.0' ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={Boolean(busy)}
-            onPress={onAcceptLicense}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              Boolean(busy) && styles.disabled,
-              pressed && !busy && styles.pressed,
-            ]}>
-            <Text style={styles.primaryButtonText}>Confirm licence</Text>
-          </Pressable>
+          <>
+            <Pressable
+              accessibilityRole="link"
+              onPress={onOpenSource}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={styles.secondaryButtonText}>Open model page</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={Boolean(busy)}
+              onPress={onAcceptLicense}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                Boolean(busy) && styles.disabled,
+                pressed && !busy && styles.pressed,
+              ]}>
+              <Text style={styles.primaryButtonText}>I accepted licence</Text>
+            </Pressable>
+          </>
         ) : canImport && !downloadAvailable ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={importBlocked}
-            onPress={onImport}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              importBlocked && styles.disabled,
-              pressed && !importBlocked && styles.pressed,
-            ]}>
-            <Text style={styles.primaryButtonText}>Import file</Text>
-          </Pressable>
+          <>
+            <Pressable
+              accessibilityRole="link"
+              onPress={onOpenSource}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={styles.secondaryButtonText}>Get model file</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={importBlocked}
+              onPress={onImport}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                importBlocked && styles.disabled,
+                pressed && !importBlocked && styles.pressed,
+              ]}>
+              <Text style={styles.primaryButtonText}>Import file</Text>
+            </Pressable>
+          </>
         ) : (
           <Pressable
             accessibilityRole="button"
@@ -708,7 +768,7 @@ const styles = StyleSheet.create({
   progressTrack: { height: 5, borderRadius: radius.pill, backgroundColor: '#222225', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radius.pill, backgroundColor: colors.accent },
   progressText: { color: colors.muted, fontSize: 10.5, lineHeight: 14, marginTop: 5, textAlign: 'right' },
-  actions: { flexDirection: 'row', gap: 8 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   secondaryButton: {
     flex: 1,
     minHeight: layout.minTouch,

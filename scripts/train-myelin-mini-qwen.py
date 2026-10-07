@@ -165,6 +165,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-eval", action="store_true")
     parser.add_argument("--no-gradient-checkpointing", action="store_true")
     parser.add_argument("--smoke-mode", action="store_true")
+    parser.add_argument("--resume-adapter", type=Path)
+    parser.add_argument("--allow-small-dataset", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -212,13 +214,21 @@ def main() -> None:
     train_routes = validate_rows(train_rows, "train")
     validation_routes = validate_rows(validation_rows, "validation")
 
-    if len(train_rows) < 80:
-        raise ValueError("Combined MYELIN Mini training set should contain at least 80 rows.")
-    if len(validation_rows) < 10:
-        raise ValueError("Combined MYELIN Mini validation set should contain at least 10 rows.")
-    for route in ("actions", "clarify", "escalate"):
-        if train_routes[route] == 0 or validation_routes[route] == 0:
-            raise ValueError(f"Both train and validation must cover route: {route}")
+    if args.allow_small_dataset:
+        if len(train_rows) < 12:
+            raise ValueError("Focused MYELIN Mini training set should contain at least 12 rows.")
+        if len(validation_rows) < 1:
+            raise ValueError("Focused MYELIN Mini validation set should contain at least 1 row.")
+        if train_routes["actions"] == 0:
+            raise ValueError("Focused MYELIN Mini training must include action examples.")
+    else:
+        if len(train_rows) < 80:
+            raise ValueError("Combined MYELIN Mini training set should contain at least 80 rows.")
+        if len(validation_rows) < 10:
+            raise ValueError("Combined MYELIN Mini validation set should contain at least 10 rows.")
+        for route in ("actions", "clarify", "escalate"):
+            if train_routes[route] == 0 or validation_routes[route] == 0:
+                raise ValueError(f"Both train and validation must cover route: {route}")
 
     print(
         "MYELIN Mini SFT data validated | "
@@ -244,7 +254,8 @@ def main() -> None:
     # Heavy ML imports intentionally happen only after dry-run validation.
     import torch
     from datasets import Dataset
-    from peft import LoraConfig
+    from peft import LoraConfig, PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
     from trl import SFTConfig, SFTTrainer
 
     use_cuda = bool(torch.cuda.is_available())
@@ -293,22 +304,42 @@ def main() -> None:
         fp16=bool(use_cuda and not use_bf16),
     )
 
-    peft_config = LoraConfig(
-        r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM",
-        target_modules="all-linear",
-    )
+    processing_class = None
+    if args.resume_adapter:
+        base_model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.float32 if not use_cuda else "auto",
+            low_cpu_mem_usage=True,
+        )
+        model_for_training = PeftModel.from_pretrained(
+            base_model,
+            str(args.resume_adapter),
+            is_trainable=True,
+        )
+        peft_config = None
+        processing_class = AutoTokenizer.from_pretrained(args.model)
+    else:
+        model_for_training = args.model
+        peft_config = LoraConfig(
+            r=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=0.05,
+            bias="none",
+            task_type="CAUSAL_LM",
+            target_modules="all-linear",
+        )
 
-    trainer = SFTTrainer(
-        model=args.model,
+    trainer_kwargs = dict(
+        model=model_for_training,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=validation_dataset,
         peft_config=peft_config,
     )
+    if processing_class is not None:
+        trainer_kwargs["processing_class"] = processing_class
+
+    trainer = SFTTrainer(**trainer_kwargs)
 
     result = trainer.train()
     trainer.save_model(str(args.output))
@@ -346,6 +377,8 @@ def main() -> None:
         "seed": args.seed,
         "maxSteps": args.max_steps,
         "smokeMode": args.smoke_mode,
+        "resumeAdapter": str(args.resume_adapter) if args.resume_adapter else None,
+        "allowSmallDataset": args.allow_small_dataset,
         "device": "cuda" if use_cuda else "cpu",
         "bf16": use_bf16,
         "metrics": metrics,

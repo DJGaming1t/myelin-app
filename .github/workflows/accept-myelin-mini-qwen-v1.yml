@@ -1,0 +1,91 @@
+name: Accept MYELIN Mini Qwen v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/accept-myelin-mini-qwen-v1.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  accept:
+    name: Evaluate trained v1 adapter
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+
+    steps:
+      - name: Checkout current acceptance code
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: training/myelin-mini/requirements-train.txt
+
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build current MYELIN Mini dataset
+        run: npm run build:myelin-mini-dataset
+
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+
+      - name: Install MYELIN Mini training stack
+        run: python -m pip install -r training/myelin-mini/requirements-train.txt
+
+      - name: Download trained v1 adapter
+        shell: bash
+        run: |
+          mkdir -p artifacts/imported-v1
+          gh run download 37594519114             --repo ${{ github.repository }}             --name myelin-mini-qwen3.5-0.8b-lora-v1             --dir artifacts/imported-v1
+          test -f artifacts/imported-v1/adapter_model.safetensors
+          test -f artifacts/imported-v1/training-manifest.json
+
+      - name: Run Hinglish acceptance gate
+        id: acceptance
+        continue-on-error: true
+        run: >-
+          python scripts/evaluate-myelin-mini-acceptance.py
+          --model principled-intelligence/Qwen3.5-0.8B-text-only
+          --adapter artifacts/imported-v1
+          --compiled-train training/myelin-mini/compiled/train-v1.jsonl
+          --min-pass 5
+          --report artifacts/imported-v1/acceptance-report.json
+
+      - name: Show acceptance report
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/imported-v1/acceptance-report.json ]; then
+            cat artifacts/imported-v1/acceptance-report.json
+          fi
+
+      - name: Upload acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-lora-v1-acceptance
+          path: artifacts/imported-v1/acceptance-report.json
+          if-no-files-found: warn
+
+      - name: Enforce 5 of 5 acceptance
+        if: steps.acceptance.outcome != 'success'
+        run: exit 2

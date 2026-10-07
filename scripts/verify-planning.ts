@@ -433,9 +433,32 @@ console.log('✓ skipped dates survive reload, free time is reclaimed, overnight
       dayMapSource.includes('Current block after your plan changed'),
     'A reflowed stale reminder should make the live replacement action obvious and directly startable.',
   );
+  assert.ok(
+    dayMapSource.includes('recoveredHandoffIdentity') &&
+      dayMapSource.includes('activeHandoffIdentityRef') &&
+      dayMapSource.includes('handoffCleanupTimerRef'),
+    'Consumed recovered handoffs should be keyed by identity so an older cleanup timer cannot erase a newer notification tap.',
+  );
+  assert.ok(
+    dayMapSource.includes('scheduleRecoveredHandoffCleanup') &&
+      dayMapSource.includes('clearRecoveredHandoffRoute') &&
+      dayMapSource.includes("pathname: '/(app)/today/day-map'"),
+    'After the reminder handoff has been visible, Day Map should replace the route with a clean Day Map URL.',
+  );
+  assert.ok(
+    dayMapSource.includes('activeHandoffIdentityRef.current !==') &&
+      dayMapSource.includes('4400'),
+    'Route cleanup must verify the handoff is still current and leave the highlight/update message visible briefly before clearing params.',
+  );
+  assert.ok(
+    dayMapSource.includes('const reflowParam = firstParam(params.reflow)') &&
+      dayMapSource.includes("{ params: { reflow: reflowParam } }"),
+    'Cleaning notification params should preserve an unrelated Autopilot reflow parameter when one is present.',
+  );
 }
 console.log('✓ reclaimed Autopilot reservations are visible in Day Map and launch Focus directly without task duplication');
 console.log('✓ missed recovered slots are visible with reflowed minutes and renewed deadline pressure');
 console.log('✓ near-term recovered slots proactively protect against active Focus and later schedule changes');
 console.log('✓ recovered reminder handoff scrolls/highlights the current reservation and offers one-tap Focus');
 console.log('✓ stale recovered reminder taps explain plan changes and fall forward to the best current action');
+console.log('✓ consumed recovered notification params clear safely without letting an older timer erase a newer handoff');

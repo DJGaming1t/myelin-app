@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 import {
@@ -78,13 +78,39 @@ const sourcePath = resolve(
   process.env.MYELIN_MINI_SEED ??
     'training/myelin-mini/seed-v1.jsonl',
 );
+const failurePath = resolve(
+  process.env.MYELIN_MINI_FAILURE_DATA ??
+    'training/myelin-mini/failure-curriculum-v1.jsonl',
+);
 const outputDir = resolve(
   process.env.MYELIN_MINI_COMPILED_DIR ??
     'training/myelin-mini/compiled',
 );
 const checkOnly = process.argv.includes('--check');
 
-const examples = readJsonl(sourcePath);
+const examples = [
+  ...readJsonl(sourcePath),
+  ...(existsSync(failurePath) ? readJsonl(failurePath) : []),
+];
+
+const ids = new Set<string>();
+const requestIds = new Set<string>();
+for (const example of examples) {
+  if (ids.has(example.id)) {
+    throw new Error(`Duplicate MYELIN Mini training id: ${example.id}`);
+  }
+  ids.add(example.id);
+
+  const raw = example.output as { requestId?: unknown };
+  if (typeof raw.requestId !== 'string') {
+    throw new Error(`Training example ${example.id} has no requestId.`);
+  }
+  if (requestIds.has(raw.requestId)) {
+    throw new Error(`Duplicate MYELIN Mini requestId: ${raw.requestId}`);
+  }
+  requestIds.add(raw.requestId);
+}
+
 const train = examples
   .filter((example) => example.split === 'train')
   .map(compileExample);
@@ -92,11 +118,11 @@ const validation = examples
   .filter((example) => example.split === 'validation')
   .map(compileExample);
 
-if (train.length < 20) {
-  throw new Error('MYELIN Mini training split is unexpectedly small.');
+if (train.length < 80) {
+  throw new Error('MYELIN Mini combined training split is unexpectedly small.');
 }
-if (validation.length < 5) {
-  throw new Error('MYELIN Mini validation split is unexpectedly small.');
+if (validation.length < 10) {
+  throw new Error('MYELIN Mini combined validation split is unexpectedly small.');
 }
 
 if (!checkOnly) {
@@ -107,6 +133,7 @@ if (!checkOnly) {
 console.log(
   [
     `MYELIN Mini dataset: ${examples.length} examples`,
+    `failure-curriculum=${existsSync(failurePath) ? 'included' : 'missing'}`,
     `train=${train.length}`,
     `validation=${validation.length}`,
     checkOnly ? 'mode=check' : `output=${outputDir}`,

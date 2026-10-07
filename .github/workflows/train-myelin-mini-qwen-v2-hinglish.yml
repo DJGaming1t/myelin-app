@@ -1,0 +1,122 @@
+name: Train MYELIN Mini Qwen v2 Hinglish
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/train-myelin-mini-qwen-v2-hinglish.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  train_v2:
+    name: Focused Hinglish continuation + acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: training/myelin-mini/requirements-train.txt
+
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate failure curriculum
+        run: npm run generate:myelin-mini-failure-data
+
+      - name: Build focused v2 router dataset
+        run: npx tsx scripts/build-myelin-mini-router-v2.ts
+
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+
+      - name: Install MYELIN Mini training stack
+        run: python -m pip install -r training/myelin-mini/requirements-train.txt
+
+      - name: Download v1 LoRA adapter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/myelin-mini/v1-adapter
+          gh run download 37594519114 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name myelin-mini-qwen3.5-0.8b-lora-v1 \
+            --dir artifacts/myelin-mini/v1-adapter
+          V1_ADAPTER_DIR="$(dirname "$(find artifacts/myelin-mini/v1-adapter -name adapter_config.json -print -quit)")"
+          test -n "$V1_ADAPTER_DIR"
+          echo "V1_ADAPTER_DIR=$V1_ADAPTER_DIR" >> "$GITHUB_ENV"
+
+      - name: Continue training MYELIN Mini v2
+        run: >-
+          python scripts/train-myelin-mini-qwen.py
+          --model principled-intelligence/Qwen3.5-0.8B-text-only
+          --resume-adapter "$V1_ADAPTER_DIR"
+          --allow-small-dataset
+          --train training/myelin-mini/compiled/router-v2-train.jsonl
+          --validation training/myelin-mini/compiled/router-v2-validation.jsonl
+          --output artifacts/myelin-mini/qwen3.5-0.8b-lora-v2
+          --epochs 3
+          --learning-rate 0.00005
+          --batch-size 1
+          --gradient-accumulation 2
+          --max-length 768
+          --allow-cpu
+
+      - name: Export exact Hinglish acceptance prompt
+        env:
+          MYELIN_MINI_EVAL_FILE: training/myelin-mini/acceptance-v1.jsonl
+          MYELIN_MINI_EVAL_PROMPTS_OUT: artifacts/myelin-mini/v2-eval/prompt.jsonl
+        run: npx tsx scripts/export-myelin-mini-eval-prompts.ts
+
+      - name: Run exact Hinglish command on v2
+        run: >-
+          python scripts/infer-myelin-mini-peft.py
+          --model principled-intelligence/Qwen3.5-0.8B-text-only
+          --adapter artifacts/myelin-mini/qwen3.5-0.8b-lora-v2
+          --prompts artifacts/myelin-mini/v2-eval/prompt.jsonl
+          --output artifacts/myelin-mini/v2-eval/prediction.jsonl
+          --max-new-tokens 320
+
+      - name: Enforce exact Hinglish acceptance
+        run: >-
+          npx tsx scripts/score-myelin-mini-predictions.ts
+          training/myelin-mini/acceptance-v1.jsonl
+          artifacts/myelin-mini/v2-eval/prediction.jsonl
+          artifacts/myelin-mini/v2-eval/report.json
+          acceptance
+          --enforce
+
+      - name: Print v2 prediction
+        if: always()
+        run: cat artifacts/myelin-mini/v2-eval/prediction.jsonl || true
+
+      - name: Upload v2 adapter and evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-lora-v2
+          path: |
+            artifacts/myelin-mini/qwen3.5-0.8b-lora-v2
+            artifacts/myelin-mini/v2-eval
+          if-no-files-found: warn

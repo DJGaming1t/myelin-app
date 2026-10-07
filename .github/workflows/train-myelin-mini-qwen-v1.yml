@@ -2,12 +2,6 @@ name: Train MYELIN Mini Qwen v1
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - codex/exam-autopilot-capacity-v1
-    paths:
-      - .github/workflows/train-myelin-mini-qwen-v1.yml
-
 permissions:
   contents: read
 

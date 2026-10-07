@@ -984,7 +984,6 @@ function selectCappedPlan(
   workspace: WorkspaceState,
   now: number,
 ) {
-  const perDay = new Map<string, number>();
   const accepted: Array<{
     reminder: PlannedReminder;
     usefulnessScore: number;
@@ -995,152 +994,132 @@ function selectCappedPlan(
     ReminderTimelineItem
   >();
 
-  const sorted = [...plan].sort(
-    (a, b) =>
-      a.at - b.at ||
-      a.key.localeCompare(b.key),
-  );
+  const ranked = plan
+    .map((reminder) => {
+      const usefulness = reminderUsefulness(
+        workspace,
+        reminder,
+        now,
+      );
+      return {
+        reminder,
+        source: reminderSource(reminder),
+        usefulnessScore: usefulness.score,
+        usefulnessReason: usefulness.reason,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.usefulnessScore - a.usefulnessScore ||
+        a.reminder.at - b.reminder.at ||
+        a.reminder.key.localeCompare(
+          b.reminder.key,
+        ),
+    );
 
-  for (const reminder of sorted) {
-    const source = reminderSource(reminder);
-    const usefulness = reminderUsefulness(
-      workspace,
+  for (const candidate of ranked) {
+    const {
       reminder,
-      now,
-    );
-    const collisions = accepted.filter(
-      (item) =>
-        Math.abs(item.reminder.at - reminder.at) <
-        90 * 60_000,
-    );
+      source,
+      usefulnessScore,
+      usefulnessReason,
+    } = candidate;
 
-    if (collisions.length) {
-      const strongestCollision = [...collisions].sort(
+    const collisionWinner = accepted
+      .filter(
+        (item) =>
+          Math.abs(
+            item.reminder.at - reminder.at,
+          ) <
+          90 * 60_000,
+      )
+      .sort(
         (a, b) =>
           b.usefulnessScore - a.usefulnessScore ||
           a.reminder.at - b.reminder.at ||
           a.reminder.key.localeCompare(
             b.reminder.key,
           ),
-      )[0]!;
+      )[0];
 
-      if (
-        usefulness.score <=
-        strongestCollision.usefulnessScore
-      ) {
-        timeline.set(reminder.key, {
-          reminder,
-          source,
-          decision: 'collision',
-          winnerKey:
-            strongestCollision.reminder.key,
-          usefulnessScore: usefulness.score,
-          usefulnessReason: usefulness.reason,
-          reason:
-            `Withheld because a nearby reminder ranked higher within 90 minutes (${strongestCollision.usefulnessScore} vs ${usefulness.score}). ${strongestCollision.usefulnessReason}`,
-        });
-        continue;
-      }
-
-      const candidateDay = localDateKey(reminder.at);
-      const replacedOnCandidateDay =
-        collisions.filter(
-          (item) =>
-            localDateKey(item.reminder.at) ===
-            candidateDay,
-        ).length;
-      const projectedDayCount =
-        (perDay.get(candidateDay) ?? 0) -
-        replacedOnCandidateDay;
-      if (
-        projectedDayCount >=
-        MAX_REMINDERS_PER_DAY
-      ) {
-        timeline.set(reminder.key, {
-          reminder,
-          source,
-          decision: 'daily-cap',
-          winnerKey: null,
-          usefulnessScore: usefulness.score,
-          usefulnessReason: usefulness.reason,
-          reason:
-            'This reminder ranks higher than its nearby collision, but two other MYELIN reminders already won this local day.',
-        });
-        continue;
-      }
-
-      for (const loser of collisions) {
-        const index = accepted.indexOf(loser);
-        if (index >= 0) accepted.splice(index, 1);
-        const loserDay = localDateKey(
-          loser.reminder.at,
-        );
-        perDay.set(
-          loserDay,
-          Math.max(
-            0,
-            (perDay.get(loserDay) ?? 1) - 1,
-          ),
-        );
-        timeline.set(loser.reminder.key, {
-          reminder: loser.reminder,
-          source: reminderSource(loser.reminder),
-          decision: 'collision',
-          winnerKey: reminder.key,
-          usefulnessScore: loser.usefulnessScore,
-          usefulnessReason: loser.usefulnessReason,
-          reason:
-            `Withheld because ${reminderSource(reminder) === 'recovered' ? 'a recovered Autopilot reminder' : 'another reminder'} ranked higher within 90 minutes (${usefulness.score} vs ${loser.usefulnessScore}). ${usefulness.reason}`,
-        });
-      }
+    if (collisionWinner) {
+      timeline.set(reminder.key, {
+        reminder,
+        source,
+        decision: 'collision',
+        winnerKey: collisionWinner.reminder.key,
+        usefulnessScore,
+        usefulnessReason,
+        reason:
+          `Withheld because a nearby reminder ranked higher within 90 minutes (${collisionWinner.usefulnessScore} vs ${usefulnessScore}). ${collisionWinner.usefulnessReason}`,
+      });
+      continue;
     }
 
-    if (accepted.length >= MAX_SCHEDULED_REMINDERS) {
+    const day = localDateKey(reminder.at);
+    const sameDayWinners = accepted
+      .filter(
+        (item) =>
+          localDateKey(item.reminder.at) === day,
+      )
+      .sort(
+        (a, b) =>
+          a.usefulnessScore - b.usefulnessScore ||
+          b.reminder.at - a.reminder.at ||
+          b.reminder.key.localeCompare(
+            a.reminder.key,
+          ),
+      );
+
+    if (
+      sameDayWinners.length >=
+      MAX_REMINDERS_PER_DAY
+    ) {
+      const cutoffWinner = sameDayWinners[0]!;
+      timeline.set(reminder.key, {
+        reminder,
+        source,
+        decision: 'daily-cap',
+        winnerKey: cutoffWinner.reminder.key,
+        usefulnessScore,
+        usefulnessReason,
+        reason:
+          `Withheld because two more useful MYELIN reminders already won this local day. Daily cutoff: ${cutoffWinner.usefulnessScore} vs ${usefulnessScore}. ${cutoffWinner.usefulnessReason}`,
+      });
+      continue;
+    }
+
+    if (
+      accepted.length >=
+      MAX_SCHEDULED_REMINDERS
+    ) {
       timeline.set(reminder.key, {
         reminder,
         source,
         decision: 'global-cap',
         winnerKey: null,
-        usefulnessScore: usefulness.score,
-        usefulnessReason: usefulness.reason,
+        usefulnessScore,
+        usefulnessReason,
         reason:
           'Not scheduled because MYELIN already has the maximum number of future device reminders queued.',
       });
       continue;
     }
 
-    const day = localDateKey(reminder.at);
-    const count = perDay.get(day) ?? 0;
-    if (count >= MAX_REMINDERS_PER_DAY) {
-      timeline.set(reminder.key, {
-        reminder,
-        source,
-        decision: 'daily-cap',
-        winnerKey: null,
-        usefulnessScore: usefulness.score,
-        usefulnessReason: usefulness.reason,
-        reason:
-          'Withheld because two MYELIN reminders already won this local day.',
-      });
-      continue;
-    }
-
     accepted.push({
       reminder,
-      usefulnessScore: usefulness.score,
-      usefulnessReason: usefulness.reason,
+      usefulnessScore,
+      usefulnessReason,
     });
-    perDay.set(day, count + 1);
     timeline.set(reminder.key, {
       reminder,
       source,
       decision: 'scheduled',
       winnerKey: reminder.key,
-      usefulnessScore: usefulness.score,
-      usefulnessReason: usefulness.reason,
-      reason: collisions.length
-        ? `Scheduled because it ranked higher than the nearby collision (${usefulness.score}). ${usefulness.reason}`
-        : `Scheduled after quiet-hour, sleep, adaptive timing and collision checks. ${usefulness.reason}`,
+      usefulnessScore,
+      usefulnessReason,
+      reason:
+        `Scheduled because it is one of the most useful eligible reminders for this day after collision checks. ${usefulnessReason}`,
     });
   }
 

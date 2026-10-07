@@ -25,6 +25,7 @@ import {
   cancelReminderIds,
   configureNotificationRuntime,
   consumeInitialReminderResponse,
+  getLegacyOwnerlessReminderIds,
   getReminderPermission,
   getScheduledReminderAudit,
   requestReminderPermission,
@@ -43,6 +44,7 @@ import {
 } from './reminder-engine';
 import {
   ReminderDeviceState,
+  reminderMigrationStorage,
   reminderStorage,
 } from './reminder-storage';
 
@@ -198,6 +200,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       transitionPending || !onboardingShouldShow,
   });
   const scheduleQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const legacyOwnerlessCleanupRef =
+    useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -475,6 +479,39 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     workspaceStatus,
   ]);
 
+  const ensureLegacyOwnerlessCleanup =
+    useCallback(async () => {
+      if (Platform.OS === 'web') return;
+
+      if (!legacyOwnerlessCleanupRef.current) {
+        legacyOwnerlessCleanupRef.current =
+          (async () => {
+            const alreadyCompleted =
+              await reminderMigrationStorage.legacyOwnerlessCleanupCompleted();
+            if (alreadyCompleted) return;
+
+            const legacyIds =
+              await getLegacyOwnerlessReminderIds();
+            await cancelReminderIds(legacyIds);
+
+            const remainingLegacyIds =
+              await getLegacyOwnerlessReminderIds();
+            if (remainingLegacyIds.length) {
+              throw new Error(
+                'Legacy MYELIN reminders could not be fully cleaned up.',
+              );
+            }
+
+            await reminderMigrationStorage.markLegacyOwnerlessCleanupCompleted();
+          })().catch((error) => {
+            legacyOwnerlessCleanupRef.current = null;
+            throw error;
+          });
+      }
+
+      await legacyOwnerlessCleanupRef.current;
+    }, []);
+
   const persist = useCallback(
     async (next: ReminderDeviceState, owner = ownerRef.current) => {
       stateRef.current = next;
@@ -552,6 +589,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       reminderStorage.load(ownerKey),
       getReminderPermission(),
       configureNotificationRuntime(),
+      ensureLegacyOwnerlessCleanup(),
     ])
       .then(async ([loaded, nextPermission]) => {
         if (cancelled || ownerRef.current !== ownerKey) return;
@@ -595,7 +633,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [cancelCurrentSchedule, ownerKey, Boolean(workspace)]);
+  }, [
+    cancelCurrentSchedule,
+    ensureLegacyOwnerlessCleanup,
+    ownerKey,
+    Boolean(workspace),
+  ]);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;

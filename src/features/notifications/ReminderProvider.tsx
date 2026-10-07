@@ -12,10 +12,14 @@ import {
 import { Platform } from 'react-native';
 
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 
 import {
+  ReminderOpenPayload,
   ReminderPermission,
   cancelReminderIds,
   configureNotificationRuntime,
@@ -84,8 +88,52 @@ function runtimeError(error: unknown) {
   return 'Reminders could not be scheduled right now.';
 }
 
+const PENDING_REMINDER_TTL_MS = 30_000;
+
+type ReminderRoutingGate = {
+  authReady: boolean;
+  authAllowsApp: boolean;
+  workspaceStatus: 'idle' | 'loading' | 'ready' | 'error';
+  ownerKey: string | null;
+  hasWorkspace: boolean;
+  onboardingReady: boolean;
+  onboardingAllowsApp: boolean;
+};
+
+function canRouteReminderPayload(
+  payload: ReminderOpenPayload,
+  gate: ReminderRoutingGate,
+) {
+  return Boolean(
+    gate.authReady &&
+      gate.authAllowsApp &&
+      gate.workspaceStatus === 'ready' &&
+      gate.ownerKey &&
+      gate.hasWorkspace &&
+      gate.onboardingReady &&
+      gate.onboardingAllowsApp &&
+      (!payload.ownerKey ||
+        payload.ownerKey === gate.ownerKey),
+  );
+}
+
 export function ReminderProvider({ children }: PropsWithChildren) {
-  const { ownerKey, workspace } = useWorkspace();
+  const {
+    ownerKey,
+    workspace,
+    status: workspaceStatus,
+  } = useWorkspace();
+  const {
+    ready: authReady,
+    user,
+    localMode,
+  } = useAuth();
+  const {
+    ready: onboardingReady,
+    shouldShow: onboardingShouldShow,
+  } = useOnboarding();
+  const { transitionPending } =
+    useOnboardingTransition();
   const { session: focusSession } = useFocus();
 
   const [state, setState] = useState<ReminderDeviceState>(freshState);
@@ -105,6 +153,26 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const handledReminderResponsesRef = useRef<Set<string>>(
     new Set(),
   );
+  const pendingReminderResponsesRef = useRef<
+    Map<
+      string,
+      {
+        payload: ReminderOpenPayload;
+        queuedAt: number;
+      }
+    >
+  >(new Map());
+  const routingGateRef = useRef<ReminderRoutingGate>({
+    authReady,
+    authAllowsApp:
+      localMode || Boolean(user?.emailVerified),
+    workspaceStatus,
+    ownerKey,
+    hasWorkspace: Boolean(workspace),
+    onboardingReady,
+    onboardingAllowsApp:
+      transitionPending || !onboardingShouldShow,
+  });
   const scheduleQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -118,6 +186,160 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     focusSessionRef.current = focusSession;
   }, [focusSession]);
+
+  const routeReminderNow = useCallback(
+    (payload: ReminderOpenPayload) => {
+      if (
+        handledReminderResponsesRef.current.has(
+          payload.responseId,
+        )
+      ) {
+        return;
+      }
+
+      handledReminderResponsesRef.current.add(
+        payload.responseId,
+      );
+      pendingReminderResponsesRef.current.delete(
+        payload.responseId,
+      );
+
+      if (payload.kind === 'review') {
+        router.push('/(app)/review');
+        return;
+      }
+      if (payload.kind === 'exam') {
+        router.push('/(app)/exams');
+        return;
+      }
+      if (
+        payload.recovered &&
+        payload.commitmentId &&
+        payload.occurrenceDateKey
+      ) {
+        router.push({
+          pathname: '/(app)/today/day-map',
+          params: {
+            recoveredCommitmentId: payload.commitmentId,
+            recoveredOccurrenceDateKey:
+              payload.occurrenceDateKey,
+            ...(payload.topicId
+              ? {
+                  recoveredTopicId: payload.topicId,
+                }
+              : {}),
+            ...(payload.scheduledStart != null
+              ? {
+                  recoveredStart: String(
+                    payload.scheduledStart,
+                  ),
+                }
+              : {}),
+            ...(payload.scheduledEnd != null
+              ? {
+                  recoveredEnd: String(
+                    payload.scheduledEnd,
+                  ),
+                }
+              : {}),
+            recoveredHandoff: 'notification',
+          },
+        });
+        return;
+      }
+
+      router.push('/(app)/today/day-map');
+    },
+    [],
+  );
+
+  const queueOrRouteReminder = useCallback(
+    (payload: ReminderOpenPayload) => {
+      if (
+        handledReminderResponsesRef.current.has(
+          payload.responseId,
+        )
+      ) {
+        return;
+      }
+
+      if (
+        canRouteReminderPayload(
+          payload,
+          routingGateRef.current,
+        )
+      ) {
+        routeReminderNow(payload);
+        return;
+      }
+
+      pendingReminderResponsesRef.current.set(
+        payload.responseId,
+        {
+          payload,
+          queuedAt: Date.now(),
+        },
+      );
+    },
+    [routeReminderNow],
+  );
+
+  const flushPendingReminderResponses =
+    useCallback(() => {
+      const now = Date.now();
+      const gate = routingGateRef.current;
+
+      for (const [
+        responseId,
+        pending,
+      ] of pendingReminderResponsesRef.current) {
+        if (
+          now - pending.queuedAt >
+          PENDING_REMINDER_TTL_MS
+        ) {
+          pendingReminderResponsesRef.current.delete(
+            responseId,
+          );
+          continue;
+        }
+
+        if (
+          canRouteReminderPayload(
+            pending.payload,
+            gate,
+          )
+        ) {
+          routeReminderNow(pending.payload);
+        }
+      }
+    }, [routeReminderNow]);
+
+  useEffect(() => {
+    routingGateRef.current = {
+      authReady,
+      authAllowsApp:
+        localMode || Boolean(user?.emailVerified),
+      workspaceStatus,
+      ownerKey,
+      hasWorkspace: Boolean(workspace),
+      onboardingReady,
+      onboardingAllowsApp:
+        transitionPending || !onboardingShouldShow,
+    };
+
+    flushPendingReminderResponses();
+  }, [
+    authReady,
+    flushPendingReminderResponses,
+    localMode,
+    onboardingReady,
+    onboardingShouldShow,
+    ownerKey,
+    transitionPending,
+    user?.emailVerified,
+    workspace,
+    workspaceStatus,
+  ]);
 
   const persist = useCallback(
     async (next: ReminderDeviceState, owner = ownerRef.current) => {
@@ -213,66 +435,6 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     let unsubscribe: () => void = () => {};
     let active = true;
 
-    const routeReminderOnce = (
-      payload: import('./notification-runtime').ReminderOpenPayload,
-    ) => {
-      if (
-        handledReminderResponsesRef.current.has(
-          payload.responseId,
-        )
-      ) {
-        return;
-      }
-      handledReminderResponsesRef.current.add(
-        payload.responseId,
-      );
-
-      if (payload.kind === 'review') {
-        router.push('/(app)/review');
-        return;
-      }
-      if (payload.kind === 'exam') {
-        router.push('/(app)/exams');
-        return;
-      }
-      if (
-        payload.recovered &&
-        payload.commitmentId &&
-        payload.occurrenceDateKey
-      ) {
-        router.push({
-          pathname: '/(app)/today/day-map',
-          params: {
-            recoveredCommitmentId: payload.commitmentId,
-            recoveredOccurrenceDateKey:
-              payload.occurrenceDateKey,
-            ...(payload.topicId
-              ? {
-                  recoveredTopicId: payload.topicId,
-                }
-              : {}),
-            ...(payload.scheduledStart != null
-              ? {
-                  recoveredStart: String(
-                    payload.scheduledStart,
-                  ),
-                }
-              : {}),
-            ...(payload.scheduledEnd != null
-              ? {
-                  recoveredEnd: String(
-                    payload.scheduledEnd,
-                  ),
-                }
-              : {}),
-            recoveredHandoff: 'notification',
-          },
-        });
-        return;
-      }
-      router.push('/(app)/today/day-map');
-    };
-
     const bootstrapReminderResponses = async () => {
       const initial =
         await consumeInitialReminderResponse().catch(
@@ -282,7 +444,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
       const next =
         await subscribeToReminderResponses(
-          routeReminderOnce,
+          queueOrRouteReminder,
         ).catch(() => null);
       if (!active) {
         next?.();
@@ -290,10 +452,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       }
       if (next) unsubscribe = next;
 
-      // The cold-launch response was already cleared by the runtime before
-      // this route occurs. responseId dedupe also protects against Expo
-      // delivering the same tap through the live listener.
-      if (initial) routeReminderOnce(initial);
+      // Cold-launch responses are already consumed from Expo storage here.
+      // If auth/workspace/onboarding are still hydrating, keep the intent
+      // in memory and route only after the correct app shell is ready.
+      if (initial) queueOrRouteReminder(initial);
     };
 
     void bootstrapReminderResponses();
@@ -302,7 +464,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [queueOrRouteReminder]);
 
   const doReschedule = useCallback(async () => {
     const owner = ownerRef.current;
@@ -368,7 +530,11 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await cancelReminderIds(current.scheduledIds);
 
     try {
-      const ids = await scheduleReminderPlan(plan, current.settings);
+      const ids = await scheduleReminderPlan(
+        plan,
+        current.settings,
+        owner,
+      );
       const next = {
         ...current,
         scheduledIds: ids,

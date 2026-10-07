@@ -38,7 +38,8 @@
     "verify:feasibility": "tsx scripts/verify-feasibility.ts",
     "verify:assistant-actions": "tsx scripts/verify-assistant-actions.ts",
     "verify:local-ai": "tsx scripts/verify-local-ai.ts",
-    "verify:syllabus-intake": "tsx scripts/verify-syllabus-intake.ts"
+    "verify:syllabus-intake": "tsx scripts/verify-syllabus-intake.ts",
+    "verify:myelin-mini": "tsx scripts/verify-myelin-mini.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

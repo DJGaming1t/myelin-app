@@ -579,6 +579,23 @@ function main() {
     'Cold-launch notification intent should be held briefly in memory while auth/workspace/onboarding hydrate.',
   );
   assert.ok(
+    reminderProviderSource.includes('EXPIRED_REMINDER_FALLBACK_TTL_MS = 120_000') &&
+      reminderProviderSource.includes('expiredReminderFallbacksRef'),
+    'After the exact reminder expires, MYELIN should keep only a bounded safe fallback instead of silently dropping the launch intent.',
+  );
+  assert.ok(
+    reminderProviderSource.includes("reminderExpired: '1'") &&
+      reminderProviderSource.includes('reminderKind: fallback.kind') &&
+      reminderProviderSource.includes("pathname: '/(app)/today'"),
+    'An expired launch intent should route to Today with only a safe fallback marker, not stale recovered reservation coordinates.',
+  );
+  assert.ok(
+    reminderProviderSource.includes('now - fallback.queuedAt >') &&
+      reminderProviderSource.includes('EXPIRED_REMINDER_FALLBACK_TTL_MS') &&
+      reminderProviderSource.includes('handledReminderResponsesRef.current.add'),
+    'Expired fallback intent must have its own finite total lifetime and be permanently consumed once that grace window ends.',
+  );
+  assert.ok(
     reminderProviderSource.includes('existing?.queuedAt ?? Date.now()'),
     'Duplicate delivery of the same notification response must preserve its original expiry time instead of extending the pending lifetime.',
   );
@@ -728,6 +745,7 @@ function main() {
   console.log('✓ cold-launch notification responses are consumed, cleared, listener-safe, and routed exactly once');
   console.log('✓ cold-launch intents wait for matching auth/workspace/onboarding hydration and expire in memory rather than racing redirects');
   console.log('✓ workspace load errors keep notification intent retryable within the original TTL, while wrong-owner recovery discards it safely');
+  console.log('✓ expired exact reminder intents downgrade to a bounded Today fallback instead of silently disappearing');
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');

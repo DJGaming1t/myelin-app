@@ -1601,10 +1601,10 @@ function main() {
   );
   assert.ok(
     reminderProviderSource.includes(
-      'previewId = await sendReminderPreview',
+      '(await sendReminderPreview(',
     ) &&
       reminderProviderSource.includes(
-        'previewId = await sendExactReminderPreview',
+        '(await sendExactReminderPreview(',
       ) &&
       reminderProviderSource.includes(
         'await removeReminderPreview(previewId)',

@@ -8,6 +8,7 @@ on:
     branches:
       - expo-migration
       - codex/exam-autopilot-capacity-v1
+      - codex/exam-autopilot-capacity-v1
 
 permissions:
   contents: read
@@ -84,6 +85,9 @@ jobs:
 
       - name: Assistant action protocol and safety boundary
         run: npm run verify:assistant-actions
+
+      - name: MYELIN Mini routing and training contract
+        run: npm run verify:myelin-mini
 
       - name: Local AI model manager lifecycle
         run: npm run verify:local-ai

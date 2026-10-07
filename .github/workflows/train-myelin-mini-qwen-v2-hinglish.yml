@@ -7,6 +7,9 @@ on:
       - codex/exam-autopilot-capacity-v1
     paths:
       - .github/workflows/train-myelin-mini-qwen-v2-hinglish.yml
+      - scripts/build-myelin-mini-router-v2.ts
+      - scripts/generate-myelin-mini-failure-data.ts
+      - scripts/train-myelin-mini-qwen.py
 
 permissions:
   contents: read

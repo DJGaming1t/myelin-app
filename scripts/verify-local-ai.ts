@@ -359,6 +359,19 @@ async function main() {
     assert.match(modelScreenSource, /I accepted the licence/);
     assert.match(modelScreenSource, /Run test/);
     assert.match(modelScreenSource, /Try selected model/);
+    assert.match(modelScreenSource, /AI SETUP CHECK/);
+    assert.match(modelScreenSource, /Check AI setup/);
+    assert.match(modelScreenSource, /Run AI test/);
+    assert.match(modelScreenSource, /nativeRuntimeAvailable/);
+    assert.match(modelScreenSource, /OTA update cannot add a native runtime/);
+    assert.match(modelScreenSource, /runtime_missing/);
+    assert.match(providerSource, /nativeRuntimeAvailable/);
+    assert.match(providerSource, /testAiSetup/);
+    assert.match(providerSource, /Local AI needs a native APK containing LiteRT-LM/);
+    assert.match(providerSource, /return smokeTestModel\(selectedModelId\)/);
+    assert.match(providerSource, /verified model file is not installed yet/);
+    assert.match(assistantScreenSource, /installed APK does not expose the native LiteRT-LM runtime/);
+
     assert.match(modelScreenSource, /\/\(app\)\/settings\/ai-assistant/);
     assert.match(assistantScreenSource, /Preview actions/);
     assert.match(assistantScreenSource, /REVIEW BEFORE APPLYING/);

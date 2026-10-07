@@ -49,6 +49,14 @@ async function enqueueOwnerMutation(
   }
 }
 
+async function waitForOwnerMutations(
+  ownerKey: string,
+) {
+  await ownerMutationQueues
+    .get(ownerKey)
+    ?.catch(() => undefined);
+}
+
 function normalizeState(value: unknown): ReminderDeviceState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {
@@ -99,6 +107,7 @@ export const reminderMigrationStorage = {
 
 export const reminderStorage = {
   async load(ownerKey: string): Promise<ReminderDeviceState> {
+    await waitForOwnerMutations(ownerKey);
     const raw = await AsyncStorage.getItem(key(ownerKey));
     if (!raw) return normalizeState(null);
 

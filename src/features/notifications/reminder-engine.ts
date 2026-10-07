@@ -806,22 +806,99 @@ function buildStudyBlockReminders(
   return reminders;
 }
 
-function capPlan(plan: PlannedReminder[]) {
+export type ReminderTimelineDecision =
+  | 'scheduled'
+  | 'collision'
+  | 'daily-cap'
+  | 'global-cap';
+
+export type ReminderTimelineItem = {
+  reminder: PlannedReminder;
+  source: 'review' | 'exam' | 'study' | 'recovered';
+  decision: ReminderTimelineDecision;
+  reason: string;
+  winnerKey: string | null;
+};
+
+function reminderSource(
+  reminder: PlannedReminder,
+): ReminderTimelineItem['source'] {
+  if (
+    reminder.kind === 'study' &&
+    reminder.data.recovered === 1
+  ) {
+    return 'recovered';
+  }
+  return reminder.kind;
+}
+
+function selectCappedPlan(plan: PlannedReminder[]) {
   const perDay = new Map<string, number>();
   const accepted: PlannedReminder[] = [];
+  const timeline: ReminderTimelineItem[] = [];
 
   for (const reminder of [...plan].sort((a, b) => a.at - b.at)) {
     const day = localDateKey(reminder.at);
     const count = perDay.get(day) ?? 0;
-    if (count >= MAX_REMINDERS_PER_DAY || accepted.some(item => Math.abs(item.at - reminder.at) < 90 * 60000)) continue;
+
+    if (accepted.length >= MAX_SCHEDULED_REMINDERS) {
+      timeline.push({
+        reminder,
+        source: reminderSource(reminder),
+        decision: 'global-cap',
+        winnerKey: null,
+        reason:
+          'Not scheduled because MYELIN already has the maximum number of future device reminders queued.',
+      });
+      continue;
+    }
+
+    if (count >= MAX_REMINDERS_PER_DAY) {
+      timeline.push({
+        reminder,
+        source: reminderSource(reminder),
+        decision: 'daily-cap',
+        winnerKey: null,
+        reason:
+          'Withheld because two MYELIN reminders already won this local day.',
+      });
+      continue;
+    }
+
+    const collisionWinner = accepted.find(
+      (item) =>
+        Math.abs(item.at - reminder.at) <
+        90 * 60_000,
+    );
+    if (collisionWinner) {
+      timeline.push({
+        reminder,
+        source: reminderSource(reminder),
+        decision: 'collision',
+        winnerKey: collisionWinner.key,
+        reason:
+          'Withheld because another reminder is already scheduled within 90 minutes. MYELIN keeps the earlier reminder.',
+      });
+      continue;
+    }
 
     accepted.push(reminder);
     perDay.set(day, count + 1);
-
-    if (accepted.length >= MAX_SCHEDULED_REMINDERS) break;
+    timeline.push({
+      reminder,
+      source: reminderSource(reminder),
+      decision: 'scheduled',
+      winnerKey: reminder.key,
+      reason:
+        'Scheduled after quiet-hour, sleep, adaptive timing and collision checks.',
+    });
   }
 
-  return accepted;
+  return { accepted, timeline };
+}
+
+function capPlan(plan: PlannedReminder[]) {
+  return selectCappedPlan(plan).accepted;
 }
 
 function preferredStudyMinute(workspace: WorkspaceState, fallback: number, now: number) {
@@ -882,6 +959,42 @@ function adaptReminders(plan: PlannedReminder[], workspace: WorkspaceState, sett
   });
 }
 
+function buildAdaptedReminderCandidates(
+  workspace: WorkspaceState,
+  settings: ReminderSettings,
+  now: number,
+  context: ReminderPlanContext,
+) {
+  return adaptReminders(
+    [
+      ...buildReviewReminders(
+        workspace,
+        settings,
+        now,
+      ),
+      ...buildExamReminders(
+        workspace,
+        settings,
+        now,
+      ),
+      ...buildStudyBlockReminders(
+        workspace,
+        settings,
+        now,
+      ),
+      ...buildRecoveredWindowReminders(
+        workspace,
+        settings,
+        now,
+        context,
+      ),
+    ],
+    workspace,
+    settings,
+    now,
+  );
+}
+
 export function buildReminderPlan(
   workspace: WorkspaceState,
   settingsInput: ReminderSettings,
@@ -891,17 +1004,39 @@ export function buildReminderPlan(
   const settings = normalizeReminderSettings(settingsInput);
   if (!settings.enabled) return [] as PlannedReminder[];
 
-  return capPlan(adaptReminders([
-    ...buildReviewReminders(workspace, settings, now),
-    ...buildExamReminders(workspace, settings, now),
-    ...buildStudyBlockReminders(workspace, settings, now),
-    ...buildRecoveredWindowReminders(
+  return capPlan(
+    buildAdaptedReminderCandidates(
       workspace,
       settings,
       now,
       context,
     ),
-  ], workspace, settings, now));
+  );
+}
+
+export function buildReminderTimeline(
+  workspace: WorkspaceState,
+  settingsInput: ReminderSettings,
+  now = Date.now(),
+  context: ReminderPlanContext = {},
+  limit = 8,
+) {
+  const settings = normalizeReminderSettings(settingsInput);
+  if (!settings.enabled) return [] as ReminderTimelineItem[];
+
+  const selected = selectCappedPlan(
+    buildAdaptedReminderCandidates(
+      workspace,
+      settings,
+      now,
+      context,
+    ),
+  );
+
+  return selected.timeline.slice(
+    0,
+    Math.max(1, Math.min(20, Math.round(limit))),
+  );
 }
 
 export type RecoveredReminderInsightStatus =

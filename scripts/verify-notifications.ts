@@ -11,6 +11,7 @@ import {
   buildRecoveredReminderInsight,
   buildReminderPlan,
   buildReminderTimeline,
+  buildReminderTimelineOverview,
   defaultReminderSettings,
   examReminderCopy,
   formatTimeMinutes,
@@ -1197,6 +1198,60 @@ function main() {
     ),
     'Global-cap explanations should show that usefulness, not chronology, determined the final device queue.',
   );
+  const globalCapOverview =
+    buildReminderTimelineOverview(
+      globalCapWorkspace,
+      globalCapSettings,
+      now,
+      {},
+      8,
+    );
+  assert.deepEqual(
+    globalCapOverview.summary,
+    {
+      totalCandidates: 30,
+      scheduled: MAX_SCHEDULED_REMINDERS,
+      withheld: 2,
+      collision: 0,
+      dailyCap: 0,
+      globalCap: 2,
+    },
+    'Reminder Studio summary must count the full evaluated queue rather than only the visible eight-row preview.',
+  );
+  assert.equal(
+    globalCapOverview.items.length,
+    8,
+    'Reminder Studio should keep the timeline preview compact even when the full queue is larger.',
+  );
+  assert.equal(
+    globalCapOverview.omittedCount,
+    22,
+    'The overview should disclose how many full-queue decisions are omitted from the compact preview.',
+  );
+  assert.equal(
+    globalCapOverview.items.filter(
+      (item) => item.decision === 'global-cap',
+    ).length,
+    2,
+    'The compact preview should pin important QUEUE CAP losses even when they occur later than the first eight chronological decisions.',
+  );
+  assert.ok(
+    globalCapOverview.items
+      .filter(
+        (item) =>
+          item.decision === 'global-cap',
+      )
+      .every(
+        (item) =>
+          globalCapLosers.some(
+            (loser) =>
+              loser.reminder.key ===
+              item.reminder.key,
+          ),
+      ),
+    'Pinned QUEUE CAP rows must be the real global-cap decisions from the same evaluated queue.',
+  );
+
   const globalCapPlanTimes = globalCapPlan.map(
     (item) => item.at,
   );
@@ -1319,6 +1374,29 @@ function main() {
   );
   assert.ok(
     blockedPermissions.includes('android.permission.USE_EXACT_ALARM'),
+  );
+
+  const reminderStudioSource = fs.readFileSync(
+    'app/(app)/settings/reminders.tsx',
+    'utf8',
+  );
+  assert.ok(
+    reminderStudioSource.includes(
+      'buildReminderTimelineOverview',
+    ) &&
+      reminderStudioSource.includes(
+        'summary.scheduled',
+      ) &&
+      reminderStudioSource.includes(
+        'summary.withheld',
+      ) &&
+      reminderStudioSource.includes(
+        'summary.globalCap',
+      ) &&
+      reminderStudioSource.includes(
+        'important QUEUE CAP losses are pinned',
+      ),
+    'Reminder Studio should derive queue counts from the full overview and explain when the compact preview pins later queue-cap losses.',
   );
 
   const reminderProviderSource = fs.readFileSync(

@@ -340,6 +340,15 @@ function main() {
     ),
     'Scheduled recovered insight should explain why the reminder exists.',
   );
+  assert.deepEqual(
+    scheduledRecoveredInsight?.preview,
+    {
+      title: recoveredReminder.title,
+      body: recoveredReminder.body,
+      accent: recoveredReminder.accent,
+    },
+    'Reminder Studio scheduled preview must exactly match the production recovered notification copy.',
+  );
 
   const recoveredSignature = reminderPlanSignature(
     recoveredPlan,
@@ -404,6 +413,15 @@ function main() {
       'later fixed schedule change',
     ),
   );
+  assert.deepEqual(
+    reflowedRecoveredInsight?.preview,
+    {
+      title: reflowedRecovered!.title,
+      body: reflowedRecovered!.body,
+      accent: reflowedRecovered!.accent,
+    },
+    'Reflowed preview copy must follow the replacement notification that production will schedule.',
+  );
 
   const suppressedRecoveredPlan = buildReminderPlan(
     recoveredWorkspace,
@@ -466,6 +484,27 @@ function main() {
       'Another Focus session overlaps',
     ),
   );
+  const protectedExpectedCopy = studyReminderCopy(
+    {
+      ...settings,
+      reviewEnabled: false,
+      examEnabled: false,
+    },
+    protectedRecoveredInsight!.topicName,
+    protectedRecoveredInsight!.subject,
+    protectedRecoveredInsight!.minutes,
+  );
+  assert.equal(
+    protectedRecoveredInsight?.preview.title,
+    protectedExpectedCopy.title,
+  );
+  assert.equal(
+    protectedRecoveredInsight?.preview.body,
+    settings.detail === 'brief'
+      ? protectedExpectedCopy.body
+      : `Recovered window · ${protectedExpectedCopy.body}`,
+    'Protected state should still expose the exact notification copy MYELIN is withholding.',
+  );
 
   const silentRecoveredInsight =
     buildRecoveredReminderInsight(
@@ -487,6 +526,11 @@ function main() {
     silentRecoveredInsight?.why.includes(
       'Day Map study reminders are turned off',
     ),
+  );
+  assert.ok(
+    silentRecoveredInsight?.preview.title &&
+      silentRecoveredInsight?.preview.body,
+    'Suppressed state should retain a would-have-been notification preview without scheduling it.',
   );
 
   const beforeMove = reminderPlanSignature(studyPlan);
@@ -850,6 +894,7 @@ function main() {
   console.log('✓ scheduled Day Map tasks create one calm lead-time reminder');
   console.log('✓ recovered Autopilot windows create one calm heads-up, reflow it after schedule edits, and suppress it during overlapping Focus');
   console.log('✓ Reminder Studio explains recovered reminder state as scheduled, reflowed, protected or suppressed from the live planner');
+  console.log('✓ recovered Reminder Studio preview matches production copy and can send an isolated exact device preview');
   console.log('✓ recovered notification taps preserve exact reservation identity through the runtime and provider route');
   console.log('✓ cold-launch notification responses are consumed, cleared, listener-safe, and routed exactly once');
   console.log('✓ cold-launch intents wait for matching auth/workspace/onboarding hydration and expire in memory rather than racing redirects');
@@ -907,6 +952,24 @@ assert.ok(
   reminderStudioSource.includes('timerRemainingMs') &&
     reminderStudioSource.includes('reminderContext'),
   'Reminder Studio live preview should use the same active-Focus context as production reminder planning.',
+);
+assert.ok(
+  reminderStudioSource.includes('EXACT NOTIFICATION') &&
+    reminderStudioSource.includes('WOULD-HAVE-BEEN NOTIFICATION') &&
+    reminderStudioSource.includes('Send this preview') &&
+    reminderStudioSource.includes('sendExactPreview'),
+  'Recovered reminder card should show exact production copy and allow a manual one-off preview even when the real reminder is withheld.',
+);
+assert.ok(
+  reminderStudioSource.includes('reminderSubtitleText') &&
+    reminderStudioSource.includes('reminderColorValue'),
+  'On-screen notification preview should reuse the production subtitle and accent presentation rules.',
+);
+
+assert.ok(
+  notificationRuntimeSource.includes('sendExactReminderPreview') &&
+    notificationRuntimeSource.includes('exactPreview: true'),
+  'Runtime should support one-off exact-copy previews without altering the real reminder schedule.',
 );
 assert.equal(reminderStudioSource.includes('notificationDim'), true);
 assert.ok(

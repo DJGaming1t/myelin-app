@@ -1365,10 +1365,35 @@ function timelinePreviewItems(
         ),
     )
     .slice(0, Math.min(2, safeLimit));
+  const queueCapWinnerKeys = new Set(
+    pinnedQueueCap
+      .map((item) => item.winnerKey)
+      .filter(
+        (key): key is string => Boolean(key),
+      ),
+  );
+  const pinnedQueueCapWinners = timeline
+    .filter((item) =>
+      queueCapWinnerKeys.has(
+        item.reminder.key,
+      ),
+    )
+    .slice(
+      0,
+      Math.min(
+        1,
+        Math.max(
+          0,
+          safeLimit - pinnedQueueCap.length,
+        ),
+      ),
+    );
+  const pinned = [
+    ...pinnedQueueCap,
+    ...pinnedQueueCapWinners,
+  ];
   const pinnedKeys = new Set(
-    pinnedQueueCap.map(
-      (item) => item.reminder.key,
-    ),
+    pinned.map((item) => item.reminder.key),
   );
   const chronological = timeline
     .filter(
@@ -1379,11 +1404,11 @@ function timelinePreviewItems(
       0,
       Math.max(
         0,
-        safeLimit - pinnedQueueCap.length,
+        safeLimit - pinned.length,
       ),
     );
 
-  return [...chronological, ...pinnedQueueCap].sort(
+  return [...chronological, ...pinned].sort(
     (a, b) =>
       a.reminder.at - b.reminder.at ||
       a.reminder.key.localeCompare(

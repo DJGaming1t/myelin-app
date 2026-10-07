@@ -61,7 +61,6 @@ type LocalAiContextValue = {
   acceptLicense: (modelId: LocalAiModelId) => Promise<void>;
   setAutoUnload: (value: boolean) => Promise<void>;
   smokeTestModel: (modelId: LocalAiModelId) => Promise<string>;
-  testAiSetup: () => Promise<string>;
   prepareAssistantActions: (request: {
     workspace: WorkspaceState;
     userRequest: string;
@@ -340,61 +339,6 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     [manager, updateStorage],
   );
 
-  const testAiSetup = useCallback(async () => {
-    setError('');
-    setMessage('');
-
-    let current = manager.snapshot();
-    if (!current.initialized) {
-      current = await manager.initialize();
-      setSnapshot(current);
-    }
-
-    const runtimeAvailable = current.models.some(
-      (model) =>
-        model.compatibility.runtimeId ===
-        'litert-lm',
-    );
-    setNativeRuntimeAvailable(runtimeAvailable);
-
-    if (!runtimeAvailable) {
-      const cause = new Error(
-        'Native AI runtime is unavailable in this installed MYELIN build. Local AI needs a native APK containing LiteRT-LM; an OTA update cannot add that native module.',
-      );
-      setError(cause.message);
-      throw cause;
-    }
-
-    const selectedModelId =
-      current.selectedModelId;
-    if (!selectedModelId) {
-      const result =
-        'Native AI runtime is ready. Choose a model next. FunctionGemma can be tested after importing its verified .litertlm bundle.';
-      setMessage(result);
-      return result;
-    }
-
-    const selectedState = current.models.find(
-      (model) =>
-        model.modelId === selectedModelId,
-    );
-    const selectedDefinition =
-      LOCAL_AI_MODELS.find(
-        (model) =>
-          model.id === selectedModelId,
-      );
-
-    if (!selectedState?.install) {
-      const result = selectedDefinition?.artifact
-        ? `Native AI runtime is ready. ${selectedDefinition.shortName} is selected, but its verified model file is not installed yet. Import the matching .litertlm bundle to run real inference.`
-        : `Native AI runtime is ready, but ${selectedDefinition?.shortName ?? 'the selected model'} does not have a verified mobile artifact configured yet.`;
-      setMessage(result);
-      return result;
-    }
-
-    return smokeTestModel(selectedModelId);
-  }, [manager, smokeTestModel]);
-
   const prepareAssistantActions = useCallback(
     async (request: {
       workspace: WorkspaceState;
@@ -510,7 +454,6 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       acceptLicense,
       setAutoUnload,
       smokeTestModel,
-      testAiSetup,
       prepareAssistantActions,
       prepareSyllabusImport,
     }),
@@ -530,7 +473,6 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       selectModel,
       setAutoUnload,
       smokeTestModel,
-      testAiSetup,
       prepareAssistantActions,
       prepareSyllabusImport,
       snapshot,

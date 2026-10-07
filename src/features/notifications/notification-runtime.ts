@@ -174,6 +174,7 @@ export function summarizeScheduledReminderRequests(
       data &&
         data.myelin === true &&
         data.preview !== true &&
+        data.preview !== 1 &&
         data.ownerKey === ownerKey,
     );
   });
@@ -202,8 +203,9 @@ export function legacyOwnerlessReminderIds(
         data &&
           data.myelin === true &&
           data.preview !== true &&
+          data.preview !== 1 &&
           (typeof data.ownerKey !== 'string' ||
-            data.ownerKey.length === 0),
+            data.ownerKey.trim().length === 0),
       );
     })
     .map((request) => request.identifier);

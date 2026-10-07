@@ -117,8 +117,26 @@ async function main() {
   const useJsonObject =
     process.env.MYELIN_MINI_JSON_OBJECT !== '0';
 
-  const examples = readJsonl<EvalExample>(evalPath);
+  const requestedCaseIds = new Set(
+    (process.env.MYELIN_MINI_CASE_IDS ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+
+  const allExamples = readJsonl<EvalExample>(evalPath);
+  const examples = requestedCaseIds.size
+    ? allExamples.filter((example) => requestedCaseIds.has(example.id))
+    : allExamples;
+
   if (!examples.length) throw new Error('Evaluation set is empty.');
+  if (requestedCaseIds.size && examples.length !== requestedCaseIds.size) {
+    const found = new Set(examples.map((example) => example.id));
+    const missing = [...requestedCaseIds].filter((id) => !found.has(id));
+    throw new Error(
+      `Unknown MYELIN Mini evaluation case(s): ${missing.join(', ')}`,
+    );
+  }
 
   const schema = myelinMiniDecisionJsonSchema();
   const predictions = await runPool(

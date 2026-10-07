@@ -1432,6 +1432,54 @@ function main() {
       ),
     'Device reminder audit should read actual pending notifications and count only non-preview MYELIN reminders owned by the current workspace.',
   );
+  const reminderStorageSource = fs.readFileSync(
+    'src/features/notifications/reminder-storage.ts',
+    'utf8',
+  );
+  assert.ok(
+    notificationRuntimeSourceForAudit.includes(
+      'legacyOwnerlessReminderIds',
+    ) &&
+      notificationRuntimeSourceForAudit.includes(
+        "data.ownerKey.trim().length === 0",
+      ) &&
+      notificationRuntimeSourceForAudit.includes(
+        'data.preview !== 1',
+      ),
+    'Legacy cleanup should target only non-preview MYELIN registrations with no usable owner key.',
+  );
+  assert.ok(
+    reminderStorageSource.includes(
+      'LEGACY_OWNERLESS_CLEANUP_KEY',
+    ) &&
+      reminderStorageSource.includes(
+        'legacyOwnerlessCleanupCompleted',
+      ) &&
+      reminderStorageSource.includes(
+        'markLegacyOwnerlessCleanupCompleted',
+      ),
+    'Legacy ownerless reminder cleanup should have a persistent install-level completion marker.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'ensureLegacyOwnerlessCleanup',
+    ) &&
+      reminderProviderSource.includes(
+        'getLegacyOwnerlessReminderIds',
+      ) &&
+      reminderProviderSource.includes(
+        'remainingLegacyIds',
+      ) &&
+      reminderProviderSource.includes(
+        'markLegacyOwnerlessCleanupCompleted',
+      ) &&
+      reminderProviderSource.includes(
+        'legacyOwnerlessCleanupRef.current = null',
+      ),
+    'Provider startup should verify legacy reminders are gone before marking migration complete, and retry on a later startup after failure.',
+  );
+
+
   assert.ok(
     reminderProviderSource.includes(
       'getScheduledReminderAudit',

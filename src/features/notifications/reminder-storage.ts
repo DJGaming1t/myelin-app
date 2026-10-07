@@ -20,6 +20,35 @@ function key(ownerKey: string) {
   return `${ROOT}/${encodeURIComponent(ownerKey)}`;
 }
 
+const ownerMutationQueues = new Map<
+  string,
+  Promise<void>
+>();
+
+async function enqueueOwnerMutation(
+  ownerKey: string,
+  mutation: () => Promise<void>,
+) {
+  const previous =
+    ownerMutationQueues.get(ownerKey) ??
+    Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(mutation);
+
+  ownerMutationQueues.set(ownerKey, next);
+
+  try {
+    await next;
+  } finally {
+    if (
+      ownerMutationQueues.get(ownerKey) === next
+    ) {
+      ownerMutationQueues.delete(ownerKey);
+    }
+  }
+}
+
 function normalizeState(value: unknown): ReminderDeviceState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {
@@ -81,13 +110,20 @@ export const reminderStorage = {
   },
 
   async save(ownerKey: string, state: ReminderDeviceState) {
-    await AsyncStorage.setItem(
-      key(ownerKey),
-      JSON.stringify(normalizeState(state)),
+    const serialized = JSON.stringify(
+      normalizeState(state),
+    );
+    await enqueueOwnerMutation(ownerKey, () =>
+      AsyncStorage.setItem(
+        key(ownerKey),
+        serialized,
+      ),
     );
   },
 
   async clear(ownerKey: string) {
-    await AsyncStorage.removeItem(key(ownerKey));
+    await enqueueOwnerMutation(ownerKey, () =>
+      AsyncStorage.removeItem(key(ownerKey)),
+    );
   },
 };

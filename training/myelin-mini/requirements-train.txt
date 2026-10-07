@@ -1,6 +1,6 @@
-# Qwen3.5 currently requires the latest Transformers code path.
+# Qwen3.5 support currently needs the latest Transformers code path.
 transformers @ git+https://github.com/huggingface/transformers.git@main
-trl[peft]>=1.14.2
+trl>=0.26.0,<0.27
+peft>=0.21.2,<0.22
 datasets>=4.0.0
 accelerate>=1.10.0
-torch>=2.7.0

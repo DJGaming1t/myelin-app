@@ -10,6 +10,7 @@ import {
   REVIEW_HORIZON_DAYS,
   buildRecoveredReminderInsight,
   buildReminderPlan,
+  buildReminderTimeline,
   defaultReminderSettings,
   examReminderCopy,
   formatTimeMinutes,
@@ -349,6 +350,24 @@ function main() {
     },
     'Reminder Studio scheduled preview must exactly match the production recovered notification copy.',
   );
+  const recoveredTimeline = buildReminderTimeline(
+    recoveredWorkspace,
+    {
+      ...settings,
+      reviewEnabled: false,
+      examEnabled: false,
+    },
+    now,
+  );
+  assert.ok(
+    recoveredTimeline.some(
+      (item) =>
+        item.source === 'recovered' &&
+        item.decision === 'scheduled' &&
+        item.reminder.key === recoveredReminder.key,
+    ),
+    'Recovered Autopilot reminders should appear in the same capped timeline as every other reminder type.',
+  );
 
   const recoveredSignature = reminderPlanSignature(
     recoveredPlan,
@@ -582,6 +601,99 @@ function main() {
     assert.ok(count <= MAX_REMINDERS_PER_DAY);
   }
   assert.ok(crowdedPlan.length <= MAX_SCHEDULED_REMINDERS);
+
+  const crowdedTimeline = buildReminderTimeline(
+    crowded,
+    {
+      ...settings,
+      examOffsets: [3],
+      examTimeMinutes: settings.reviewTimeMinutes,
+    },
+    now,
+    {},
+    20,
+  );
+  assert.deepEqual(
+    crowdedTimeline
+      .filter((item) => item.decision === 'scheduled')
+      .map((item) => item.reminder.key),
+    crowdedPlan.map((item) => item.key),
+    'Timeline winners must exactly equal the final capped device reminder plan.',
+  );
+  const collisionEntry = crowdedTimeline.find(
+    (item) => item.decision === 'collision',
+  );
+  assert.ok(
+    collisionEntry &&
+      collisionEntry.winnerKey &&
+      collisionEntry.reason.includes('within 90 minutes'),
+    'Reminder timeline should expose collision losers and identify the earlier winning reminder.',
+  );
+
+  const capWorkspace = createEmptyWorkspace(now);
+  for (const [index, hour] of [14, 16, 18].entries()) {
+    capWorkspace.tasks.push({
+      id: `cap_task_${index}`,
+      title: `Cap task ${index + 1}`,
+      subject: 'Mathematics',
+      topicId: null,
+      examId: null,
+      type: 'homework',
+      status: 'open',
+      planState: 'scheduled',
+      dueAt: 0,
+      estimatedMinutes: 25,
+      actualMinutes: 0,
+      priority: 2,
+      notes: '',
+      scheduledStart: local(2026, 9, 30, hour, 0),
+      scheduledEnd: local(2026, 9, 30, hour, 25),
+      postponedUntil: 0,
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      completedAt: 0,
+    });
+  }
+  const capSettings = {
+    ...settings,
+    adaptive: false,
+    reviewEnabled: false,
+    examEnabled: false,
+  };
+  const capPlan = buildReminderPlan(
+    capWorkspace,
+    capSettings,
+    now,
+  );
+  const capTimeline = buildReminderTimeline(
+    capWorkspace,
+    capSettings,
+    now,
+    {},
+    10,
+  );
+  assert.equal(
+    capPlan.length,
+    MAX_REMINDERS_PER_DAY,
+    'Only two well-spaced reminders should survive the local daily cap.',
+  );
+  assert.equal(
+    capTimeline.filter(
+      (item) => item.decision === 'scheduled',
+    ).length,
+    MAX_REMINDERS_PER_DAY,
+  );
+  const dailyCapLoser = capTimeline.find(
+    (item) => item.decision === 'daily-cap',
+  );
+  assert.ok(
+    dailyCapLoser &&
+      dailyCapLoser.source === 'study' &&
+      dailyCapLoser.reason.includes(
+        'two MYELIN reminders already won',
+      ),
+    'The third well-spaced reminder should remain visible in Studio as a DAILY CAP loser, not disappear silently.',
+  );
 
   const quietExam = createEmptyWorkspace(now);
   quietExam.exams.push({
@@ -899,6 +1011,7 @@ function main() {
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');
+  console.log('✓ Reminder Studio timeline exactly mirrors scheduled winners and exposes 90-minute collision + two-per-day cap losers');
   console.log('✓ all personality/detail combinations avoid guilt/streak/urgency language');
   console.log('✓ Review, Exam and Study previews share the production copy engine');
   console.log('✓ reminder settings are normalized and plan signatures detect copy changes');
@@ -960,6 +1073,21 @@ assert.ok(
   reminderStudioSource.includes('reminderSubtitleText') &&
     reminderStudioSource.includes('reminderColorValue'),
   'On-screen notification preview should reuse the production subtitle and accent presentation rules.',
+);
+assert.ok(
+  reminderStudioSource.includes('NEXT REMINDERS') &&
+    reminderStudioSource.includes('buildReminderTimeline') &&
+    reminderStudioSource.includes('timelineDecisionLabel') &&
+    reminderStudioSource.includes('DAILY CAP') &&
+    reminderStudioSource.includes('COLLISION'),
+  'Reminder Studio should render the audited mixed reminder timeline with visible cap/collision decisions.',
+);
+assert.ok(
+  reminderStudioSource.includes("'RECOVERED'") &&
+    reminderStudioSource.includes("'DAY MAP'") &&
+    reminderStudioSource.includes("'REVIEW'") &&
+    reminderStudioSource.includes("'EXAM'"),
+  'Timeline should distinguish Review, Exam, ordinary Day Map study and recovered Autopilot reminders.',
 );
 
 assert.ok(

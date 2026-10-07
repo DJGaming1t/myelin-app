@@ -78,12 +78,27 @@ Artifact:
 
 A prior one-step CPU smoke LoRA run also succeeded and produced a real adapter.
 
-## IMPORTANT: what is NOT done yet
-The fine-tuned adapter has NOT yet been evaluated on the untouched held-out benchmark.
+## Current status — 2026-10-07
+The earlier v1-only handoff was stale. Verified GitHub Actions results:
+- v2 fast: run `37621560138`, successful training and one-command acceptance.
+- v2 Hinglish: run `37620118843`, successful training and one-command acceptance.
+- v2 artifact: `11486205943`, name `myelin-mini-qwen3.5-0.8b-lora-v2`.
+- The exact tested command was "kal trig ke 30 min questions add kar do".
+- The v2 response had the correct topic, tomorrow date, 30-minute duration, practice type, and priority 2. Its title differed from the gold text, so strict action exact-match was 0 for this single example; semantic acceptance passed.
+- That narrow success does not establish full release readiness.
+- A v1 evaluation workflow also completed (`37617238057`); a successful workflow alone does not establish that its model release gate passed.
 
-Do not claim MYELIN Mini is ready for the app until the trained adapter is benchmarked against the same held-out set and passes the safety/accuracy gate.
+## Benchmark integrity repair
+- Inference parse errors now retain null output instead of fabricated escalation decisions.
+- HTTP benchmark failures likewise retain null output and requestError.
+- The common evaluator rejects parseError/requestError even in historical records containing a valid-looking fallback.
+- Regression checks cover both error fields and successful null error metadata.
+- Full evaluation reuses `.github/workflows/accept-myelin-mini-hinglish.yml`, now named "Evaluate MYELIN Mini v2 release gate".
+- It downloads the completed v2 artifact and selects the final exported adapter explicitly, avoiding accidental selection of an intermediate checkpoint.
+- It evaluates all untouched `eval-v1.jsonl` cases with reasoning disabled, records adapter/eval checksums and the training manifest, runs the separate Hinglish acceptance, uploads evidence even on failure, and fails the workflow unless both gates pass.
+- No new training or app deployment is part of this chunk.
 
-Release gate currently expects roughly:
+## Release gate
 - Parse validity >= 99%
 - Route accuracy >= 95%
 - Exact action accuracy >= 90%
@@ -92,15 +107,13 @@ Release gate currently expects roughly:
 - Escalation reason accuracy >= 90%
 
 ## Exact next step
-1. Load the trained LoRA adapter from artifact `11472763126`.
-2. Serve base model + adapter through a compatible inference server.
-3. Disable reasoning.
-4. Run the same untouched hold-out benchmark using `scripts/benchmark-myelin-mini.ts`.
-5. Save the fine-tuned benchmark as a new baseline/result file.
-6. Compare zero-shot vs fine-tuned.
-7. Only if accuracy/safety is good enough, integrate the working MYELIN Mini backend into the actual assistant UI.
-8. Then publish an OTA so the user can visibly test commands like:
-   - "kal trig ke 30 min questions add kar do high priority"
+1. Inspect the newest "Evaluate MYELIN Mini v2 release gate" run on this branch.
+2. Read its `myelin-mini-v2-release-evaluation` artifact and job summary; do not infer readiness from the old training success.
+3. Record the full results here.
+4. If the gate fails, diagnose errors and improve training using new examples, keeping the held-out set out of training.
+5. If it passes, evaluate deployment/runtime integration and device latency before enabling the trained model in the app.
+6. Publish an OTA only after integrated app checks pass.
 
-## Continuity instruction for another ChatGPT chat
-Open this repo and branch, read this file first, then inspect the exact referenced files and workflow artifacts before making changes. Do not re-plan from scratch and do not claim visible app changes unless an OTA or APK was actually published.
+## Continuity instruction
+Read this file and current branch head before changing code. Inspect current workflows and artifacts before restarting any training. Work one sensible chunk at a time; verify, summarize, state the next step, then stop. Never claim visible app changes unless an OTA or APK was actually published.
+

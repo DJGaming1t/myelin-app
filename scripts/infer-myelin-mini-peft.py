@@ -92,14 +92,7 @@ def main() -> None:
             output = extract_json(text)
             parse_error = None
         except Exception as exc:
-            output = {
-                "version": 1,
-                "requestId": row["requestId"],
-                "route": "escalate",
-                "confidence": 0,
-                "reason": "low-confidence",
-                "note": ("Inference JSON parse failed: " + str(exc))[:240],
-            }
+            output = None
             parse_error = str(exc)
 
         predictions.append({
@@ -127,3 +120,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

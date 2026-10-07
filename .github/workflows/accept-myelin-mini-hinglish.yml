@@ -1,4 +1,4 @@
-name: Accept MYELIN Mini Hinglish Command
+name: Evaluate MYELIN Mini v2 release gate
 
 on:
   workflow_dispatch:
@@ -12,14 +12,19 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: myelin-mini-v2-evaluation-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   accept:
-    name: Hinglish command acceptance
+    name: Full v2 hold-out and Hinglish evaluation
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       HF_HUB_DISABLE_TELEMETRY: "1"
       TOKENIZERS_PARALLELISM: "false"
+      ADAPTER_DIR: artifacts/myelin-mini/trained-adapter/qwen3.5-0.8b-lora-v2
 
     steps:
       - name: Checkout
@@ -41,10 +46,22 @@ jobs:
       - name: Install app dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Export acceptance prompt
+      - name: Verify benchmark error handling and types
+        run: |
+          npx tsc --noEmit
+          npx tsx scripts/verify-myelin-mini.ts
+          python -m py_compile scripts/infer-myelin-mini-peft.py
+
+      - name: Export untouched hold-out prompts
+        env:
+          MYELIN_MINI_EVAL_FILE: training/myelin-mini/eval-v1.jsonl
+          MYELIN_MINI_EVAL_PROMPTS_OUT: artifacts/myelin-mini/v2-release/prompts.jsonl
+        run: npx tsx scripts/export-myelin-mini-eval-prompts.ts
+
+      - name: Export Hinglish prompt
         env:
           MYELIN_MINI_EVAL_FILE: training/myelin-mini/acceptance-v1.jsonl
-          MYELIN_MINI_EVAL_PROMPTS_OUT: artifacts/myelin-mini/acceptance/prompt.jsonl
+          MYELIN_MINI_EVAL_PROMPTS_OUT: artifacts/myelin-mini/v2-release/acceptance-prompts.jsonl
         run: npx tsx scripts/export-myelin-mini-eval-prompts.ts
 
       - name: Install CPU PyTorch
@@ -53,46 +70,77 @@ jobs:
       - name: Install MYELIN Mini evaluation stack
         run: python -m pip install -r training/myelin-mini/requirements-train.txt
 
-      - name: Download trained LoRA adapter
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          mkdir -p artifacts/myelin-mini/trained-adapter
-          gh run download 37594519114 \
-            --repo "${GITHUB_REPOSITORY}" \
-            --name myelin-mini-qwen3.5-0.8b-lora-v1 \
-            --dir artifacts/myelin-mini/trained-adapter
-          ADAPTER_DIR="$(dirname "$(find artifacts/myelin-mini/trained-adapter -name adapter_config.json -print -quit)")"
-          test -n "$ADAPTER_DIR"
-          echo "ADAPTER_DIR=$ADAPTER_DIR" >> "$GITHUB_ENV"
+      - name: Download completed v2 adapter
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 37620118843
+          name: myelin-mini-qwen3.5-0.8b-lora-v2
+          path: artifacts/myelin-mini/trained-adapter
 
-      - name: Run exact Hinglish command
+      - name: Verify final adapter and record provenance
+        run: |
+          test -f "$ADAPTER_DIR/adapter_config.json"
+          test -f "$ADAPTER_DIR/adapter_model.safetensors"
+          test -f "$ADAPTER_DIR/training-manifest.json"
+          cp "$ADAPTER_DIR/training-manifest.json" artifacts/myelin-mini/v2-release/training-manifest.json
+          sha256sum "$ADAPTER_DIR/adapter_model.safetensors" training/myelin-mini/eval-v1.jsonl > artifacts/myelin-mini/v2-release/checksums.txt
+
+      - name: Run full untouched hold-out inference
         run: >-
-          python scripts/infer-myelin-mini-peft.py
+          python -u scripts/infer-myelin-mini-peft.py
           --model principled-intelligence/Qwen3.5-0.8B-text-only
           --adapter "$ADAPTER_DIR"
-          --prompts artifacts/myelin-mini/acceptance/prompt.jsonl
-          --output artifacts/myelin-mini/acceptance/prediction.jsonl
-          --max-new-tokens 320
+          --prompts artifacts/myelin-mini/v2-release/prompts.jsonl
+          --output artifacts/myelin-mini/v2-release/predictions.jsonl
+          --max-new-tokens 1200
 
-      - name: Score exact Hinglish command
+      - name: Score full hold-out
+        run: >-
+          npx tsx scripts/score-myelin-mini-predictions.ts
+          training/myelin-mini/eval-v1.jsonl
+          artifacts/myelin-mini/v2-release/predictions.jsonl
+          artifacts/myelin-mini/v2-release/report.json
+          release
+
+      - name: Run Hinglish acceptance inference
+        run: >-
+          python -u scripts/infer-myelin-mini-peft.py
+          --model principled-intelligence/Qwen3.5-0.8B-text-only
+          --adapter "$ADAPTER_DIR"
+          --prompts artifacts/myelin-mini/v2-release/acceptance-prompts.jsonl
+          --output artifacts/myelin-mini/v2-release/acceptance-predictions.jsonl
+          --max-new-tokens 1200
+
+      - name: Score Hinglish acceptance
         run: >-
           npx tsx scripts/score-myelin-mini-predictions.ts
           training/myelin-mini/acceptance-v1.jsonl
-          artifacts/myelin-mini/acceptance/prediction.jsonl
-          artifacts/myelin-mini/acceptance/report.json
+          artifacts/myelin-mini/v2-release/acceptance-predictions.jsonl
+          artifacts/myelin-mini/v2-release/acceptance-report.json
           acceptance
-          --enforce
 
-      - name: Print exact prediction
-        if: always()
-        run: cat artifacts/myelin-mini/acceptance/prediction.jsonl || true
+      - name: Enforce full release and acceptance gates
+        run: |
+          node - <<'JS'
+          const fs = require('node:fs');
+          const root = 'artifacts/myelin-mini/v2-release/';
+          const release = JSON.parse(fs.readFileSync(root + 'report.json', 'utf8'));
+          const acceptance = JSON.parse(fs.readFileSync(root + 'acceptance-report.json', 'utf8'));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            '# MYELIN Mini v2 evaluation\n\n' +
+            'Training run: 37620118843; final exported adapter.\n\n' +
+            'Full hold-out: ' + (release.passes ? 'PASS' : 'FAIL') + '\n\n' +
+            'Hinglish acceptance: ' + (acceptance.passes ? 'PASS' : 'FAIL') + '\n\n' +
+            '```json\n' + JSON.stringify(release.report, null, 2) + '\n```\n');
+          if (!release.passes || !acceptance.passes) process.exitCode = 2;
+          JS
 
-      - name: Upload acceptance result
+      - name: Upload evaluation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: myelin-mini-hinglish-acceptance-v1
-          path: artifacts/myelin-mini/acceptance
+          name: myelin-mini-v2-release-evaluation
+          path: artifacts/myelin-mini/v2-release
           if-no-files-found: warn
+

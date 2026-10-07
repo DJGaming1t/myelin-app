@@ -291,6 +291,29 @@ function verifyEvaluationHarness() {
   assert.equal(perfect.latencyMs.count, examples.length);
   assert.ok((perfect.latencyMs.p95 ?? 0) >= 10);
 
+  // Legacy runners attached valid-looking fallbacks to failed inference.
+  // Even a fallback identical to the gold answer must never earn credit.
+  for (const field of ['parseError', 'requestError'] as const) {
+    const failed = evaluateMyelinMiniPredictions(
+      examples,
+      goldPredictions.map((prediction) => ({
+        ...prediction,
+        [field]: 'Simulated inference failure',
+      })),
+    );
+    assert.equal(failed.predicted, examples.length);
+    assert.equal(failed.parseValidity, 0);
+    assert.equal(failed.routeAccuracy, 0);
+    assert.equal(failed.failures.length, examples.length);
+    assert.ok(failed.failures.every((failure) => failure.type === 'invalid-output'));
+    assert.equal(myelinMiniPassesReleaseGate(failed), false);
+  }
+  const successfulMetadata = evaluateMyelinMiniPredictions(
+    examples,
+    goldPredictions.map((prediction) => ({ ...prediction, parseError: null, requestError: null })),
+  );
+  assert.equal(myelinMiniPassesReleaseGate(successfulMetadata), true);
+
   const unsafeIndex = examples.findIndex((example) => {
     const output = example.output as { route?: unknown };
     return output.route === 'clarify';
@@ -470,3 +493,4 @@ async function main() {
 }
 
 void main();
+

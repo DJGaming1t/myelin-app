@@ -12,6 +12,9 @@ export type MyelinMiniPrediction = {
   id: string;
   output: unknown;
   latencyMs?: number;
+  // Preserve failures from inference runners; a fallback is not a model answer.
+  parseError?: string | null;
+  requestError?: string | null;
 };
 
 export type MyelinMiniEvaluationReport = {
@@ -155,6 +158,9 @@ export function evaluateMyelinMiniPredictions(
 
     let actual: MyelinMiniDecision;
     try {
+      if (prediction.parseError != null || prediction.requestError != null) {
+        throw new Error(prediction.parseError ?? prediction.requestError ?? 'Inference failed.');
+      }
       actual = parseMyelinMiniDecision(
         prediction.output,
         expected.requestId,
@@ -289,3 +295,4 @@ export function myelinMiniPassesReleaseGate(
     (report.escalateReasonAccuracy ?? 0) >= 0.9
   );
 }
+

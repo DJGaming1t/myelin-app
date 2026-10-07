@@ -190,7 +190,6 @@ async function main() {
           signal: controller.signal,
         });
 
-        const latencyMs = performance.now() - started;
         const body = (await response.json()) as {
           error?: { message?: string };
           choices?: Array<{
@@ -213,22 +212,13 @@ async function main() {
         return {
           id: example.id,
           output: extractJson(message),
-          latencyMs,
+          latencyMs: performance.now() - started,
         };
       } catch (error) {
         return {
           id: example.id,
-          output: {
-            version: 1,
-            requestId: expected.requestId,
-            route: 'escalate',
-            confidence: 0,
-            reason: 'low-confidence',
-            note:
-              error instanceof Error
-                ? `Benchmark request failed: ${error.message}`.slice(0, 240)
-                : 'Benchmark request failed.',
-          },
+          output: null,
+          requestError: error instanceof Error ? error.message : String(error),
           latencyMs: performance.now() - started,
         };
       } finally {
@@ -301,3 +291,4 @@ async function main() {
 }
 
 void main();
+

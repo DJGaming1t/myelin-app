@@ -23,6 +23,9 @@ export type LocalAiModelDefinition = {
   parameterLabel: string;
   description: string;
   requiresTaskFineTune: boolean;
+  availability: 'import-only' | 'coming-soon';
+  sourceUrl: string;
+  artifactPageUrl?: string;
   runtimeCandidates: string[];
   artifact: LocalAiArtifactDescriptor | null;
   targetDownloadMb: {
@@ -53,6 +56,11 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
     description:
       'Small tool-calling specialist intended for a MYELIN-specific fine-tune.',
     requiresTaskFineTune: true,
+    availability: 'import-only',
+    sourceUrl:
+      'https://huggingface.co/litert-community/functiongemma-270m-ft-mobile-actions',
+    artifactPageUrl:
+      'https://huggingface.co/litert-community/functiongemma-270m-ft-mobile-actions/blob/main/mobile_actions_q8_ekv1024.litertlm',
     runtimeCandidates: ['litert-lm'],
     artifact: {
       id: 'functiongemma-mobile-actions-q8-ekv1024',
@@ -99,6 +107,8 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
     description:
       'Stronger local assistant candidate for interpretation and plan critique, with a much larger current LiteRT bundle.',
     requiresTaskFineTune: false,
+    availability: 'coming-soon',
+    sourceUrl: 'https://huggingface.co/Qwen/Qwen3.5-0.8B',
     runtimeCandidates: ['litert-lm'],
     artifact: null,
     targetDownloadMb: {

@@ -1076,15 +1076,23 @@ function selectCappedPlan(
       MAX_REMINDERS_PER_DAY
     ) {
       const cutoffWinner = sameDayWinners[0]!;
+      const strongestWinner = [...sameDayWinners].sort(
+        (a, b) =>
+          b.usefulnessScore - a.usefulnessScore ||
+          a.reminder.at - b.reminder.at ||
+          a.reminder.key.localeCompare(
+            b.reminder.key,
+          ),
+      )[0]!;
       timeline.set(reminder.key, {
         reminder,
         source,
         decision: 'daily-cap',
-        winnerKey: cutoffWinner.reminder.key,
+        winnerKey: strongestWinner.reminder.key,
         usefulnessScore,
         usefulnessReason,
         reason:
-          `Withheld because two more useful MYELIN reminders already won this local day. Daily cutoff: ${cutoffWinner.usefulnessScore} vs ${usefulnessScore}. ${cutoffWinner.usefulnessReason}`,
+          `Withheld because two higher-ranked MYELIN reminders won this local day. Daily cutoff: ${cutoffWinner.usefulnessScore} vs ${usefulnessScore}. Strongest winner: ${strongestWinner.usefulnessScore} · ${strongestWinner.usefulnessReason}`,
       });
       continue;
     }

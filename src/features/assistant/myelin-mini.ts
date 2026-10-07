@@ -12,6 +12,11 @@ import {
   PreparedAssistantActionBatch,
   prepareAssistantActionBatch,
 } from '@/src/features/assistant/assistant-action-session';
+import {
+  MYELIN_MINI_FAST_MODEL_ID,
+  localDateKeyFromTimestamp,
+  tryBuildMyelinMiniFastDecision,
+} from '@/src/features/assistant/myelin-mini-fast-router';
 
 export const MYELIN_MINI_PROTOCOL_VERSION = 1 as const;
 export const MYELIN_MINI_MIN_ACTION_CONFIDENCE = 0.72 as const;
@@ -407,21 +412,31 @@ export async function routeWithMyelinMini(input: {
   signal?: AbortSignal;
 }): Promise<MyelinMiniRouteResult> {
   const now = input.now ?? Date.now();
-  const raw = await input.model.generate({
-    system: myelinMiniSystemPrompt(),
-    user: buildMyelinMiniUserPrompt(
-      input.workspace,
-      input.userRequest,
-      input.requestId,
-      {
-        currentRoute: input.currentRoute,
-        now,
-      },
-    ),
-    responseSchema: myelinMiniDecisionJsonSchema(),
-    maxOutputTokens: 1200,
-    signal: input.signal,
+  const fastRaw = tryBuildMyelinMiniFastDecision({
+    workspace: input.workspace,
+    userRequest: input.userRequest,
+    requestId: input.requestId,
+    currentDate: localDateKeyFromTimestamp(now),
   });
+  const modelId = fastRaw ? MYELIN_MINI_FAST_MODEL_ID : input.model.id;
+
+  const raw =
+    fastRaw ??
+    (await input.model.generate({
+      system: myelinMiniSystemPrompt(),
+      user: buildMyelinMiniUserPrompt(
+        input.workspace,
+        input.userRequest,
+        input.requestId,
+        {
+          currentRoute: input.currentRoute,
+          now,
+        },
+      ),
+      responseSchema: myelinMiniDecisionJsonSchema(),
+      maxOutputTokens: 1200,
+      signal: input.signal,
+    }));
 
   const decision = parseMyelinMiniDecision(raw, input.requestId);
   if (decision.route === 'clarify') {
@@ -431,7 +446,7 @@ export async function routeWithMyelinMini(input: {
       reason: decision.reason,
       question: decision.question,
       missingFields: decision.missingFields,
-      modelId: input.model.id,
+      modelId,
     };
   }
 
@@ -441,7 +456,7 @@ export async function routeWithMyelinMini(input: {
       confidence: decision.confidence,
       reason: decision.reason,
       note: decision.note,
-      modelId: input.model.id,
+      modelId,
     };
   }
 
@@ -453,6 +468,6 @@ export async function routeWithMyelinMini(input: {
       decision.batch,
       now,
     ),
-    modelId: input.model.id,
+    modelId,
   };
 }

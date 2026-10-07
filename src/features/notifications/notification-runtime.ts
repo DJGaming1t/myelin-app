@@ -315,6 +315,7 @@ export type ExactReminderPreview = {
 export async function sendExactReminderPreview(
   settings: ReminderSettings,
   preview: ExactReminderPreview,
+  ownerKey?: string | null,
 ) {
   if (Platform.OS === 'web') return;
 
@@ -322,7 +323,7 @@ export async function sendExactReminderPreview(
   const Notifications = await module();
   const channelId = settings.sound ? SOUND_CHANNEL : GENTLE_CHANNEL;
 
-  await Notifications.scheduleNotificationAsync({
+  return Notifications.scheduleNotificationAsync({
     content: {
       title: preview.title,
       subtitle: reminderSubtitleText(
@@ -339,6 +340,7 @@ export async function sendExactReminderPreview(
         preview: true,
         exactPreview: true,
         ...(preview.data ?? {}),
+        ...(ownerKey ? { ownerKey } : {}),
       },
     },
     trigger: null,
@@ -348,6 +350,7 @@ export async function sendExactReminderPreview(
 export async function sendReminderPreview(
   settings: ReminderSettings,
   kind: ReminderKind = 'review',
+  ownerKey?: string | null,
 ) {
   if (Platform.OS === 'web') return;
 
@@ -361,7 +364,7 @@ export async function sendReminderPreview(
         ? '/(app)/exams'
         : '/(app)/today/day-map';
 
-  await Notifications.scheduleNotificationAsync({
+  return Notifications.scheduleNotificationAsync({
     content: {
       title: content.title,
       subtitle: reminderSubtitleText(settings, kind),
@@ -373,10 +376,27 @@ export async function sendReminderPreview(
         kind,
         href,
         preview: true,
+        ...(ownerKey ? { ownerKey } : {}),
       },
     },
     trigger: null,
   });
+}
+
+export async function removeReminderPreview(
+  id: string | null | undefined,
+) {
+  if (Platform.OS === 'web' || !id) return;
+
+  const Notifications = await module();
+  await Promise.all([
+    Notifications.cancelScheduledNotificationAsync(id).catch(
+      () => undefined,
+    ),
+    Notifications.dismissNotificationAsync(id).catch(
+      () => undefined,
+    ),
+  ]);
 }
 
 export type ReminderOpenPayload = {

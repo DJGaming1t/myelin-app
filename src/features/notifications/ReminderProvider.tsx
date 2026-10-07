@@ -19,6 +19,7 @@ import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTra
 import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 
 import {
+  ExactReminderPreview,
   ReminderOpenPayload,
   ReminderPermission,
   cancelReminderIds,
@@ -27,6 +28,7 @@ import {
   getReminderPermission,
   requestReminderPermission,
   scheduleReminderPlan,
+  sendExactReminderPreview,
   sendReminderPreview,
   subscribeToReminderResponses,
 } from './notification-runtime';
@@ -66,6 +68,7 @@ type ReminderContextValue = {
   disable: () => Promise<void>;
   reschedule: () => Promise<void>;
   sendPreview: (kind?: ReminderKind) => Promise<void>;
+  sendExactPreview: (preview: ExactReminderPreview) => Promise<void>;
   refreshPermission: () => Promise<ReminderPermission>;
 };
 
@@ -834,6 +837,40 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  const sendExactPreview = useCallback(
+    async (preview: ExactReminderPreview) => {
+      if (Platform.OS === 'web') return;
+
+      const nextPermission = await getReminderPermission();
+      setPermission(nextPermission);
+      if (nextPermission !== 'granted') {
+        setStatus(
+          nextPermission === 'denied'
+            ? 'blocked'
+            : 'ready',
+        );
+        setMessage(
+          'Enable reminders first to send a real device preview.',
+        );
+        return;
+      }
+
+      try {
+        await sendExactReminderPreview(
+          stateRef.current.settings,
+          preview,
+        );
+        setMessage(
+          'Exact recovered reminder preview sent with the current personality, detail and sound.',
+        );
+      } catch (error) {
+        setStatus('error');
+        setMessage(runtimeError(error));
+      }
+    },
+    [],
+  );
+
   const refreshPermission = useCallback(async () => {
     const next = await getReminderPermission();
     setPermission(next);
@@ -900,6 +937,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       disable,
       reschedule,
       sendPreview,
+      sendExactPreview,
       refreshPermission,
     }),
     [
@@ -911,6 +949,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       ready,
       refreshPermission,
       reschedule,
+      sendExactPreview,
       sendPreview,
       state.scheduledIds.length,
       state.settings,

@@ -1565,6 +1565,68 @@ function main() {
   );
   assert.ok(
     reminderProviderSource.includes(
+      'const reminderActionGenerationRef = useRef(0)',
+    ) &&
+      reminderProviderSource.includes(
+        'const latestOwnerKeyRef = useRef(ownerKey)',
+      ) &&
+      reminderProviderSource.includes(
+        'latestOwnerKeyRef.current !== ownerKey',
+      ) &&
+      reminderProviderSource.includes(
+        'const beginReminderAction = useCallback',
+      ) &&
+      reminderProviderSource.includes(
+        'const isCurrentReminderAction = useCallback',
+      ),
+    'Reminder control actions should have a separate generation and immediate owner-change invalidation.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'const nextPermission = await requestReminderPermission();\n      if (!isCurrentReminderAction(action))',
+    ) &&
+      reminderProviderSource.includes(
+        'await persist(next, owner);\n      if (!isCurrentReminderAction(action))',
+      ) &&
+      reminderProviderSource.includes(
+        'await cancelCurrentSchedule(owner, current);\n    if (!isCurrentReminderAction(action)) return;',
+      ) &&
+      reminderProviderSource.includes(
+        'const next = await getReminderPermission();\n    if (!isCurrentReminderAction(action))',
+      ),
+    'Enable, disable and permission refresh should stop before mutating current UI/state when their owner/action is stale.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'latestOwnerKeyRef.current !== owner',
+    ) &&
+      reminderProviderSource.includes(
+        'reminderActionGenerationRef.current ===\n        action.generation',
+      ) &&
+      reminderProviderSource.includes(
+        'ownerRef.current === action.owner',
+      ),
+    'A reminder action should be current only when both the latest rendered owner and loaded owner still match its captured owner.',
+  );
+  assert.ok(
+    reminderStorageSource.includes(
+      'async clearSchedule(ownerKey: string)',
+    ) &&
+      reminderStorageSource.includes(
+        'const raw =\n          await AsyncStorage.getItem(storageKey)',
+      ) &&
+      reminderStorageSource.includes(
+        '...current,\n            scheduledIds: [],\n            planSignature:',
+      ) &&
+      reminderProviderSource.includes(
+        'await reminderStorage.clearSchedule(owner)',
+      ),
+    'Schedule cleanup should clear only schedule metadata from the latest persisted owner state instead of rewriting captured stale settings.',
+  );
+
+
+  assert.ok(
+    reminderProviderSource.includes(
       'workspace?.revision',
     ) &&
       reminderProviderSource.includes(

@@ -1,0 +1,128 @@
+name: Evaluate MYELIN Mini Qwen v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/evaluate-myelin-mini-qwen-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    name: Evaluate fine-tuned Qwen 0.8B
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: training/myelin-mini/requirements-train.txt
+
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Export held-out prompts
+        env:
+          MYELIN_MINI_EVAL_FILE: training/myelin-mini/eval-v1.jsonl
+          MYELIN_MINI_EVAL_PROMPTS_OUT: artifacts/myelin-mini/eval/holdout-prompts.jsonl
+        run: npx tsx scripts/export-myelin-mini-eval-prompts.ts
+
+      - name: Export Hinglish acceptance prompt
+        env:
+          MYELIN_MINI_EVAL_FILE: training/myelin-mini/acceptance-v1.jsonl
+          MYELIN_MINI_EVAL_PROMPTS_OUT: artifacts/myelin-mini/eval/acceptance-prompts.jsonl
+        run: npx tsx scripts/export-myelin-mini-eval-prompts.ts
+
+      - name: Combine evaluation prompts
+        shell: bash
+        run: |
+          cat artifacts/myelin-mini/eval/acceptance-prompts.jsonl \
+              artifacts/myelin-mini/eval/holdout-prompts.jsonl \
+              > artifacts/myelin-mini/eval/all-prompts.jsonl
+
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+
+      - name: Install MYELIN Mini evaluation stack
+        run: python -m pip install -r training/myelin-mini/requirements-train.txt
+
+      - name: Download trained LoRA adapter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/myelin-mini/trained-adapter
+          gh run download 37594519114 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name myelin-mini-qwen3.5-0.8b-lora-v1 \
+            --dir artifacts/myelin-mini/trained-adapter
+          ADAPTER_DIR="$(dirname "$(find artifacts/myelin-mini/trained-adapter -name adapter_config.json -print -quit)")"
+          test -n "$ADAPTER_DIR"
+          echo "ADAPTER_DIR=$ADAPTER_DIR" >> "$GITHUB_ENV"
+          find "$ADAPTER_DIR" -maxdepth 1 -type f -print
+
+      - name: Run fine-tuned model inference
+        run: >-
+          python scripts/infer-myelin-mini-peft.py
+          --model principled-intelligence/Qwen3.5-0.8B-text-only
+          --adapter "$ADAPTER_DIR"
+          --prompts artifacts/myelin-mini/eval/all-prompts.jsonl
+          --output artifacts/myelin-mini/eval/predictions.jsonl
+          --max-new-tokens 320
+
+      - name: Score Hinglish acceptance
+        run: >-
+          npx tsx scripts/score-myelin-mini-predictions.ts
+          training/myelin-mini/acceptance-v1.jsonl
+          artifacts/myelin-mini/eval/predictions.jsonl
+          artifacts/myelin-mini/eval/acceptance-report.json
+          acceptance
+
+      - name: Score full held-out set
+        run: >-
+          npx tsx scripts/score-myelin-mini-predictions.ts
+          training/myelin-mini/eval-v1.jsonl
+          artifacts/myelin-mini/eval/predictions.jsonl
+          artifacts/myelin-mini/eval/holdout-report.json
+          release
+
+      - name: Show Hinglish prediction
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for line in Path("artifacts/myelin-mini/eval/predictions.jsonl").read_text().splitlines():
+              row = json.loads(line)
+              if row["id"] == "accept-hinglish-trig-30m":
+                  print(json.dumps(row, indent=2, ensure_ascii=False))
+                  break
+          PY
+
+      - name: Upload post-training evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-v1-evaluation
+          path: artifacts/myelin-mini/eval
+          if-no-files-found: warn

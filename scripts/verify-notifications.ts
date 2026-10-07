@@ -568,8 +568,28 @@ function main() {
   assert.ok(
     reminderProviderSource.includes('handledReminderResponsesRef') &&
       reminderProviderSource.includes('payload.responseId') &&
-      reminderProviderSource.includes('routeReminderOnce'),
-    'ReminderProvider should dedupe cold-launch and live-listener delivery of the same notification response.',
+      reminderProviderSource.includes('routeReminderNow') &&
+      reminderProviderSource.includes('queueOrRouteReminder'),
+    'ReminderProvider should dedupe cold-launch and live-listener delivery while keeping unhandled intents pending until routing is actually safe.',
+  );
+  assert.ok(
+    reminderProviderSource.includes('pendingReminderResponsesRef') &&
+      reminderProviderSource.includes('PENDING_REMINDER_TTL_MS = 30_000') &&
+      reminderProviderSource.includes('flushPendingReminderResponses'),
+    'Cold-launch notification intent should be held briefly in memory while auth/workspace/onboarding hydrate.',
+  );
+  assert.ok(
+    reminderProviderSource.includes("workspaceStatus === 'ready'") &&
+      reminderProviderSource.includes('authAllowsApp') &&
+      reminderProviderSource.includes('onboardingAllowsApp') &&
+      reminderProviderSource.includes('payload.ownerKey === gate.ownerKey'),
+    'Reminder routing must wait for an allowed auth state, ready workspace, restored onboarding state, and the matching notification owner.',
+  );
+  assert.ok(
+    reminderProviderSource.includes('useAuth()') &&
+      reminderProviderSource.includes('useOnboarding()') &&
+      reminderProviderSource.includes('useOnboardingTransition()'),
+    'ReminderProvider should use the same auth/onboarding gates as the app shell before routing a cold-launch intent.',
   );
   const consumeIndex = reminderProviderSource.indexOf(
     'await consumeInitialReminderResponse',
@@ -577,14 +597,34 @@ function main() {
   const subscribeIndex = reminderProviderSource.indexOf(
     'await subscribeToReminderResponses',
   );
-  const routeInitialIndex = reminderProviderSource.indexOf(
-    'if (initial) routeReminderOnce(initial)',
+  const queueInitialIndex = reminderProviderSource.indexOf(
+    'if (initial) queueOrRouteReminder(initial)',
   );
   assert.ok(
     consumeIndex >= 0 &&
       subscribeIndex > consumeIndex &&
-      routeInitialIndex > subscribeIndex,
-    'Cold launch should be consumed/cleared first, then the live listener should start, then the already-consumed launch payload should route exactly once.',
+      queueInitialIndex > subscribeIndex,
+    'Cold launch should be consumed/cleared first, then the live listener should start, then the launch payload should be queued or routed according to hydration state.',
+  );
+  const handledAddIndex = reminderProviderSource.indexOf(
+    'handledReminderResponsesRef.current.add',
+  );
+  const pendingSetIndex = reminderProviderSource.indexOf(
+    'pendingReminderResponsesRef.current.set',
+  );
+  assert.ok(
+    handledAddIndex >= 0 &&
+      pendingSetIndex > handledAddIndex &&
+      reminderProviderSource.indexOf(
+        'canRouteReminderPayload',
+      ) >= 0,
+    'A response should be marked handled only in the actual routing path, while hydration-blocked responses stay pending and retryable.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'scheduleReminderPlan(\n        plan,\n        current.settings,\n        owner,',
+    ),
+    'Newly scheduled reminders should be tagged with the workspace owner that created them.',
   );
 
   const runtimeSource = fs.readFileSync(
@@ -595,8 +635,14 @@ function main() {
     runtimeSource.includes('ReminderOpenPayload') &&
       runtimeSource.includes('commitmentId:') &&
       runtimeSource.includes('scheduledStart:') &&
+      runtimeSource.includes('ownerKey?: string') &&
       runtimeSource.includes('responseId:'),
-    'Notification taps should forward recovered reservation identity and a stable response ID instead of collapsing every study reminder to a generic kind.',
+    'Notification taps should forward recovered reservation identity, workspace owner, and a stable response ID.',
+  );
+  assert.ok(
+    runtimeSource.includes('...(ownerKey ? { ownerKey } : {})') &&
+      runtimeSource.includes("typeof data.ownerKey === 'string'"),
+    'Scheduled reminder payloads should persist and restore the owner key used to guard cold-launch routing.',
   );
   assert.ok(
     runtimeSource.includes('consumeInitialReminderResponse') &&
@@ -641,6 +687,7 @@ function main() {
   console.log('✓ recovered Autopilot windows create one calm heads-up, reflow it after schedule edits, and suppress it during overlapping Focus');
   console.log('✓ recovered notification taps preserve exact reservation identity through the runtime and provider route');
   console.log('✓ cold-launch notification responses are consumed, cleared, listener-safe, and routed exactly once');
+  console.log('✓ cold-launch intents wait for matching auth/workspace/onboarding hydration and expire in memory rather than racing redirects');
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');

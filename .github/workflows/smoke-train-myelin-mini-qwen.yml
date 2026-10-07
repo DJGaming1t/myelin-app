@@ -1,0 +1,82 @@
+name: Smoke Train MYELIN Mini Qwen
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/smoke-train-myelin-mini-qwen.yml
+
+permissions:
+  contents: read
+
+jobs:
+  cpu_lora_smoke:
+    name: One-step CPU LoRA smoke train
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build MYELIN Mini SFT dataset
+        run: npm run build:myelin-mini-dataset
+
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+
+      - name: Install MYELIN Mini training stack
+        run: python -m pip install -r training/myelin-mini/requirements-train.txt
+
+      - name: Run one real LoRA optimizer step
+        run: >-
+          python scripts/train-myelin-mini-qwen.py
+          --smoke-mode
+          --model principled-intelligence/Qwen3.5-0.8B-text-only
+          --output artifacts/myelin-mini/qwen3.5-0.8b-lora-smoke
+
+      - name: Verify adapter files
+        shell: bash
+        run: |
+          test -f artifacts/myelin-mini/qwen3.5-0.8b-lora-smoke/training-manifest.json
+          find artifacts/myelin-mini/qwen3.5-0.8b-lora-smoke -maxdepth 1 -type f -print
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifacts/myelin-mini/qwen3.5-0.8b-lora-smoke/training-manifest.json")
+          manifest = json.loads(path.read_text())
+          assert manifest["smokeMode"] is True
+          assert manifest["device"] == "cpu"
+          assert manifest["maxSteps"] == 1
+          assert manifest["runTrainRows"] == 1
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Upload smoke adapter
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-lora-cpu-smoke
+          path: artifacts/myelin-mini/qwen3.5-0.8b-lora-smoke
+          if-no-files-found: warn

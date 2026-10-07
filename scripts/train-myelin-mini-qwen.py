@@ -272,7 +272,7 @@ def main() -> None:
         per_device_eval_batch_size=args.batch_size,
         gradient_accumulation_steps=args.gradient_accumulation,
         learning_rate=args.learning_rate,
-        warmup_ratio=0.10,
+        warmup_steps=0 if args.smoke_mode else 2,
         lr_scheduler_type="cosine",
         weight_decay=0.01,
         logging_steps=5,

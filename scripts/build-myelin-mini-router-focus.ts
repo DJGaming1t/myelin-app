@@ -119,7 +119,7 @@ if (!trigBase) {
 const focused: CompiledExample[] = [];
 
 // Repeated exact command: teach the tiny model this important UX path directly.
-for (let index = 1; index <= 8; index += 1) {
+for (let index = 1; index <= 20; index += 1) {
   focused.push(
     cloneWithRequestId(trigBase, `exact-${index}`, {
       userRequest: 'kal trig ke 30 min questions add kar do',

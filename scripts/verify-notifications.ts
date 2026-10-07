@@ -565,6 +565,27 @@ function main() {
       reminderProviderSource.includes("pathname: '/(app)/today/day-map'"),
     'Recovered notification taps should route to Day Map with the exact reservation identity.',
   );
+  assert.ok(
+    reminderProviderSource.includes('handledReminderResponsesRef') &&
+      reminderProviderSource.includes('payload.responseId') &&
+      reminderProviderSource.includes('routeReminderOnce'),
+    'ReminderProvider should dedupe cold-launch and live-listener delivery of the same notification response.',
+  );
+  const consumeIndex = reminderProviderSource.indexOf(
+    'await consumeInitialReminderResponse',
+  );
+  const subscribeIndex = reminderProviderSource.indexOf(
+    'await subscribeToReminderResponses',
+  );
+  const routeInitialIndex = reminderProviderSource.indexOf(
+    'if (initial) routeReminderOnce(initial)',
+  );
+  assert.ok(
+    consumeIndex >= 0 &&
+      subscribeIndex > consumeIndex &&
+      routeInitialIndex > subscribeIndex,
+    'Cold launch should be consumed/cleared first, then the live listener should start, then the already-consumed launch payload should route exactly once.',
+  );
 
   const runtimeSource = fs.readFileSync(
     'src/features/notifications/notification-runtime.ts',
@@ -574,8 +595,23 @@ function main() {
     runtimeSource.includes('ReminderOpenPayload') &&
       runtimeSource.includes('commitmentId:') &&
       runtimeSource.includes('scheduledStart:') &&
-      runtimeSource.includes('onOpen({'),
-    'Notification taps should forward recovered reservation identity instead of collapsing every study reminder to a generic kind.',
+      runtimeSource.includes('responseId:'),
+    'Notification taps should forward recovered reservation identity and a stable response ID instead of collapsing every study reminder to a generic kind.',
+  );
+  assert.ok(
+    runtimeSource.includes('consumeInitialReminderResponse') &&
+      runtimeSource.includes('getLastNotificationResponseAsync') &&
+      runtimeSource.includes('await Notifications.clearLastNotificationResponseAsync'),
+    'Cold-launch reminder responses must be explicitly consumed and cleared before the provider routes them.',
+  );
+  const liveListenerSource =
+    runtimeSource.slice(
+      runtimeSource.indexOf('export async function subscribeToReminderResponses'),
+    );
+  assert.equal(
+    liveListenerSource.includes('getLastNotificationResponseAsync'),
+    false,
+    'The ordinary live response listener must not replay the persisted cold-launch response.',
   );
   assert.equal(runtimeSource.includes('getExpoPushTokenAsync'), false);
   assert.equal(runtimeSource.includes('getDevicePushTokenAsync'), false);
@@ -604,6 +640,7 @@ function main() {
   console.log('✓ scheduled Day Map tasks create one calm lead-time reminder');
   console.log('✓ recovered Autopilot windows create one calm heads-up, reflow it after schedule edits, and suppress it during overlapping Focus');
   console.log('✓ recovered notification taps preserve exact reservation identity through the runtime and provider route');
+  console.log('✓ cold-launch notification responses are consumed, cleared, listener-safe, and routed exactly once');
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');
@@ -622,6 +659,11 @@ const notificationRuntimeSource = fs.readFileSync(
 assert.ok(
   notificationRuntimeSource.includes('clearLastNotificationResponseAsync'),
   'Handled notification taps should be consumed so they are not replayed on later launches.',
+);
+assert.ok(
+  notificationRuntimeSource.includes('requestIdentifier +') &&
+    notificationRuntimeSource.includes('actionIdentifier'),
+  'Cold and live delivery of the same response should derive the same responseId for exactly-once routing.',
 );
 
 const reminderStudioSource = fs.readFileSync(

@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - expo-migration
-      - codex/exam-autopilot-capacity-v1
 
 permissions:
   contents: read
@@ -144,7 +143,7 @@ jobs:
   publish_preview:
     name: Publish preview OTA
     needs: verify
-    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/expo-migration' || github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1') }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

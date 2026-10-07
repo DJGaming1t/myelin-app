@@ -23,7 +23,7 @@ import {
   ReminderVoice,
   buildRecoveredReminderInsight,
   buildReminderPlan,
-  buildReminderTimeline,
+  buildReminderTimelineOverview,
   formatTimeMinutes,
   normalizeReminderSettings,
   sampleReminderCopy,
@@ -216,17 +216,28 @@ export default function RemindersScreen() {
         : null,
     [now, reminderContext, settings, workspace],
   );
-  const reminderTimeline = useMemo(
+  const reminderTimelineOverview = useMemo(
     () =>
       workspace
-        ? buildReminderTimeline(
+        ? buildReminderTimelineOverview(
             workspace,
             normalizedSettings,
             now,
             reminderContext,
             8,
           )
-        : [],
+        : {
+            items: [],
+            summary: {
+              totalCandidates: 0,
+              scheduled: 0,
+              withheld: 0,
+              collision: 0,
+              dailyCap: 0,
+              globalCap: 0,
+            },
+            omittedCount: 0,
+          },
     [
       normalizedSettings,
       now,
@@ -234,11 +245,14 @@ export default function RemindersScreen() {
       workspace,
     ],
   );
-  const timelineScheduledCount = reminderTimeline.filter(
-    (item) => item.decision === 'scheduled',
-  ).length;
+  const reminderTimeline =
+    reminderTimelineOverview.items;
+  const timelineScheduledCount =
+    reminderTimelineOverview.summary.scheduled;
   const timelineWithheldCount =
-    reminderTimeline.length - timelineScheduledCount;
+    reminderTimelineOverview.summary.withheld;
+  const timelineQueueCapCount =
+    reminderTimelineOverview.summary.globalCap;
 
   const voice = VOICES.find((item) => item.id === settings.voice)!;
   const detail = DETAIL_LEVELS.find((item) => item.id === settings.detail)!;
@@ -574,12 +588,12 @@ export default function RemindersScreen() {
               </Text>
               <Text style={styles.timelineMeta}>
                 Final ordering after adaptive timing, quiet hours,
-                collisions and the best-two-per-day usefulness cap
+                collisions, daily usefulness and the global device cap
               </Text>
             </View>
             <View style={styles.timelineCountPill}>
               <Text style={styles.timelineCountText}>
-                {timelineScheduledCount} WIN
+                {timelineScheduledCount} SCHEDULED
               </Text>
             </View>
           </View>
@@ -686,7 +700,9 @@ export default function RemindersScreen() {
                       {(entry.decision ===
                         'collision' ||
                         entry.decision ===
-                          'daily-cap') &&
+                          'daily-cap' ||
+                        entry.decision ===
+                          'global-cap') &&
                       winner ? (
                         <Text
                           style={
@@ -695,7 +711,10 @@ export default function RemindersScreen() {
                           {entry.decision ===
                           'daily-cap'
                             ? 'Highest-ranked day winner'
-                            : 'Winner'}{' '}
+                            : entry.decision ===
+                                'global-cap'
+                              ? 'Queue cutoff winner'
+                              : 'Winner'}{' '}
                           ·{' '}
                           {timelineSourceLabel(
                             winner.source,
@@ -710,8 +729,11 @@ export default function RemindersScreen() {
 
               <Text style={styles.timelineFooter}>
                 {timelineWithheldCount
-                  ? `${timelineWithheldCount} nearby candidate${timelineWithheldCount === 1 ? '' : 's'} withheld by collision/cap rules. They are not scheduled on the device.`
-                  : 'No nearby reminder currently loses to collision or cap rules.'}
+                  ? `${timelineWithheldCount} candidate${timelineWithheldCount === 1 ? '' : 's'} withheld across the full queue${timelineQueueCapCount ? ` · ${timelineQueueCapCount} hit QUEUE CAP` : ''}. They are not scheduled on the device.`
+                  : 'No candidate currently loses to collision or cap rules.'}
+                {reminderTimelineOverview.omittedCount
+                  ? ` Showing ${reminderTimeline.length} of ${reminderTimelineOverview.summary.totalCandidates} decisions; important QUEUE CAP losses are pinned into this preview.`
+                  : ''}
               </Text>
             </>
           ) : (

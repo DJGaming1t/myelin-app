@@ -369,6 +369,96 @@ function main() {
     'Recovered Autopilot reminders should appear in the same capped timeline as every other reminder type.',
   );
 
+  const recoveredCollisionWorkspace = {
+    ...recoveredWorkspace,
+    tasks: [...recoveredWorkspace.tasks],
+  };
+  recoveredCollisionWorkspace.tasks.push({
+    id: 'low_priority_before_recovered',
+    title: 'Generic worksheet',
+    subject: 'General',
+    topicId: null,
+    examId: null,
+    type: 'homework',
+    status: 'open',
+    planState: 'scheduled',
+    dueAt: 0,
+    estimatedMinutes: 15,
+    actualMinutes: 0,
+    priority: 1,
+    notes: '',
+    scheduledStart: local(2026, 10, 1, 15, 35),
+    scheduledEnd: local(2026, 10, 1, 15, 50),
+    postponedUntil: 0,
+    createdAt: now - 1000,
+    updatedAt: now - 1000,
+    completedAt: 0,
+  });
+  const recoveredCollisionSettings = {
+    ...settings,
+    adaptive: false,
+    reviewEnabled: false,
+    examEnabled: false,
+  };
+  const recoveredCollisionPlan = buildReminderPlan(
+    recoveredCollisionWorkspace,
+    recoveredCollisionSettings,
+    now,
+  );
+  const recoveredCollisionTimeline =
+    buildReminderTimeline(
+      recoveredCollisionWorkspace,
+      recoveredCollisionSettings,
+      now,
+      {},
+      10,
+    );
+  const recoveredCollisionWinner =
+    recoveredCollisionTimeline.find(
+      (item) =>
+        item.source === 'recovered' &&
+        item.decision === 'scheduled',
+    );
+  const recoveredCollisionLoser =
+    recoveredCollisionTimeline.find(
+      (item) =>
+        item.reminder.data.taskId ===
+          'low_priority_before_recovered' &&
+        item.decision === 'collision',
+    );
+  assert.ok(
+    recoveredCollisionWinner &&
+      recoveredCollisionLoser &&
+      recoveredCollisionWinner.reminder.at >
+        recoveredCollisionLoser.reminder.at,
+    'A later recovered exam-work reminder should be able to replace an earlier low-priority generic study reminder.',
+  );
+  assert.equal(
+    recoveredCollisionLoser!.winnerKey,
+    recoveredCollisionWinner!.reminder.key,
+  );
+  assert.ok(
+    recoveredCollisionWinner!.usefulnessScore >
+      recoveredCollisionLoser!.usefulnessScore &&
+      recoveredCollisionWinner!.usefulnessReason.includes(
+        'Recovered Autopilot exam work',
+      ),
+    'Recovered exam-work should win transparently because its deterministic usefulness score is higher.',
+  );
+  assert.ok(
+    recoveredCollisionPlan.some(
+      (item) =>
+        item.key ===
+        recoveredCollisionWinner!.reminder.key,
+    ) &&
+      !recoveredCollisionPlan.some(
+        (item) =>
+          item.data.taskId ===
+          'low_priority_before_recovered',
+      ),
+    'Only the recovered collision winner should reach the real device plan.',
+  );
+
   const recoveredSignature = reminderPlanSignature(
     recoveredPlan,
   );
@@ -563,6 +653,93 @@ function main() {
     buildReminderPlan(studyWorkspace, settings, now).some((item) => item.kind === 'study'),
     false,
     'Completed tasks must not keep scheduled study reminders.',
+  );
+
+  const usefulCollision = createEmptyWorkspace(now);
+  usefulCollision.tasks.push({
+    id: 'generic_before_exam',
+    title: 'Low-priority worksheet',
+    subject: 'General',
+    topicId: null,
+    examId: null,
+    type: 'homework',
+    status: 'open',
+    planState: 'scheduled',
+    dueAt: 0,
+    estimatedMinutes: 20,
+    actualMinutes: 0,
+    priority: 1,
+    notes: '',
+    scheduledStart: local(2026, 9, 30, 17, 0),
+    scheduledEnd: local(2026, 9, 30, 17, 20),
+    postponedUntil: 0,
+    createdAt: now - 1000,
+    updatedAt: now - 1000,
+    completedAt: 0,
+  });
+  usefulCollision.exams.push({
+    id: 'exam_tomorrow_collision',
+    name: 'Science exam',
+    date: local(2026, 10, 1, 12, 0),
+    subjects: ['Science'],
+    scope: 'subjects',
+    topicIds: [],
+  });
+  const usefulCollisionSettings = {
+    ...settings,
+    adaptive: false,
+    reviewEnabled: false,
+    examOffsets: [1],
+    examTimeMinutes: 17 * 60 + 20,
+  };
+  const usefulCollisionPlan = buildReminderPlan(
+    usefulCollision,
+    usefulCollisionSettings,
+    now,
+  );
+  const usefulCollisionTimeline = buildReminderTimeline(
+    usefulCollision,
+    usefulCollisionSettings,
+    now,
+    {},
+    10,
+  );
+  const examCollisionWinner =
+    usefulCollisionTimeline.find(
+      (item) =>
+        item.source === 'exam' &&
+        item.decision === 'scheduled',
+    );
+  const studyCollisionLoser =
+    usefulCollisionTimeline.find(
+      (item) =>
+        item.reminder.data.taskId ===
+          'generic_before_exam' &&
+        item.decision === 'collision',
+    );
+  assert.ok(
+    examCollisionWinner &&
+      studyCollisionLoser &&
+      examCollisionWinner.reminder.at >
+        studyCollisionLoser.reminder.at,
+    'A more useful imminent-exam reminder should be allowed to beat an earlier generic study reminder inside the collision window.',
+  );
+  assert.equal(
+    studyCollisionLoser!.winnerKey,
+    examCollisionWinner!.reminder.key,
+  );
+  assert.ok(
+    examCollisionWinner!.usefulnessScore >
+      studyCollisionLoser!.usefulnessScore &&
+      examCollisionWinner!.usefulnessReason.includes(
+        'tomorrow',
+      ),
+    'The collision decision should expose the exam urgency that made the later reminder win.',
+  );
+  assert.deepEqual(
+    usefulCollisionPlan.map((item) => item.key),
+    [examCollisionWinner!.reminder.key],
+    'The final device plan should contain only the higher-usefulness collision winner.',
   );
 
   const crowded = makeDueWorkspace(now);
@@ -1012,6 +1189,7 @@ function main() {
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');
   console.log('✓ Reminder Studio timeline exactly mirrors scheduled winners and exposes 90-minute collision + two-per-day cap losers');
+  console.log('✓ later imminent-exam and recovered exam-work reminders can deterministically beat earlier generic study collisions');
   console.log('✓ all personality/detail combinations avoid guilt/streak/urgency language');
   console.log('✓ Review, Exam and Study previews share the production copy engine');
   console.log('✓ reminder settings are normalized and plan signatures detect copy changes');
@@ -1081,6 +1259,12 @@ assert.ok(
     reminderStudioSource.includes('DAILY CAP') &&
     reminderStudioSource.includes('COLLISION'),
   'Reminder Studio should render the audited mixed reminder timeline with visible cap/collision decisions.',
+);
+assert.ok(
+  reminderStudioSource.includes('USEFULNESS') &&
+    reminderStudioSource.includes('entry.usefulnessScore') &&
+    reminderStudioSource.includes('entry.usefulnessReason'),
+  'Reminder Studio should expose the deterministic usefulness score and rationale behind collision winners.',
 );
 assert.ok(
   reminderStudioSource.includes("'RECOVERED'") &&

@@ -910,6 +910,12 @@ export type RecoveredReminderInsightStatus =
   | 'protected'
   | 'suppressed';
 
+export type RecoveredReminderPreview = {
+  title: string;
+  body: string;
+  accent: 'warm' | 'signal' | 'spark';
+};
+
 export type RecoveredReminderInsight = {
   status: RecoveredReminderInsightStatus;
   commitmentTitle: string;
@@ -919,6 +925,7 @@ export type RecoveredReminderInsight = {
   end: number;
   minutes: number;
   reminderAt: number | null;
+  preview: RecoveredReminderPreview;
   why: string;
   detail: string;
 };
@@ -1023,6 +1030,20 @@ export function buildRecoveredReminderInsight(
         ),
     );
 
+  const previewCopy = studyReminderCopy(
+    settings,
+    placement.topicName,
+    placement.subject,
+    placement.minutes,
+  );
+  const preview: RecoveredReminderPreview = {
+    ...previewCopy,
+    body:
+      settings.detail === 'brief'
+        ? previewCopy.body
+        : `Recovered window · ${previewCopy.body}`,
+  };
+
   const scheduled = buildReminderPlan(
     workspace,
     settings,
@@ -1051,6 +1072,7 @@ export function buildRecoveredReminderInsight(
       end: placement.end,
       minutes: placement.minutes,
       reminderAt: null,
+      preview,
       why:
         'Another Focus session overlaps the original recovered block, so MYELIN suppresses the stale heads-up and protects the study time first.',
       detail:
@@ -1082,6 +1104,11 @@ export function buildRecoveredReminderInsight(
       ),
       minutes: placement.minutes,
       reminderAt: scheduled.at,
+      preview: {
+        title: scheduled.title,
+        body: scheduled.body,
+        accent: scheduled.accent,
+      },
       why: reflowed
         ? 'A later fixed schedule change reshaped this recovered window, so MYELIN replaced the old reminder with the current block time.'
         : `Autopilot recovered this study window from ${window.commitmentTitle}. This is the first safe study block in it, so MYELIN plans one heads-up before it starts.`,
@@ -1117,6 +1144,7 @@ export function buildRecoveredReminderInsight(
     end: placement.end,
     minutes: placement.minutes,
     reminderAt: null,
+    preview,
     why,
     detail,
   };

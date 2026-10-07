@@ -7,6 +7,7 @@ on:
       - codex/exam-autopilot-capacity-v1
     paths:
       - .github/workflows/benchmark-myelin-mini-qwen.yml
+      - scripts/benchmark-myelin-mini.ts
 
 permissions:
   contents: read

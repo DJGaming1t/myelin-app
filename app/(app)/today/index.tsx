@@ -2,7 +2,10 @@ import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
 import { TodayAdaptationInsight } from '@/src/features/adaptive/AdaptationInsights';
 import { taskUrgency } from '@/src/features/planning/task-urgency';
 import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
-import { router } from 'expo-router';
+import {
+  router,
+  useLocalSearchParams,
+} from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -50,7 +53,15 @@ import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens'
 
 const BUDGETS = [10, 15, 30, 60, 90, 120, 180];
 
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default function TodayScreen() {
+  const params = useLocalSearchParams<{
+    reminderExpired?: string | string[];
+    reminderKind?: string | string[];
+  }>();
   const { status, workspace, updateWorkspace, saveError } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
@@ -140,6 +151,10 @@ export default function TodayScreen() {
   const currentWorkspace = workspace;
   const currentPlan = plan;
   const next = currentPlan.nextBlock;
+  const expiredReminder =
+    firstParam(params.reminderExpired) === '1';
+  const expiredReminderKind =
+    firstParam(params.reminderKind) ?? 'study';
   const laterBlocks = currentPlan.blocks
     .filter((block) => !next || block.id !== next.id)
     .slice(0, 3);
@@ -161,6 +176,31 @@ export default function TodayScreen() {
     recoveredWindow?.placements.find(
       (placement) => placement.end > now,
     ) ?? null;
+
+  function dismissExpiredReminderFallback() {
+    router.replace('/(app)/today');
+  }
+
+  function openExpiredReminderFallback() {
+    dismissExpiredReminderFallback();
+
+    if (activeReview) {
+      router.push('/(app)/review');
+      return;
+    }
+
+    if (activeFocus) {
+      router.push('/(app)/focus');
+      return;
+    }
+
+    if (next) {
+      startBlock(next);
+      return;
+    }
+
+    router.push('/(app)/today/day-map');
+  }
 
   function openRecoveredPlacement(
     placement: ReclaimedStudyPlacement,
@@ -461,6 +501,70 @@ export default function TodayScreen() {
               topicId={next.topicId}
               now={now}
             />
+          ) : null}
+
+          {expiredReminder ? (
+            <View
+              accessibilityRole="alert"
+              style={styles.expiredReminder}>
+              <View style={styles.expiredReminderCopy}>
+                <Text style={styles.expiredReminderKicker}>
+                  REMINDER UPDATED
+                </Text>
+                <Text style={styles.expiredReminderTitle}>
+                  Reminder expired while MYELIN was opening
+                </Text>
+                <Text style={styles.expiredReminderText}>
+                  The old {expiredReminderKind} timing is no longer trusted.
+                  MYELIN is showing your latest safe plan instead.
+                </Text>
+                <Text style={styles.expiredReminderMeta}>
+                  {activeReview
+                    ? 'Current action · Resume review'
+                    : activeFocus
+                      ? `Current action · Resume ${activeFocus.topicName}`
+                      : next
+                        ? `Current action · ${next.topicName} · ${next.minutes}m`
+                        : 'Current action · Open Day Map'}
+                </Text>
+              </View>
+              <View style={styles.expiredReminderActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open the latest safe current action"
+                  onPress={openExpiredReminderFallback}
+                  style={({ pressed }) => [
+                    styles.expiredReminderPrimary,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.expiredReminderPrimaryText}>
+                    {activeReview
+                      ? 'Resume review'
+                      : activeFocus
+                        ? 'Resume focus'
+                        : next
+                          ? next.mode === 'review' &&
+                            next.dueQuestionCount > 0
+                            ? 'Start current recall'
+                            : 'Start current focus'
+                          : 'Open Day Map'}
+                  </Text>
+                  <Text style={styles.expiredReminderArrow}>→</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss expired reminder notice"
+                  onPress={dismissExpiredReminderFallback}
+                  style={({ pressed }) => [
+                    styles.expiredReminderDismiss,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.expiredReminderDismissText}>
+                    Dismiss
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           ) : null}
 
           {recoveredWindow && recoveredPlacement ? (
@@ -856,6 +960,73 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
   loadingText: { color: colors.muted, ...type.meta },
 
+  expiredReminder: {
+    marginTop: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    padding: space.md,
+  },
+  expiredReminderCopy: {
+    minWidth: 0,
+  },
+  expiredReminderKicker: {
+    color: colors.accent,
+    ...type.label,
+    fontSize: 10,
+  },
+  expiredReminderTitle: {
+    color: colors.text,
+    ...type.bodyStrong,
+    marginTop: 4,
+  },
+  expiredReminderText: {
+    color: colors.textDim,
+    ...type.meta,
+    marginTop: 4,
+  },
+  expiredReminderMeta: {
+    color: colors.muted,
+    ...type.meta,
+    marginTop: space.xs,
+    fontWeight: '600',
+  },
+  expiredReminderActions: {
+    marginTop: space.sm,
+    gap: space.xxs,
+  },
+  expiredReminderPrimary: {
+    minHeight: layout.minTouch,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panel,
+    paddingHorizontal: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  expiredReminderPrimaryText: {
+    color: colors.accent,
+    ...type.label,
+  },
+  expiredReminderArrow: {
+    color: colors.accent,
+    fontSize: 17,
+    lineHeight: 19,
+  },
+  expiredReminderDismiss: {
+    minHeight: layout.minTouch,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: space.sm,
+  },
+  expiredReminderDismissText: {
+    color: colors.textDim,
+    ...type.meta,
+    fontWeight: '600',
+  },
   recoveredToday: {
     marginTop: space.md,
     borderRadius: radius.lg,

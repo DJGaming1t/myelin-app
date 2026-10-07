@@ -1,0 +1,90 @@
+name: Benchmark MYELIN Mini Qwen 0.8B
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/benchmark-myelin-mini-qwen.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qwen_zero_shot:
+    name: Qwen3.5 0.8B zero-shot
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Create benchmark output directory
+        run: mkdir -p artifacts/myelin-mini/qwen3.5-0.8b-q4_0
+
+      - name: Start Qwen3.5 0.8B with llama.cpp
+        run: |
+          docker pull ghcr.io/ggml-org/llama.cpp:server
+          docker run -d \
+            --name myelin-mini-qwen \
+            -p 8080:8080 \
+            ghcr.io/ggml-org/llama.cpp:server \
+            -hf ggml-org/Qwen3.5-0.8B-GGUF:Q4_0 \
+            --host 0.0.0.0 \
+            --port 8080 \
+            -c 8192 \
+            -n 512
+
+      - name: Wait for model server
+        shell: bash
+        run: |
+          for attempt in $(seq 1 120); do
+            if curl --fail --silent http://127.0.0.1:8080/health >/dev/null; then
+              echo "Qwen server is ready."
+              exit 0
+            fi
+            if ! docker ps --format '{{.Names}}' | grep -qx myelin-mini-qwen; then
+              echo "Qwen container exited before becoming healthy."
+              docker logs myelin-mini-qwen || true
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for Qwen server."
+          docker logs myelin-mini-qwen || true
+          exit 1
+
+      - name: Benchmark held-out MYELIN cases
+        env:
+          MYELIN_MINI_MODEL: qwen3.5-0.8b-q4_0
+          MYELIN_MINI_BASE_URL: http://127.0.0.1:8080/v1
+          MYELIN_MINI_CONCURRENCY: "1"
+          MYELIN_MINI_TIMEOUT_MS: "120000"
+          MYELIN_MINI_MAX_OUTPUT_TOKENS: "512"
+          MYELIN_MINI_JSON_OBJECT: "0"
+          MYELIN_MINI_PREDICTIONS_OUT: artifacts/myelin-mini/qwen3.5-0.8b-q4_0/predictions.jsonl
+          MYELIN_MINI_REPORT_OUT: artifacts/myelin-mini/qwen3.5-0.8b-q4_0/report.json
+        run: npm run benchmark:myelin-mini
+
+      - name: Capture llama.cpp logs
+        if: always()
+        run: docker logs myelin-mini-qwen > artifacts/myelin-mini/qwen3.5-0.8b-q4_0/llama-server.log 2>&1 || true
+
+      - name: Upload benchmark artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-q4_0
+          path: artifacts/myelin-mini/qwen3.5-0.8b-q4_0
+          if-no-files-found: warn

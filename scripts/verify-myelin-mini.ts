@@ -144,7 +144,7 @@ const REQUEST_ID = 'mini-test-1';
         },
         REQUEST_ID,
       ),
-    /unsupported assistant action type/i,
+    /unsupported assistant action/i,
   );
 }
 

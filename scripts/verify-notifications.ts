@@ -1796,10 +1796,58 @@ function main() {
     'Duplicate delivery of the same notification response must preserve its original expiry time instead of extending the pending lifetime.',
   );
   assert.ok(
-    reminderProviderSource.includes('const readyWrongOwner =') &&
-      reminderProviderSource.includes('pending.payload.ownerKey !==') &&
-      reminderProviderSource.includes('pendingReminderResponsesRef.current.delete'),
-    'Once a different owner workspace is fully ready, the old notification intent must be discarded rather than lingering for a later account switch.',
+    reminderProviderSource.includes(
+      'const previousOwner =\n      routingGateRef.current.ownerKey',
+    ) &&
+      reminderProviderSource.includes(
+        'previousOwner !== ownerKey',
+      ) &&
+      reminderProviderSource.includes(
+        'pending.payload.ownerKey ===\n          previousOwner',
+      ) &&
+      reminderProviderSource.includes(
+        'fallback.ownerKey === previousOwner',
+      ) &&
+      reminderProviderSource.includes(
+        'handledReminderResponsesRef.current.add',
+      ),
+    'Leaving an owner should immediately consume that owner\'s queued exact/fallback responses so switching back later cannot resurrect them.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'const wrongOwner =\n          Boolean(',
+    ) &&
+      reminderProviderSource.includes(
+        'pending.payload.ownerKey !==\n                gate.ownerKey',
+      ) &&
+      reminderProviderSource.includes(
+        'fallback.ownerKey !== gate.ownerKey',
+      ),
+    'Queued notification owner mismatches should be discarded as soon as a different owner identity is known, without waiting for workspace/onboarding readiness.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'if (!payload.ownerKey) {',
+    ) &&
+      reminderProviderSource.includes(
+        'canRouteReminderFallback(',
+      ) &&
+      reminderProviderSource.includes(
+        "pathname: '/(app)/today'",
+      ) &&
+      reminderProviderSource.includes(
+        "reminderExpired: '1'",
+      ),
+    'Legacy ownerless notification taps should never route to an exact owner-specific destination; they should degrade to the safe Today fallback.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'if (!fallback.ownerKey && gate.ownerKey) {\n          fallback.ownerKey = gate.ownerKey;',
+    ) &&
+      reminderProviderSource.includes(
+        'ownerKey === gate.ownerKey',
+      ),
+    'An ownerless fallback should bind to the first resolved owner and then be invalidated by any later owner change.',
   );
   assert.ok(
     reminderProviderSource.includes("workspaceStatus === 'ready'") &&

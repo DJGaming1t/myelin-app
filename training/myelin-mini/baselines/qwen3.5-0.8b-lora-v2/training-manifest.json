@@ -1,0 +1,53 @@
+{
+  "allowSmallDataset": true,
+  "baseModel": "principled-intelligence/Qwen3.5-0.8B-text-only",
+  "batchSize": 1,
+  "bf16": false,
+  "device": "cpu",
+  "epochs": 3.0,
+  "gradientAccumulation": 2,
+  "learningRate": 5e-05,
+  "loraAlpha": 32,
+  "loraR": 16,
+  "maxLength": 768,
+  "maxSteps": -1,
+  "method": "LoRA SFT",
+  "metrics": {
+    "epoch": 3.0,
+    "final_epoch": 3.0,
+    "final_eval_entropy": 0.11127117574214936,
+    "final_eval_loss": 0.2417386770248413,
+    "final_eval_mean_token_accuracy": 0.9603716731071472,
+    "final_eval_num_tokens": 63507.0,
+    "final_eval_runtime": 49.3317,
+    "final_eval_samples_per_second": 0.101,
+    "final_eval_steps_per_second": 0.101,
+    "total_flos": 193925991312000.0,
+    "train_loss": 0.038990405639485706,
+    "train_runtime": 4449.517,
+    "train_samples_per_second": 0.028,
+    "train_steps_per_second": 0.014
+  },
+  "resumeAdapter": "artifacts/myelin-mini/v1-adapter/checkpoint-46",
+  "runTrainRows": 42,
+  "runValidationRows": 5,
+  "schemaVersion": 1,
+  "seed": 42,
+  "smokeMode": false,
+  "trainFile": "training/myelin-mini/compiled/router-v2-train.jsonl",
+  "trainRoutes": {
+    "actions": 38,
+    "clarify": 4,
+    "escalate": 0
+  },
+  "trainRows": 42,
+  "trainSha256": "06409fb82367dccfaba788a89e2f18f211cf811abb554bfe25cdca7e92b0c1ac",
+  "validationFile": "training/myelin-mini/compiled/router-v2-validation.jsonl",
+  "validationRoutes": {
+    "actions": 1,
+    "clarify": 2,
+    "escalate": 2
+  },
+  "validationRows": 5,
+  "validationSha256": "2da49bf8b6e84b0dc4db9787c50a24bf836bcb7655e0b4900ab4708de17ec062"
+}

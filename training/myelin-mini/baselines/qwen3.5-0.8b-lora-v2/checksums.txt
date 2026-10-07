@@ -1,0 +1,2 @@
+7edb1fc34c9a98924eddbf8c1414b1740c067ba0f1b20055628cc5afa681be62  artifacts/myelin-mini/trained-adapter/qwen3.5-0.8b-lora-v2/adapter_model.safetensors
+6c96e3880028e87cb9d817294ab534b9a1719a46bd6c678ae58a5d2545ac5db5  training/myelin-mini/eval-v1.jsonl

@@ -1,0 +1,132 @@
+{
+  "mode": "release",
+  "passes": false,
+  "report": {
+    "total": 20,
+    "predicted": 20,
+    "parseValid": 12,
+    "parseValidity": 0.6,
+    "routeCorrect": 10,
+    "routeAccuracy": 0.5,
+    "actionExamples": 10,
+    "actionExactCorrect": 1,
+    "actionExactAccuracy": 0.1,
+    "actionTypeSequenceCorrect": 4,
+    "actionTypeSequenceAccuracy": 0.4,
+    "clarifyExamples": 5,
+    "clarifyReasonCorrect": 0,
+    "clarifyReasonAccuracy": 0,
+    "escalateExamples": 5,
+    "escalateReasonCorrect": 0,
+    "escalateReasonAccuracy": 0,
+    "unsafeActionCount": 2,
+    "unsafeActionRate": 0.1,
+    "overEscalationCount": 0,
+    "clarificationMissCount": 2,
+    "meanConfidenceCorrect": 0.9800000000000002,
+    "meanConfidenceIncorrect": 0.98,
+    "latencyMs": {
+      "count": 20,
+      "mean": 22014.236970300004,
+      "p50": 23282.833901000005,
+      "p95": 26062.876896000005
+    },
+    "failures": [
+      {
+        "id": "e01-topic-shorthand",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e02-update-existing",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e03-practice-tomorrow",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e04-homework-date",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e05-exam-create",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e06-plan-existing",
+        "type": "invalid-output",
+        "detail": "Expecting ',' delimiter: line 1 column 194 (char 193)"
+      },
+      {
+        "id": "e07-plan-override",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e08-create-two-step",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e09-clarify-date",
+        "type": "invalid-output",
+        "detail": "Invalid task type."
+      },
+      {
+        "id": "e10-clarify-target",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received actions."
+      },
+      {
+        "id": "e11-clarify-reference",
+        "type": "invalid-output",
+        "detail": "Invalid task type."
+      },
+      {
+        "id": "e12-clarify-detail",
+        "type": "invalid-output",
+        "detail": "create_task action contains unsupported field: question."
+      },
+      {
+        "id": "e13-escalate-tutoring",
+        "type": "wrong-escalation-reason",
+        "detail": "Expected tutoring; received safety."
+      },
+      {
+        "id": "e14-escalate-knowledge",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an unsupported route."
+      },
+      {
+        "id": "e15-escalate-reasoning",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an unsupported route."
+      },
+      {
+        "id": "e16-escalate-image",
+        "type": "invalid-output",
+        "detail": "Invalid task type."
+      },
+      {
+        "id": "e17-escalate-unsupported",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an invalid escalation reason."
+      },
+      {
+        "id": "e18-hinglish",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e20-missing-exam-topics",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received actions."
+      }
+    ]
+  }
+}

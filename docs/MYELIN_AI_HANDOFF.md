@@ -86,7 +86,7 @@ The earlier v1-only handoff was stale. Verified GitHub Actions results:
 - The exact tested command was "kal trig ke 30 min questions add kar do".
 - The v2 response had the correct topic, tomorrow date, 30-minute duration, practice type, and priority 2. Its title differed from the gold text, so strict action exact-match was 0 for this single example; semantic acceptance passed.
 - That narrow success does not establish full release readiness.
-- A v1 evaluation workflow also completed (`37617238057`); a successful workflow alone does not establish that its model release gate passed.
+- Historical v1 full evaluation (`37617238057`): gate FAIL, protocol validity 50%, route accuracy 30%, strict action accuracy 30%, two unsafe action decisions. Recovered report is saved under `baselines/qwen3.5-0.8b-lora-v1-historical.json`; runner/prompt differences prevent a controlled direct comparison.
 
 ## Benchmark integrity repair
 - Inference parse errors now retain null output instead of fabricated escalation decisions.
@@ -106,12 +106,31 @@ The earlier v1-only handoff was stale. Verified GitHub Actions results:
 - Clarify reason accuracy >= 90%
 - Escalation reason accuracy >= 90%
 
+## Completed full v2 evaluation
+- Run: `37665305486`; job: `112942885764`; evaluated code: `a52edda83118a0b620b707999881769b896fe6f9`.
+- Result artifact: `11503900163`, `myelin-mini-v2-release-evaluation`.
+- Full release gate: FAIL (workflow correctly failed at enforcement, not during setup).
+- 20/20 predictions; 12/20 protocol-valid (60%); 10/20 correct routes (50%).
+- Strict action exact-match: 1/10 (10%); action-type sequence: 4/10 (40%).
+- Clarification reasons: 0/5; escalation reasons: 0/5.
+- Two protocol-valid actions on requests needing clarification. Additional malformed action attempts were rejected by the protocol parser and are not included in that count.
+- CPU latency p50 23.3 s, p95 26.1 s. This is unquantized CPU adapter inference, not measured phone latency.
+- Separate Hinglish semantic acceptance: PASS; title wording still differs from gold.
+- Raw predictions, reports, checksums, and training manifest are committed under `training/myelin-mini/baselines/qwen3.5-0.8b-lora-v2/`.
+- Downloaded predictions reproduce the exact GitHub report with the repaired scorer. Held-out source SHA-256: `6c96e3880028e87cb9d817294ab534b9a1719a46bd6c678ae58a5d2545ac5db5`.
+- Full repo TypeScript check and MYELIN Mini regression script passed in GitHub. Local simulated network failure across all 20 cases received zero credit.
+- No OTA/APK or model deployment was made.
+
+### Diagnosis and next chunk
+The raw results show strong create_task bias: topic creation, topic updates, exams, and planning requests often become practice tasks; some references are invented. All valid route outputs express about 0.98 confidence, including incorrect ones, so that confidence is not calibrated. Some strict exact-match misses are merely title differences, but action-type, clarification, and escalation failures independently block release.
+The v2 dataset builder selects primarily practice requests plus missing-target examples. This is a plausible contributor to the observed bias; it is not a proven causal result.
+
 ## Exact next step
-1. Inspect the newest "Evaluate MYELIN Mini v2 release gate" run on this branch.
-2. Read its `myelin-mini-v2-release-evaluation` artifact and job summary; do not infer readiness from the old training success.
-3. Record the full results here.
-4. If the gate fails, diagnose errors and improve training using new examples, keeping the held-out set out of training.
-5. If it passes, evaluate deployment/runtime integration and device latency before enabling the trained model in the app.
+1. Keep this adapter blocked from app release; do not rerun the same training recipe blindly.
+2. Audit training tokenization/truncation and build balanced new examples covering all action types, clarification, escalation, and reference integrity. Do not copy held-out examples into training.
+3. Verify dataset composition and complete assistant targets before spending another training run.
+4. Train one candidate with a general-route replay set, then rerun this full release workflow against its explicit final adapter.
+5. Evaluate runtime integration and phone latency only after quality/safety gates pass.
 6. Publish an OTA only after integrated app checks pass.
 
 ## Continuity instruction

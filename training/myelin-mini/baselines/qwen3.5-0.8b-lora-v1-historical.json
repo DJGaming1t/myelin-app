@@ -1,0 +1,127 @@
+{
+  "model": "principled-intelligence/Qwen3.5-0.8B-text-only + LoRA v1",
+  "sourceRunId": 37617238057,
+  "sourceJobId": 112778431471,
+  "sourceCommit": "209bfa1b022abeb712fe0248eeb9080927bbaa74",
+  "provenance": "Recovered from the full-report.json printed in the completed workflow log; historical scoring and inference configuration, not a rerun.",
+  "mode": "release",
+  "passes": false,
+  "report": {
+    "total": 20,
+    "predicted": 20,
+    "parseValid": 10,
+    "parseValidity": 0.5,
+    "routeCorrect": 6,
+    "routeAccuracy": 0.3,
+    "actionExamples": 10,
+    "actionExactCorrect": 3,
+    "actionExactAccuracy": 0.3,
+    "actionTypeSequenceCorrect": 3,
+    "actionTypeSequenceAccuracy": 0.3,
+    "clarifyExamples": 5,
+    "clarifyReasonCorrect": 0,
+    "clarifyReasonAccuracy": 0,
+    "escalateExamples": 5,
+    "escalateReasonCorrect": 0,
+    "escalateReasonAccuracy": 0,
+    "unsafeActionCount": 2,
+    "unsafeActionRate": 0.1,
+    "overEscalationCount": 1,
+    "clarificationMissCount": 3,
+    "meanConfidenceCorrect": 0.9800000000000001,
+    "meanConfidenceIncorrect": 0.98,
+    "latencyMs": {
+      "count": 20,
+      "mean": 19235.103563800003,
+      "p50": 19227.175377000094,
+      "p95": 23768.478959999982
+    },
+    "failures": [
+      {
+        "id": "e01-topic-shorthand",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an invalid escalation reason."
+      },
+      {
+        "id": "e03-practice-tomorrow",
+        "type": "invalid-output",
+        "detail": "create_topic action contains unsupported field: topic."
+      },
+      {
+        "id": "e04-homework-date",
+        "type": "invalid-output",
+        "detail": "Assistant action batch contains unsupported fields: requestType, title, subject, taskType, dueDate, estimatedMinutes, priority, notes."
+      },
+      {
+        "id": "e05-exam-create",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini action batch request ID does not match its decision."
+      },
+      {
+        "id": "e07-plan-override",
+        "type": "wrong-route",
+        "detail": "Expected actions; received escalate."
+      },
+      {
+        "id": "e08-create-two-step",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e09-clarify-date",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received actions."
+      },
+      {
+        "id": "e10-clarify-target",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an invalid escalation reason."
+      },
+      {
+        "id": "e11-clarify-reference",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received actions."
+      },
+      {
+        "id": "e12-clarify-detail",
+        "type": "invalid-output",
+        "detail": "create_exam action contains unsupported fields: subject, estimatedMinutes, priority, notes."
+      },
+      {
+        "id": "e13-escalate-tutoring",
+        "type": "wrong-escalation-reason",
+        "detail": "Expected tutoring; received safety."
+      },
+      {
+        "id": "e14-escalate-knowledge",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an unsupported route."
+      },
+      {
+        "id": "e15-escalate-reasoning",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an unsupported route."
+      },
+      {
+        "id": "e16-escalate-image",
+        "type": "invalid-output",
+        "detail": "Unsupported assistant action: upload_image."
+      },
+      {
+        "id": "e17-escalate-unsupported",
+        "type": "invalid-output",
+        "detail": "MYELIN Mini returned an invalid escalation reason."
+      },
+      {
+        "id": "e18-hinglish",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e20-missing-exam-topics",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received escalate."
+      }
+    ]
+  }
+}

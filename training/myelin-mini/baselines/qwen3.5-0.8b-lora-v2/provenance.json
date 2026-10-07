@@ -1,0 +1,12 @@
+{
+  "runId": 37665305486,
+  "jobId": 112942885764,
+  "artifactId": 11503900163,
+  "evaluatedCommit": "a52edda83118a0b620b707999881769b896fe6f9",
+  "sourceTrainingRunId": 37620118843,
+  "sourceAdapterArtifactId": 11486205943,
+  "model": "principled-intelligence/Qwen3.5-0.8B-text-only",
+  "reasoning": false,
+  "maxNewTokens": 1200,
+  "releaseGate": false
+}

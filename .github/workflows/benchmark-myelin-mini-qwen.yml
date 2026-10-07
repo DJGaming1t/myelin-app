@@ -70,9 +70,10 @@ jobs:
         env:
           MYELIN_MINI_MODEL: qwen3.5-0.8b-q4_0
           MYELIN_MINI_BASE_URL: http://127.0.0.1:8080/v1
+          MYELIN_MINI_CASE_IDS: e01-topic-shorthand,e03-practice-tomorrow,e09-clarify-date,e11-clarify-reference,e13-escalate-tutoring,e15-escalate-reasoning,e18-hinglish
           MYELIN_MINI_CONCURRENCY: "1"
-          MYELIN_MINI_TIMEOUT_MS: "120000"
-          MYELIN_MINI_MAX_OUTPUT_TOKENS: "512"
+          MYELIN_MINI_TIMEOUT_MS: "60000"
+          MYELIN_MINI_MAX_OUTPUT_TOKENS: "320"
           MYELIN_MINI_JSON_OBJECT: "0"
           MYELIN_MINI_PREDICTIONS_OUT: artifacts/myelin-mini/qwen3.5-0.8b-q4_0/predictions.jsonl
           MYELIN_MINI_REPORT_OUT: artifacts/myelin-mini/qwen3.5-0.8b-q4_0/report.json

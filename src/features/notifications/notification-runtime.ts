@@ -24,7 +24,10 @@ async function module(): Promise<ExpoNotificationsModule> {
   return import('expo-notifications');
 }
 
-export function reminderSubtitleText(settings: ReminderSettings, kind: ReminderKind) {
+export function reminderSubtitleText(
+  settings: Pick<ReminderSettings, 'voice' | 'detail'>,
+  kind: ReminderKind,
+) {
   const mark =
     settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
   const label =
@@ -49,7 +52,9 @@ export function reminderSubtitleText(settings: ReminderSettings, kind: ReminderK
   return `${mark} ${label}`;
 }
 
-export function reminderColorValue(settings: ReminderSettings) {
+export function reminderColorValue(
+  settings: Pick<ReminderSettings, 'voice'>,
+) {
   if (settings.voice === 'calm') return '#D88F78';
   if (settings.voice === 'spark') return '#FFAA68';
   return '#FF805B';

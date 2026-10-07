@@ -89,6 +89,7 @@ function runtimeError(error: unknown) {
 }
 
 const PENDING_REMINDER_TTL_MS = 30_000;
+const EXPIRED_REMINDER_FALLBACK_TTL_MS = 120_000;
 
 type ReminderRoutingGate = {
   authReady: boolean;
@@ -162,6 +163,17 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       }
     >
   >(new Map());
+  const expiredReminderFallbacksRef = useRef<
+    Map<
+      string,
+      {
+        responseId: string;
+        ownerKey?: string;
+        kind: ReminderOpenPayload['kind'];
+        queuedAt: number;
+      }
+    >
+  >(new Map());
   const routingGateRef = useRef<ReminderRoutingGate>({
     authReady,
     authAllowsApp:
@@ -201,6 +213,9 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         payload.responseId,
       );
       pendingReminderResponsesRef.current.delete(
+        payload.responseId,
+      );
+      expiredReminderFallbacksRef.current.delete(
         payload.responseId,
       );
 
@@ -258,6 +273,9 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       if (
         handledReminderResponsesRef.current.has(
           payload.responseId,
+        ) ||
+        expiredReminderFallbacksRef.current.has(
+          payload.responseId,
         )
       ) {
         return;
@@ -300,16 +318,6 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         responseId,
         pending,
       ] of pendingReminderResponsesRef.current) {
-        if (
-          now - pending.queuedAt >
-          PENDING_REMINDER_TTL_MS
-        ) {
-          pendingReminderResponsesRef.current.delete(
-            responseId,
-          );
-          continue;
-        }
-
         const readyWrongOwner =
           gate.authReady &&
           gate.authAllowsApp &&
@@ -323,11 +331,30 @@ export function ReminderProvider({ children }: PropsWithChildren) {
             gate.ownerKey;
 
         if (readyWrongOwner) {
-          // Once a different workspace is fully restored, this intent can
-          // never be safe for the current session. Discard it rather than
-          // letting a later account switch unexpectedly open old study data.
           pendingReminderResponsesRef.current.delete(
             responseId,
+          );
+          handledReminderResponsesRef.current.add(
+            responseId,
+          );
+          continue;
+        }
+
+        if (
+          now - pending.queuedAt >
+          PENDING_REMINDER_TTL_MS
+        ) {
+          pendingReminderResponsesRef.current.delete(
+            responseId,
+          );
+          expiredReminderFallbacksRef.current.set(
+            responseId,
+            {
+              responseId,
+              ownerKey: pending.payload.ownerKey,
+              kind: pending.payload.kind,
+              queuedAt: pending.queuedAt,
+            },
           );
           continue;
         }
@@ -339,6 +366,72 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           )
         ) {
           routeReminderNow(pending.payload);
+        }
+      }
+
+      for (const [
+        responseId,
+        fallback,
+      ] of expiredReminderFallbacksRef.current) {
+        if (
+          now - fallback.queuedAt >
+          EXPIRED_REMINDER_FALLBACK_TTL_MS
+        ) {
+          expiredReminderFallbacksRef.current.delete(
+            responseId,
+          );
+          handledReminderResponsesRef.current.add(
+            responseId,
+          );
+          continue;
+        }
+
+        const readyWrongOwner =
+          gate.authReady &&
+          gate.authAllowsApp &&
+          gate.workspaceStatus === 'ready' &&
+          gate.ownerKey &&
+          gate.hasWorkspace &&
+          gate.onboardingReady &&
+          gate.onboardingAllowsApp &&
+          fallback.ownerKey &&
+          fallback.ownerKey !== gate.ownerKey;
+
+        if (readyWrongOwner) {
+          expiredReminderFallbacksRef.current.delete(
+            responseId,
+          );
+          handledReminderResponsesRef.current.add(
+            responseId,
+          );
+          continue;
+        }
+
+        const canRouteFallback =
+          gate.authReady &&
+          gate.authAllowsApp &&
+          gate.workspaceStatus === 'ready' &&
+          gate.ownerKey &&
+          gate.hasWorkspace &&
+          gate.onboardingReady &&
+          gate.onboardingAllowsApp &&
+          (!fallback.ownerKey ||
+            fallback.ownerKey === gate.ownerKey);
+
+        if (canRouteFallback) {
+          expiredReminderFallbacksRef.current.delete(
+            responseId,
+          );
+          handledReminderResponsesRef.current.add(
+            responseId,
+          );
+          router.push({
+            pathname: '/(app)/today',
+            params: {
+              reminderExpired: '1',
+              reminderKind: fallback.kind,
+            },
+          });
         }
       }
     }, [routeReminderNow]);

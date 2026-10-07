@@ -42,7 +42,9 @@
     "verify:myelin-mini": "tsx scripts/verify-myelin-mini.ts && tsx scripts/generate-myelin-mini-failure-data.ts && tsx scripts/build-myelin-mini-dataset.ts --check",
     "build:myelin-mini-dataset": "tsx scripts/generate-myelin-mini-failure-data.ts && tsx scripts/build-myelin-mini-dataset.ts",
     "benchmark:myelin-mini": "tsx scripts/benchmark-myelin-mini.ts",
-    "generate:myelin-mini-failure-data": "tsx scripts/generate-myelin-mini-failure-data.ts"
+    "generate:myelin-mini-failure-data": "tsx scripts/generate-myelin-mini-failure-data.ts",
+    "export:myelin-mini-eval-prompts": "tsx scripts/export-myelin-mini-eval-prompts.ts",
+    "evaluate:myelin-mini-predictions": "tsx scripts/evaluate-myelin-mini-predictions.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

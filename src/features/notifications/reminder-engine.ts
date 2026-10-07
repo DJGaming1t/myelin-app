@@ -845,7 +845,7 @@ function examUrgencyBonus(days: number) {
 function topicExamContext(
   workspace: WorkspaceState,
   topicId: string | null,
-  now: number,
+  referenceAt: number,
 ) {
   if (!topicId) return null;
   const topic = workspace.topics.find(
@@ -856,7 +856,7 @@ function topicExamContext(
   const exam =
     workspace.exams
       .filter((item) => {
-        if (item.date <= now) return false;
+        if (item.date <= referenceAt) return false;
         return item.scope === 'topics'
           ? item.topicIds.includes(topic.id)
           : item.subjects.includes(topic.subject);
@@ -868,7 +868,7 @@ function topicExamContext(
     exam,
     days: Math.max(
       1,
-      examCalendarDaysUntil(exam.date, now),
+      examCalendarDaysUntil(exam.date, referenceAt),
     ),
   };
 }
@@ -905,7 +905,7 @@ function reminderUsefulness(
     const examContext = topicExamContext(
       workspace,
       topicId,
-      now,
+      reminder.at,
     );
     const priorityBonus = (topic?.priority ?? 2) * 5;
     const examBonus = examContext
@@ -953,13 +953,16 @@ function reminderUsefulness(
       ? workspace.exams.find(
           (item) =>
             item.id === task.examId &&
-            item.date > now,
+            item.date > reminder.at,
         ) ?? null
       : null;
   const examDays = exam
     ? Math.max(
         1,
-        examCalendarDaysUntil(exam.date, now),
+        examCalendarDaysUntil(
+          exam.date,
+          reminder.at,
+        ),
       )
     : null;
   const examBonus =

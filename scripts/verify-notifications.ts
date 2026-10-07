@@ -1461,6 +1461,53 @@ function main() {
     'Legacy ownerless reminder cleanup should have a persistent install-level completion marker.',
   );
   assert.ok(
+    reminderStorageSource.includes(
+      'const ownerMutationQueues = new Map',
+    ) &&
+      reminderStorageSource.includes(
+        'async function enqueueOwnerMutation',
+      ) &&
+      reminderStorageSource.includes(
+        'const previous =\n    ownerMutationQueues.get(ownerKey)',
+      ) &&
+      reminderStorageSource.includes(
+        '.catch(() => undefined)\n    .then(mutation)',
+      ) &&
+      reminderStorageSource.includes(
+        'ownerMutationQueues.set(ownerKey, next)',
+      ),
+    'Reminder storage mutations should be serialized per owner so a slower older settings write cannot finish after a newer one.',
+  );
+  assert.ok(
+    reminderStorageSource.includes(
+      'async function waitForOwnerMutations',
+    ) &&
+      reminderStorageSource.includes(
+        'await waitForOwnerMutations(ownerKey)',
+      ) &&
+      reminderStorageSource.includes(
+        'await enqueueOwnerMutation(ownerKey, () =>\n      AsyncStorage.setItem',
+      ) &&
+      reminderStorageSource.includes(
+        'await enqueueOwnerMutation(ownerKey, () =>\n      AsyncStorage.removeItem',
+      ),
+    'Reminder loads should wait for same-owner mutations, and both save/clear should use the ordered owner queue.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'const current = stateRef.current',
+    ) &&
+      reminderProviderSource.includes(
+        '...current.settings,\n        ...patch',
+      ) &&
+      reminderProviderSource.includes(
+        'scheduleGenerationRef.current += 1;\n      await persist(next, owner)',
+      ),
+    'Rapid settings updates should merge from the latest synchronous stateRef value before entering serialized storage.',
+  );
+
+
+  assert.ok(
     reminderProviderSource.includes(
       'ensureLegacyOwnerlessCleanup',
     ) &&

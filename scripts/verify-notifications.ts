@@ -1617,11 +1617,11 @@ function main() {
     'Generic and exact preview sends should participate in the owner/action generation and remove notifications created by stale work.',
   );
   assert.ok(
-    reminderProviderSource.includes(
-      'sendReminderPreview(\n          stateRef.current.settings,\n          kind,\n          owner',
+    /sendReminderPreview\(\s*stateRef\.current\.settings,\s*kind,\s*owner,/m.test(
+      reminderProviderSource,
     ) &&
-      reminderProviderSource.includes(
-        'sendExactReminderPreview(\n          stateRef.current.settings,\n          preview,\n          owner',
+      /sendExactReminderPreview\(\s*stateRef\.current\.settings,\s*preview,\s*owner,/m.test(
+        reminderProviderSource,
       ),
     'Both preview types should pass their captured owner into notification data so stale taps cannot route into another account.',
   );

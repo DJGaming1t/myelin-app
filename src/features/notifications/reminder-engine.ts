@@ -818,6 +818,8 @@ export type ReminderTimelineItem = {
   decision: ReminderTimelineDecision;
   reason: string;
   winnerKey: string | null;
+  usefulnessScore: number;
+  usefulnessReason: string;
 };
 
 function reminderSource(
@@ -832,73 +834,317 @@ function reminderSource(
   return reminder.kind;
 }
 
-function selectCappedPlan(plan: PlannedReminder[]) {
-  const perDay = new Map<string, number>();
-  const accepted: PlannedReminder[] = [];
-  const timeline: ReminderTimelineItem[] = [];
+function examUrgencyBonus(days: number) {
+  if (days <= 1) return 42;
+  if (days <= 2) return 34;
+  if (days <= 3) return 27;
+  if (days <= 7) return 16;
+  return 6;
+}
 
-  for (const reminder of [...plan].sort((a, b) => a.at - b.at)) {
-    const day = localDateKey(reminder.at);
-    const count = perDay.get(day) ?? 0;
+function topicExamContext(
+  workspace: WorkspaceState,
+  topicId: string | null,
+  now: number,
+) {
+  if (!topicId) return null;
+  const topic = workspace.topics.find(
+    (item) => item.id === topicId,
+  );
+  if (!topic) return null;
+
+  const exam =
+    workspace.exams
+      .filter((item) => {
+        if (item.date <= now) return false;
+        return item.scope === 'topics'
+          ? item.topicIds.includes(topic.id)
+          : item.subjects.includes(topic.subject);
+      })
+      .sort((a, b) => a.date - b.date)[0] ?? null;
+  if (!exam) return null;
+
+  return {
+    exam,
+    days: Math.max(
+      1,
+      examCalendarDaysUntil(exam.date, now),
+    ),
+  };
+}
+
+function reminderUsefulness(
+  workspace: WorkspaceState,
+  reminder: PlannedReminder,
+  now: number,
+) {
+  const source = reminderSource(reminder);
+
+  if (reminder.kind === 'exam') {
+    const days = Math.max(
+      1,
+      Number(reminder.data.days ?? 7),
+    );
+    return {
+      score: 100 + examUrgencyBonus(days),
+      reason:
+        days === 1
+          ? 'Exam check-in for tomorrow.'
+          : `Exam check-in with ${days} days remaining.`,
+    };
+  }
+
+  if (source === 'recovered') {
+    const topicId =
+      typeof reminder.data.topicId === 'string'
+        ? reminder.data.topicId
+        : null;
+    const topic = workspace.topics.find(
+      (item) => item.id === topicId,
+    );
+    const examContext = topicExamContext(
+      workspace,
+      topicId,
+      now,
+    );
+    const priorityBonus = (topic?.priority ?? 2) * 5;
+    const examBonus = examContext
+      ? examUrgencyBonus(examContext.days)
+      : 0;
+
+    return {
+      score: 72 + priorityBonus + examBonus,
+      reason: examContext
+        ? `Recovered Autopilot exam work · ${examContext.exam.name} in ${examContext.days} day${examContext.days === 1 ? '' : 's'}.`
+        : 'Recovered Autopilot study time already protected in the plan.',
+    };
+  }
+
+  if (reminder.kind === 'review') {
+    const dueCount = Math.max(
+      0,
+      Number(reminder.data.dueCount ?? 0),
+    );
+    const topicCount = Math.max(
+      0,
+      Number(reminder.data.topicCount ?? 0),
+    );
+    return {
+      score:
+        60 +
+        Math.min(24, dueCount * 3) +
+        Math.min(8, topicCount * 2),
+      reason: `${dueCount} due recall item${dueCount === 1 ? '' : 's'} across ${topicCount || 1} topic${topicCount === 1 ? '' : 's'}.`,
+    };
+  }
+
+  const taskId =
+    typeof reminder.data.taskId === 'string'
+      ? reminder.data.taskId
+      : null;
+  const task = workspace.tasks.find(
+    (item) => item.id === taskId,
+  );
+  const priorityBonus = (task?.priority ?? 2) * 6;
+  const postponementBonus =
+    Math.min(3, task?.postponements ?? 0) * 4;
+  const exam =
+    task?.examId
+      ? workspace.exams.find(
+          (item) =>
+            item.id === task.examId &&
+            item.date > now,
+        ) ?? null
+      : null;
+  const examDays = exam
+    ? Math.max(
+        1,
+        examCalendarDaysUntil(exam.date, now),
+      )
+    : null;
+  const examBonus =
+    examDays != null ? examUrgencyBonus(examDays) : 0;
+
+  return {
+    score:
+      42 +
+      priorityBonus +
+      postponementBonus +
+      examBonus,
+    reason: exam
+      ? `Scheduled study linked to ${exam.name} in ${examDays} day${examDays === 1 ? '' : 's'}.`
+      : task && (task.postponements ?? 0) > 0
+        ? `Scheduled study · priority ${task.priority} · postponed ${task.postponements} time${task.postponements === 1 ? '' : 's'}.`
+        : `Scheduled study · priority ${task?.priority ?? 2}.`,
+  };
+}
+
+function selectCappedPlan(
+  plan: PlannedReminder[],
+  workspace: WorkspaceState,
+  now: number,
+) {
+  const perDay = new Map<string, number>();
+  const accepted: Array<{
+    reminder: PlannedReminder;
+    usefulnessScore: number;
+    usefulnessReason: string;
+  }> = [];
+  const timeline = new Map<
+    string,
+    ReminderTimelineItem
+  >();
+
+  const sorted = [...plan].sort(
+    (a, b) =>
+      a.at - b.at ||
+      a.key.localeCompare(b.key),
+  );
+
+  for (const reminder of sorted) {
+    const source = reminderSource(reminder);
+    const usefulness = reminderUsefulness(
+      workspace,
+      reminder,
+      now,
+    );
+    const collisions = accepted.filter(
+      (item) =>
+        Math.abs(item.reminder.at - reminder.at) <
+        90 * 60_000,
+    );
+
+    if (collisions.length) {
+      const strongestCollision = [...collisions].sort(
+        (a, b) =>
+          b.usefulnessScore - a.usefulnessScore ||
+          a.reminder.at - b.reminder.at ||
+          a.reminder.key.localeCompare(
+            b.reminder.key,
+          ),
+      )[0]!;
+
+      if (
+        usefulness.score <=
+        strongestCollision.usefulnessScore
+      ) {
+        timeline.set(reminder.key, {
+          reminder,
+          source,
+          decision: 'collision',
+          winnerKey:
+            strongestCollision.reminder.key,
+          usefulnessScore: usefulness.score,
+          usefulnessReason: usefulness.reason,
+          reason:
+            `Withheld because a nearby reminder ranked higher within 90 minutes (${strongestCollision.usefulnessScore} vs ${usefulness.score}). ${strongestCollision.usefulnessReason}`,
+        });
+        continue;
+      }
+
+      for (const loser of collisions) {
+        const index = accepted.indexOf(loser);
+        if (index >= 0) accepted.splice(index, 1);
+        const loserDay = localDateKey(
+          loser.reminder.at,
+        );
+        perDay.set(
+          loserDay,
+          Math.max(
+            0,
+            (perDay.get(loserDay) ?? 1) - 1,
+          ),
+        );
+        timeline.set(loser.reminder.key, {
+          reminder: loser.reminder,
+          source: reminderSource(loser.reminder),
+          decision: 'collision',
+          winnerKey: reminder.key,
+          usefulnessScore: loser.usefulnessScore,
+          usefulnessReason: loser.usefulnessReason,
+          reason:
+            `Withheld because ${reminderSource(reminder) === 'recovered' ? 'a recovered Autopilot reminder' : 'another reminder'} ranked higher within 90 minutes (${usefulness.score} vs ${loser.usefulnessScore}). ${usefulness.reason}`,
+        });
+      }
+    }
 
     if (accepted.length >= MAX_SCHEDULED_REMINDERS) {
-      timeline.push({
+      timeline.set(reminder.key, {
         reminder,
-        source: reminderSource(reminder),
+        source,
         decision: 'global-cap',
         winnerKey: null,
+        usefulnessScore: usefulness.score,
+        usefulnessReason: usefulness.reason,
         reason:
           'Not scheduled because MYELIN already has the maximum number of future device reminders queued.',
       });
       continue;
     }
 
+    const day = localDateKey(reminder.at);
+    const count = perDay.get(day) ?? 0;
     if (count >= MAX_REMINDERS_PER_DAY) {
-      timeline.push({
+      timeline.set(reminder.key, {
         reminder,
-        source: reminderSource(reminder),
+        source,
         decision: 'daily-cap',
         winnerKey: null,
+        usefulnessScore: usefulness.score,
+        usefulnessReason: usefulness.reason,
         reason:
           'Withheld because two MYELIN reminders already won this local day.',
       });
       continue;
     }
 
-    const collisionWinner = accepted.find(
-      (item) =>
-        Math.abs(item.at - reminder.at) <
-        90 * 60_000,
-    );
-    if (collisionWinner) {
-      timeline.push({
-        reminder,
-        source: reminderSource(reminder),
-        decision: 'collision',
-        winnerKey: collisionWinner.key,
-        reason:
-          'Withheld because another reminder is already scheduled within 90 minutes. MYELIN keeps the earlier reminder.',
-      });
-      continue;
-    }
-
-    accepted.push(reminder);
-    perDay.set(day, count + 1);
-    timeline.push({
+    accepted.push({
       reminder,
-      source: reminderSource(reminder),
+      usefulnessScore: usefulness.score,
+      usefulnessReason: usefulness.reason,
+    });
+    perDay.set(day, count + 1);
+    timeline.set(reminder.key, {
+      reminder,
+      source,
       decision: 'scheduled',
       winnerKey: reminder.key,
-      reason:
-        'Scheduled after quiet-hour, sleep, adaptive timing and collision checks.',
+      usefulnessScore: usefulness.score,
+      usefulnessReason: usefulness.reason,
+      reason: collisions.length
+        ? `Scheduled because it ranked higher than the nearby collision (${usefulness.score}). ${usefulness.reason}`
+        : `Scheduled after quiet-hour, sleep, adaptive timing and collision checks. ${usefulness.reason}`,
     });
   }
 
-  return { accepted, timeline };
+  return {
+    accepted: accepted
+      .map((item) => item.reminder)
+      .sort(
+        (a, b) =>
+          a.at - b.at ||
+          a.key.localeCompare(b.key),
+      ),
+    timeline: [...timeline.values()].sort(
+      (a, b) =>
+        a.reminder.at - b.reminder.at ||
+        a.reminder.key.localeCompare(
+          b.reminder.key,
+        ),
+    ),
+  };
 }
 
-function capPlan(plan: PlannedReminder[]) {
-  return selectCappedPlan(plan).accepted;
+function capPlan(
+  plan: PlannedReminder[],
+  workspace: WorkspaceState,
+  now: number,
+) {
+  return selectCappedPlan(
+    plan,
+    workspace,
+    now,
+  ).accepted;
 }
 
 function preferredStudyMinute(workspace: WorkspaceState, fallback: number, now: number) {
@@ -1011,6 +1257,8 @@ export function buildReminderPlan(
       now,
       context,
     ),
+    workspace,
+    now,
   );
 }
 
@@ -1031,6 +1279,8 @@ export function buildReminderTimeline(
       now,
       context,
     ),
+    workspace,
+    now,
   );
 
   return selected.timeline.slice(

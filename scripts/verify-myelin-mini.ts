@@ -240,7 +240,7 @@ function verifySeedDataset() {
 }
 
 async function main() {
-  const workspace = createEmptyWorkspace('mini-test-owner');
+  const workspace = createEmptyWorkspace(1_800_000_000_000);
   const seen: Parameters<MyelinMiniModelAdapter['generate']>[0][] = [];
 
   const model: MyelinMiniModelAdapter = {

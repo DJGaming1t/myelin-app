@@ -244,7 +244,95 @@ export type ReminderOpenPayload = {
   topicId?: string;
   scheduledStart?: number;
   scheduledEnd?: number;
+  responseId: string;
 };
+
+type ReminderResponseLike = {
+  actionIdentifier?: string;
+  notification: {
+    request: {
+      identifier?: string;
+      content: {
+        data?: Record<string, unknown>;
+      };
+    };
+  };
+};
+
+function reminderPayloadFromResponse(
+  response: ReminderResponseLike,
+): ReminderOpenPayload | null {
+  const data = response.notification.request.content.data;
+  if (!data || data.myelin !== true) return null;
+  if (
+    data.kind !== 'review' &&
+    data.kind !== 'exam' &&
+    data.kind !== 'study'
+  ) {
+    return null;
+  }
+
+  const requestIdentifier =
+    response.notification.request.identifier ??
+    String(data.reminderKey ?? 'myelin-reminder');
+  const actionIdentifier =
+    response.actionIdentifier ?? 'default';
+
+  return {
+    kind: data.kind,
+    href:
+      typeof data.href === 'string'
+        ? data.href
+        : undefined,
+    recovered:
+      data.recovered === 1 || data.recovered === true,
+    commitmentId:
+      typeof data.commitmentId === 'string'
+        ? data.commitmentId
+        : undefined,
+    occurrenceDateKey:
+      typeof data.occurrenceDateKey === 'string'
+        ? data.occurrenceDateKey
+        : undefined,
+    topicId:
+      typeof data.topicId === 'string'
+        ? data.topicId
+        : undefined,
+    scheduledStart:
+      typeof data.scheduledStart === 'number'
+        ? data.scheduledStart
+        : undefined,
+    scheduledEnd:
+      typeof data.scheduledEnd === 'number'
+        ? data.scheduledEnd
+        : undefined,
+    responseId:
+      requestIdentifier + ':' + actionIdentifier,
+  };
+}
+
+export async function consumeInitialReminderResponse() {
+  if (Platform.OS === 'web') {
+    return null as ReminderOpenPayload | null;
+  }
+
+  const Notifications = await module();
+  const response =
+    await Notifications.getLastNotificationResponseAsync();
+  if (!response) return null;
+
+  const payload = reminderPayloadFromResponse(
+    response as ReminderResponseLike,
+  );
+  if (!payload) return null;
+
+  // Cold-launch responses are cleared before routing. This prevents the
+  // ordinary listener or a later launch from replaying the same tap.
+  await Notifications.clearLastNotificationResponseAsync().catch(
+    () => undefined,
+  );
+  return payload;
+}
 
 export async function subscribeToReminderResponses(
   onOpen: (payload: ReminderOpenPayload) => void,
@@ -253,57 +341,20 @@ export async function subscribeToReminderResponses(
 
   const Notifications = await module();
 
-  const handle = (response: {
-    notification: {
-      request: {
-        content: {
-          data?: Record<string, unknown>;
-        };
-      };
-    };
-  }) => {
-    const data = response.notification.request.content.data;
-    if (!data || data.myelin !== true) return;
-    if (data.kind === 'review' || data.kind === 'exam' || data.kind === 'study') {
-      onOpen({
-        kind: data.kind,
-        href:
-          typeof data.href === 'string'
-            ? data.href
-            : undefined,
-        recovered: data.recovered === 1 || data.recovered === true,
-        commitmentId:
-          typeof data.commitmentId === 'string'
-            ? data.commitmentId
-            : undefined,
-        occurrenceDateKey:
-          typeof data.occurrenceDateKey === 'string'
-            ? data.occurrenceDateKey
-            : undefined,
-        topicId:
-          typeof data.topicId === 'string'
-            ? data.topicId
-            : undefined,
-        scheduledStart:
-          typeof data.scheduledStart === 'number'
-            ? data.scheduledStart
-            : undefined,
-        scheduledEnd:
-          typeof data.scheduledEnd === 'number'
-            ? data.scheduledEnd
-            : undefined,
-      });
-      // Consuming the response prevents the same old notification tap from
-      // routing the user again on a later ordinary app launch.
-      void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
-    }
-  };
-
-  const last = await Notifications.getLastNotificationResponseAsync();
-  if (last) handle(last);
-
   const subscription =
-    Notifications.addNotificationResponseReceivedListener(handle);
+    Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const payload = reminderPayloadFromResponse(
+          response as ReminderResponseLike,
+        );
+        if (!payload) return;
+
+        onOpen(payload);
+        void Notifications.clearLastNotificationResponseAsync().catch(
+          () => undefined,
+        );
+      },
+    );
 
   return () => subscription.remove();
 }

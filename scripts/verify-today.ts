@@ -471,6 +471,18 @@ function main() {
     'Today should launch a ready recovered block directly but hand protected/future blocks to Day Map.',
   );
   assert.ok(
+    todayScreen.includes('Reminder expired while MYELIN was opening') &&
+      todayScreen.includes('The old {expiredReminderKind} timing is no longer trusted') &&
+      todayScreen.includes('Current action ·'),
+    'Today should explain that an expired cold-launch reminder is stale and show only the latest current action.',
+  );
+  assert.ok(
+    todayScreen.includes('openExpiredReminderFallback') &&
+      todayScreen.includes('dismissExpiredReminderFallback') &&
+      todayScreen.includes("router.replace('/(app)/today')"),
+    'The expired reminder fallback should offer a safe current action and a clean dismiss path that removes the fallback params.',
+  );
+  assert.ok(
     todayScreen.includes('Move or reduce') &&
       todayScreen.includes('Review tasks'),
     'Today capacity pressure must provide a concrete relief direction instead of a generic warning.',
@@ -539,6 +551,7 @@ function main() {
   console.log('✓ Today keeps capacity available without making it the primary hierarchy');
   console.log('✓ Today surfaces the first deadline that cannot fit and a deterministic relief target');
   console.log('✓ Today surfaces the next recovered Autopilot block and respects live pre-miss protection');
+  console.log('✓ expired cold-launch reminders fall back to Today’s latest safe action instead of stale notification timing');
   console.log('✓ Today choices meet the 44-point touch target');
   console.log('✓ Today layout is responsive and plan-card motion respects accessibility');
   console.log('✓ Not now animates to the next recommendation or a calm fallback and remains undoable');

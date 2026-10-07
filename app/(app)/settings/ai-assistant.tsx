@@ -293,6 +293,7 @@ export default function LocalAiAssistantScreen() {
     prepareAssistantActions,
     message: modelMessage,
     error: modelError,
+    nativeRuntimeAvailable,
   } = useLocalAi();
   const [request, setRequest] = useState('');
   const [prepared, setPrepared] = useState<PreparedAssistantActionBatch | null>(null);
@@ -420,7 +421,13 @@ export default function LocalAiAssistantScreen() {
               <Text style={styles.statusText}>
                 {available
                   ? 'Runs on this device. MYELIN validates every proposed action before anything can change.'
-                  : 'Choose and install a compatible local model first.'}
+                  : !nativeRuntimeAvailable
+                    ? 'This installed APK does not expose the native LiteRT-LM runtime. Open Manage AI models and run Check AI setup.'
+                    : !selected
+                      ? 'Native AI is available. Choose a model first.'
+                      : !installed
+                        ? `${selected.definition.shortName} is selected, but its verified model file is not installed yet.`
+                        : 'The selected model is installed, but its native runtime is not currently available.'}
               </Text>
             </View>
             <Text style={[styles.statusBadge, available ? styles.readyBadge : styles.blockedBadge]}>

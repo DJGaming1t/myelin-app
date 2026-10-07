@@ -1,0 +1,88 @@
+name: Train MYELIN Mini Qwen v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/train-myelin-mini-qwen-v1.yml
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    name: Qwen3.5 0.8B LoRA v1
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: training/myelin-mini/requirements-train.txt
+
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build MYELIN Mini SFT dataset
+        run: npm run build:myelin-mini-dataset
+
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+
+      - name: Install MYELIN Mini training stack
+        run: python -m pip install -r training/myelin-mini/requirements-train.txt
+
+      - name: Train MYELIN Mini LoRA v1
+        run: >-
+          python scripts/train-myelin-mini-qwen.py
+          --model principled-intelligence/Qwen3.5-0.8B-text-only
+          --output artifacts/myelin-mini/qwen3.5-0.8b-lora-v1
+          --epochs 2
+          --batch-size 1
+          --gradient-accumulation 4
+          --max-length 1024
+          --allow-cpu
+
+      - name: Verify trained adapter
+        shell: bash
+        run: |
+          test -f artifacts/myelin-mini/qwen3.5-0.8b-lora-v1/training-manifest.json
+          test -f artifacts/myelin-mini/qwen3.5-0.8b-lora-v1/adapter_model.safetensors
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/myelin-mini/qwen3.5-0.8b-lora-v1")
+          manifest = json.loads((root / "training-manifest.json").read_text())
+          assert manifest["smokeMode"] is False
+          assert manifest["device"] == "cpu"
+          assert manifest["runTrainRows"] == 92
+          assert manifest["runValidationRows"] == 11
+          assert isinstance(manifest["metrics"].get("train_loss"), (int, float))
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Upload trained adapter
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-lora-v1
+          path: artifacts/myelin-mini/qwen3.5-0.8b-lora-v1
+          if-no-files-found: warn

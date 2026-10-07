@@ -1582,6 +1582,52 @@ function main() {
     'Reminder control actions should have a separate generation and immediate owner-change invalidation.',
   );
   assert.ok(
+    notificationRuntimeSourceForAudit.includes(
+      'export async function removeReminderPreview',
+    ) &&
+      notificationRuntimeSourceForAudit.includes(
+        'cancelScheduledNotificationAsync(id)',
+      ) &&
+      notificationRuntimeSourceForAudit.includes(
+        'dismissNotificationAsync(id)',
+      ) &&
+      notificationRuntimeSourceForAudit.includes(
+        'return Notifications.scheduleNotificationAsync',
+      ) &&
+      notificationRuntimeSourceForAudit.includes(
+        '...(ownerKey ? { ownerKey } : {})',
+      ),
+    'Preview runtime helpers should return native IDs, tag previews with their owner, and support cancelling/dismissing stale previews.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'previewId = await sendReminderPreview',
+    ) &&
+      reminderProviderSource.includes(
+        'previewId = await sendExactReminderPreview',
+      ) &&
+      reminderProviderSource.includes(
+        'await removeReminderPreview(previewId)',
+      ) &&
+      (
+        reminderProviderSource.match(
+          /if \(!isCurrentReminderAction\(action\)\)/g,
+        )?.length ?? 0
+      ) >= 8,
+    'Generic and exact preview sends should participate in the owner/action generation and remove notifications created by stale work.',
+  );
+  assert.ok(
+    reminderProviderSource.includes(
+      'sendReminderPreview(\n          stateRef.current.settings,\n          kind,\n          owner',
+    ) &&
+      reminderProviderSource.includes(
+        'sendExactReminderPreview(\n          stateRef.current.settings,\n          preview,\n          owner',
+      ),
+    'Both preview types should pass their captured owner into notification data so stale taps cannot route into another account.',
+  );
+
+
+  assert.ok(
     reminderProviderSource.includes(
       'const nextPermission = await requestReminderPermission();\n      if (!isCurrentReminderAction(action))',
     ) &&

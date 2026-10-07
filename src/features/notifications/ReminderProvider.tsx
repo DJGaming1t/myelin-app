@@ -273,11 +273,18 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      const existing =
+        pendingReminderResponsesRef.current.get(
+          payload.responseId,
+        );
       pendingReminderResponsesRef.current.set(
         payload.responseId,
         {
           payload,
-          queuedAt: Date.now(),
+          // Duplicate delivery must never extend a stale cold-launch intent.
+          // Keep the timestamp from the first time this response was seen.
+          queuedAt:
+            existing?.queuedAt ?? Date.now(),
         },
       );
     },
@@ -297,6 +304,28 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           now - pending.queuedAt >
           PENDING_REMINDER_TTL_MS
         ) {
+          pendingReminderResponsesRef.current.delete(
+            responseId,
+          );
+          continue;
+        }
+
+        const readyWrongOwner =
+          gate.authReady &&
+          gate.authAllowsApp &&
+          gate.workspaceStatus === 'ready' &&
+          gate.ownerKey &&
+          gate.hasWorkspace &&
+          gate.onboardingReady &&
+          gate.onboardingAllowsApp &&
+          pending.payload.ownerKey &&
+          pending.payload.ownerKey !==
+            gate.ownerKey;
+
+        if (readyWrongOwner) {
+          // Once a different workspace is fully restored, this intent can
+          // never be safe for the current session. Discard it rather than
+          // letting a later account switch unexpectedly open old study data.
           pendingReminderResponsesRef.current.delete(
             responseId,
           );

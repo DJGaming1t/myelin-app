@@ -28,6 +28,10 @@ import {
   sampleReminderCopy,
 } from '@/src/features/notifications/reminder-engine';
 import { useReminders } from '@/src/features/notifications/ReminderProvider';
+import {
+  reminderColorValue,
+  reminderSubtitleText,
+} from '@/src/features/notifications/notification-runtime';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
@@ -126,6 +130,7 @@ export default function RemindersScreen() {
     disable,
     reschedule,
     sendPreview,
+    sendExactPreview,
     refreshPermission,
   } = useReminders();
 
@@ -419,6 +424,26 @@ export default function RemindersScreen() {
                 </Text>
               </View>
 
+              <View style={styles.recoveredExactPreview}>
+                <Text style={styles.recoveredExactPreviewLabel}>
+                  {recoveredInsight.status === 'protected' ||
+                  recoveredInsight.status === 'suppressed'
+                    ? 'WOULD-HAVE-BEEN NOTIFICATION'
+                    : 'EXACT NOTIFICATION'}
+                </Text>
+                <NotificationPreview
+                  settings={settings}
+                  kind="study"
+                  copy={recoveredInsight.preview}
+                />
+                {(recoveredInsight.status === 'protected' ||
+                  recoveredInsight.status === 'suppressed') ? (
+                  <Text style={styles.recoveredExactWithheld}>
+                    MYELIN is withholding this real reminder right now. Sending the preview below is manual and does not change the plan.
+                  </Text>
+                ) : null}
+              </View>
+
               <View style={styles.recoveredInsightWhy}>
                 <Text style={styles.recoveredInsightWhyLabel}>
                   WHY THIS REMINDER?
@@ -430,6 +455,45 @@ export default function RemindersScreen() {
                   {recoveredInsight.detail}
                 </Text>
               </View>
+
+              {permission === 'granted' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Send this exact recovered reminder preview"
+                  disabled={disabled}
+                  onPress={() =>
+                    void run('recovered-preview', () =>
+                      sendExactPreview({
+                        kind: 'study',
+                        title: recoveredInsight.preview.title,
+                        body: recoveredInsight.preview.body,
+                        href: '/(app)/today/day-map',
+                        data: {
+                          recoveredPreview: 1,
+                          insightStatus:
+                            recoveredInsight.status,
+                        },
+                      }),
+                    )
+                  }
+                  style={({ pressed }) => [
+                    styles.recoveredPreviewButton,
+                    disabled && styles.disabled,
+                    pressed && !disabled && styles.pressed,
+                  ]}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.recoveredPreviewButtonTitle}>
+                      {busy === 'recovered-preview'
+                        ? 'Sending…'
+                        : 'Send this preview'}
+                    </Text>
+                    <Text style={styles.recoveredPreviewButtonText}>
+                      Manual preview only · does not schedule or unsuppress the real reminder
+                    </Text>
+                  </View>
+                  <Text style={styles.previewGlyph}>{voice.mark}</Text>
+                </Pressable>
+              ) : null}
 
               <Pressable
                 accessibilityRole="button"
@@ -826,28 +890,25 @@ export default function RemindersScreen() {
 
 function NotificationPreview({
   item,
+  copy,
   settings,
   kind,
 }: {
   item?: ReturnType<typeof buildReminderPlan>[number];
+  copy?: { title: string; body: string };
   settings: { voice: ReminderVoice; detail: ReminderDetail };
   kind: ReminderKind;
 }) {
   const fallback = sampleReminderCopy(settings, kind);
+  const subtitle = reminderSubtitleText(
+    settings as ReturnType<typeof normalizeReminderSettings>,
+    kind,
+  );
   const mark =
     settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
-  const accent =
-    settings.voice === 'calm'
-      ? '#D88F78'
-      : settings.voice === 'spark'
-        ? '#FFAA68'
-        : colors.accent;
-  const kindLabel =
-    kind === 'review'
-      ? 'REVIEW'
-      : kind === 'exam'
-        ? 'EXAM'
-        : 'PLANNED STUDY';
+  const accent = reminderColorValue(
+    settings as ReturnType<typeof normalizeReminderSettings>,
+  );
   const action =
     kind === 'review'
       ? 'Open Review →'
@@ -866,10 +927,14 @@ function NotificationPreview({
       </View>
 
       <Text style={[styles.notificationSubtitle, { color: accent }]}>
-        {mark} {kindLabel}
+        {subtitle}
       </Text>
-      <Text style={styles.notificationTitle}>{item?.title ?? fallback.title}</Text>
-      <Text style={styles.notificationBody}>{item?.body ?? fallback.body}</Text>
+      <Text style={styles.notificationTitle}>
+        {copy?.title ?? item?.title ?? fallback.title}
+      </Text>
+      <Text style={styles.notificationBody}>
+        {copy?.body ?? item?.body ?? fallback.body}
+      </Text>
 
       <View style={styles.notificationBottom}>
         <Text style={styles.notificationKind}>
@@ -1169,6 +1234,50 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: '700',
     marginTop: 6,
+  },
+  recoveredExactPreview: {
+    marginTop: 12,
+    paddingTop: 11,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  recoveredExactPreviewLabel: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '800',
+    letterSpacing: 0.75,
+    marginBottom: 7,
+  },
+  recoveredExactWithheld: {
+    color: colors.muted,
+    fontSize: 10.2,
+    lineHeight: 15,
+    marginTop: 7,
+  },
+  recoveredPreviewButton: {
+    minHeight: 57,
+    marginTop: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  recoveredPreviewButtonTitle: {
+    color: colors.text,
+    fontSize: 12.2,
+    fontWeight: '700',
+  },
+  recoveredPreviewButtonText: {
+    color: colors.subtle,
+    fontSize: 10.2,
+    lineHeight: 14,
+    marginTop: 3,
   },
   recoveredInsightWhy: {
     marginTop: 12,

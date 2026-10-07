@@ -1117,34 +1117,50 @@ function selectCappedPlan(
     });
   }
 
-  const chronologicalAccepted = [...accepted].sort(
+  const globallyRankedAccepted = [...accepted].sort(
+    (a, b) =>
+      b.usefulnessScore - a.usefulnessScore ||
+      a.reminder.at - b.reminder.at ||
+      a.reminder.key.localeCompare(
+        b.reminder.key,
+      ),
+  );
+  const keptByUsefulness = globallyRankedAccepted.slice(
+    0,
+    MAX_SCHEDULED_REMINDERS,
+  );
+  const overflow = globallyRankedAccepted.slice(
+    MAX_SCHEDULED_REMINDERS,
+  );
+  const queueCutoffWinner =
+    keptByUsefulness[keptByUsefulness.length - 1] ??
+    null;
+
+  for (const withheld of overflow) {
+    timeline.set(withheld.reminder.key, {
+      reminder: withheld.reminder,
+      source: reminderSource(withheld.reminder),
+      decision: 'global-cap',
+      winnerKey:
+        queueCutoffWinner?.reminder.key ?? null,
+      usefulnessScore: withheld.usefulnessScore,
+      usefulnessReason: withheld.usefulnessReason,
+      reason: queueCutoffWinner
+        ? `Not scheduled because ${MAX_SCHEDULED_REMINDERS} higher-ranked future reminders won the device queue. Queue cutoff: ${queueCutoffWinner.usefulnessScore} vs ${withheld.usefulnessScore}. ${queueCutoffWinner.usefulnessReason}`
+        : 'Not scheduled because MYELIN already has the maximum number of future device reminders queued.',
+    });
+  }
+
+  const chronologicalKept = [...keptByUsefulness].sort(
     (a, b) =>
       a.reminder.at - b.reminder.at ||
       a.reminder.key.localeCompare(
         b.reminder.key,
       ),
   );
-  const kept = chronologicalAccepted.slice(
-    0,
-    MAX_SCHEDULED_REMINDERS,
-  );
-  for (const overflow of chronologicalAccepted.slice(
-    MAX_SCHEDULED_REMINDERS,
-  )) {
-    timeline.set(overflow.reminder.key, {
-      reminder: overflow.reminder,
-      source: reminderSource(overflow.reminder),
-      decision: 'global-cap',
-      winnerKey: null,
-      usefulnessScore: overflow.usefulnessScore,
-      usefulnessReason: overflow.usefulnessReason,
-      reason:
-        'Not scheduled because MYELIN already has the maximum number of future device reminders queued.',
-    });
-  }
 
   return {
-    accepted: kept.map((item) => item.reminder),
+    accepted: chronologicalKept.map((item) => item.reminder),
     timeline: [...timeline.values()].sort(
       (a, b) =>
         a.reminder.at - b.reminder.at ||

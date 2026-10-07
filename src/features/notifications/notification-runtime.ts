@@ -151,6 +151,68 @@ export async function requestReminderPermission(): Promise<ReminderPermission> {
   return permissionFrom(status, Notifications);
 }
 
+export type ScheduledReminderAudit = {
+  registeredCount: number;
+  registeredIds: string[];
+  reminderKeys: string[];
+};
+
+type ScheduledReminderRequestLike = {
+  identifier: string;
+  content: {
+    data?: Record<string, unknown>;
+  };
+};
+
+export function summarizeScheduledReminderRequests(
+  requests: ScheduledReminderRequestLike[],
+  ownerKey: string,
+): ScheduledReminderAudit {
+  const currentOwner = requests.filter((request) => {
+    const data = request.content.data;
+    return Boolean(
+      data &&
+        data.myelin === true &&
+        data.preview !== true &&
+        data.ownerKey === ownerKey,
+    );
+  });
+
+  return {
+    registeredCount: currentOwner.length,
+    registeredIds: currentOwner.map(
+      (request) => request.identifier,
+    ),
+    reminderKeys: currentOwner
+      .map((request) => request.content.data?.reminderKey)
+      .filter(
+        (key): key is string =>
+          typeof key === 'string' && key.length > 0,
+      ),
+  };
+}
+
+export async function getScheduledReminderAudit(
+  ownerKey: string,
+): Promise<ScheduledReminderAudit> {
+  if (Platform.OS === 'web') {
+    return {
+      registeredCount: 0,
+      registeredIds: [],
+      reminderKeys: [],
+    };
+  }
+
+  const Notifications = await module();
+  const requests =
+    await Notifications.getAllScheduledNotificationsAsync();
+
+  return summarizeScheduledReminderRequests(
+    requests as ScheduledReminderRequestLike[],
+    ownerKey,
+  );
+}
+
 export async function cancelReminderIds(ids: string[]) {
   if (Platform.OS === 'web' || !ids.length) return;
 

@@ -1678,7 +1678,7 @@ assert.ok(
 );
 assert.ok(
   reminderStudioSource.includes('NEXT REMINDERS') &&
-    reminderStudioSource.includes('buildReminderTimeline') &&
+    reminderStudioSource.includes('buildReminderTimelineOverview') &&
     reminderStudioSource.includes('timelineDecisionLabel') &&
     reminderStudioSource.includes('DAILY CAP') &&
     reminderStudioSource.includes('COLLISION'),
@@ -1691,9 +1691,17 @@ assert.ok(
   'Reminder Studio should expose the deterministic usefulness score and rationale behind collision winners.',
 );
 assert.ok(
-  reminderStudioSource.includes('best-two-per-day usefulness cap') &&
-    reminderStudioSource.includes('Highest-ranked day winner'),
-  'Reminder Studio should explain that the daily cap keeps the best two reminders by usefulness rather than the earliest two.',
+  reminderStudioSource.includes(
+    'collisions, daily usefulness and the global device cap',
+  ) &&
+    reminderStudioSource.includes(
+      'Highest-ranked day winner',
+    ) &&
+    reminderStudioSource.includes('QUEUE CAP') &&
+    reminderStudioSource.includes(
+      'Queue cutoff winner',
+    ),
+  'Reminder Studio should explain both usefulness-ranked daily winners and global queue-cap decisions.',
 );
 assert.ok(
   reminderStudioSource.includes("'RECOVERED'") &&

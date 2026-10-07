@@ -525,7 +525,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     stateRef.current = freshState();
 
     if (previousOwner && previousOwner !== ownerKey) {
-      void cancelCurrentSchedule(previousOwner, previousState);
+      void cancelCurrentSchedule(
+        previousOwner,
+        previousState,
+      ).catch(() => undefined);
     }
 
     if (!ownerKey || !workspace) {
@@ -649,10 +652,9 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     setPermission(currentPermission);
 
     if (currentPermission !== 'granted') {
-      if (current.scheduledIds.length) {
-        const cleared = await cancelCurrentSchedule(owner, current);
-        await persist(cleared, owner);
-      }
+      const cleared =
+        await cancelCurrentSchedule(owner, current);
+      await persist(cleared, owner);
       setRegisteredCount(0);
       setDeviceScheduleChecked(true);
       setStatus(currentPermission === 'denied' ? 'blocked' : 'ready');

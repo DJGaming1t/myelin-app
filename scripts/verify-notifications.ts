@@ -866,8 +866,8 @@ function main() {
   assert.equal(runtimeSource.includes('getExpoPushTokenAsync'), false);
   assert.equal(runtimeSource.includes('getDevicePushTokenAsync'), false);
   assert.ok(runtimeSource.includes('sampleReminderCopy(settings, kind)'));
-  assert.ok(runtimeSource.includes('reminderSubtitle(settings, item.kind)'));
-  assert.ok(runtimeSource.includes('reminderColor(settings)'));
+  assert.ok(runtimeSource.includes('reminderSubtitleText(settings, item.kind)'));
+  assert.ok(runtimeSource.includes('reminderColorValue(settings)'));
 
   console.log('✓ reminders default off and silent');
   const reminderEngineSource = fs.readFileSync(

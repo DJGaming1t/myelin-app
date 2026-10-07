@@ -1298,6 +1298,151 @@ export function buildReminderPlan(
   );
 }
 
+export type ReminderTimelineSummary = {
+  totalCandidates: number;
+  scheduled: number;
+  withheld: number;
+  collision: number;
+  dailyCap: number;
+  globalCap: number;
+};
+
+export type ReminderTimelineOverview = {
+  items: ReminderTimelineItem[];
+  summary: ReminderTimelineSummary;
+  omittedCount: number;
+};
+
+function summarizeReminderTimeline(
+  timeline: ReminderTimelineItem[],
+): ReminderTimelineSummary {
+  const scheduled = timeline.filter(
+    (item) => item.decision === 'scheduled',
+  ).length;
+  const collision = timeline.filter(
+    (item) => item.decision === 'collision',
+  ).length;
+  const dailyCap = timeline.filter(
+    (item) => item.decision === 'daily-cap',
+  ).length;
+  const globalCap = timeline.filter(
+    (item) => item.decision === 'global-cap',
+  ).length;
+
+  return {
+    totalCandidates: timeline.length,
+    scheduled,
+    withheld:
+      timeline.length - scheduled,
+    collision,
+    dailyCap,
+    globalCap,
+  };
+}
+
+function timelinePreviewItems(
+  timeline: ReminderTimelineItem[],
+  limit: number,
+) {
+  const safeLimit = Math.max(
+    1,
+    Math.min(20, Math.round(limit)),
+  );
+  if (timeline.length <= safeLimit) {
+    return timeline;
+  }
+
+  const pinnedQueueCap = [...timeline]
+    .filter(
+      (item) => item.decision === 'global-cap',
+    )
+    .sort(
+      (a, b) =>
+        b.usefulnessScore - a.usefulnessScore ||
+        a.reminder.at - b.reminder.at ||
+        a.reminder.key.localeCompare(
+          b.reminder.key,
+        ),
+    )
+    .slice(0, Math.min(2, safeLimit));
+  const pinnedKeys = new Set(
+    pinnedQueueCap.map(
+      (item) => item.reminder.key,
+    ),
+  );
+  const chronological = timeline
+    .filter(
+      (item) =>
+        !pinnedKeys.has(item.reminder.key),
+    )
+    .slice(
+      0,
+      Math.max(
+        0,
+        safeLimit - pinnedQueueCap.length,
+      ),
+    );
+
+  return [...chronological, ...pinnedQueueCap].sort(
+    (a, b) =>
+      a.reminder.at - b.reminder.at ||
+      a.reminder.key.localeCompare(
+        b.reminder.key,
+      ),
+  );
+}
+
+export function buildReminderTimelineOverview(
+  workspace: WorkspaceState,
+  settingsInput: ReminderSettings,
+  now = Date.now(),
+  context: ReminderPlanContext = {},
+  limit = 8,
+): ReminderTimelineOverview {
+  const settings =
+    normalizeReminderSettings(settingsInput);
+  if (!settings.enabled) {
+    return {
+      items: [],
+      summary: {
+        totalCandidates: 0,
+        scheduled: 0,
+        withheld: 0,
+        collision: 0,
+        dailyCap: 0,
+        globalCap: 0,
+      },
+      omittedCount: 0,
+    };
+  }
+
+  const selected = selectCappedPlan(
+    buildAdaptedReminderCandidates(
+      workspace,
+      settings,
+      now,
+      context,
+    ),
+    workspace,
+    now,
+  );
+  const items = timelinePreviewItems(
+    selected.timeline,
+    limit,
+  );
+
+  return {
+    items,
+    summary: summarizeReminderTimeline(
+      selected.timeline,
+    ),
+    omittedCount: Math.max(
+      0,
+      selected.timeline.length - items.length,
+    ),
+  };
+}
+
 export function buildReminderTimeline(
   workspace: WorkspaceState,
   settingsInput: ReminderSettings,

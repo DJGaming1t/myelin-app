@@ -674,6 +674,14 @@ export default function RemindersScreen() {
                       <Text style={styles.timelineReason}>
                         {entry.reason}
                       </Text>
+                      <View style={styles.timelineUsefulness}>
+                        <Text style={styles.timelineUsefulnessScore}>
+                          USEFULNESS {entry.usefulnessScore}
+                        </Text>
+                        <Text style={styles.timelineUsefulnessReason}>
+                          {entry.usefulnessReason}
+                        </Text>
+                      </View>
 
                       {entry.decision ===
                         'collision' &&
@@ -1483,6 +1491,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 15,
     marginTop: 6,
+  },
+  timelineUsefulness: {
+    marginTop: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.bgRaised,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  timelineUsefulnessScore: {
+    color: colors.accent,
+    fontSize: 7.8,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+  timelineUsefulnessReason: {
+    color: colors.subtle,
+    fontSize: 9.4,
+    lineHeight: 13,
+    marginTop: 3,
   },
   timelineWinner: {
     color: colors.muted,

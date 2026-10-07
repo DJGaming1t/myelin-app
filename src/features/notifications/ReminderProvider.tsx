@@ -702,8 +702,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     const isCurrentScheduleWork = () =>
       scheduleGenerationRef.current === generation &&
       ownerRef.current === owner &&
-      workspaceRef.current === currentWorkspace &&
-      stateRef.current === current;
+      workspaceRef.current === currentWorkspace;
 
     if (
       Platform.OS === 'web' ||

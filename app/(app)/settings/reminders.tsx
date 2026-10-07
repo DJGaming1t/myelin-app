@@ -901,14 +901,12 @@ function NotificationPreview({
 }) {
   const fallback = sampleReminderCopy(settings, kind);
   const subtitle = reminderSubtitleText(
-    settings as ReturnType<typeof normalizeReminderSettings>,
+    settings,
     kind,
   );
   const mark =
     settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
-  const accent = reminderColorValue(
-    settings as ReturnType<typeof normalizeReminderSettings>,
-  );
+  const accent = reminderColorValue(settings);
   const action =
     kind === 'review'
       ? 'Open Review →'

@@ -1,6 +1,6 @@
 import { WorkspaceState } from '@/src/data/schema';
 import {
-  AssistantAction,
+  AssistantActionBatch,
   parseAssistantActionBatch,
 } from '@/src/features/assistant/ai-action-engine';
 import {
@@ -16,15 +16,16 @@ import {
 export const MYELIN_MINI_PROTOCOL_VERSION = 1 as const;
 export const MYELIN_MINI_MIN_ACTION_CONFIDENCE = 0.72 as const;
 
-export type MyelinMiniClarifyReason =
+export type MyelinMiniClarificationReason =
   | 'missing-date'
-  | 'missing-required-detail'
+  | 'missing-target'
   | 'ambiguous-reference'
-  | 'missing-target';
+  | 'missing-required-detail';
 
 export type MyelinMiniEscalationReason =
-  | 'concept-explanation'
+  | 'ambiguous'
   | 'general-knowledge'
+  | 'tutoring'
   | 'complex-reasoning'
   | 'multimodal'
   | 'unsupported-action'
@@ -34,17 +35,17 @@ export type MyelinMiniEscalationReason =
 export type MyelinMiniActionDecision = {
   version: typeof MYELIN_MINI_PROTOCOL_VERSION;
   requestId: string;
-  kind: 'actions';
+  route: 'actions';
   confidence: number;
-  actions: AssistantAction[];
+  batch: AssistantActionBatch;
 };
 
-export type MyelinMiniClarifyDecision = {
+export type MyelinMiniClarificationDecision = {
   version: typeof MYELIN_MINI_PROTOCOL_VERSION;
   requestId: string;
-  kind: 'clarify';
+  route: 'clarify';
   confidence: number;
-  reason: MyelinMiniClarifyReason;
+  reason: MyelinMiniClarificationReason;
   question: string;
   missingFields: string[];
 };
@@ -52,15 +53,15 @@ export type MyelinMiniClarifyDecision = {
 export type MyelinMiniEscalationDecision = {
   version: typeof MYELIN_MINI_PROTOCOL_VERSION;
   requestId: string;
-  kind: 'escalate';
+  route: 'escalate';
   confidence: number;
   reason: MyelinMiniEscalationReason;
-  summary: string;
+  note: string;
 };
 
 export type MyelinMiniDecision =
   | MyelinMiniActionDecision
-  | MyelinMiniClarifyDecision
+  | MyelinMiniClarificationDecision
   | MyelinMiniEscalationDecision;
 
 export type MyelinMiniModelRequest = {
@@ -86,7 +87,7 @@ export type MyelinMiniRouteResult =
   | {
       route: 'clarify';
       confidence: number;
-      reason: MyelinMiniClarifyReason;
+      reason: MyelinMiniClarificationReason;
       question: string;
       missingFields: string[];
       modelId: string;
@@ -95,7 +96,7 @@ export type MyelinMiniRouteResult =
       route: 'escalate';
       confidence: number;
       reason: MyelinMiniEscalationReason;
-      summary: string;
+      note: string;
       modelId: string;
     };
 
@@ -108,6 +109,19 @@ function cleanString(value: unknown, label: string, maxLength: number) {
     throw new Error(`MYELIN Mini returned an invalid ${label}.`);
   }
   return result;
+}
+
+function cleanStringArray(
+  value: unknown,
+  label: string,
+  maxItems: number,
+) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > maxItems) {
+    throw new Error(`MYELIN Mini returned invalid ${label}.`);
+  }
+  return value.map((item, index) =>
+    cleanString(item, `${label}[${index}]`, 120),
+  );
 }
 
 function confidence(value: unknown) {
@@ -129,62 +143,55 @@ function asObject(value: unknown) {
   return value as Record<string, unknown>;
 }
 
-function oneOf<T extends string>(
-  value: unknown,
-  allowed: readonly T[],
-  label: string,
-): T {
-  if (typeof value !== 'string' || !allowed.includes(value as T)) {
-    throw new Error(`MYELIN Mini returned an invalid ${label}.`);
+function clarificationReason(value: unknown): MyelinMiniClarificationReason {
+  const allowed: MyelinMiniClarificationReason[] = [
+    'missing-date',
+    'missing-target',
+    'ambiguous-reference',
+    'missing-required-detail',
+  ];
+  if (
+    typeof value !== 'string' ||
+    !allowed.includes(value as MyelinMiniClarificationReason)
+  ) {
+    throw new Error('MYELIN Mini returned an invalid clarification reason.');
   }
-  return value as T;
+  return value as MyelinMiniClarificationReason;
 }
 
-function cleanMissingFields(value: unknown) {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 8) {
-    throw new Error('MYELIN Mini returned invalid missing fields.');
+function escalationReason(value: unknown): MyelinMiniEscalationReason {
+  const allowed: MyelinMiniEscalationReason[] = [
+    'ambiguous',
+    'general-knowledge',
+    'tutoring',
+    'complex-reasoning',
+    'multimodal',
+    'unsupported-action',
+    'safety',
+    'low-confidence',
+  ];
+  if (
+    typeof value !== 'string' ||
+    !allowed.includes(value as MyelinMiniEscalationReason)
+  ) {
+    throw new Error('MYELIN Mini returned an invalid escalation reason.');
   }
-  return value.map((item) => cleanString(item, 'missing field', 80));
+  return value as MyelinMiniEscalationReason;
 }
-
-const clarifyReasons: readonly MyelinMiniClarifyReason[] = [
-  'missing-date',
-  'missing-required-detail',
-  'ambiguous-reference',
-  'missing-target',
-];
-
-const escalationReasons: readonly MyelinMiniEscalationReason[] = [
-  'concept-explanation',
-  'general-knowledge',
-  'complex-reasoning',
-  'multimodal',
-  'unsupported-action',
-  'safety',
-  'low-confidence',
-];
 
 export function myelinMiniDecisionJsonSchema() {
-  const actionItems =
-    assistantActionBatchJsonSchema().properties.actions.items;
-
   return {
     oneOf: [
       {
         type: 'object',
         additionalProperties: false,
-        required: ['version', 'requestId', 'kind', 'confidence', 'actions'],
+        required: ['version', 'requestId', 'route', 'confidence', 'batch'],
         properties: {
           version: { const: MYELIN_MINI_PROTOCOL_VERSION },
           requestId: { type: 'string', minLength: 1, maxLength: 120 },
-          kind: { const: 'actions' },
+          route: { const: 'actions' },
           confidence: { type: 'number', minimum: 0, maximum: 1 },
-          actions: {
-            type: 'array',
-            minItems: 1,
-            maxItems: 100,
-            items: actionItems,
-          },
+          batch: assistantActionBatchJsonSchema(),
         },
       },
       {
@@ -193,7 +200,7 @@ export function myelinMiniDecisionJsonSchema() {
         required: [
           'version',
           'requestId',
-          'kind',
+          'route',
           'confidence',
           'reason',
           'question',
@@ -202,36 +209,47 @@ export function myelinMiniDecisionJsonSchema() {
         properties: {
           version: { const: MYELIN_MINI_PROTOCOL_VERSION },
           requestId: { type: 'string', minLength: 1, maxLength: 120 },
-          kind: { const: 'clarify' },
+          route: { const: 'clarify' },
           confidence: { type: 'number', minimum: 0, maximum: 1 },
-          reason: { enum: clarifyReasons },
-          question: { type: 'string', minLength: 1, maxLength: 240 },
+          reason: {
+            enum: [
+              'missing-date',
+              'missing-target',
+              'ambiguous-reference',
+              'missing-required-detail',
+            ],
+          },
+          question: { type: 'string', minLength: 1, maxLength: 300 },
           missingFields: {
             type: 'array',
             minItems: 1,
-            maxItems: 8,
-            items: { type: 'string', minLength: 1, maxLength: 80 },
+            maxItems: 12,
+            items: { type: 'string', minLength: 1, maxLength: 120 },
           },
         },
       },
       {
         type: 'object',
         additionalProperties: false,
-        required: [
-          'version',
-          'requestId',
-          'kind',
-          'confidence',
-          'reason',
-          'summary',
-        ],
+        required: ['version', 'requestId', 'route', 'confidence', 'reason', 'note'],
         properties: {
           version: { const: MYELIN_MINI_PROTOCOL_VERSION },
           requestId: { type: 'string', minLength: 1, maxLength: 120 },
-          kind: { const: 'escalate' },
+          route: { const: 'escalate' },
           confidence: { type: 'number', minimum: 0, maximum: 1 },
-          reason: { enum: escalationReasons },
-          summary: { type: 'string', minLength: 1, maxLength: 320 },
+          reason: {
+            enum: [
+              'ambiguous',
+              'general-knowledge',
+              'tutoring',
+              'complex-reasoning',
+              'multimodal',
+              'unsupported-action',
+              'safety',
+              'low-confidence',
+            ],
+          },
+          note: { type: 'string', minLength: 1, maxLength: 240 },
         },
       },
     ],
@@ -240,15 +258,15 @@ export function myelinMiniDecisionJsonSchema() {
 
 export function myelinMiniSystemPrompt() {
   return [
-    'You are MYELIN Mini, a tiny intent and tool-routing model for a study-planning app.',
-    'You are not a general chatbot and you never calculate the timetable yourself.',
-    'For clear study-management commands, return kind=actions using only the MYELIN action protocol.',
-    'If one short user answer would make a command safe and unambiguous, return kind=clarify with exactly one concise question.',
-    'If the request needs teaching, factual knowledge, image understanding, safety-sensitive support, unsupported operations, or difficult open-ended reasoning, return kind=escalate.',
+    'You are MYELIN Mini, a narrow intent and tool-routing model for a study-planning app.',
+    'Your job is NOT to be a general chatbot and NOT to calculate the timetable yourself.',
+    'Return exactly one route: actions, clarify, or escalate.',
+    'Translate clear study-management commands into the existing MYELIN assistant action protocol.',
+    'If a study-management request is missing an essential date, target, reference, or other required detail, route to clarify and ask one short question.',
+    'If the user asks for teaching, factual knowledge, open-ended advice, images/documents, unsupported operations, safety-sensitive help, or difficult reasoning, route to escalate.',
     'Never invent dates, topic IDs, exam IDs, tasks, user preferences, or facts.',
-    'Use existing IDs from context whenever a matching record exists.',
-    'Use clientRef only to reference records created earlier in the same action list.',
-    'If action confidence would be below 0.72, escalate instead of guessing.',
+    'Use only records present in the supplied context unless the user explicitly asks to create a new record.',
+    'A confidence below 0.72 should normally escalate rather than produce actions.',
     ...assistantModelInstructions(),
   ].join('\n');
 }
@@ -290,14 +308,14 @@ export function parseMyelinMiniDecision(
     throw new Error('MYELIN Mini response request ID does not match the request.');
   }
 
+  const route = object.route;
   const score = confidence(object.confidence);
-  const kind = object.kind;
 
-  if (kind === 'clarify') {
+  if (route === 'clarify') {
     const allowedKeys = new Set([
       'version',
       'requestId',
-      'kind',
+      'route',
       'confidence',
       'reason',
       'question',
@@ -309,22 +327,22 @@ export function parseMyelinMiniDecision(
     return {
       version: MYELIN_MINI_PROTOCOL_VERSION,
       requestId,
-      kind,
+      route,
       confidence: score,
-      reason: oneOf(object.reason, clarifyReasons, 'clarification reason'),
-      question: cleanString(object.question, 'clarification question', 240),
-      missingFields: cleanMissingFields(object.missingFields),
+      reason: clarificationReason(object.reason),
+      question: cleanString(object.question, 'clarification question', 300),
+      missingFields: cleanStringArray(object.missingFields, 'missing fields', 12),
     };
   }
 
-  if (kind === 'escalate') {
+  if (route === 'escalate') {
     const allowedKeys = new Set([
       'version',
       'requestId',
-      'kind',
+      'route',
       'confidence',
       'reason',
-      'summary',
+      'note',
     ]);
     if (Object.keys(object).some((key) => !allowedKeys.has(key))) {
       throw new Error('MYELIN Mini escalation contains unsupported fields.');
@@ -332,51 +350,50 @@ export function parseMyelinMiniDecision(
     return {
       version: MYELIN_MINI_PROTOCOL_VERSION,
       requestId,
-      kind,
+      route,
       confidence: score,
-      reason: oneOf(object.reason, escalationReasons, 'escalation reason'),
-      summary: cleanString(object.summary, 'escalation summary', 320),
+      reason: escalationReason(object.reason),
+      note: cleanString(object.note, 'escalation note', 240),
     };
   }
 
-  if (kind !== 'actions') {
-    throw new Error('MYELIN Mini returned an unsupported decision kind.');
+  if (route !== 'actions') {
+    throw new Error('MYELIN Mini returned an unsupported route.');
   }
 
   const allowedKeys = new Set([
     'version',
     'requestId',
-    'kind',
+    'route',
     'confidence',
-    'actions',
+    'batch',
   ]);
   if (Object.keys(object).some((key) => !allowedKeys.has(key))) {
     throw new Error('MYELIN Mini action decision contains unsupported fields.');
   }
 
-  const batch = parseAssistantActionBatch({
-    version: 1,
-    requestId,
-    actions: object.actions,
-  });
+  const batch = parseAssistantActionBatch(object.batch);
+  if (batch.requestId !== requestId) {
+    throw new Error('MYELIN Mini action batch request ID does not match its decision.');
+  }
 
   if (score < MYELIN_MINI_MIN_ACTION_CONFIDENCE) {
     return {
       version: MYELIN_MINI_PROTOCOL_VERSION,
       requestId,
-      kind: 'escalate',
+      route: 'escalate',
       confidence: score,
       reason: 'low-confidence',
-      summary: 'The tiny model was not confident enough to safely prepare actions.',
+      note: 'The small model was not confident enough to safely prepare actions.',
     };
   }
 
   return {
     version: MYELIN_MINI_PROTOCOL_VERSION,
     requestId,
-    kind,
+    route,
     confidence: score,
-    actions: batch.actions,
+    batch,
   };
 }
 
@@ -407,8 +424,7 @@ export async function routeWithMyelinMini(input: {
   });
 
   const decision = parseMyelinMiniDecision(raw, input.requestId);
-
-  if (decision.kind === 'clarify') {
+  if (decision.route === 'clarify') {
     return {
       route: 'clarify',
       confidence: decision.confidence,
@@ -419,12 +435,12 @@ export async function routeWithMyelinMini(input: {
     };
   }
 
-  if (decision.kind === 'escalate') {
+  if (decision.route === 'escalate') {
     return {
       route: 'escalate',
       confidence: decision.confidence,
       reason: decision.reason,
-      summary: decision.summary,
+      note: decision.note,
       modelId: input.model.id,
     };
   }
@@ -434,11 +450,7 @@ export async function routeWithMyelinMini(input: {
     confidence: decision.confidence,
     prepared: prepareAssistantActionBatch(
       input.workspace,
-      {
-        version: 1,
-        requestId: decision.requestId,
-        actions: decision.actions,
-      },
+      decision.batch,
       now,
     ),
     modelId: input.model.id,

@@ -867,9 +867,120 @@ function main() {
     dailyCapLoser &&
       dailyCapLoser.source === 'study' &&
       dailyCapLoser.reason.includes(
-        'two MYELIN reminders already won',
+        'two higher-ranked MYELIN reminders won',
       ),
     'The third well-spaced reminder should remain visible in Studio as a DAILY CAP loser, not disappear silently.',
+  );
+
+  const bestTwoWorkspace = createEmptyWorkspace(now);
+  for (const [index, hour] of [14, 16].entries()) {
+    bestTwoWorkspace.tasks.push({
+      id: `best_two_low_${index}`,
+      title: `Low-value study ${index + 1}`,
+      subject: 'General',
+      topicId: null,
+      examId: null,
+      type: 'homework',
+      status: 'open',
+      planState: 'scheduled',
+      dueAt: 0,
+      estimatedMinutes: 20,
+      actualMinutes: 0,
+      priority: 1,
+      notes: '',
+      scheduledStart: local(2026, 9, 30, hour, 0),
+      scheduledEnd: local(2026, 9, 30, hour, 20),
+      postponedUntil: 0,
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      completedAt: 0,
+    });
+  }
+  bestTwoWorkspace.exams.push({
+    id: 'best_two_exam',
+    name: 'Tomorrow exam',
+    date: local(2026, 10, 1, 12, 0),
+    subjects: ['Science'],
+    scope: 'subjects',
+    topicIds: [],
+  });
+  const bestTwoSettings = {
+    ...settings,
+    adaptive: false,
+    reviewEnabled: false,
+    examOffsets: [1],
+    examTimeMinutes: 20 * 60,
+  };
+  const bestTwoPlan = buildReminderPlan(
+    bestTwoWorkspace,
+    bestTwoSettings,
+    now,
+  );
+  const bestTwoTimeline = buildReminderTimeline(
+    bestTwoWorkspace,
+    bestTwoSettings,
+    now,
+    {},
+    10,
+  );
+  const bestTwoExamWinner = bestTwoTimeline.find(
+    (item) =>
+      item.source === 'exam' &&
+      item.decision === 'scheduled',
+  );
+  const bestTwoStudyWinner = bestTwoTimeline.find(
+    (item) =>
+      item.source === 'study' &&
+      item.decision === 'scheduled',
+  );
+  const bestTwoCapLoser = bestTwoTimeline.find(
+    (item) =>
+      item.reminder.data.taskId ===
+        'best_two_low_1' &&
+      item.decision === 'daily-cap',
+  );
+  assert.ok(
+    bestTwoExamWinner &&
+      bestTwoStudyWinner &&
+      bestTwoCapLoser,
+    'The best-two daily cap should keep the later high-value exam reminder plus only one of the earlier low-value study reminders.',
+  );
+  assert.ok(
+    bestTwoExamWinner!.reminder.at >
+      bestTwoCapLoser!.reminder.at &&
+      bestTwoExamWinner!.usefulnessScore >
+        bestTwoCapLoser!.usefulnessScore,
+    'A later high-value reminder should displace an earlier low-value reminder even when they do not collide.',
+  );
+  assert.equal(
+    bestTwoCapLoser!.winnerKey,
+    bestTwoExamWinner!.reminder.key,
+    'The daily-cap loser should point at the strongest day winner so Reminder Studio can explain the displacement.',
+  );
+  assert.deepEqual(
+    bestTwoPlan.map((item) => item.key),
+    [
+      bestTwoStudyWinner!.reminder.key,
+      bestTwoExamWinner!.reminder.key,
+    ].sort((a, b) => {
+      const left = bestTwoPlan.find(
+        (item) => item.key === a,
+      )!;
+      const right = bestTwoPlan.find(
+        (item) => item.key === b,
+      )!;
+      return left.at - right.at;
+    }),
+    'The real device plan should contain the best two same-day reminders, returned chronologically.',
+  );
+  assert.ok(
+    bestTwoCapLoser!.reason.includes(
+      'Daily cutoff',
+    ) &&
+      bestTwoCapLoser!.reason.includes(
+        'Strongest winner',
+      ),
+    'Daily-cap explanation should expose both the cutoff and strongest winner rationale.',
   );
 
   const quietExam = createEmptyWorkspace(now);
@@ -1190,6 +1301,7 @@ function main() {
   console.log('✓ daily notification volume is capped even with crowded exam data');
   console.log('✓ Reminder Studio timeline exactly mirrors scheduled winners and exposes 90-minute collision + two-per-day cap losers');
   console.log('✓ later imminent-exam and recovered exam-work reminders can deterministically beat earlier generic study collisions');
+  console.log('✓ the two-per-day cap keeps the best two same-day reminders by usefulness, even when a stronger winner is later');
   console.log('✓ all personality/detail combinations avoid guilt/streak/urgency language');
   console.log('✓ Review, Exam and Study previews share the production copy engine');
   console.log('✓ reminder settings are normalized and plan signatures detect copy changes');
@@ -1265,6 +1377,11 @@ assert.ok(
     reminderStudioSource.includes('entry.usefulnessScore') &&
     reminderStudioSource.includes('entry.usefulnessReason'),
   'Reminder Studio should expose the deterministic usefulness score and rationale behind collision winners.',
+);
+assert.ok(
+  reminderStudioSource.includes('best-two-per-day usefulness cap') &&
+    reminderStudioSource.includes('Highest-ranked day winner'),
+  'Reminder Studio should explain that the daily cap keeps the best two reminders by usefulness rather than the earliest two.',
 );
 assert.ok(
   reminderStudioSource.includes("'RECOVERED'") &&

@@ -12,6 +12,10 @@ import {
   parseMyelinMiniDecision,
   routeWithMyelinMini,
 } from '../src/features/assistant/myelin-mini';
+import {
+  evaluateMyelinMiniPredictions,
+  myelinMiniPassesReleaseGate,
+} from '../src/features/assistant/myelin-mini-evaluation';
 
 const REQUEST_ID = 'mini-test-1';
 
@@ -239,6 +243,104 @@ function verifySeedDataset() {
   return lines.length;
 }
 
+type EvalExample = {
+  id: string;
+  input: {
+    currentDate: string;
+    userRequest: string;
+    context?: unknown;
+  };
+  output: unknown;
+};
+
+function verifyEvaluationHarness() {
+  const examples = readFileSync(
+    'training/myelin-mini/eval-v1.jsonl',
+    'utf8',
+  )
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as EvalExample);
+
+  assert.ok(
+    examples.length >= 20,
+    'Held-out MYELIN Mini eval set should contain at least 20 examples.',
+  );
+
+  const goldPredictions = examples.map((example, index) => ({
+    id: example.id,
+    output: example.output,
+    latencyMs: 10 + index,
+  }));
+  const perfect = evaluateMyelinMiniPredictions(
+    examples,
+    goldPredictions,
+  );
+
+  assert.equal(perfect.parseValidity, 1);
+  assert.equal(perfect.routeAccuracy, 1);
+  assert.equal(perfect.actionExactAccuracy, 1);
+  assert.equal(perfect.clarifyReasonAccuracy, 1);
+  assert.equal(perfect.escalateReasonAccuracy, 1);
+  assert.equal(perfect.unsafeActionCount, 0);
+  assert.equal(
+    myelinMiniPassesReleaseGate(perfect),
+    true,
+  );
+  assert.equal(perfect.latencyMs.count, examples.length);
+  assert.ok((perfect.latencyMs.p95 ?? 0) >= 10);
+
+  const unsafeIndex = examples.findIndex((example) => {
+    const output = example.output as { route?: unknown };
+    return output.route === 'clarify';
+  });
+  assert.ok(unsafeIndex >= 0);
+
+  const unsafeExample = examples[unsafeIndex]!;
+  const unsafeExpected = unsafeExample.output as {
+    requestId: string;
+  };
+  const unsafePredictions = [...goldPredictions];
+  unsafePredictions[unsafeIndex] = {
+    id: unsafeExample.id,
+    latencyMs: 20,
+    output: {
+      version: 1,
+      requestId: unsafeExpected.requestId,
+      route: 'actions',
+      confidence: 0.99,
+      batch: {
+        version: 1,
+        requestId: unsafeExpected.requestId,
+        actions: [
+          {
+            type: 'create_task',
+            title: 'Guessed task',
+            subject: '',
+            taskType: 'personal',
+            estimatedMinutes: 10,
+            priority: 2,
+            notes: '',
+          },
+        ],
+      },
+    },
+  };
+
+  const unsafe = evaluateMyelinMiniPredictions(
+    examples,
+    unsafePredictions,
+  );
+  assert.equal(unsafe.unsafeActionCount, 1);
+  assert.equal(
+    myelinMiniPassesReleaseGate(unsafe),
+    false,
+  );
+
+  return examples.length;
+}
+
 async function main() {
   const workspace = createEmptyWorkspace(1_800_000_000_000);
   const seen: Parameters<MyelinMiniModelAdapter['generate']>[0][] = [];
@@ -357,10 +459,13 @@ async function main() {
   }
 
   const seedCount = verifySeedDataset();
+  const evalCount = verifyEvaluationHarness();
 
   console.log('✓ MYELIN Mini runtime routes actions, clarification, and escalation');
   console.log('✓ low-confidence actions fail over to the stronger-model route');
   console.log(`✓ MYELIN Mini seed dataset validates: ${seedCount} examples`);
+  console.log(`✓ held-out evaluation harness validates: ${evalCount} examples`);
+  console.log('✓ release gate rejects unsafe action routing');
   console.log('✓ seed outputs use the exact production action protocol');
 }
 

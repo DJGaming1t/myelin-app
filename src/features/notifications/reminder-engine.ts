@@ -1003,6 +1003,26 @@ export function buildRecoveredReminderInsight(
   const placement = livePlacement ?? baselinePlacement;
   if (!window || !placement) return null;
 
+  const baselineStart =
+    baselinePlacement?.start ?? placement.start;
+  const activeFocusOverlaps =
+    Boolean(
+      activeFocus &&
+        activeFocus.unavailableUntil >
+          baselineStart &&
+        !(
+          activeFocus.topicId ===
+            baselinePlacement?.topicId &&
+          activeFocus.startedAt != null &&
+          baselinePlacement &&
+          activeFocus.startedAt >=
+            baselinePlacement.start -
+              5 * 60_000 &&
+          activeFocus.startedAt <
+            baselinePlacement.end
+        ),
+    );
+
   const scheduled = buildReminderPlan(
     workspace,
     settings,
@@ -1018,8 +1038,9 @@ export function buildRecoveredReminderInsight(
   );
 
   if (
+    activeFocusOverlaps ||
     liveWindow?.protection?.reason ===
-    'active-focus'
+      'active-focus'
   ) {
     return {
       status: 'protected',
@@ -1085,33 +1106,6 @@ export function buildRecoveredReminderInsight(
       'Day Map study reminders are turned off, so recovered study blocks stay silent.';
     detail =
       'The recovered block remains available in Today and Day Map.';
-  } else {
-    const baselineStart =
-      baselinePlacement?.start ?? placement.start;
-    const activeFocusOverlaps =
-      Boolean(
-        activeFocus &&
-          activeFocus.unavailableUntil >
-            baselineStart &&
-          !(
-            activeFocus.topicId ===
-              baselinePlacement?.topicId &&
-            activeFocus.startedAt != null &&
-            baselinePlacement &&
-            activeFocus.startedAt >=
-              baselinePlacement.start -
-                5 * 60_000 &&
-            activeFocus.startedAt <
-              baselinePlacement.end
-          ),
-      );
-
-    if (activeFocusOverlaps) {
-      why =
-        'A live Focus session overlaps the recovered block, so MYELIN suppresses the stale reminder instead of interrupting you.';
-      detail =
-        'The next reminder will be reconsidered after the active Focus session changes the plan.';
-    }
   }
 
   return {

@@ -24,7 +24,7 @@ async function module(): Promise<ExpoNotificationsModule> {
   return import('expo-notifications');
 }
 
-function reminderSubtitle(settings: ReminderSettings, kind: ReminderKind) {
+export function reminderSubtitleText(settings: ReminderSettings, kind: ReminderKind) {
   const mark =
     settings.voice === 'signal' ? '⌁' : settings.voice === 'spark' ? '✦' : '◌';
   const label =
@@ -49,7 +49,7 @@ function reminderSubtitle(settings: ReminderSettings, kind: ReminderKind) {
   return `${mark} ${label}`;
 }
 
-function reminderColor(settings: ReminderSettings) {
+export function reminderColorValue(settings: ReminderSettings) {
   if (settings.voice === 'calm') return '#D88F78';
   if (settings.voice === 'spark') return '#FFAA68';
   return '#FF805B';
@@ -174,10 +174,10 @@ export async function scheduleReminderPlan(
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: item.title,
-          subtitle: reminderSubtitle(settings, item.kind),
+          subtitle: reminderSubtitleText(settings, item.kind),
           body: item.body,
           sound: settings.sound ? 'default' : undefined,
-          color: reminderColor(settings),
+          color: reminderColorValue(settings),
           data: {
             myelin: true,
             kind: item.kind,
@@ -203,6 +203,50 @@ export async function scheduleReminderPlan(
   }
 }
 
+export type ExactReminderPreview = {
+  kind: ReminderKind;
+  title: string;
+  body: string;
+  href:
+    | '/(app)/review'
+    | '/(app)/exams'
+    | '/(app)/today/day-map';
+  data?: Record<string, string | number | boolean>;
+};
+
+export async function sendExactReminderPreview(
+  settings: ReminderSettings,
+  preview: ExactReminderPreview,
+) {
+  if (Platform.OS === 'web') return;
+
+  await configureNotificationRuntime();
+  const Notifications = await module();
+  const channelId = settings.sound ? SOUND_CHANNEL : GENTLE_CHANNEL;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: preview.title,
+      subtitle: reminderSubtitleText(
+        settings,
+        preview.kind,
+      ),
+      body: preview.body,
+      sound: settings.sound ? 'default' : undefined,
+      color: reminderColorValue(settings),
+      data: {
+        myelin: true,
+        kind: preview.kind,
+        href: preview.href,
+        preview: true,
+        exactPreview: true,
+        ...(preview.data ?? {}),
+      },
+    },
+    trigger: null,
+  });
+}
+
 export async function sendReminderPreview(
   settings: ReminderSettings,
   kind: ReminderKind = 'review',
@@ -222,10 +266,10 @@ export async function sendReminderPreview(
   await Notifications.scheduleNotificationAsync({
     content: {
       title: content.title,
-      subtitle: reminderSubtitle(settings, kind),
+      subtitle: reminderSubtitleText(settings, kind),
       body: content.body,
       sound: settings.sound ? 'default' : undefined,
-      color: reminderColor(settings),
+      color: reminderColorValue(settings),
       data: {
         myelin: true,
         kind,

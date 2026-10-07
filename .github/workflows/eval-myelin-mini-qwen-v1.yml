@@ -1,0 +1,73 @@
+name: Evaluate MYELIN Mini Qwen v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/eval-myelin-mini-qwen-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    name: Trained adapter generation gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: training/myelin-mini/requirements-train.txt
+
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build exact MYELIN Mini eval prompts
+        run: npx tsx scripts/build-myelin-mini-eval-prompts.ts
+
+      - name: Download trained v1 adapter
+        uses: actions/download-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-lora-v1
+          path: artifacts/myelin-mini/qwen3.5-0.8b-lora-v1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 37594519114
+
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+
+      - name: Install MYELIN Mini inference stack
+        run: python -m pip install -r training/myelin-mini/requirements-train.txt
+
+      - name: Run trained adapter generation gate
+        run: >-
+          python scripts/eval-myelin-mini-adapter.py
+          --adapter artifacts/myelin-mini/qwen3.5-0.8b-lora-v1
+          --output artifacts/myelin-mini/qwen3.5-0.8b-lora-v1-eval/results.jsonl
+
+      - name: Upload evaluation outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-qwen3.5-0.8b-lora-v1-eval
+          path: artifacts/myelin-mini/qwen3.5-0.8b-lora-v1-eval
+          if-no-files-found: warn

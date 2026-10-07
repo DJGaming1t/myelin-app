@@ -254,12 +254,23 @@ export class LocalAiManager {
       });
     }
 
-    if (
-      this.preferences.selectedModelId &&
-      !this.catalog.some((model) => model.id === this.preferences.selectedModelId)
-    ) {
-      this.preferences.selectedModelId = null;
-      await this.preferenceStore.save(this.preferences);
+    if (this.preferences.selectedModelId) {
+      const selectedDefinition =
+        this.catalog.find(
+          (model) =>
+            model.id ===
+            this.preferences.selectedModelId,
+        ) ?? null;
+      if (
+        !selectedDefinition ||
+        selectedDefinition.availability ===
+          'coming-soon'
+      ) {
+        this.preferences.selectedModelId = null;
+        await this.preferenceStore.save(
+          this.preferences,
+        );
+      }
     }
 
     this.initialized = true;
@@ -268,7 +279,15 @@ export class LocalAiManager {
   }
 
   async selectModel(modelId: LocalAiModelId | null) {
-    if (modelId) this.model(modelId);
+    if (modelId) {
+      const model = this.model(modelId);
+      if (model.availability === 'coming-soon') {
+        throw new LocalAiManagerError(
+          'This model is not available to install yet.',
+          'blocked',
+        );
+      }
+    }
     this.preferences = {
       ...this.preferences,
       selectedModelId: modelId,

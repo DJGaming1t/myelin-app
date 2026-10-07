@@ -460,26 +460,26 @@ export default function SettingsScreen() {
 
           <Section
             title="On-device AI"
-            subtitle="Optional local models stay separate from MYELIN’s core planner.">
+            subtitle="Experimental local AI. One verified model path is being tested; the core planner does not depend on it.">
             <StatusRow
               label="MODEL"
               value={selectedLocalAi?.definition.shortName ?? 'None selected'}
               tone={selectedLocalAi ? 'accent' : undefined}
             />
             <StatusRow
-              label="DOWNLOADS"
-              value="Optional"
+              label="STATUS"
+              value={selectedLocalAi ? 'Experimental' : 'Not configured'}
             />
             <InfoBox>
-              Model files are stored separately on this device. The base app and deterministic planner continue to work without downloading one.
+              Local AI is not a normal one-tap download yet. MYELIN currently supports manual import of one verified FunctionGemma LiteRT candidate; the base app and deterministic planner work without it.
             </InfoBox>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/(app)/settings/ai-models')}
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
               <View style={styles.transferCopy}>
-                <Text style={styles.transferTitle}>Manage AI models</Text>
-                <Text style={styles.transferText}>Choose FunctionGemma or Qwen, inspect storage and manage downloads</Text>
+                <Text style={styles.transferTitle}>Local AI (experimental)</Text>
+                <Text style={styles.transferText}>FunctionGemma manual import, verification and native model test</Text>
               </View>
               <Text style={styles.transferArrow}>→</Text>
             </Pressable>

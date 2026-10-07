@@ -146,6 +146,8 @@ export default function RemindersScreen() {
     permission,
     settings,
     scheduledCount,
+    trackedScheduledCount,
+    deviceScheduleChecked,
     plannedCount,
     message,
     updateSettings,
@@ -258,6 +260,16 @@ export default function RemindersScreen() {
   const detail = DETAIL_LEVELS.find((item) => item.id === settings.detail)!;
   const previewItem = previewPlan.find((item) => item.kind === previewKind);
   const disabled = !ready || status === 'scheduling' || Boolean(busy);
+  const deviceScheduleMismatch =
+    settings.enabled &&
+    permission === 'granted' &&
+    deviceScheduleChecked &&
+    scheduledCount !== plannedCount;
+  const trackedDeviceMismatch =
+    settings.enabled &&
+    permission === 'granted' &&
+    deviceScheduleChecked &&
+    trackedScheduledCount !== scheduledCount;
 
   async function run(name: string, action: () => Promise<unknown>) {
     setBusy(name);
@@ -980,13 +992,30 @@ export default function RemindersScreen() {
 
           <StatusLine label="PERMISSION" value={permissionLabel(permission)} />
           <StatusLine
-            label="SCHEDULED"
+            label="PLANNED"
+            value={`${plannedCount} selected by MYELIN`}
+          />
+          <StatusLine
+            label="DEVICE"
             value={
-              settings.enabled
-                ? `${scheduledCount} on this device`
-                : `${plannedCount} would be useful now`
+              !settings.enabled
+                ? '0 registered · reminders off'
+                : permission !== 'granted'
+                  ? '0 registered · permission required'
+                  : !deviceScheduleChecked
+                    ? 'Could not verify registrations'
+                    : `${scheduledCount} actually registered`
             }
           />
+
+          {deviceScheduleMismatch ||
+          trackedDeviceMismatch ? (
+            <Text style={styles.deliveryMismatch}>
+              {deviceScheduleMismatch
+                ? `Device and plan differ (${scheduledCount} registered vs ${plannedCount} planned). Refresh schedule will repair the difference.`
+                : `The device has ${scheduledCount} MYELIN reminder${scheduledCount === 1 ? '' : 's'}, but the app was tracking ${trackedScheduledCount}. Refresh schedule will reconcile the exact registrations.`}
+            </Text>
+          ) : null}
 
           {permission === 'denied' ? (
             <Pressable
@@ -1383,6 +1412,12 @@ const styles = StyleSheet.create({
   },
   statusPillTextOn: { color: colors.success },
   previewShell: { marginTop: spacing.xl },
+  deliveryMismatch: {
+    marginTop: 8,
+    color: colors.danger,
+    fontSize: 10.8,
+    lineHeight: 15,
+  },
   timelineCard: {
     marginTop: spacing.xl,
     borderRadius: radius.lg,

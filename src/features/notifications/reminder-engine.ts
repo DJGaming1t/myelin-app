@@ -1042,6 +1042,33 @@ function selectCappedPlan(
         continue;
       }
 
+      const candidateDay = localDateKey(reminder.at);
+      const replacedOnCandidateDay =
+        collisions.filter(
+          (item) =>
+            localDateKey(item.reminder.at) ===
+            candidateDay,
+        ).length;
+      const projectedDayCount =
+        (perDay.get(candidateDay) ?? 0) -
+        replacedOnCandidateDay;
+      if (
+        projectedDayCount >=
+        MAX_REMINDERS_PER_DAY
+      ) {
+        timeline.set(reminder.key, {
+          reminder,
+          source,
+          decision: 'daily-cap',
+          winnerKey: null,
+          usefulnessScore: usefulness.score,
+          usefulnessReason: usefulness.reason,
+          reason:
+            'This reminder ranks higher than its nearby collision, but two other MYELIN reminders already won this local day.',
+        });
+        continue;
+      }
+
       for (const loser of collisions) {
         const index = accepted.indexOf(loser);
         if (index >= 0) accepted.splice(index, 1);

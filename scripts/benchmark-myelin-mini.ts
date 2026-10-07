@@ -109,6 +109,7 @@ const evalPath = resolve(
     'training/myelin-mini/eval-v1.jsonl',
 );
 const predictionsOut = process.env.MYELIN_MINI_PREDICTIONS_OUT?.trim();
+const reportOut = process.env.MYELIN_MINI_REPORT_OUT?.trim();
 const concurrency = numberEnv('MYELIN_MINI_CONCURRENCY', 4, 1, 32);
 const timeoutMs = numberEnv('MYELIN_MINI_TIMEOUT_MS', 30_000, 1_000, 180_000);
 const maxTokens = numberEnv('MYELIN_MINI_MAX_OUTPUT_TOKENS', 1200, 64, 4096);
@@ -226,6 +227,25 @@ if (predictionsOut) {
 }
 
 const report = evaluateMyelinMiniPredictions(examples, predictions);
+
+if (reportOut) {
+  writeFileSync(
+    resolve(reportOut),
+    JSON.stringify(
+      {
+        model,
+        baseUrl,
+        evaluatedAt: new Date().toISOString(),
+        releaseGate: myelinMiniPassesReleaseGate(report),
+        report,
+      },
+      null,
+      2,
+    ) + '\n',
+    'utf8',
+  );
+}
+
 const percent = (value: number | null) =>
   value == null ? 'n/a' : `${(value * 100).toFixed(1)}%`;
 

@@ -13,6 +13,8 @@ export type ReminderDeviceState = {
 };
 
 const ROOT = '@myelin/reminders';
+const LEGACY_OWNERLESS_CLEANUP_KEY =
+  `${ROOT}/migration/ownerless-v1`;
 
 function key(ownerKey: string) {
   return `${ROOT}/${encodeURIComponent(ownerKey)}`;
@@ -48,6 +50,23 @@ function normalizeState(value: unknown): ReminderDeviceState {
         : '',
   };
 }
+
+export const reminderMigrationStorage = {
+  async legacyOwnerlessCleanupCompleted() {
+    return (
+      (await AsyncStorage.getItem(
+        LEGACY_OWNERLESS_CLEANUP_KEY,
+      )) === '1'
+    );
+  },
+
+  async markLegacyOwnerlessCleanupCompleted() {
+    await AsyncStorage.setItem(
+      LEGACY_OWNERLESS_CLEANUP_KEY,
+      '1',
+    );
+  },
+};
 
 export const reminderStorage = {
   async load(ownerKey: string): Promise<ReminderDeviceState> {

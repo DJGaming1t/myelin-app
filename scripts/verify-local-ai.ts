@@ -244,7 +244,14 @@ const androidCapabilities: LocalAiDeviceCapabilities = {
   const qwen = LOCAL_AI_MODELS[1]!;
   assert.equal(functionGemma.requiresTaskFineTune, true);
   assert.equal(functionGemma.license, 'Gemma');
+  assert.equal(functionGemma.availability, 'import-only');
+  assert.match(functionGemma.sourceUrl, /huggingface\.co/);
+  assert.match(
+    functionGemma.artifactPageUrl ?? '',
+    /mobile_actions_q8_ekv1024\.litertlm/,
+  );
   assert.equal(qwen.license, 'Apache-2.0');
+  assert.equal(qwen.availability, 'coming-soon');
   assert.equal(functionGemma.artifact?.runtimeId, 'litert-lm');
   assert.equal(functionGemma.artifact?.format, 'litertlm');
   assert.equal(functionGemma.artifact?.sizeBytes, 288_964_608);
@@ -355,8 +362,13 @@ async function main() {
     assert.match(modelScreenSource, /Unload AI in background/);
     assert.match(modelScreenSource, /downloadModel/);
     assert.match(modelScreenSource, /Import file/);
-    assert.match(modelScreenSource, /Confirm licence/);
-    assert.match(modelScreenSource, /I accepted the licence/);
+    assert.match(modelScreenSource, /Open model page/);
+    assert.match(modelScreenSource, /Get model file/);
+    assert.match(modelScreenSource, /I accepted licence/);
+    assert.match(modelScreenSource, /Coming soon/);
+    assert.match(modelScreenSource, /Not available yet/);
+    assert.match(modelScreenSource, /availability === 'coming-soon'/);
+    assert.match(modelScreenSource, /Linking\.openURL/);
     assert.match(modelScreenSource, /Run test/);
     assert.match(modelScreenSource, /Try selected model/);
     assert.match(modelScreenSource, /AI SETUP CHECK/);
@@ -431,6 +443,44 @@ async function main() {
     assert.match(nativeBoundarySource, /file\.startsWith\('modules\/'\)/);
     assert.equal(appConfig.expo.version, '0.2.13');
     assert.equal(appConfig.expo.android.versionCode, 10);
+  }
+
+  {
+    const kv = new MemoryKeyValueStore();
+    await kv.setItem(
+      '@myelin/local-ai/preferences',
+      JSON.stringify({
+        selectedModelId: 'qwen3.5-0.8b',
+        acceptedLicenseModelIds: [],
+        autoUnload: true,
+      }),
+    );
+    const preferences =
+      createLocalAiPreferenceStore(kv);
+    const files = new FakeFileStore();
+    const runtime = new FakeRuntime();
+
+    const manager = new LocalAiManager(
+      files,
+      preferences,
+      async () => androidCapabilities,
+      [runtime],
+      LOCAL_AI_MODELS,
+    );
+
+    const initialized = await manager.initialize();
+    assert.equal(
+      initialized.selectedModelId,
+      null,
+      'A coming-soon model saved by an older build must not remain selected.',
+    );
+    await assert.rejects(
+      () => manager.selectModel('qwen3.5-0.8b'),
+      (error: unknown) =>
+        error instanceof LocalAiManagerError &&
+        error.code === 'blocked',
+      'Coming-soon models must be blocked below the UI too.',
+    );
   }
 
   {

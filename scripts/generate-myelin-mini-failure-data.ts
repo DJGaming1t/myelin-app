@@ -257,6 +257,82 @@ for (const [topicId, topicName, subject, slug] of practiceCases) {
   );
 }
 
+const routerPracticeCases = [
+  ['topic-trig', 'Trigonometry', 'Mathematics', 'trig'],
+  ['topic-electricity', 'Electricity', 'Physics', 'electricity'],
+  ['topic-life', 'Life Processes', 'Biology', 'life processes'],
+  ['topic-acids', 'Acids, Bases and Salts', 'Chemistry', 'acids'],
+  ['topic-statistics', 'Statistics', 'Mathematics', 'statistics'],
+] as const;
+
+const routerPracticeTemplates = [
+  (alias: string, minutes: number) =>
+    `kal ${alias} ka ${minutes} minute practice add kar do`,
+  (alias: string, minutes: number) =>
+    `${alias} tomorrow ${minutes}m questions`,
+  (alias: string, minutes: number) =>
+    `kal ${minutes} min ${alias} questions schedule kar do`,
+  (alias: string, minutes: number) =>
+    `tomorrow add ${minutes} minutes of ${alias} questions`,
+  (alias: string, minutes: number) =>
+    `kal ${alias} ke questions ${minutes} min ke liye add kar do`,
+  (alias: string, minutes: number) =>
+    `${alias} ke ${minutes} min questions kal high priority add kar do`,
+] as const;
+
+for (const [topicId, topicName, subject, alias] of routerPracticeCases) {
+  const context = {
+    topics: [{ id: topicId, name: topicName, subject }],
+  };
+
+  routerPracticeTemplates.forEach((phrase, index) => {
+    const minutes = [30, 25, 40, 20, 35, 45][index]!;
+    const priority = index === 5 ? 3 : 2;
+    examples.push(
+      action(
+        `router-practice-${topicId}-${index + 1}`,
+        phrase(alias, minutes),
+        [
+          {
+            type: 'create_task',
+            title: `Practice ${topicName}`,
+            subject,
+            topic: { topicId },
+            taskType: 'practice',
+            dueDate: TOMORROW,
+            estimatedMinutes: minutes,
+            priority,
+            notes: '',
+          },
+        ],
+        context,
+        [
+          'command-router',
+          'relative-date',
+          index === 1 || index === 3 ? 'shorthand' : 'hinglish',
+        ],
+      ),
+    );
+  });
+}
+
+[
+  'kal 30 min questions add kar do',
+  'tomorrow 25m practice add kar do',
+  'kal questions schedule kar do',
+  '30 min ka practice kal add kar do',
+].forEach((phrase, index) => {
+  examples.push(
+    clarify(
+      `router-clarify-missing-target-${index + 1}`,
+      phrase,
+      'missing-target',
+      'Which subject or topic do you want to practice?',
+      ['target'],
+    ),
+  );
+});
+
 const examTopics = {
   topics: [
     { id: 'topic-electricity', name: 'Electricity', subject: 'Physics' },
@@ -453,11 +529,11 @@ function validate(rows: FailureExample[]) {
     if (row.tags.includes('hinglish')) hinglish += 1;
   }
 
-  assert.ok(rows.length >= 70, 'Failure curriculum should contain at least 70 examples.');
-  assert.ok((routeCounts.get('actions') ?? 0) >= 45);
+  assert.ok(rows.length >= 105, 'Failure curriculum should contain at least 105 examples.');
+  assert.ok((routeCounts.get('actions') ?? 0) >= 75);
   assert.ok((routeCounts.get('clarify') ?? 0) >= 10);
   assert.ok((routeCounts.get('escalate') ?? 0) >= 10);
-  assert.ok(hinglish >= 5);
+  assert.ok(hinglish >= 20);
 
   return {
     total: rows.length,

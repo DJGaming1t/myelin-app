@@ -558,13 +558,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       );
 
       await cancelReminderIds(idsToCancel);
-      const cleared = {
+      await reminderStorage.clearSchedule(owner);
+      return {
         ...current,
         scheduledIds: [],
         planSignature: '',
       };
-      await reminderStorage.save(owner, cleared);
-      return cleared;
     },
     [],
   );
@@ -921,7 +920,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   const beginReminderAction = useCallback(() => {
     const owner = ownerRef.current;
-    if (!owner) return null;
+    if (
+      !owner ||
+      latestOwnerKeyRef.current !== owner
+    ) {
+      return null;
+    }
 
     reminderActionGenerationRef.current += 1;
     return {

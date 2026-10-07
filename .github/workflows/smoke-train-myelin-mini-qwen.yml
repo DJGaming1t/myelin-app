@@ -7,6 +7,8 @@ on:
       - codex/exam-autopilot-capacity-v1
     paths:
       - .github/workflows/smoke-train-myelin-mini-qwen.yml
+      - scripts/train-myelin-mini-qwen.py
+      - training/myelin-mini/requirements-train.txt
 
 permissions:
   contents: read

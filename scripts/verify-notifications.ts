@@ -1045,7 +1045,7 @@ function main() {
       subject: 'Science',
       topicId: null,
       examId: 'delivery_time_exam',
-      type: 'exam',
+      type: 'revision',
       status: 'open',
       planState: 'scheduled',
       dueAt: 0,

@@ -1117,6 +1117,97 @@ function main() {
     'The real device plan should preserve the exam-linked reminder chosen with delivery-time urgency.',
   );
 
+
+  const globalCapWorkspace = createEmptyWorkspace(now);
+  for (let index = 0; index < 15; index += 1) {
+    globalCapWorkspace.exams.push({
+      id: `global_cap_exam_${index}`,
+      name: `Global cap exam ${index + 1}`,
+      date: local(
+        2026,
+        10,
+        31 + index * 2,
+        12,
+        0,
+      ),
+      subjects: ['Science'],
+      scope: 'subjects',
+      topicIds: [],
+    });
+  }
+  const globalCapSettings = {
+    ...settings,
+    adaptive: false,
+    reviewEnabled: false,
+    studyBlockEnabled: false,
+    examOffsets: [30, 1],
+  };
+  const globalCapPlan = buildReminderPlan(
+    globalCapWorkspace,
+    globalCapSettings,
+    now,
+  );
+  const globalCapTimeline = buildReminderTimeline(
+    globalCapWorkspace,
+    globalCapSettings,
+    now,
+    {},
+    20,
+  );
+  assert.equal(
+    globalCapPlan.length,
+    MAX_SCHEDULED_REMINDERS,
+    'The device queue should still respect the hard global reminder cap.',
+  );
+  assert.equal(
+    globalCapPlan.filter(
+      (item) =>
+        item.kind === 'exam' &&
+        Number(item.data.days) === 1,
+    ).length,
+    15,
+    'All later one-day exam reminders should survive because they are more useful than 30-day check-ins.',
+  );
+  assert.equal(
+    globalCapPlan.filter(
+      (item) =>
+        item.kind === 'exam' &&
+        Number(item.data.days) === 30,
+    ).length,
+    MAX_SCHEDULED_REMINDERS - 15,
+    'Only the strongest remaining 30-day exam check-ins should fill the rest of the queue.',
+  );
+  const globalCapLosers = globalCapTimeline.filter(
+    (item) => item.decision === 'global-cap',
+  );
+  assert.equal(
+    globalCapLosers.length,
+    2,
+    'Reminder Studio should keep the two displaced early low-value reminders visible as QUEUE CAP decisions.',
+  );
+  assert.ok(
+    globalCapLosers.every(
+      (item) =>
+        Number(item.reminder.data.days) === 30 &&
+        item.winnerKey &&
+        item.reason.includes(
+          'higher-ranked future reminders won the device queue',
+        ) &&
+        item.reason.includes('Queue cutoff'),
+    ),
+    'Global-cap explanations should show that usefulness, not chronology, determined the final device queue.',
+  );
+  const globalCapPlanTimes = globalCapPlan.map(
+    (item) => item.at,
+  );
+  assert.deepEqual(
+    globalCapPlanTimes,
+    [...globalCapPlanTimes].sort(
+      (a, b) => a - b,
+    ),
+    'After choosing the strongest global-cap winners, the device plan must still be returned chronologically.',
+  );
+
   const quietExam = createEmptyWorkspace(now);
   quietExam.exams.push({
     id: 'exam_quiet',

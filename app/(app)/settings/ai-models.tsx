@@ -48,14 +48,21 @@ function lifecycleLabel(model: LocalAiModelView) {
 }
 
 function blockedReason(model: LocalAiModelView) {
+  const runtimeIssue =
+    model.state.compatibility.issues.find(
+      (issue) => issue.code === 'runtime_missing',
+    );
+  if (runtimeIssue) {
+    return 'This installed MYELIN build cannot load local AI yet. Install a native APK that includes LiteRT-LM; an OTA update cannot add a native runtime.';
+  }
   if (!model.definition.artifact) {
-    return 'MYELIN is waiting for a verified mobile export before enabling this model.';
+    return 'The native AI runtime is ready, but MYELIN is still waiting for a verified mobile export for this model.';
   }
   if (
     !model.definition.artifact.downloadUrl &&
     model.state.compatibility.runtimeId
   ) {
-    return 'Direct download is intentionally disabled. Import a licensed .litertlm bundle from your device.';
+    return 'Native AI is available. Direct download is intentionally disabled for this candidate; import the matching licensed .litertlm bundle to test real inference.';
   }
   return (
     model.state.compatibility.issues[0]?.message ??
@@ -71,6 +78,7 @@ export default function AiModelsScreen() {
     freeStorageBytes,
     message,
     error,
+    nativeRuntimeAvailable,
     refresh,
     selectModel,
     downloadModel,
@@ -80,6 +88,7 @@ export default function AiModelsScreen() {
     acceptLicense,
     setAutoUnload,
     smokeTestModel,
+    testAiSetup,
   } = useLocalAi();
   const [busy, setBusy] = useState('');
 
@@ -188,6 +197,48 @@ export default function AiModelsScreen() {
 
         <View style={styles.tryCard}>
           <View style={styles.tryCopy}>
+            <Text style={styles.tryKicker}>AI SETUP CHECK</Text>
+            <Text style={styles.tryTitle}>
+              {nativeRuntimeAvailable
+                ? selectedReady
+                  ? 'Native AI is ready to run.'
+                  : 'Native runtime detected.'
+                : 'Check this installed APK for AI support.'}
+            </Text>
+            <Text style={styles.tryText}>
+              {nativeRuntimeAvailable
+                ? selectedReady
+                  ? 'Runs the real selected model and asks it for a short MYELIN_OK response.'
+                  : 'Your APK has the native inference runtime. The check will tell you what is still missing before real model inference can run.'
+                : 'This checks whether the installed APK contains LiteRT-LM. OTA updates can change JavaScript, but they cannot add this native module.'}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Check MYELIN AI setup"
+            disabled={!ready || Boolean(busy)}
+            onPress={() =>
+              void run('setup-test', testAiSetup).catch(
+                () => undefined,
+              )
+            }
+            style={({ pressed }) => [
+              styles.tryButton,
+              (!ready || Boolean(busy)) && styles.disabled,
+              pressed && ready && !busy && styles.pressed,
+            ]}>
+            <Text style={styles.tryButtonText}>
+              {busy === 'setup-test'
+                ? 'Checking…'
+                : selectedReady
+                  ? 'Run AI test'
+                  : 'Check AI setup'}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.tryCard}>
+          <View style={styles.tryCopy}>
             <Text style={styles.tryKicker}>PREVIEW-FIRST ASSISTANT</Text>
             <Text style={styles.tryTitle}>Try the selected model with MYELIN.</Text>
             <Text style={styles.tryText}>
@@ -205,7 +256,13 @@ export default function AiModelsScreen() {
               pressed && selectedReady && !busy && styles.pressed,
             ]}>
             <Text style={styles.tryButtonText}>
-              {selectedReady ? 'Try selected model' : 'Install a selected model first'}
+              {selectedReady
+                ? 'Try selected model'
+                : !nativeRuntimeAvailable
+                  ? 'AI runtime missing from this APK'
+                  : !selected
+                    ? 'Choose a model first'
+                    : 'Install or import the selected model first'}
             </Text>
           </Pressable>
         </View>

@@ -382,6 +382,7 @@ function ModelCard({
   busy: string;
   licenseAccepted: boolean;
   onSelect: () => void;
+  onOpenSource: () => void;
   onAcceptLicense: () => void;
   onImport: () => void;
   onDownload: () => void;

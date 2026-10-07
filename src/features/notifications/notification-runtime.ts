@@ -192,6 +192,35 @@ export function summarizeScheduledReminderRequests(
   };
 }
 
+export function legacyOwnerlessReminderIds(
+  requests: ScheduledReminderRequestLike[],
+) {
+  return requests
+    .filter((request) => {
+      const data = request.content.data;
+      return Boolean(
+        data &&
+          data.myelin === true &&
+          data.preview !== true &&
+          (typeof data.ownerKey !== 'string' ||
+            data.ownerKey.length === 0),
+      );
+    })
+    .map((request) => request.identifier);
+}
+
+export async function getLegacyOwnerlessReminderIds() {
+  if (Platform.OS === 'web') return [] as string[];
+
+  const Notifications = await module();
+  const requests =
+    await Notifications.getAllScheduledNotificationsAsync();
+
+  return legacyOwnerlessReminderIds(
+    requests as ScheduledReminderRequestLike[],
+  );
+}
+
 export async function getScheduledReminderAudit(
   ownerKey: string,
 ): Promise<ScheduledReminderAudit> {

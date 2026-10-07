@@ -19,6 +19,7 @@ import {
   ReminderPermission,
   cancelReminderIds,
   configureNotificationRuntime,
+  consumeInitialReminderResponse,
   getReminderPermission,
   requestReminderPermission,
   scheduleReminderPlan,
@@ -101,6 +102,9 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const ownerRef = useRef<string | null>(null);
   const workspaceRef = useRef(workspace);
   const focusSessionRef = useRef(focusSession);
+  const handledReminderResponsesRef = useRef<Set<string>>(
+    new Set(),
+  );
   const scheduleQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -209,7 +213,20 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     let unsubscribe: () => void = () => {};
     let active = true;
 
-    subscribeToReminderResponses((payload) => {
+    const routeReminderOnce = (
+      payload: import('./notification-runtime').ReminderOpenPayload,
+    ) => {
+      if (
+        handledReminderResponsesRef.current.has(
+          payload.responseId,
+        )
+      ) {
+        return;
+      }
+      handledReminderResponsesRef.current.add(
+        payload.responseId,
+      );
+
       if (payload.kind === 'review') {
         router.push('/(app)/review');
         return;
@@ -254,15 +271,32 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         return;
       }
       router.push('/(app)/today/day-map');
-    })
-      .then((next) => {
-        if (!active) {
-          next();
-          return;
-        }
-        unsubscribe = next;
-      })
-      .catch(() => undefined);
+    };
+
+    const bootstrapReminderResponses = async () => {
+      const initial =
+        await consumeInitialReminderResponse().catch(
+          () => null,
+        );
+      if (!active) return;
+
+      const next =
+        await subscribeToReminderResponses(
+          routeReminderOnce,
+        ).catch(() => null);
+      if (!active) {
+        next?.();
+        return;
+      }
+      if (next) unsubscribe = next;
+
+      // The cold-launch response was already cleared by the runtime before
+      // this route occurs. responseId dedupe also protects against Expo
+      // delivering the same tap through the live listener.
+      if (initial) routeReminderOnce(initial);
+    };
+
+    void bootstrapReminderResponses();
 
     return () => {
       active = false;

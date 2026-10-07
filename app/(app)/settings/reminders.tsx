@@ -21,12 +21,16 @@ import {
   ReminderDetail,
   ReminderKind,
   ReminderVoice,
+  buildRecoveredReminderInsight,
   buildReminderPlan,
   formatTimeMinutes,
   normalizeReminderSettings,
   sampleReminderCopy,
 } from '@/src/features/notifications/reminder-engine';
 import { useReminders } from '@/src/features/notifications/ReminderProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
+import { timerRemainingMs } from '@/src/features/focus/focus-engine';
+import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const REVIEW_PRESETS = [
@@ -107,6 +111,8 @@ function permissionLabel(value: string) {
 
 export default function RemindersScreen() {
   const { workspace } = useWorkspace();
+  const { session: activeFocus } = useFocus();
+  const now = useScreenClock();
   const {
     ready,
     status,
@@ -126,14 +132,62 @@ export default function RemindersScreen() {
   const [busy, setBusy] = useState('');
   const [previewKind, setPreviewKind] = useState<ReminderKind>('review');
 
+  const normalizedSettings = useMemo(
+    () =>
+      normalizeReminderSettings({
+        ...settings,
+        enabled: true,
+      }),
+    [settings],
+  );
+  const activeFocusRemaining =
+    activeFocus?.phase === 'focus'
+      ? timerRemainingMs(activeFocus, now)
+      : 0;
+  const reminderContext = useMemo(
+    () => ({
+      activeFocus:
+        activeFocus && activeFocusRemaining > 0
+          ? {
+              topicId: activeFocus.topicId ?? null,
+              startedAt: activeFocus.startedAt,
+              unavailableUntil:
+                now + activeFocusRemaining,
+            }
+          : null,
+    }),
+    [
+      activeFocus,
+      activeFocusRemaining,
+      now,
+    ],
+  );
   const previewPlan = useMemo(() => {
     if (!workspace) return [];
     return buildReminderPlan(
       workspace,
-      normalizeReminderSettings({ ...settings, enabled: true }),
-      Date.now(),
+      normalizedSettings,
+      now,
+      reminderContext,
     ).slice(0, 2);
-  }, [settings, workspace]);
+  }, [
+    normalizedSettings,
+    now,
+    reminderContext,
+    workspace,
+  ]);
+  const recoveredInsight = useMemo(
+    () =>
+      workspace
+        ? buildRecoveredReminderInsight(
+            workspace,
+            settings,
+            now,
+            reminderContext,
+          )
+        : null,
+    [now, reminderContext, settings, workspace],
+  );
 
   const voice = VOICES.find((item) => item.id === settings.voice)!;
   const detail = DETAIL_LEVELS.find((item) => item.id === settings.detail)!;
@@ -289,6 +343,117 @@ export default function RemindersScreen() {
               <Text style={styles.previewGlyph}>{voice.mark}</Text>
             </Pressable>
           ) : null}
+        </View>
+
+        <View style={styles.recoveredInsight}>
+          <View style={styles.recoveredInsightHeader}>
+            <View style={styles.recoveredInsightHeaderCopy}>
+              <Text style={styles.sectionEyebrow}>
+                NEXT RECOVERED REMINDER
+              </Text>
+              <Text style={styles.recoveredInsightMeta}>
+                What MYELIN currently expects to notify you about
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.recoveredInsightStatus,
+                recoveredInsight?.status === 'scheduled' &&
+                  styles.recoveredInsightStatusScheduled,
+                recoveredInsight?.status === 'reflowed' &&
+                  styles.recoveredInsightStatusReflowed,
+                recoveredInsight?.status === 'protected' &&
+                  styles.recoveredInsightStatusProtected,
+                recoveredInsight?.status === 'suppressed' &&
+                  styles.recoveredInsightStatusSuppressed,
+              ]}>
+              <Text style={styles.recoveredInsightStatusText}>
+                {recoveredInsight
+                  ? recoveredInsight.status.toUpperCase()
+                  : 'NONE'}
+              </Text>
+            </View>
+          </View>
+
+          {recoveredInsight ? (
+            <>
+              <View style={styles.recoveredInsightBody}>
+                <Text style={styles.recoveredInsightTitle}>
+                  {recoveredInsight.topicName} ·{' '}
+                  {recoveredInsight.minutes}m
+                </Text>
+                <Text style={styles.recoveredInsightLine}>
+                  {recoveredInsight.commitmentTitle} recovered ·{' '}
+                  {new Date(
+                    recoveredInsight.start,
+                  ).toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  })}{' '}
+                  ·{' '}
+                  {new Intl.DateTimeFormat(undefined, {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  }).format(
+                    new Date(recoveredInsight.start),
+                  )}
+                </Text>
+                <Text style={styles.recoveredInsightDelivery}>
+                  {recoveredInsight.reminderAt != null
+                    ? `Will notify ${new Intl.DateTimeFormat(
+                        undefined,
+                        {
+                          weekday: 'short',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        },
+                      ).format(
+                        new Date(
+                          recoveredInsight.reminderAt,
+                        ),
+                      )}`
+                    : recoveredInsight.status === 'protected'
+                      ? 'No stale notification will be sent while this block is protected.'
+                      : 'No device notification is currently scheduled for this block.'}
+                </Text>
+              </View>
+
+              <View style={styles.recoveredInsightWhy}>
+                <Text style={styles.recoveredInsightWhyLabel}>
+                  WHY THIS REMINDER?
+                </Text>
+                <Text style={styles.recoveredInsightWhyText}>
+                  {recoveredInsight.why}
+                </Text>
+                <Text style={styles.recoveredInsightDetail}>
+                  {recoveredInsight.detail}
+                </Text>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open this recovered study window in Day Map"
+                onPress={() =>
+                  router.push('/(app)/today/day-map')
+                }
+                style={({ pressed }) => [
+                  styles.recoveredInsightAction,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.recoveredInsightActionText}>
+                  Open in Day Map
+                </Text>
+                <Text style={styles.arrow}>→</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={styles.recoveredInsightEmpty}>
+              No recovered Autopilot window currently needs a
+              heads-up. When one does, its live state will appear
+              here.
+            </Text>
+          )}
         </View>
 
         <Section
@@ -929,6 +1094,129 @@ const styles = StyleSheet.create({
   },
   statusPillTextOn: { color: colors.success },
   previewShell: { marginTop: spacing.xl },
+  recoveredInsight: {
+    marginTop: spacing.xl,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    padding: spacing.md,
+  },
+  recoveredInsightHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  recoveredInsightHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  recoveredInsightMeta: {
+    color: colors.subtle,
+    fontSize: 10.8,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+  recoveredInsightStatus: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  recoveredInsightStatusScheduled: {
+    borderColor: 'rgba(180,216,174,0.3)',
+    backgroundColor: 'rgba(180,216,174,0.06)',
+  },
+  recoveredInsightStatusReflowed: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+  },
+  recoveredInsightStatusProtected: {
+    borderColor: 'rgba(255,196,123,0.28)',
+    backgroundColor: 'rgba(255,196,123,0.055)',
+  },
+  recoveredInsightStatusSuppressed: {
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.bgRaised,
+  },
+  recoveredInsightStatusText: {
+    color: colors.textDim,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+  recoveredInsightBody: {
+    marginTop: 12,
+  },
+  recoveredInsightTitle: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  recoveredInsightLine: {
+    color: colors.muted,
+    fontSize: 10.8,
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  recoveredInsightDelivery: {
+    color: colors.accent,
+    fontSize: 10.5,
+    lineHeight: 15,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  recoveredInsightWhy: {
+    marginTop: 12,
+    paddingTop: 11,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  recoveredInsightWhyLabel: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 11,
+    fontWeight: '800',
+    letterSpacing: 0.75,
+  },
+  recoveredInsightWhyText: {
+    color: colors.textDim,
+    fontSize: 10.8,
+    lineHeight: 16,
+    marginTop: 5,
+  },
+  recoveredInsightDetail: {
+    color: colors.subtle,
+    fontSize: 10.2,
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  recoveredInsightAction: {
+    minHeight: layout.minTouch,
+    marginTop: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  recoveredInsightActionText: {
+    color: colors.accent,
+    fontSize: 10.8,
+    fontWeight: '800',
+  },
+  recoveredInsightEmpty: {
+    color: colors.muted,
+    fontSize: 10.8,
+    lineHeight: 16,
+    marginTop: 12,
+  },
   previewHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',

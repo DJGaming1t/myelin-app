@@ -1102,11 +1102,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         await configureNotificationRuntime();
         if (!isCurrentReminderAction(action)) return;
 
-        previewId = await sendReminderPreview(
-          stateRef.current.settings,
-          kind,
-          owner,
-        );
+        previewId =
+          (await sendReminderPreview(
+            stateRef.current.settings,
+            kind,
+            owner,
+          )) ?? null;
         if (!isCurrentReminderAction(action)) {
           await removeReminderPreview(previewId);
           return;
@@ -1157,11 +1158,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        previewId = await sendExactReminderPreview(
-          stateRef.current.settings,
-          preview,
-          owner,
-        );
+        previewId =
+          (await sendExactReminderPreview(
+            stateRef.current.settings,
+            preview,
+            owner,
+          )) ?? null;
         if (!isCurrentReminderAction(action)) {
           await removeReminderPreview(previewId);
           return;

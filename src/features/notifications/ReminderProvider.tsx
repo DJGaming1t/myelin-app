@@ -201,8 +201,15 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   });
   const scheduleQueue = useRef<Promise<unknown>>(Promise.resolve());
   const scheduleGenerationRef = useRef(0);
+  const reminderActionGenerationRef = useRef(0);
+  const latestOwnerKeyRef = useRef(ownerKey);
   const legacyOwnerlessCleanupRef =
     useRef<Promise<void> | null>(null);
+
+  if (latestOwnerKeyRef.current !== ownerKey) {
+    latestOwnerKeyRef.current = ownerKey;
+    reminderActionGenerationRef.current += 1;
+  }
 
   useEffect(() => {
     stateRef.current = state;
@@ -568,6 +575,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     const previousState = stateRef.current;
 
     scheduleGenerationRef.current += 1;
+    reminderActionGenerationRef.current += 1;
     ownerRef.current = ownerKey;
     setReady(false);
     setMessage('');
@@ -911,6 +919,30 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     focusSession?.plannedFocusMinutes,
   ]);
 
+  const beginReminderAction = useCallback(() => {
+    const owner = ownerRef.current;
+    if (!owner) return null;
+
+    reminderActionGenerationRef.current += 1;
+    return {
+      owner,
+      generation:
+        reminderActionGenerationRef.current,
+    };
+  }, []);
+
+  const isCurrentReminderAction = useCallback(
+    (action: {
+      owner: string;
+      generation: number;
+    }) =>
+      reminderActionGenerationRef.current ===
+        action.generation &&
+      latestOwnerKeyRef.current === action.owner &&
+      ownerRef.current === action.owner,
+    [],
+  );
+
   const updateSettings = useCallback(
     async (patch: Partial<ReminderSettings>) => {
       const owner = ownerRef.current;
@@ -936,14 +968,19 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   );
 
   const enable = useCallback(async () => {
-    const owner = ownerRef.current;
-    if (!owner || Platform.OS === 'web') return false;
+    if (Platform.OS === 'web') return false;
+    const action = beginReminderAction();
+    if (!action) return false;
+    const { owner } = action;
 
     setStatus('scheduling');
     setMessage('');
 
     try {
       const nextPermission = await requestReminderPermission();
+      if (!isCurrentReminderAction(action)) {
+        return false;
+      }
       setPermission(nextPermission);
 
       if (nextPermission !== 'granted') {
@@ -955,7 +992,11 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           },
           planSignature: '',
         };
+        scheduleGenerationRef.current += 1;
         await persist(next, owner);
+        if (!isCurrentReminderAction(action)) {
+          return false;
+        }
         setStatus(nextPermission === 'denied' ? 'blocked' : 'off');
         setMessage(
           nextPermission === 'denied'
@@ -975,23 +1016,36 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       };
       scheduleGenerationRef.current += 1;
       await persist(next, owner);
+      if (!isCurrentReminderAction(action)) {
+        return false;
+      }
       await doReschedule();
-      return true;
+      return isCurrentReminderAction(action);
     } catch (error) {
+      if (!isCurrentReminderAction(action)) {
+        return false;
+      }
       setStatus('error');
       setMessage(runtimeError(error));
       return false;
     }
-  }, [doReschedule, persist]);
+  }, [
+    beginReminderAction,
+    doReschedule,
+    isCurrentReminderAction,
+    persist,
+  ]);
 
   const disable = useCallback(async () => {
-    const owner = ownerRef.current;
-    if (!owner) return;
+    const action = beginReminderAction();
+    if (!action) return;
+    const { owner } = action;
 
     scheduleGenerationRef.current += 1;
     const current = stateRef.current;
     const cleared =
       await cancelCurrentSchedule(owner, current);
+    if (!isCurrentReminderAction(action)) return;
 
     const next = {
       ...cleared,
@@ -1002,11 +1056,17 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     };
 
     await persist(next, owner);
+    if (!isCurrentReminderAction(action)) return;
     setRegisteredCount(0);
     setDeviceScheduleChecked(true);
     setStatus('off');
     setMessage('Reminders are off. Your reminder style and times are still saved.');
-  }, [cancelCurrentSchedule, persist]);
+  }, [
+    beginReminderAction,
+    cancelCurrentSchedule,
+    isCurrentReminderAction,
+    persist,
+  ]);
 
   const sendPreview = useCallback(async (kind: ReminderKind = 'review') => {
     if (Platform.OS === 'web') return;
@@ -1066,7 +1126,15 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   );
 
   const refreshPermission = useCallback(async () => {
+    const action = beginReminderAction();
+    if (!action) {
+      return getReminderPermission();
+    }
+
     const next = await getReminderPermission();
+    if (!isCurrentReminderAction(action)) {
+      return next;
+    }
     setPermission(next);
 
     if (stateRef.current.settings.enabled) {
@@ -1077,11 +1145,17 @@ export function ReminderProvider({ children }: PropsWithChildren) {
             ? 'blocked'
             : 'ready',
       );
-      if (next === 'granted') void reschedule();
+      if (next === 'granted') {
+        void reschedule();
+      }
     }
 
     return next;
-  }, [reschedule]);
+  }, [
+    beginReminderAction,
+    isCurrentReminderAction,
+    reschedule,
+  ]);
 
   const plannedCount = useMemo(() => {
     if (!workspace) return 0;

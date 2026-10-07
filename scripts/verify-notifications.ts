@@ -579,6 +579,16 @@ function main() {
     'Cold-launch notification intent should be held briefly in memory while auth/workspace/onboarding hydrate.',
   );
   assert.ok(
+    reminderProviderSource.includes('existing?.queuedAt ?? Date.now()'),
+    'Duplicate delivery of the same notification response must preserve its original expiry time instead of extending the pending lifetime.',
+  );
+  assert.ok(
+    reminderProviderSource.includes('const readyWrongOwner =') &&
+      reminderProviderSource.includes('pending.payload.ownerKey !==') &&
+      reminderProviderSource.includes('pendingReminderResponsesRef.current.delete'),
+    'Once a different owner workspace is fully ready, the old notification intent must be discarded rather than lingering for a later account switch.',
+  );
+  assert.ok(
     reminderProviderSource.includes("workspaceStatus === 'ready'") &&
       reminderProviderSource.includes('authAllowsApp') &&
       reminderProviderSource.includes('onboardingAllowsApp') &&
@@ -590,6 +600,35 @@ function main() {
       reminderProviderSource.includes('useOnboarding()') &&
       reminderProviderSource.includes('useOnboardingTransition()'),
     'ReminderProvider should use the same auth/onboarding gates as the app shell before routing a cold-launch intent.',
+  );
+
+  const workspaceProviderSource = fs.readFileSync(
+    'src/data/WorkspaceProvider.tsx',
+    'utf8',
+  );
+  const retryStart = workspaceProviderSource.indexOf(
+    'const retryWorkspace = useCallback',
+  );
+  const retryEnd = workspaceProviderSource.indexOf(
+    'const resetWorkspace = useCallback',
+    retryStart,
+  );
+  const retrySource = workspaceProviderSource.slice(
+    retryStart,
+    retryEnd,
+  );
+  assert.ok(
+    retryStart >= 0 &&
+      retrySource.includes("setStatus('loading')") &&
+      retrySource.includes('workspaceStorage.load(currentOwner)') &&
+      retrySource.includes("setStatus('ready')") &&
+      retrySource.includes("setStatus('error')"),
+    'Workspace retry should preserve the current owner while moving error → loading → ready, allowing the pending notification intent to survive a temporary storage failure.',
+  );
+  assert.equal(
+    retrySource.includes('setOwnerKey('),
+    false,
+    'Retrying a failed workspace load must not switch owners underneath a pending owner-tagged notification.',
   );
   const consumeIndex = reminderProviderSource.indexOf(
     'await consumeInitialReminderResponse',
@@ -688,6 +727,7 @@ function main() {
   console.log('✓ recovered notification taps preserve exact reservation identity through the runtime and provider route');
   console.log('✓ cold-launch notification responses are consumed, cleared, listener-safe, and routed exactly once');
   console.log('✓ cold-launch intents wait for matching auth/workspace/onboarding hydration and expire in memory rather than racing redirects');
+  console.log('✓ workspace load errors keep notification intent retryable within the original TTL, while wrong-owner recovery discards it safely');
   console.log('✓ moving/completing study blocks invalidates obsolete reminders');
   console.log('✓ quiet-hour shifts cannot produce wrong-day exam reminders');
   console.log('✓ daily notification volume is capped even with crowded exam data');

@@ -486,7 +486,20 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   const cancelCurrentSchedule = useCallback(
     async (owner: string, current: ReminderDeviceState) => {
-      await cancelReminderIds(current.scheduledIds);
+      const audit =
+        Platform.OS === 'web'
+          ? null
+          : await getScheduledReminderAudit(owner).catch(
+              () => null,
+            );
+      const idsToCancel = Array.from(
+        new Set([
+          ...current.scheduledIds,
+          ...(audit?.registeredIds ?? []),
+        ]),
+      );
+
+      await cancelReminderIds(idsToCancel);
       const cleared = {
         ...current,
         scheduledIds: [],
@@ -883,16 +896,15 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     if (!owner) return;
 
     const current = stateRef.current;
-    await cancelReminderIds(current.scheduledIds);
+    const cleared =
+      await cancelCurrentSchedule(owner, current);
 
     const next = {
-      ...current,
+      ...cleared,
       settings: {
-        ...current.settings,
+        ...cleared.settings,
         enabled: false,
       },
-      scheduledIds: [],
-      planSignature: '',
     };
 
     await persist(next, owner);
@@ -900,7 +912,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     setDeviceScheduleChecked(true);
     setStatus('off');
     setMessage('Reminders are off. Your reminder style and times are still saved.');
-  }, [persist]);
+  }, [cancelCurrentSchedule, persist]);
 
   const sendPreview = useCallback(async (kind: ReminderKind = 'review') => {
     if (Platform.OS === 'web') return;

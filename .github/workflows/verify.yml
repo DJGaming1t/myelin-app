@@ -144,7 +144,7 @@ jobs:
   publish_preview:
     name: Publish preview OTA
     needs: verify
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/expo-migration' }}
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/expo-migration' || github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

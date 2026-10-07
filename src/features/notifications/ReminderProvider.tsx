@@ -26,6 +26,7 @@ import {
   configureNotificationRuntime,
   consumeInitialReminderResponse,
   getReminderPermission,
+  getScheduledReminderAudit,
   requestReminderPermission,
   scheduleReminderPlan,
   sendExactReminderPreview,
@@ -61,6 +62,8 @@ type ReminderContextValue = {
   permission: ReminderPermission;
   settings: ReminderSettings;
   scheduledCount: number;
+  trackedScheduledCount: number;
+  deviceScheduleChecked: boolean;
   plannedCount: number;
   message: string;
   updateSettings: (patch: Partial<ReminderSettings>) => Promise<void>;
@@ -149,6 +152,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     Platform.OS === 'web' ? 'unsupported' : 'undetermined',
   );
   const [message, setMessage] = useState('');
+  const [registeredCount, setRegisteredCount] =
+    useState(0);
+  const [
+    deviceScheduleChecked,
+    setDeviceScheduleChecked,
+  ] = useState(false);
 
   const stateRef = useRef(state);
   const ownerRef = useRef<string | null>(null);
@@ -497,6 +506,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     ownerRef.current = ownerKey;
     setReady(false);
     setMessage('');
+    setRegisteredCount(0);
+    setDeviceScheduleChecked(false);
     setState(freshState());
     stateRef.current = freshState();
 
@@ -526,11 +537,27 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       getReminderPermission(),
       configureNotificationRuntime(),
     ])
-      .then(([loaded, nextPermission]) => {
+      .then(async ([loaded, nextPermission]) => {
         if (cancelled || ownerRef.current !== ownerKey) return;
+
+        const audit =
+          nextPermission === 'granted'
+            ? await getScheduledReminderAudit(
+                ownerKey,
+              ).catch(() => null)
+            : null;
+        if (cancelled || ownerRef.current !== ownerKey) return;
+
         stateRef.current = loaded;
         setState(loaded);
         setPermission(nextPermission);
+        setRegisteredCount(
+          audit?.registeredCount ?? 0,
+        );
+        setDeviceScheduleChecked(
+          nextPermission !== 'granted' ||
+            audit != null,
+        );
         setStatus(
           !loaded.settings.enabled
             ? 'off'
@@ -613,6 +640,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         const cleared = await cancelCurrentSchedule(owner, current);
         await persist(cleared, owner);
       }
+      setRegisteredCount(0);
+      setDeviceScheduleChecked(true);
       setStatus(currentPermission === 'denied' ? 'blocked' : 'ready');
       return;
     }
@@ -641,9 +670,31 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     );
     const signature = reminderPlanSignature(plan);
 
+    const deviceAudit =
+      await getScheduledReminderAudit(owner).catch(
+        () => null,
+      );
+    if (deviceAudit) {
+      setRegisteredCount(
+        deviceAudit.registeredCount,
+      );
+      setDeviceScheduleChecked(true);
+    } else {
+      setDeviceScheduleChecked(false);
+    }
+
+    const trackedIdsMatchDevice =
+      deviceAudit != null &&
+      deviceAudit.registeredIds.length ===
+        current.scheduledIds.length &&
+      current.scheduledIds.every((id) =>
+        deviceAudit.registeredIds.includes(id),
+      );
+
     if (
       signature === current.planSignature &&
-      current.scheduledIds.length === plan.length
+      current.scheduledIds.length === plan.length &&
+      (deviceAudit == null || trackedIdsMatchDevice)
     ) {
       setStatus(plan.length ? 'active' : 'ready');
       return;
@@ -652,7 +703,14 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     setStatus('scheduling');
     setMessage('');
 
-    await cancelReminderIds(current.scheduledIds);
+    await cancelReminderIds(
+      Array.from(
+        new Set([
+          ...current.scheduledIds,
+          ...(deviceAudit?.registeredIds ?? []),
+        ]),
+      ),
+    );
 
     try {
       const ids = await scheduleReminderPlan(
@@ -660,17 +718,43 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         current.settings,
         owner,
       );
+      const readback =
+        await getScheduledReminderAudit(owner).catch(
+          () => null,
+        );
+      const registered =
+        readback?.registeredCount ?? ids.length;
+      const readbackMatches =
+        readback == null ||
+        (readback.registeredIds.length ===
+          ids.length &&
+          ids.every((id) =>
+            readback.registeredIds.includes(id),
+          ));
+
       const next = {
         ...current,
         scheduledIds: ids,
-        planSignature: signature,
+        planSignature: readbackMatches
+          ? signature
+          : '',
       };
       await persist(next, owner);
-      setStatus(ids.length ? 'active' : 'ready');
+      setRegisteredCount(registered);
+      setDeviceScheduleChecked(readback != null);
+      setStatus(
+        readbackMatches
+          ? ids.length
+            ? 'active'
+            : 'ready'
+          : 'error',
+      );
       setMessage(
-        ids.length
-          ? `${ids.length} reminder${ids.length === 1 ? '' : 's'} scheduled from your current study data.`
-          : 'Reminders are on, but nothing currently needs a notification.',
+        !readbackMatches
+          ? `MYELIN planned ${plan.length}, but the device reports ${registered} registered. Refresh schedule to repair the difference.`
+          : ids.length
+            ? `${ids.length} reminder${ids.length === 1 ? '' : 's'} scheduled and verified on this device.`
+            : 'Reminders are on, but nothing currently needs a notification.',
       );
     } catch (error) {
       const next = {
@@ -679,6 +763,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         planSignature: '',
       };
       await persist(next, owner);
+      setRegisteredCount(0);
+      setDeviceScheduleChecked(false);
       setStatus('error');
       setMessage(runtimeError(error));
     }
@@ -810,6 +896,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     };
 
     await persist(next, owner);
+    setRegisteredCount(0);
+    setDeviceScheduleChecked(true);
     setStatus('off');
     setMessage('Reminders are off. Your reminder style and times are still saved.');
   }, [persist]);
@@ -929,7 +1017,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       status,
       permission,
       settings: state.settings,
-      scheduledCount: state.scheduledIds.length,
+      scheduledCount: registeredCount,
+      trackedScheduledCount:
+        state.scheduledIds.length,
+      deviceScheduleChecked,
       plannedCount,
       message,
       updateSettings,
@@ -946,6 +1037,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       message,
       permission,
       plannedCount,
+      registeredCount,
+      deviceScheduleChecked,
       ready,
       refreshPermission,
       reschedule,

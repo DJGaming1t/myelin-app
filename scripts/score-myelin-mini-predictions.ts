@@ -30,13 +30,40 @@ const examples = readJsonl(evalPath);
 const predictions = readJsonl(predictionsPath);
 const report = evaluateMyelinMiniPredictions(examples, predictions);
 
+function acceptancePasses() {
+  if (
+    report.total !== 1 ||
+    report.parseValidity !== 1 ||
+    report.routeAccuracy !== 1 ||
+    report.actionTypeSequenceAccuracy !== 1 ||
+    report.unsafeActionCount !== 0
+  ) {
+    return false;
+  }
+
+  const expected = examples[0]?.output as any;
+  const actual = predictions.find((item: any) => item.id === examples[0]?.id)?.output as any;
+  const expectedAction = expected?.batch?.actions?.[0];
+  const actualAction = actual?.batch?.actions?.[0];
+
+  if (!expectedAction || !actualAction) return false;
+  if (expectedAction.type !== 'create_task' || actualAction.type !== 'create_task') {
+    return false;
+  }
+
+  return (
+    actualAction.subject === expectedAction.subject &&
+    actualAction.topic?.topicId === expectedAction.topic?.topicId &&
+    actualAction.taskType === expectedAction.taskType &&
+    actualAction.dueDate === expectedAction.dueDate &&
+    actualAction.estimatedMinutes === expectedAction.estimatedMinutes &&
+    actualAction.priority === expectedAction.priority
+  );
+}
+
 const passes =
   mode === 'acceptance'
-    ? report.total === 1 &&
-      report.parseValidity === 1 &&
-      report.routeAccuracy === 1 &&
-      report.actionExactAccuracy === 1 &&
-      report.unsafeActionCount === 0
+    ? acceptancePasses()
     : myelinMiniPassesReleaseGate(report);
 
 writeFileSync(

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a11c12-0b62-79ae-a66b-a5f752cf8924",
+    "createdAt": "2026-10-08T15:11:47.042Z",
+    "group": "8a863ce8-93b1-4188-895f-00c87283e0ac",
+    "branch": "preview",
+    "message": "MYELIN short clarification replies beta a28dfa6bf734208cdce08f2845bc1889f062ba64",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a11c12-0b62-79ae-a66b-a5f752cf8924",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "a28dfa6bf734208cdce08f2845bc1889f062ba64"
+  }
+]

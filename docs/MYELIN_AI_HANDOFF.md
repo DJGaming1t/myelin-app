@@ -207,11 +207,13 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Added typed, in-memory clarification answers for subject, existing topic, estimated minutes and due date. Original requests and prior answers survive successive questions; no text concatenation or invented references.
 - Added an answer field and Continue to preview button. Editing the original, new request, account/workspace changes and screen unmount reset context; ten-minute, day-change and backwards-clock guards expire it before a reply is processed.
 - Invalid/ambiguous replies ask again. All resolved actions retain the existing validated preview and explicit confirmation. No model loading or cloud calls are needed for these bounded rules.
-- Local TypeScript and clarification/routing/protocol/hybrid/lifecycle regressions passed. Full app verification/publication pending; device QA pending. No native dependencies changed.
+- Full app verification and publication SUCCESS: run `37798325379`, verification job `113383531738`, publisher `113383992533`; separate hybrid run `37798325582`, job `113383531967`, also passed. Includes full app TypeScript, every existing verify script (including Firebase rules), clarification regressions, strict native compatibility and Android bundle export.
+- Published source `a28dfa6bf734208cdce08f2845bc1889f062ba64`; Android preview group `8a863ce8-93b1-4188-895f-00c87283e0ac`, update `01a11c12-0b62-79ae-a66b-a5f752cf8924`, runtime `0.2.13`, created `2026-10-08T15:11:47.042Z`. Receipt artifact `11559483080`, copy `docs/beta/clarification-update-20261008.json`. No production publication or native dependencies changed. Physical-device QA remains pending.
 
 ## Completed v4 training; evaluation setup failure — 2026-10-08
 - Same run `37752290697`, original source `0c0b68713e835932402b591edd336476cf7165b8`: training job `113228197390` completed SUCCESS.
 - Final adapter artifact `11548375885`, `myelin-mini-balanced-v4-adapter`, 43,961,081 compressed bytes; digest `sha256:0704a6c3e0a1ed1bbe099c7165cfb7bf48fb68183b7c369591a5dbadac3802ac`, created `2026-10-08T11:37:07Z`.
+- Rounded trainer log metrics: training runtime 9,813 seconds, train loss 0.1709; epoch-2 validation loss 0.1815, validation mean token accuracy 0.9535. These are teacher-forced training/validation metrics, not measured route or action accuracy and not release-gate results.
 - Evaluation job `113291083789` failed at provenance checks: `verify-myelin-mini-curriculum.ts` could not open generated `training/myelin-mini/failure-curriculum-v1.jsonl` in its fresh checkout. Required generation ran in the separate training job but was not repeated in evaluation.
 - Export/inference/scoring were skipped. No cases or accuracy were measured and the evidence directory was empty, so no evaluation artifact exists. This is a setup failure, not a measured quality-gate result. Qwen release remains blocked.
 

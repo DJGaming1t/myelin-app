@@ -1,0 +1,198 @@
+name: Train and evaluate MYELIN Mini balanced v4
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/train-myelin-mini-balanced-v4.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: myelin-mini-balanced-v4-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: Clean-base balanced LoRA (two epochs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      MODEL: principled-intelligence/Qwen3.5-0.8B-text-only
+      ADAPTER: artifacts/myelin-mini/balanced-v4
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: training/myelin-mini/requirements-train.txt
+      - name: Build and verify isolated candidate data
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:myelin-mini-dataset
+          npx tsx scripts/verify-myelin-mini-curriculum.ts
+          python scripts/build-myelin-mini-balanced.py
+          python scripts/verify-myelin-mini-training.py
+          npx tsx scripts/verify-myelin-mini.ts
+          npx tsc --noEmit
+      - name: Install CPU training stack
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+          python -m pip install -r training/myelin-mini/requirements-train.txt
+      - name: Verify actual TRL preprocessing before training
+        run: python scripts/verify-myelin-mini-sft.py
+      - name: Record reproducible run inputs
+        run: |
+          mkdir -p "$ADAPTER"
+          cp training/myelin-mini/compiled/balanced-v3-manifest.json "$ADAPTER/dataset-manifest.json"
+          cp training/myelin-mini/eval-v2-manifest.json "$ADAPTER/frozen-evaluation-manifest.json"
+          python -m pip freeze > "$ADAPTER/packages.txt"
+          git rev-parse HEAD > "$ADAPTER/code-commit.txt"
+      - name: Train from clean base with complete answer masks
+        run: >-
+          python -u scripts/train-myelin-mini-qwen.py
+          --model "$MODEL"
+          --train training/myelin-mini/compiled/balanced-v3-train.jsonl
+          --validation training/myelin-mini/compiled/balanced-v3-validation.jsonl
+          --output "$ADAPTER"
+          --epochs 2
+          --learning-rate 0.0002
+          --batch-size 1
+          --gradient-accumulation 4
+          --max-length 768
+          --lora-r 16
+          --lora-alpha 32
+          --seed 42
+          --allow-cpu
+      - name: Require final exported clean-base adapter
+        run: |
+          test -f "$ADAPTER/adapter_model.safetensors"
+          python - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['ADAPTER'])
+          m = json.loads((root / 'training-manifest.json').read_text())
+          assert m['resumeAdapter'] is None
+          assert m['runTrainRows'] == 255 and m['runValidationRows'] == 29
+          assert m['epochs'] == 2 and m['maxSteps'] == -1
+          assert m['preflight']['passes'] and not m['smokeMode']
+          PYTHON
+      - name: Upload final adapter and training evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-balanced-v4-adapter
+          path: |
+            artifacts/myelin-mini/balanced-v4
+            !artifacts/myelin-mini/balanced-v4/checkpoint-*/**
+          if-no-files-found: warn
+          retention-days: 90
+
+  evaluate:
+    name: Frozen evaluation, regression and Hinglish gates
+    needs: train
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      MODEL: principled-intelligence/Qwen3.5-0.8B-text-only
+      ADAPTER: artifacts/myelin-mini/trained-adapter
+      REPORTS: artifacts/myelin-mini/balanced-v4-evaluation
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: training/myelin-mini/requirements-train.txt
+      - name: Install evaluation dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+          python -m pip install -r training/myelin-mini/requirements-train.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: myelin-mini-balanced-v4-adapter
+          path: artifacts/myelin-mini/trained-adapter
+      - name: Verify final adapter and frozen benchmark provenance
+        run: |
+          test -f "$ADAPTER/adapter_model.safetensors"
+          mkdir -p "$REPORTS"
+          npx tsx scripts/verify-myelin-mini-curriculum.ts
+          cp "$ADAPTER/training-manifest.json" "$REPORTS/"
+          cp "$ADAPTER/dataset-manifest.json" "$REPORTS/"
+          cp "$ADAPTER/frozen-evaluation-manifest.json" "$REPORTS/"
+          cp "$ADAPTER/packages.txt" "$REPORTS/training-packages.txt"
+          cp "$ADAPTER/code-commit.txt" "$REPORTS/"
+          python -m pip freeze > "$REPORTS/evaluation-packages.txt"
+          sha256sum "$ADAPTER/adapter_model.safetensors" training/myelin-mini/eval-v1.jsonl training/myelin-mini/eval-v2.jsonl training/myelin-mini/acceptance-v1.jsonl > "$REPORTS/checksums.txt"
+      - name: Export all evaluation prompts
+        run: |
+          MYELIN_MINI_EVAL_FILE=training/myelin-mini/eval-v2.jsonl MYELIN_MINI_EVAL_PROMPTS_OUT="$REPORTS/frozen-prompts.jsonl" npx tsx scripts/export-myelin-mini-eval-prompts.ts
+          MYELIN_MINI_EVAL_FILE=training/myelin-mini/eval-v1.jsonl MYELIN_MINI_EVAL_PROMPTS_OUT="$REPORTS/regression-prompts.jsonl" npx tsx scripts/export-myelin-mini-eval-prompts.ts
+          MYELIN_MINI_EVAL_FILE=training/myelin-mini/acceptance-v1.jsonl MYELIN_MINI_EVAL_PROMPTS_OUT="$REPORTS/acceptance-prompts.jsonl" npx tsx scripts/export-myelin-mini-eval-prompts.ts
+          cat "$REPORTS/frozen-prompts.jsonl" "$REPORTS/regression-prompts.jsonl" "$REPORTS/acceptance-prompts.jsonl" > "$REPORTS/all-prompts.jsonl"
+      - name: Run all 53 cases once on final exported adapter
+        run: >-
+          python -u scripts/infer-myelin-mini-peft.py
+          --model "$MODEL"
+          --adapter "$ADAPTER"
+          --prompts "$REPORTS/all-prompts.jsonl"
+          --output "$REPORTS/all-predictions.jsonl"
+          --max-new-tokens 1200
+      - name: Split raw predictions and score every gate
+        run: |
+          python - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['REPORTS'])
+          rows = [json.loads(line) for line in (root / 'all-predictions.jsonl').read_text().splitlines() if line.strip()]
+          assert len(rows) == 53 and len({r['id'] for r in rows}) == 53
+          for label in ['frozen', 'regression', 'acceptance']:
+              ids = {json.loads(line)['id'] for line in (root / f'{label}-prompts.jsonl').read_text().splitlines() if line.strip()}
+              selected = [r for r in rows if r['id'] in ids]
+              assert len(selected) == len(ids)
+              (root / f'{label}-predictions.jsonl').write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in selected))
+          PYTHON
+          npx tsx scripts/score-myelin-mini-predictions.ts training/myelin-mini/eval-v2.jsonl "$REPORTS/frozen-predictions.jsonl" "$REPORTS/frozen-report.json" release
+          npx tsx scripts/score-myelin-mini-predictions.ts training/myelin-mini/eval-v1.jsonl "$REPORTS/regression-predictions.jsonl" "$REPORTS/regression-report.json" release
+          npx tsx scripts/score-myelin-mini-predictions.ts training/myelin-mini/acceptance-v1.jsonl "$REPORTS/acceptance-predictions.jsonl" "$REPORTS/acceptance-report.json" acceptance
+      - name: Enforce gates without selecting or retraining a checkpoint
+        run: |
+          node - <<'JS'
+          const fs = require('node:fs');
+          const root = process.env.REPORTS;
+          let passed = true;
+          let summary = '# MYELIN Mini balanced v4 evaluation\n\nFinal exported adapter after two epochs; no checkpoint selection using evaluation.\n\n';
+          for (const name of ['frozen', 'regression', 'acceptance']) {
+            const result = JSON.parse(fs.readFileSync(`${root}/${name}-report.json`, 'utf8'));
+            passed &&= result.passes;
+            summary += `${name}: ${result.passes ? 'PASS' : 'FAIL'}\n\n`;
+            summary += '```json\n' + JSON.stringify(result.report, null, 2) + '\n```\n\n';
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          if (!passed) process.exitCode = 2;
+          JS
+      - name: Upload evaluation evidence even if quality gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-balanced-v4-evaluation
+          path: artifacts/myelin-mini/balanced-v4-evaluation
+          if-no-files-found: warn
+          retention-days: 90

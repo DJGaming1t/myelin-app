@@ -148,11 +148,21 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Full GitHub verification PASS: run `37751372043`, job `113225146393`, tested commit `2ca437fa521016678157321f04706f580d9726dc`, artifact `11537872562`. Protocol/scorer regressions, full app TypeScript, six training tests and actual TRL token/mask preservation all passed. Initial data-only run `37707675824` also passed.
 - No candidate training or app deployment in this chunk. Previous adapter remains blocked.
 
+## Clean-base candidate v4 — 2026-10-08
+- Workflow: `.github/workflows/train-myelin-mini-balanced-v4.yml`, triggered only when that workflow file changes or manually. It is a single bounded run, not an automatic retraining loop.
+- Fresh base: `principled-intelligence/Qwen3.5-0.8B-text-only`, no previous adapter. Balanced-v3 data: 255 train / 29 validation. Two epochs, learning rate 0.0002, batch 1, accumulation 4, maximum 768 tokens, LoRA rank 16 / alpha 32, seed 42.
+- CPU training timeout: 240 minutes. Actual training progress must be checked before claiming training has started or finished.
+- Training rechecks isolation, protocol, TypeScript and actual TRL preprocessing. It saves package versions, source hashes, code commit, preflight and training manifest. Only the final exported adapter is evaluated; no checkpoint selection using the frozen benchmark.
+- A dependent job automatically evaluates all 53 cases: 32 frozen eval-v2, 20 historical eval-v1 regression, 1 separate Hinglish acceptance. Each gate is scored independently; artifacts upload even on failed quality gates. Evaluation timeout: 60 minutes.
+- Artifact names: `myelin-mini-balanced-v4-adapter` and `myelin-mini-balanced-v4-evaluation`. No app deployment is part of this workflow.
+- Local workflow syntax/recipe checks and schema dry run passed; the full data/preprocessing tests already passed in the preceding chunk.
+- Run ID will be recorded after launch.
+
 ## Exact next step
-1. Read the successful expanded-curriculum evidence above. Do not repeat curriculum creation or preflight repair.
-2. Train one bounded candidate from the clean base using balanced-v3 train/validation and audited completion masks. Do not resume historically contaminated v1/v2 adapters.
-3. Evaluate on frozen eval-v2 plus historical eval-v1 regression and separate Hinglish acceptance; retain raw predictions and report all gates, including failures. Do not select checkpoints using eval-v2.
-4. Compare measured model quality before claiming improvement. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.
+1. Inspect the v4 workflow run recorded below before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
+2. After completion, download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.
+3. Compare measured routing/action safety with previous results. Keep release blocked unless all gates pass. Frozen eval-v2 may be reported after this run, but must not be copied into training or used for checkpoint selection.
+4. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.
 
 ## Continuity instruction
 Read this file and current branch head before changing code. Inspect current workflows and artifacts before restarting any training. Work one sensible chunk at a time; verify, summarize, state the next step, then stop. Never claim visible app changes unless an OTA or APK was actually published.

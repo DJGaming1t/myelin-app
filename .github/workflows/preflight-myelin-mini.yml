@@ -15,6 +15,7 @@ on:
       - scripts/train-myelin-mini-qwen.py
       - scripts/build-myelin-mini-dataset.ts
       - scripts/verify-myelin-mini-curriculum.ts
+      - src/features/assistant/myelin-mini-evaluation.ts
       - training/myelin-mini/curriculum-v3.jsonl
       - training/myelin-mini/eval-v2.jsonl
       - training/myelin-mini/eval-v2-manifest.json
@@ -49,6 +50,7 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build:myelin-mini-dataset
           npx tsx scripts/verify-myelin-mini-curriculum.ts
+          npx tsx scripts/verify-myelin-mini.ts
           npx tsx scripts/build-myelin-mini-router-v2.ts
           python scripts/build-myelin-mini-balanced.py
           python scripts/verify-myelin-mini-training.py

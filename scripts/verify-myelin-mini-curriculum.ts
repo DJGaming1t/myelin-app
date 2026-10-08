@@ -91,6 +91,22 @@ assert.equal(report.actionExactAccuracy, 1);
 assert.equal(report.clarifyReasonAccuracy, 1);
 assert.equal(report.escalateReasonAccuracy, 1);
 
+// Consistent local-reference renaming is equivalent; broken links are not.
+for (const id of ['v3-evaluation-012', 'v3-evaluation-013']) {
+  const gold = evaluation.find(row => row.id === id)!;
+  const renamed = structuredClone(gold);
+  renamed.output = JSON.parse(JSON.stringify(renamed.output).replaceAll(
+    id.endsWith('012') ? 'e-elastic' : 'e-mechanics', 'model-chosen-name'));
+  assert.equal(evaluateMyelinMiniPredictions([gold], [renamed]).actionExactAccuracy, 1);
+  const broken = structuredClone(renamed);
+  const actions = (broken.output as { batch: { actions: Array<Record<string, unknown>> } }).batch.actions;
+  actions[0]!.clientRef = 'different-declaration';
+  assert.equal(evaluateMyelinMiniPredictions([gold], [broken]).actionExactAccuracy, 0);
+  const reordered = structuredClone(renamed);
+  (reordered.output as { batch: { actions: unknown[] } }).batch.actions.reverse();
+  assert.equal(evaluateMyelinMiniPredictions([gold], [reordered]).actionExactAccuracy, 0);
+}
+
 // Verify the guard rejects fabricated IDs and references before creation.
 const withRef = evaluation.find(r => JSON.stringify(r.output).includes('"topicId"'))!;
 const bad = structuredClone(withRef);

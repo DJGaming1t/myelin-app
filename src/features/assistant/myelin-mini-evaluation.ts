@@ -81,9 +81,39 @@ function actionTypes(decision: MyelinMiniDecision) {
 }
 
 function actionPayload(decision: MyelinMiniDecision) {
-  return decision.route === 'actions'
-    ? decision.batch.actions
-    : [];
+  if (decision.route !== 'actions') return [];
+  // Local reference spelling is arbitrary; compare the declaration it points to.
+  // Keep topic and exam namespaces separate and resolve only earlier declarations.
+  const topics = new Map<string, number>();
+  const exams = new Map<string, number>();
+  const reference = (value: unknown, declarations: Map<string, number>) => {
+    if (!value || typeof value !== 'object') return value;
+    const ref = value as Record<string, unknown>;
+    if (typeof ref.clientRef !== 'string') return value;
+    const index = declarations.get(ref.clientRef);
+    return { ...ref, clientRef: index === undefined
+      ? { unresolved: ref.clientRef } : { declarationIndex: index } };
+  };
+  return decision.batch.actions.map((action, index) => {
+    const normalized: Record<string, unknown> = { ...action };
+    if (action.type === 'update_topic') normalized.topic = reference(action.topic, topics);
+    if (action.type === 'create_task') {
+      if (action.topic) normalized.topic = reference(action.topic, topics);
+      if (action.exam) normalized.exam = reference(action.exam, exams);
+    }
+    if (action.type === 'create_exam') normalized.topicRefs = action.topicRefs.map(ref => reference(ref, topics));
+    if (action.type === 'generate_exam_plan') {
+      if (action.examRefs) normalized.examRefs = action.examRefs.map(ref => reference(ref, exams));
+      normalized.topicOverrides = action.topicOverrides.map(o => ({ ...o, topic: reference(o.topic, topics) }));
+    }
+    if ((action.type === 'create_topic' || action.type === 'create_exam') && action.clientRef) {
+      const declarations = action.type === 'create_topic' ? topics : exams;
+      normalized.clientRef = declarations.has(action.clientRef)
+        ? { duplicate: action.clientRef } : { declarationIndex: index };
+      declarations.set(action.clientRef, index);
+    }
+    return normalized;
+  });
 }
 
 function percentile(sorted: number[], fraction: number) {

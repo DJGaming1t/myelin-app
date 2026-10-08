@@ -21,3 +21,5 @@ python scripts/train-myelin-mini-qwen.py --train training/myelin-mini/compiled/b
 ```
 
 Local tokenizer preflight passed with maximum lengths 580 training / 555 validation, below 768, preserving full answers. GitHub preflight additionally checks actual TRL preprocessing and completion masks. Train the next candidate from the clean base, not a previously evaluated adapter. No model was trained or released by this data change.
+
+Scoring note: action exact-match now normalizes consistently renamed local clientRefs by declaration position and type. All action fields, existing IDs and reference links still must match; unresolved, duplicate and out-of-order references are not normalized into valid links. Regression checks cover valid renaming and broken links for topic and exam chains. Historical reports retain their original scoring version.

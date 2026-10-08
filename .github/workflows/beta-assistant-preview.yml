@@ -1,0 +1,98 @@
+name: Verify and publish assistant beta preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/beta-assistant-preview.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: myelin-assistant-preview
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Match the installed Android preview binary
+        env:
+          BETA_BUILD_SHA: 137eee631edbe582da8c0e64ec89229a86a5aa9a
+        run: |
+          node scripts/check-beta-ota-compatibility.cjs --self-test
+          node scripts/check-beta-ota-compatibility.cjs
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - name: All existing app regression scripts
+        run: |
+          node <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const { scripts } = require('./package.json');
+          for (const name of Object.keys(scripts).filter(name => name.startsWith('verify:'))) {
+            console.log(`Running ${name}`);
+            execFileSync('npm', ['run', name], { stdio: 'inherit' });
+          }
+          NODE
+      - name: Hybrid and additional app safety regressions
+        run: |
+          npx tsx scripts/verify-hybrid-assistant.ts
+          npx tsx scripts/verify-adaptive.ts
+          npx tsx scripts/verify-transition.ts
+      - name: Expo export configuration
+        run: npx expo config --type prebuild > /dev/null
+
+  publish_preview:
+    needs: verify
+    if: github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Require the configured Expo publishing identity
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN is not configured; no beta update was published."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Inspect supported EAS Update flags
+        run: npx eas-cli@latest update --help
+      - name: Publish verified Android beta only
+        run: >
+          npx eas-cli@latest update
+          --channel preview
+          --environment preview
+          --platform android
+          --non-interactive
+          --message "MYELIN assistant beta $GITHUB_SHA"
+          --json > beta-update.json
+      - name: Record update receipt
+        run: |
+          node -e 'console.log(JSON.stringify(JSON.parse(require("node:fs").readFileSync("beta-update.json", "utf8")), null, 2))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myelin-assistant-beta-update
+          path: beta-update.json
+          if-no-files-found: error

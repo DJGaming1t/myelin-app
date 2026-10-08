@@ -1,5 +1,5 @@
 import { AdaptiveSettings } from '@/src/features/adaptive/AdaptiveSettings';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import Animated, {
   Easing,
@@ -459,8 +459,8 @@ export default function SettingsScreen() {
           </Section>
 
           <Section
-            title="On-device AI"
-            subtitle="Experimental local AI. One verified model path is being tested; the core planner does not depend on it.">
+            title="MYELIN assistant (beta)"
+            subtitle="Try safe command previews and choose your preferred offline model.">
             <StatusRow
               label="MODEL"
               value={selectedLocalAi?.definition.shortName ?? 'None selected'}
@@ -471,15 +471,27 @@ export default function SettingsScreen() {
               value={selectedLocalAi ? 'Experimental' : 'Not configured'}
             />
             <InfoBox>
-              Local AI is not a normal one-tap download yet. MYELIN currently supports manual import of one verified FunctionGemma LiteRT candidate; the base app and deterministic planner work without it.
+              Basic commands work without a model download and require confirmation before changing your workspace. Qwen Lite and Enhanced phone releases are pending; cloud AI is not connected. Experimental local AI supports manual import of one verified FunctionGemma LiteRT candidate.
             </InfoBox>
+            <Link href="/(app)/settings/ai-assistant" asChild>
+              <Pressable
+                accessibilityRole="link"
+                testID="settings-assistant-beta"
+                style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
+                <View style={styles.transferCopy}>
+                  <Text style={styles.transferTitle}>Open MYELIN assistant</Text>
+                  <Text style={styles.transferText}>Preview commands, answer clarification questions, then confirm</Text>
+                </View>
+                <Text style={styles.transferArrow}>→</Text>
+              </Pressable>
+            </Link>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/(app)/settings/ai-models')}
               style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
               <View style={styles.transferCopy}>
-                <Text style={styles.transferTitle}>Local AI (experimental)</Text>
-                <Text style={styles.transferText}>FunctionGemma manual import, verification and native model test</Text>
+                <Text style={styles.transferTitle}>AI model choices</Text>
+                <Text style={styles.transferText}>Save Lite / Enhanced preference or manage experimental FunctionGemma</Text>
               </View>
               <Text style={styles.transferArrow}>→</Text>
             </Pressable>

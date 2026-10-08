@@ -1,0 +1,209 @@
+name: Evaluate saved MYELIN Mini v4 adapter
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/exam-autopilot-capacity-v1]
+    paths: [.github/workflows/evaluate-myelin-mini-v4-recovery.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: myelin-mini-v4-evaluation-recovery
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: candidate
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+      MODEL: principled-intelligence/Qwen3.5-0.8B-text-only
+      ADAPTER: artifacts/myelin-mini/trained-adapter
+      REPORTS: artifacts/myelin-mini/balanced-v4-recovery
+    steps:
+      - name: Checkout recovery checks and diagnostics
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            scripts/verify-myelin-mini-recovery.py
+            scripts/test-myelin-mini-recovery.py
+            scripts/diagnose_myelin_mini_predictions.py
+          sparse-checkout-cone-mode: false
+      - name: Checkout exact training and evaluation source
+        uses: actions/checkout@v5
+        with:
+          ref: 0c0b68713e835932402b591edd336476cf7165b8
+          path: candidate
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: candidate/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Download and require exact saved artifact digest
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const crypto = require('node:crypto');
+            const id = 11548375885;
+            const expected = '0704a6c3e0a1ed1bbe099c7165cfb7bf48fb68183b7c369591a5dbadac3802ac';
+            const { data: artifact } = await github.rest.actions.getArtifact({ ...context.repo, artifact_id: id });
+            if (artifact.expired || artifact.name !== 'myelin-mini-balanced-v4-adapter' || artifact.workflow_run.id !== 37752290697 || artifact.workflow_run.head_sha !== '0c0b68713e835932402b591edd336476cf7165b8' || artifact.digest !== `sha256:${expected}`) throw new Error('Artifact identity mismatch');
+            const response = await fetch(`https://api.github.com/repos/${context.repo.owner}/${context.repo.repo}/actions/artifacts/${id}/zip`, {
+              headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' }, redirect: 'manual',
+            });
+            if (response.status !== 302) throw new Error(`Artifact download redirect failed: ${response.status}`);
+            const location = new URL(response.headers.get('location'));
+            if (location.protocol !== 'https:') throw new Error('Invalid artifact download URL');
+            const download = await fetch(location); // No GitHub credentials forwarded to artifact storage.
+            if (!download.ok) throw new Error(`Artifact download failed: ${download.status}`);
+            const bytes = Buffer.from(await download.arrayBuffer());
+            if (crypto.createHash('sha256').update(bytes).digest('hex') !== expected) throw new Error('Downloaded artifact digest mismatch');
+            fs.mkdirSync('candidate/artifacts/myelin-mini/balanced-v4-recovery', { recursive: true });
+            fs.writeFileSync(`${process.env.RUNNER_TEMP}/v4-adapter.zip`, bytes);
+            fs.writeFileSync('candidate/artifacts/myelin-mini/balanced-v4-recovery/artifact-provenance.json', JSON.stringify({ id, runId: 37752290697, sourceCommit: artifact.workflow_run.head_sha, digest: artifact.digest, recoveryCommit: context.sha }, null, 2) + '\n');
+            core.info('Exact final adapter archive SHA-256 verified.');
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Extract final adapter and preserve training evidence
+        run: |
+          python - <<'PYTHON'
+          import os, shutil, zipfile
+          from pathlib import Path
+          target = Path(os.environ['ADAPTER']).resolve()
+          target.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile(Path(os.environ['RUNNER_TEMP']) / 'v4-adapter.zip') as archive:
+              for name in archive.namelist():
+                  if not (target / name).resolve().is_relative_to(target):
+                      raise ValueError('Unsafe archive member')
+              archive.extractall(target)
+          assert (target / 'adapter_model.safetensors').is_file()
+          for name in ['training-manifest.json', 'training-preflight.json', 'dataset-manifest.json', 'frozen-evaluation-manifest.json', 'code-commit.txt', 'packages.txt']:
+              shutil.copyfile(target / name, Path(os.environ['REPORTS']) / ('training-packages.txt' if name == 'packages.txt' else name))
+          PYTHON
+      - name: Regenerate and verify isolated inputs before inference
+        run: |
+          python ../scripts/test-myelin-mini-recovery.py
+          npm ci --no-audit --no-fund
+          npm run build:myelin-mini-dataset
+          npx tsx scripts/verify-myelin-mini-curriculum.ts
+          python scripts/build-myelin-mini-balanced.py
+          python scripts/verify-myelin-mini-training.py
+          npx tsx scripts/verify-myelin-mini.ts
+          npx tsc --noEmit
+          python ../scripts/verify-myelin-mini-recovery.py --adapter "$ADAPTER" --output "$REPORTS/input-provenance.json"
+      - name: Install exact recorded Python training environment
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+          python -m pip install -r "$ADAPTER/packages.txt"
+          python -m pip freeze > "$REPORTS/evaluation-packages.txt"
+      - name: Record base revision and verify unchanged tokenizer
+        run: |
+          python - <<'PYTHON'
+          import hashlib, json, os
+          from pathlib import Path
+          from datetime import datetime, timezone
+          from huggingface_hub import HfApi, snapshot_download
+          from transformers import AutoTokenizer
+          info = HfApi().model_info(os.environ['MODEL'])
+          # The historical trainer did not record a base revision. Refuse a
+          # newer repository revision rather than silently compare new weights.
+          if info.last_modified > datetime(2026, 10, 8, 8, 48, 25, tzinfo=timezone.utc):
+              raise ValueError('Base repository changed since training; historical revision must be recovered explicitly')
+          base = snapshot_download(os.environ['MODEL'], revision=info.sha)
+          tokenizer = AutoTokenizer.from_pretrained(base)
+          manifest = json.loads((Path(os.environ['ADAPTER']) / 'training-manifest.json').read_text())
+          assert hashlib.sha256(tokenizer.chat_template.encode()).hexdigest() == manifest['preflight']['chatTemplateSha256'], 'Chat template drift'
+          report = {'model': os.environ['MODEL'], 'resolvedRevision': info.sha, 'lastModified': info.last_modified.isoformat(), 'chatTemplateSha256': manifest['preflight']['chatTemplateSha256'], 'limit': 'Historical trainer recorded model name but not resolved base revision. Repository revision predates training; template matches.'}
+          (Path(os.environ['REPORTS']) / 'base-provenance.json').write_text(json.dumps(report, indent=2) + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'MODEL_PATH={base}\n')
+          PYTHON
+      - name: Export original prompts and verify all 53 IDs
+        run: |
+          MYELIN_MINI_EVAL_FILE=training/myelin-mini/eval-v2.jsonl MYELIN_MINI_EVAL_PROMPTS_OUT="$REPORTS/frozen-prompts.jsonl" npx tsx scripts/export-myelin-mini-eval-prompts.ts
+          MYELIN_MINI_EVAL_FILE=training/myelin-mini/eval-v1.jsonl MYELIN_MINI_EVAL_PROMPTS_OUT="$REPORTS/regression-prompts.jsonl" npx tsx scripts/export-myelin-mini-eval-prompts.ts
+          MYELIN_MINI_EVAL_FILE=training/myelin-mini/acceptance-v1.jsonl MYELIN_MINI_EVAL_PROMPTS_OUT="$REPORTS/acceptance-prompts.jsonl" npx tsx scripts/export-myelin-mini-eval-prompts.ts
+          python - <<'PYTHON'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ['REPORTS'])
+          rows = []
+          for label, count in [('frozen', 32), ('regression', 20), ('acceptance', 1)]:
+              selected = [json.loads(line) for line in (root / f'{label}-prompts.jsonl').read_text().splitlines() if line.strip()]
+              assert len(selected) == count
+              rows.extend(selected)
+          assert len({r['id'] for r in rows}) == 53
+          output = root / 'all-prompts.jsonl'
+          output.write_text(''.join(json.dumps(row, ensure_ascii=False) + '\n' for row in rows))
+          (root / 'prompt-checksum.txt').write_text(hashlib.sha256(output.read_bytes()).hexdigest() + '\n')
+          PYTHON
+      - name: Infer all 53 cases once with original runner
+        run: >-
+          python -u scripts/infer-myelin-mini-peft.py
+          --model "$MODEL_PATH"
+          --adapter "$ADAPTER"
+          --prompts "$REPORTS/all-prompts.jsonl"
+          --output "$REPORTS/all-predictions.jsonl"
+          --max-new-tokens 1200
+      - name: Split predictions and score every unchanged gate
+        run: |
+          python - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['REPORTS'])
+          rows = [json.loads(line) for line in (root / 'all-predictions.jsonl').read_text().splitlines() if line.strip()]
+          assert len(rows) == 53 and len({r['id'] for r in rows}) == 53
+          for label in ['frozen', 'regression', 'acceptance']:
+              ids = {json.loads(line)['id'] for line in (root / f'{label}-prompts.jsonl').read_text().splitlines() if line.strip()}
+              selected = [r for r in rows if r['id'] in ids]
+              assert len(selected) == len(ids)
+              (root / f'{label}-predictions.jsonl').write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in selected))
+          PYTHON
+          npx tsx scripts/score-myelin-mini-predictions.ts training/myelin-mini/eval-v2.jsonl "$REPORTS/frozen-predictions.jsonl" "$REPORTS/frozen-report.json" release
+          npx tsx scripts/score-myelin-mini-predictions.ts training/myelin-mini/eval-v1.jsonl "$REPORTS/regression-predictions.jsonl" "$REPORTS/regression-report.json" release
+          npx tsx scripts/score-myelin-mini-predictions.ts training/myelin-mini/acceptance-v1.jsonl "$REPORTS/acceptance-predictions.jsonl" "$REPORTS/acceptance-report.json" acceptance
+      - name: Diagnose outcomes without changing scores
+        run: |
+          python ../scripts/diagnose_myelin_mini_predictions.py training/myelin-mini/eval-v2.jsonl "$REPORTS/frozen-predictions.jsonl" "$REPORTS/frozen-report.json" "$REPORTS/frozen-diagnostics.json"
+          python ../scripts/diagnose_myelin_mini_predictions.py training/myelin-mini/eval-v1.jsonl "$REPORTS/regression-predictions.jsonl" "$REPORTS/regression-report.json" "$REPORTS/regression-diagnostics.json"
+      - name: Enforce all three gates and expose reviewable evidence
+        run: |
+          node - <<'JS'
+          const fs = require('node:fs');
+          const root = process.env.REPORTS;
+          let passed = true;
+          let summary = '# Saved MYELIN Mini v4 evaluation\n\nSame final adapter and original evaluation source. No retraining or checkpoint selection.\n\n';
+          for (const name of ['frozen', 'regression', 'acceptance']) {
+            const result = JSON.parse(fs.readFileSync(`${root}/${name}-report.json`, 'utf8'));
+            passed &&= result.passes;
+            summary += `${name}: ${result.passes ? 'PASS' : 'FAIL'}\n\n`;
+            summary += '```json\n' + JSON.stringify(result.report, null, 2) + '\n```\n\n';
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          // Logs remain readable through the GitHub connector even on gate failure.
+          for (const name of fs.readdirSync(root).filter(name => /(?:report|diagnostics|provenance|manifest|predictions)\.(?:json|jsonl)$/.test(name))) {
+            console.log(`EVIDENCE_BEGIN ${name}`);
+            console.log(fs.readFileSync(`${root}/${name}`, 'utf8'));
+            console.log(`EVIDENCE_END ${name}`);
+          }
+          if (!passed) process.exitCode = 2;
+          JS
+      - name: Preserve evidence even on setup or quality failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myelin-mini-balanced-v4-recovery-evaluation
+          path: candidate/artifacts/myelin-mini/balanced-v4-recovery
+          if-no-files-found: warn
+          retention-days: 90

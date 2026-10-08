@@ -24,6 +24,8 @@ The assistant tries simple rules before loading Qwen. More involved requests use
 
 Tests cover preference restoration, failed preference saves, absent phone artifacts, both Qwen decision envelopes, rules without model loading, malformed outputs and invented IDs, cloud consent, clarification, cancellation, and preview-only changes. Full app verification is performed by `verify-hybrid-ai.yml`.
 
+GitHub verification passed on commit `b025d2033e8f33fb810556ad79c9bd575ed41559`: run `37755701533`, job `113239571939`. This includes full app TypeScript and the existing native-model lifecycle regression. Android screen interaction and model performance still require device testing.
+
 ## Release limitations
 
 No Qwen download URL or phone artifact has been configured. A LoRA training adapter is not a `.litertlm` mobile bundle. Current FunctionGemma runtime settings use a 1024-token context and cap outputs at 1024; approved Qwen bundles must be tested with their own context/output settings before download is enabled. The bridge requests 1200 tokens, matching the Mini contract, but that request alone does not change native limits.

@@ -177,7 +177,7 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Added Qwen3.5 2B catalog entry and Lite/Enhanced preference. Preference survives restart independently of installation; downloads remain disabled without verified artifacts.
 - Added shared validated routing with explicit cloud consent. Clarification does not trigger cloud guesses; cancellation never triggers fallback. The app has no cloud provider yet and invokes no remote AI.
 - Connected Mini routing to the assistant screen: supported rules work without model weights; questions and unavailable-model messages are shown. Existing experimental FunctionGemma bridge remains separate.
-- New local regressions and existing Mini checks passed. Full app/local-manager verification runs through `verify-hybrid-ai.yml`; record its result below once available.
+- New local regressions and existing Mini checks passed. GitHub verification PASS: run `37755701533`, job `113239571939`, tested commit `b025d2033e8f33fb810556ad79c9bd575ed41559`. Full app TypeScript, hybrid regression, existing local model lifecycle/native-boundary regression, and Mini safety checks all passed. Screens have not been exercised on an Android device in this chunk.
 - No 2B training, phone model release, cloud deployment, OTA or APK in this chunk. The active v4 training workflow remains on its original commit.
 
 ## Exact next step

@@ -2,15 +2,6 @@ name: Train MYELIN Mini Qwen v2 Fast
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - codex/exam-autopilot-capacity-v1
-    paths:
-      - .github/workflows/train-myelin-mini-qwen-v2-fast.yml
-      - scripts/build-myelin-mini-router-v2.ts
-      - scripts/generate-myelin-mini-failure-data.ts
-      - scripts/train-myelin-mini-qwen.py
-
 permissions:
   contents: read
   actions: read
@@ -126,3 +117,4 @@ jobs:
             artifacts/myelin-mini/qwen3.5-0.8b-lora-v2-fast
             artifacts/myelin-mini/v2-fast-eval
           if-no-files-found: warn
+

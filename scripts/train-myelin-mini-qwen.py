@@ -21,6 +21,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from myelin_mini_training_audit import audit_balance, tokenize_and_audit
+
 
 DEFAULT_MODEL = "principled-intelligence/Qwen3.5-0.8B-text-only"
 DEFAULT_TRAIN = Path("training/myelin-mini/compiled/train-v1.jsonl")
@@ -168,6 +170,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resume-adapter", type=Path)
     parser.add_argument("--allow-small-dataset", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--preflight-only", action="store_true", help="Audit actual tokenizer lengths without loading model weights.")
+    parser.add_argument("--audit-output", type=Path)
     return parser.parse_args()
 
 
@@ -251,11 +255,41 @@ def main() -> None:
         else validation_rows
     )
 
-    # Heavy ML imports intentionally happen only after dry-run validation.
+    # Audit the exact selected rows before any model weights are loaded.
+    from transformers import AutoTokenizer
+
+    processing_class = AutoTokenizer.from_pretrained(args.model)
+    def effective_rows(rows):
+        return [{"id": row["id"], "messages": item["prompt"] + item["completion"]}
+                for row, item in zip(rows, to_prompt_completion(rows, smoke_mode=args.smoke_mode))]
+
+    train_tokens, train_token_report = tokenize_and_audit(
+        effective_rows(train_rows_for_run), processing_class, args.max_length)
+    validation_tokens, validation_token_report = tokenize_and_audit(
+        effective_rows(validation_rows_for_run), processing_class, args.max_length)
+    balance = audit_balance(train_rows_for_run)
+    audit = {
+        "schemaVersion": 1, "model": args.model, "smokeMode": args.smoke_mode,
+        "trainSha256": sha256_file(args.train), "validationSha256": sha256_file(args.validation),
+        "chatTemplateSha256": hashlib.sha256(processing_class.chat_template.encode()).hexdigest(),
+        "balance": balance, "train": train_token_report, "validation": validation_token_report,
+        "passes": (args.smoke_mode or not balance["problems"])
+            and not train_token_report["failedRows"] and not validation_token_report["failedRows"],
+    }
+    audit_path = args.audit_output or args.output / "training-preflight.json"
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    audit_path.write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
+    print(f"preflight={'PASS' if audit['passes'] else 'FAIL'} report={audit_path}")
+    if not audit["passes"]:
+        raise ValueError("Training preflight failed. Inspect balance, prompt alignment, and token lengths in the report.")
+    if args.preflight_only:
+        return
+
+    # Heavy ML imports intentionally happen only after tokenizer preflight.
     import torch
     from datasets import Dataset
     from peft import LoraConfig, PeftModel
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers import AutoModelForCausalLM
     from trl import SFTConfig, SFTTrainer
 
     use_cuda = bool(torch.cuda.is_available())
@@ -267,12 +301,8 @@ def main() -> None:
 
     args.output.mkdir(parents=True, exist_ok=True)
 
-    train_dataset = Dataset.from_list(
-        to_prompt_completion(train_rows_for_run, smoke_mode=args.smoke_mode)
-    )
-    validation_dataset = Dataset.from_list(
-        to_prompt_completion(validation_rows_for_run, smoke_mode=args.smoke_mode)
-    )
+    train_dataset = Dataset.from_list(train_tokens)
+    validation_dataset = Dataset.from_list(validation_tokens)
 
     use_bf16 = bool(use_cuda and torch.cuda.is_bf16_supported())
     training_args = SFTConfig(
@@ -304,7 +334,6 @@ def main() -> None:
         fp16=bool(use_cuda and not use_bf16),
     )
 
-    processing_class = None
     if args.resume_adapter:
         base_model = AutoModelForCausalLM.from_pretrained(
             args.model,
@@ -317,7 +346,6 @@ def main() -> None:
             is_trainable=True,
         )
         peft_config = None
-        processing_class = AutoTokenizer.from_pretrained(args.model)
     else:
         model_for_training = args.model
         peft_config = LoraConfig(
@@ -367,6 +395,11 @@ def main() -> None:
         "runValidationRows": len(validation_rows_for_run),
         "trainRoutes": train_routes,
         "validationRoutes": validation_routes,
+        "runTrainRoutes": balance["routes"],
+        "preflight": {"passes": True, "enableThinking": False,
+            "maxTrainTokens": train_token_report["maxTotalTokens"],
+            "maxValidationTokens": validation_token_report["maxTotalTokens"],
+            "chatTemplateSha256": audit["chatTemplateSha256"]},
         "epochs": args.epochs,
         "learningRate": args.learning_rate,
         "batchSize": args.batch_size,
@@ -394,3 +427,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -125,13 +125,25 @@ The earlier v1-only handoff was stale. Verified GitHub Actions results:
 The raw results show strong create_task bias: topic creation, topic updates, exams, and planning requests often become practice tasks; some references are invented. All valid route outputs express about 0.98 confidence, including incorrect ones, so that confidence is not calibrated. Some strict exact-match misses are merely title differences, but action-type, clarification, and escalation failures independently block release.
 The v2 dataset builder selects primarily practice requests plus missing-target examples. This is a plausible contributor to the observed bias; it is not a proven causal result.
 
+## Training integrity repair — 2026-10-08
+- Reproduced broad source dataset: 126 train / 11 validation. The v2 focused set contains 42 train rows: 38 create_task actions, 4 clarifications, no escalation examples or other action types.
+- Real tokenizer audit: longest sequence 529 tokens. Main v2 (768) fits; fast v2 (first 16 rows, 512) truncates 7 targets. Default-template prefix alignment passed for these inputs; no evidence that template mismatch caused the old failure.
+- New `scripts/build-myelin-mini-balanced.py` preserves 123 distinct clean training requests and replays minority groups into 225 training rows: 109 actions, 56 clarify, 60 escalate. All five action types are covered. Replayed rows are NOT new independent data.
+- Three training request strings overlap evaluation: `clarify-target-1`, `clarify-ambiguous-1`, `escalate-general-knowledge-3`. They are excluded from the candidate using normalized request fingerprints. The old benchmark must be treated as a regression benchmark with known contamination, not pristine held-out evidence.
+- Validation remains unweighted and has only 11 examples; its limited coverage is not a release certificate.
+- Trainer preflight rejects missing routes, highly dominant action types, cut-off targets, empty completions, and prompt-prefix mismatch before loading model weights.
+- Audited input_ids and completion masks are passed directly into TRL, with thinking disabled consistently. The completion mask excludes prompts and includes all answer tokens.
+- Use `--preflight-only` for the tokenizer audit; legacy `--dry-run` remains a schema-only check.
+- Fast and Hinglish v2 training workflows are now manual-only. The new `preflight-myelin-mini.yml` runs data checks and preprocessing integration tests without candidate training or model-weight downloads.
+- Six local regression tests passed. GitHub preflight integration result must be checked before training.
+
 ## Exact next step
-1. Keep this adapter blocked from app release; do not rerun the same training recipe blindly.
-2. Audit training tokenization/truncation and build balanced new examples covering all action types, clarification, escalation, and reference integrity. Do not copy held-out examples into training.
-3. Verify dataset composition and complete assistant targets before spending another training run.
-4. Train one candidate with a general-route replay set, then rerun this full release workflow against its explicit final adapter.
-5. Evaluate runtime integration and phone latency only after quality/safety gates pass.
-6. Publish an OTA only after integrated app checks pass.
+1. Verify the latest "Preflight MYELIN Mini balanced training" run and its `myelin-mini-training-preflight` artifact.
+2. Add genuinely varied independent requests for sparse categories (exam planning, missing-required-detail, general knowledge, safety), including multi-action and ID-reference cases. Repetition alone cannot make a strong model.
+3. Freeze a fresh evaluation set separate from training and validation. Keep eval-v1 as a regression suite because of known historical request overlap and repeated tuning against its results.
+4. Build the balanced dataset and require tokenizer/preprocessing preflight to pass. Start the next candidate from the clean base model, not the historically contaminated v1/v2 adapters.
+5. Train one bounded candidate, evaluate full routing/action safety plus the fresh set, then compare results. Keep the current adapter blocked from release.
+6. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.
 
 ## Continuity instruction
 Read this file and current branch head before changing code. Inspect current workflows and artifacts before restarting any training. Work one sensible chunk at a time; verify, summarize, state the next step, then stop. Never claim visible app changes unless an OTA or APK was actually published.

@@ -73,6 +73,13 @@ async function main() {
   assert.equal(ground('Create a record', [{ type: 'update_topic', topic: { topicId: 'creationism' }, patch: { priority: 3 } }])?.reason, 'missing-target', 'An instruction verb cannot count as a topic prefix.');
   workspace.topics.pop();
   assert.equal((await route('Raise it to high priority', { topicId: 'missing' })).route, 'clarify');
+  workspace.topics.push({ ...workspace.topics[0]!, id: 'ab-climate', name: 'Regional Systems' });
+  const explicitIdAction = [{ type: 'update_topic', topic: { topicId: 'ab-climate' }, patch: { priority: 3 } }];
+  assert.equal(ground('Update id ab climate to high priority', explicitIdAction)?.reason, 'missing-target');
+  assert.equal(ground('Update id AB-CLIMATE to high priority', explicitIdAction)?.reason, 'missing-target');
+  assert.equal(ground('Update id ab-climate to high priority', explicitIdAction), null);
+  assert.equal(ground('Update id "ab-climate" to high priority', explicitIdAction), null);
+  workspace.topics.pop();
   assert.equal((await route(original, { dueDate: 'not-a-date' })).route, 'clarify');
   const create = { type: 'create_topic', name: 'Plant Transport', subject: 'Biology', status: 'new', priority: 2, estimatedMinutes: 40, notes: '', clientRef: 'plant' };
   const linked = { type: 'create_task', title: 'Review Plant Transport', subject: 'Biology', taskType: 'revision', estimatedMinutes: 20, priority: 2, notes: '', topic: { clientRef: 'plant' } };

@@ -81,7 +81,8 @@ function mentions(text: string, name: string) {
   return key(text).split(' ').some(word => word.length >= 4 && !GENERIC_WORDS.has(word) && words.some(candidate => candidate.startsWith(word)));
 }
 function explicitlyNamesId(text: string, id: string) {
-  return ` ${key(text)} `.includes(` id ${key(id)} `);
+  return [...text.matchAll(/\bid\s+(?:"([^"]+)"|'([^']+)'|([^\s,;!?]+))/gi)]
+    .some(match => (match[1] ?? match[2] ?? match[3]) === id);
 }
 
 export function checkAssistantActionGrounding(input: Input, batch: AssistantActionBatch): GroundingQuestion | null {

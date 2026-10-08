@@ -30,7 +30,8 @@ exports.myelinAssistant = onRequest({
       verifyToken: token => getAuth().verifyIdToken(token, true), quota,
       apiKey: key.value(), model: model.value(), fetch,
     });
-    if (!controller.signal.aborted && !res.destroyed) res.status(200).json({ version: 1, decision });
+    if (controller.signal.aborted) throw controller.signal.reason;
+    if (!res.destroyed) res.status(200).json({ version: 1, decision });
   } catch (error) {
     const known = error instanceof CloudError ? error : new CloudError(503, 'cloud-unavailable');
     if (!res.destroyed) {

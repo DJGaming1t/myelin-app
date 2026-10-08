@@ -300,6 +300,15 @@ export function tryBuildMyelinMiniFastDecision(
   const escalated = escalation(text, input.requestId);
   if (escalated) return escalated;
 
+  // The shortcut handles one simple task or status change. Exam requests and
+  // chained commands need the full router so no requested operation is lost.
+  if (
+    /\b(?:add|create|record|make|schedule|plan|replan|rebuild)\b.{0,55}\b(?:exam|quiz|test|assessment)\b/.test(text) ||
+    /\b(?:and|then)\s+(?:(?:also|please|now|to)\s+)*(?:add|create|set|mark|update|move|generate|replan|plan|schedule|make)\b/.test(text)
+  ) {
+    return null;
+  }
+
   const taskType = detectTaskType(text);
   const topicResult = resolveTopic(input.workspace, text);
 
@@ -409,3 +418,4 @@ export function tryBuildMyelinMiniFastDecision(
 
   return null;
 }
+

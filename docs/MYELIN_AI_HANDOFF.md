@@ -167,6 +167,11 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Run it on each v4 evaluation set after downloading results, e.g. `python scripts/diagnose_myelin_mini_predictions.py training/myelin-mini/eval-v2.jsonl <frozen-predictions.jsonl> <frozen-report.json> <diagnostics.json>`.
 - Historical diagnostic output is saved under `training/myelin-mini/baselines/qwen3.5-0.8b-lora-v2/diagnostics.json`. This evidence does not establish v4 improvement.
 
+## Conservative fast-router fix while v4 trains — 2026-10-08
+- The deterministic shortcut previously treated `Create a Physics practice exam for tomorrow` as a practice task because it matched the word `practice` before examining exam intent. It could also reduce `Create the Elasticity topic and add a 20 minute practice task` to a clarification or one task.
+- It now defers exam and chained-operation requests to the full decision path. A simple practice request still takes the shortcut. Targeted routing regressions and local TypeScript check passed.
+- This code change happened after the training workflow commit; it does not alter the running v4 data, model weights, benchmark or evaluation code. It has not been published to an app build.
+
 ## Exact next step
 1. Inspect the v4 workflow run recorded below before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
 2. After completion, download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.

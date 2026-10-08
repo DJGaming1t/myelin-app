@@ -16,6 +16,7 @@ import {
   evaluateMyelinMiniPredictions,
   myelinMiniPassesReleaseGate,
 } from '../src/features/assistant/myelin-mini-evaluation';
+import { tryBuildMyelinMiniFastDecision } from '../src/features/assistant/myelin-mini-fast-router';
 
 const REQUEST_ID = 'mini-test-1';
 
@@ -366,6 +367,22 @@ function verifyEvaluationHarness() {
 
 async function main() {
   const workspace = createEmptyWorkspace(1_800_000_000_000);
+  const fastInput = { workspace, requestId: 'shortcut-check', currentDate: '2027-04-30' };
+  assert.equal(
+    tryBuildMyelinMiniFastDecision({ ...fastInput, userRequest: 'Create a Physics practice exam for tomorrow.' }),
+    null,
+    'An exam name containing practice must not become a task.',
+  );
+  assert.equal(
+    tryBuildMyelinMiniFastDecision({ ...fastInput, userRequest: 'Create the Elasticity topic and add a 20 minute practice task for it.' }),
+    null,
+    'A chained command must retain both operations for the full router.',
+  );
+  assert.equal(
+    tryBuildMyelinMiniFastDecision({ ...fastInput, userRequest: 'Practice Algebra for 20 minutes.' })?.route,
+    'clarify',
+    'The simple task shortcut remains available.',
+  );
   const seen: Parameters<MyelinMiniModelAdapter['generate']>[0][] = [];
 
   const model: MyelinMiniModelAdapter = {

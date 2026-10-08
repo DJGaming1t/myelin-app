@@ -87,12 +87,12 @@ jobs:
           --platform android
           --non-interactive
           --message "MYELIN assistant beta $GITHUB_SHA"
-          --json > beta-update.json
+          --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |
-          node -e 'console.log(JSON.stringify(JSON.parse(require("node:fs").readFileSync("beta-update.json", "utf8")), null, 2))'
+          node -e 'console.log(JSON.stringify(JSON.parse(require("node:fs").readFileSync(process.env.RUNNER_TEMP + "/beta-update.json", "utf8")), null, 2))'
       - uses: actions/upload-artifact@v4
         with:
           name: myelin-assistant-beta-update
-          path: beta-update.json
+          path: ${{ runner.temp }}/beta-update.json
           if-no-files-found: error

@@ -55,4 +55,8 @@ Supported bounded normalization includes `complite`, `nb`, `hw`, `tmr`, common s
 
 This is a local language-rule improvement, not new Qwen weights or unrestricted natural-language comprehension. Training data, frozen evaluations and the active v4 run are unchanged. Follow-up answers still require editing the original request; conversational slot-filling remains a future chunk. The preview now displays task subject, type, due date and duration/unknown state.
 
-Local routing, protocol, hybrid, model lifecycle and available TypeScript checks passed. Full app verification and preview publication are pending the recorded workflow receipt; physical-device QA remains pending.
+Local routing, protocol, hybrid, model lifecycle and available TypeScript checks passed. Full app TypeScript and all existing regression scripts passed in GitHub run `37759348032`, verification job `113251683447`. Publisher `113252058418` succeeded. Separate hybrid verification run `37759348203` also passed.
+
+Published source `5c644549305790be1c005eec26a027559fa76e00`, Android preview runtime `0.2.13`, group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, update `01a11aee-348b-7bc9-a545-938c07316392`, at `2026-10-08T09:53:01.067Z`. Receipt artifact `11541334002`, committed copy `docs/beta/schoolwork-update-20261008.json`. No production or native build changes. Physical-device QA remains pending.
+
+Next user-facing language chunk: short clarification replies without retyping the original request. Broader free-form interpretation still needs the authenticated cloud connection and approved mobile model releases from the existing checklist.

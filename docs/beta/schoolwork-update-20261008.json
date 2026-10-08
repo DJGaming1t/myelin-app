@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a11aee-348b-7bc9-a545-938c07316392",
+    "createdAt": "2026-10-08T09:53:01.067Z",
+    "group": "73bc7b39-a37b-49d1-a556-fc30143dc79a",
+    "branch": "preview",
+    "message": "MYELIN everyday schoolwork beta 5c644549305790be1c005eec26a027559fa76e00",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a11aee-348b-7bc9-a545-938c07316392",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "5c644549305790be1c005eec26a027559fa76e00"
+  }
+]

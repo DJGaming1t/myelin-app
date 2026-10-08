@@ -191,6 +191,18 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Android smoke-test steps and exact limitations are in `docs/MYELIN_BETA_TESTING.md`. Physical-device interaction, keyboard/large-text checks and actual OTA receipt on a user's phone have NOT been exercised here.
 - Last check of training run `37752290697`: clean-base training step still in progress; no v4 evaluation results yet. Left the run intact.
 
+## Everyday schoolwork language — 2026-10-08
+- User requested understanding `I have to complite bio practical nb by tomorrow` and similar natural study requests. Added bounded parser `src/features/assistant/schoolwork-language.ts` before the old topic-linked task path.
+- The exact sentence produces a validated confirmation preview: `Complete Biology practical notebook`, subject Biology, homework, tomorrow's local calendar date, no chapter/topic link, estimate 0 (explicitly unknown, not measured or calculated).
+- Handles common whitelisted typos and abbreviations, notebooks/homework/assignments/projects/worksheets/practical records/lab reports, numeric minutes/hours, half an hour, today/tonight/tomorrow/day after tomorrow, in 1–30 days (one–seven as words), valid ISO dates. Original text is retained in notes. No broad fuzzy correction of arbitrary names or IDs.
+- Unknown/ambiguous subjects, compound schoolwork, unsupported weekdays/time deadlines, conflicting/invalid dates and invalid/multiple duration estimates clarify instead of guessing. Negated, completed, conditional and question forms do not become fast create actions. Legacy topic-linked homework stays compatible; explicit ISO date detection in that old path no longer loses hyphens during normalization.
+- Assistant preview shows subject/type/date/duration including an explicit unknown-duration warning. Exact user example is an enabled example button. Clear rules run before the experimental FunctionGemma path as well. No new native dependencies.
+- Tests cover shorthand, title/subject/type/date/duration, original notes, no invented chapter or priority, time/date conflicts, negation/completed work, year/leap-day rollover, zero model calls, no workspace mutation before apply, wrong confirmation rejection, and repeated-apply idempotence.
+- Full app verification and publication SUCCESS: run `37759348032`, verification job `113251683447`, publisher `113252058418`; separate hybrid verification `37759348203` also passed. Source commit `5c644549305790be1c005eec26a027559fa76e00`.
+- Published Android preview group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, update `01a11aee-348b-7bc9-a545-938c07316392`, branch/channel `preview`, runtime `0.2.13`, created at `2026-10-08T09:53:01.067Z`. Receipt artifact `11541334002`, copy `docs/beta/schoolwork-update-20261008.json`. No production publication or APK build.
+- This improves shipped local language rules, not Qwen weights or unrestricted conversational understanding. Qwen downloads/cloud remain blocked. Training inputs and frozen evaluations were not modified. Android physical-device/large-text/keyboard QA remains pending in `docs/MYELIN_BETA_TESTING.md`.
+- Next language chunk: retain an incomplete request so the user can answer a short clarification without rewriting it. Cloud transport and model evaluation/release remain on the existing master checklist.
+
 ## Exact next step
 1. Inspect the v4 workflow run recorded above before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
 2. After completion, download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.

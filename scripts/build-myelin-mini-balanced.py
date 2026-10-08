@@ -8,6 +8,7 @@ import json
 import math
 import random
 import re
+import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
@@ -20,7 +21,7 @@ def read(path):
 
 def fingerprint(row):
     payload = json.loads(row['messages'][1]['content']) if 'messages' in row else row['input']
-    return ' '.join(re.findall(r'\w+', payload['userRequest'].casefold()))
+    return ' '.join(re.findall(r'\w+', unicodedata.normalize('NFKC', payload['userRequest']).lower()))
 
 
 def build(train, validation, holdout, acceptance, seed=42):
@@ -69,15 +70,18 @@ def main():
     parser.add_argument('--root', type=Path, default=Path('training/myelin-mini'))
     args = parser.parse_args()
     root = args.root
+    frozen = json.loads((root / 'eval-v2-manifest.json').read_text())
+    if hashlib.sha256((root / 'eval-v2.jsonl').read_bytes()).hexdigest() != frozen['sha256']:
+        raise ValueError('Frozen eval-v2 content changed; create a new version instead')
     train = read(root / 'compiled/train-v1.jsonl')
     validation = read(root / 'compiled/validation-v1.jsonl')
-    holdout = read(root / 'eval-v1.jsonl')
+    holdout = read(root / 'eval-v1.jsonl') + read(root / 'eval-v2.jsonl')
     acceptance = read(root / 'acceptance-v1.jsonl')
     rows, manifest = build(train, validation, holdout, acceptance)
     for name, values in [('balanced-v3-train', rows), ('balanced-v3-validation', validation)]:
         (root / f'compiled/{name}.jsonl').write_text(''.join(json.dumps(r, ensure_ascii=False, separators=(',', ':')) + '\n' for r in values))
     manifest['sourceSha256'] = {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
-        for name in ['compiled/train-v1.jsonl', 'compiled/validation-v1.jsonl', 'eval-v1.jsonl', 'acceptance-v1.jsonl']}
+        for name in ['compiled/train-v1.jsonl', 'compiled/validation-v1.jsonl', 'eval-v1.jsonl', 'eval-v2.jsonl', 'acceptance-v1.jsonl']}
     (root / 'compiled/balanced-v3-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest, indent=2))
 

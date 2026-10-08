@@ -13,6 +13,11 @@ on:
       - scripts/verify-myelin-mini-training.py
       - scripts/verify-myelin-mini-sft.py
       - scripts/train-myelin-mini-qwen.py
+      - scripts/build-myelin-mini-dataset.ts
+      - scripts/verify-myelin-mini-curriculum.ts
+      - training/myelin-mini/curriculum-v3.jsonl
+      - training/myelin-mini/eval-v2.jsonl
+      - training/myelin-mini/eval-v2-manifest.json
 
 permissions:
   contents: read
@@ -43,9 +48,11 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build:myelin-mini-dataset
+          npx tsx scripts/verify-myelin-mini-curriculum.ts
           npx tsx scripts/build-myelin-mini-router-v2.ts
           python scripts/build-myelin-mini-balanced.py
           python scripts/verify-myelin-mini-training.py
+          npx tsc --noEmit
       - name: Install CPU training stack for preprocessing integration check
         run: |
           python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0

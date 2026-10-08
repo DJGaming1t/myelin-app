@@ -87,15 +87,22 @@ const outputDir = resolve(
     'training/myelin-mini/compiled',
 );
 const checkOnly = process.argv.includes('--check');
+const curriculumPath = resolve(
+  process.env.MYELIN_MINI_CURRICULUM ?? 'training/myelin-mini/curriculum-v3.jsonl',
+);
 
 const examples = [
   ...readJsonl(sourcePath),
   ...(existsSync(failurePath) ? readJsonl(failurePath) : []),
+  ...readJsonl(curriculumPath),
 ];
 
 const ids = new Set<string>();
 const requestIds = new Set<string>();
 for (const example of examples) {
+  if (example.split !== 'train' && example.split !== 'validation') {
+    throw new Error(`Invalid training split for ${example.id}: ${example.split}`);
+  }
   if (ids.has(example.id)) {
     throw new Error(`Duplicate MYELIN Mini training id: ${example.id}`);
   }
@@ -139,3 +146,4 @@ console.log(
     checkOnly ? 'mode=check' : `output=${outputDir}`,
   ].join(' | '),
 );
+

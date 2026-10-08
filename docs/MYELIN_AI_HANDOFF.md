@@ -139,13 +139,20 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Candidate tokenizer preflight: PASS, train max 529 tokens, validation max 506, limit 768; no target truncation or prefix mismatch.
 - No candidate training or OTA/APK was run in this chunk. Current v2 remains blocked by the failed model-quality gate.
 
+## Expanded curriculum and frozen evaluation — 2026-10-08
+- Added `curriculum-v3.jsonl`: 71 new training requests and 18 new validation cases. Covers all action types, clarification and escalation reasons, multi-action references, and calendar boundaries.
+- Added frozen `eval-v2.jsonl`: 32 authored synthetic cases (16 actions, 8 clarify, 8 escalate), with SHA-256 manifest. No model predictions were used to choose labels. This is a small synthetic benchmark, not independent human validation.
+- Candidate now has 194 distinct training sources replayed into 255 rows (125 actions, 64 clarify, 66 escalate); validation has 29 unweighted cases. Three historical overlapping requests remain excluded.
+- New verifier checks protocol labels, existing IDs, reference ordering, frozen hash, normalized request separation and gold-label scorer compatibility. Builder also checks the frozen hash and excludes both evaluation sets.
+- Local TypeScript check, six training regressions and curriculum verification passed. Real tokenizer preflight passed: maximum 580 training tokens / 555 validation tokens, limit 768, no incomplete answers.
+- Full GitHub preprocessing verification is pending for this commit; record its result before training.
+- No candidate training or app deployment in this chunk. Previous adapter remains blocked.
+
 ## Exact next step
-1. Read the successful preflight evidence above. Do not repeat this integrity-repair chunk.
-2. Add genuinely varied independent requests for sparse categories (exam planning, missing-required-detail, general knowledge, safety), including multi-action and ID-reference cases. Repetition alone cannot make a strong model.
-3. Freeze a fresh evaluation set separate from training and validation. Keep eval-v1 as a regression suite because of known historical request overlap and repeated tuning against its results.
-4. Build the balanced dataset and require tokenizer/preprocessing preflight to pass. Start the next candidate from the clean base model, not the historically contaminated v1/v2 adapters.
-5. Train one bounded candidate, evaluate full routing/action safety plus the fresh set, then compare results. Keep the current adapter blocked from release.
-6. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.
+1. Check the expanded-curriculum preflight run and record its evidence. Do not repeat curriculum creation.
+2. Train one bounded candidate from the clean base using balanced-v3 train/validation and audited completion masks. Do not resume historically contaminated v1/v2 adapters.
+3. Evaluate on frozen eval-v2 plus historical eval-v1 regression and separate Hinglish acceptance; retain raw predictions and report all gates, including failures. Do not select checkpoints using eval-v2.
+4. Compare measured model quality before claiming improvement. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.
 
 ## Continuity instruction
 Read this file and current branch head before changing code. Inspect current workflows and artifacts before restarting any training. Work one sensible chunk at a time; verify, summarize, state the next step, then stop. Never claim visible app changes unless an OTA or APK was actually published.

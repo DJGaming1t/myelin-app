@@ -142,14 +142,14 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 ## Expanded curriculum and frozen evaluation — 2026-10-08
 - Added `curriculum-v3.jsonl`: 71 new training requests and 18 new validation cases. Covers all action types, clarification and escalation reasons, multi-action references, and calendar boundaries.
 - Added frozen `eval-v2.jsonl`: 32 authored synthetic cases (16 actions, 8 clarify, 8 escalate), with SHA-256 manifest. No model predictions were used to choose labels. This is a small synthetic benchmark, not independent human validation.
-- Candidate now has 194 distinct training sources replayed into 255 rows (125 actions, 64 clarify, 66 escalate); validation has 29 unweighted cases. Three historical overlapping requests remain excluded.
+- Candidate now has 194 source records (192 distinct normalized requests) replayed into 255 rows (125 actions, 64 clarify, 66 escalate); validation has 29 unweighted cases. Three historical overlapping requests remain excluded.
 - New verifier checks protocol labels, existing IDs, reference ordering, frozen hash, normalized request separation and gold-label scorer compatibility. Builder also checks the frozen hash and excludes both evaluation sets.
 - Local TypeScript check, six training regressions and curriculum verification passed. Real tokenizer preflight passed: maximum 580 training tokens / 555 validation tokens, limit 768, no incomplete answers.
-- Full GitHub preprocessing verification is pending for this commit; record its result before training.
+- Full GitHub verification PASS: run `37751372043`, job `113225146393`, tested commit `2ca437fa521016678157321f04706f580d9726dc`, artifact `11537872562`. Protocol/scorer regressions, full app TypeScript, six training tests and actual TRL token/mask preservation all passed. Initial data-only run `37707675824` also passed.
 - No candidate training or app deployment in this chunk. Previous adapter remains blocked.
 
 ## Exact next step
-1. Check the expanded-curriculum preflight run and record its evidence. Do not repeat curriculum creation.
+1. Read the successful expanded-curriculum evidence above. Do not repeat curriculum creation or preflight repair.
 2. Train one bounded candidate from the clean base using balanced-v3 train/validation and audited completion masks. Do not resume historically contaminated v1/v2 adapters.
 3. Evaluate on frozen eval-v2 plus historical eval-v1 regression and separate Hinglish acceptance; retain raw predictions and report all gates, including failures. Do not select checkpoints using eval-v2.
 4. Compare measured model quality before claiming improvement. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.
@@ -159,3 +159,5 @@ Read this file and current branch head before changing code. Inspect current wor
 
 
 Scoring note: action exact-match now normalizes consistently renamed local clientRefs by declaration position and type. All action fields, existing IDs and reference links still must match; unresolved, duplicate and out-of-order references are not normalized into valid links. Regression checks cover valid renaming and broken links for topic and exam chains. Historical reports retain their original scoring version.
+
+Counting clarification: the manifest field uniqueTrainingSources counts 194 source IDs, not distinct text. Two legacy prompt pairs repeat, leaving 192 normalized distinct training requests. They are training-only and do not overlap frozen eval-v2.

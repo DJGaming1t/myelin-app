@@ -1,6 +1,6 @@
 # MYELIN Mini candidate data v3
 
-Adds 71 authored synthetic training requests and 18 validation cases to the earlier curriculum. The compiled source has 197 training / 29 validation cases. Removing three historical benchmark overlaps leaves 194 distinct training sources; category replay produces 255 rows: 125 actions, 64 clarification, 66 escalation. Replay does not add independent examples.
+Adds 71 authored synthetic training requests and 18 validation cases to the earlier curriculum. The compiled source has 197 training / 29 validation cases. Removing three historical benchmark overlaps leaves 194 source records (192 distinct normalized requests); category replay produces 255 rows: 125 actions, 64 clarification, 66 escalation. Replay does not add independent examples.
 
 The new examples cover topic creation and updates, exams, planning, tasks, multi-action references, missing details, ambiguous targets, stronger-model routing, month boundaries and leap day. Labels are checked against the app protocol and context IDs. Synthetic labels and narrow coverage remain limitations; no model-quality improvement has yet been measured.
 

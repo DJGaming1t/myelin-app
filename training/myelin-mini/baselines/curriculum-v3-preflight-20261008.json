@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-08",
+  "testedCommit": "2ca437fa521016678157321f04706f580d9726dc",
+  "githubRun": 37751372043,
+  "githubJob": 113225146393,
+  "githubArtifact": 11537872562,
+  "conclusion": "success",
+  "trainingSourceRecords": 194,
+  "distinctNormalizedTrainingRequests": 192,
+  "trainingRows": 255,
+  "validationRows": 29,
+  "frozenEvaluationCases": 32,
+  "sourceSha256": {
+    "compiled/train-v1.jsonl": "0590ccfb8295099892be07afd875514db8cc2dd60b9ab889522bd64f63c76a26",
+    "compiled/validation-v1.jsonl": "1c9f1c31f9ab5d33abae55f74c2b1b822fad44910f8cb2c07d1c4877618de2b4",
+    "eval-v1.jsonl": "6c96e3880028e87cb9d817294ab534b9a1719a46bd6c678ae58a5d2545ac5db5",
+    "eval-v2.jsonl": "e8aa81783d5f392a3c4464d75401742d4ff28a78b569cffe1b97c695bca707e3",
+    "acceptance-v1.jsonl": "f1cedad8d36b65d5b6aa5281b5c3cae98d8534fe3c00aca48d94060dde91cb11"
+  },
+  "localTokenizerAudit": {
+    "train": {
+      "rows": 255,
+      "maxLength": 768,
+      "enableThinking": false,
+      "maxTotalTokens": 580,
+      "failedRows": 0
+    },
+    "validation": {
+      "rows": 29,
+      "maxLength": 768,
+      "enableThinking": false,
+      "maxTotalTokens": 555,
+      "failedRows": 0
+    }
+  },
+  "githubChecks": [
+    "curriculum protocol, references and split isolation",
+    "consistent clientRef rename equivalence and broken-link rejection",
+    "full app TypeScript",
+    "six training regression tests",
+    "tokenizer preflight",
+    "actual TRL complete tokens and completion masks"
+  ],
+  "modelTrained": false,
+  "appDeployed": false
+}

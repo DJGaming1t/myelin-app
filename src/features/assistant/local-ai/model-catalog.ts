@@ -1,4 +1,5 @@
-export type LocalAiModelId = 'functiongemma-270m' | 'qwen3.5-0.8b';
+export type QwenOfflineModelId = 'qwen3.5-0.8b' | 'qwen3.5-2b';
+export type LocalAiModelId = 'functiongemma-270m' | QwenOfflineModelId;
 
 export type LocalAiArtifactDescriptor = {
   id: string;
@@ -97,16 +98,16 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
   },
   {
     id: 'qwen3.5-0.8b',
-    displayName: 'Qwen3.5 0.8B',
-    shortName: 'Qwen',
+    displayName: 'Lite Offline AI · Qwen3.5 0.8B',
+    shortName: 'Qwen Lite',
     vendor: 'qwen',
     sourceModel: 'Qwen/Qwen3.5-0.8B',
     license: 'Apache-2.0',
     role: 'reasoning-assistant',
     parameterLabel: '0.8B family',
     description:
-      'Stronger local assistant candidate for interpretation and plan critique, with a much larger current LiteRT bundle.',
-    requiresTaskFineTune: false,
+      'The smaller MYELIN interpreter for devices where download size and speed matter most.',
+    requiresTaskFineTune: true,
     availability: 'coming-soon',
     sourceUrl: 'https://huggingface.co/Qwen/Qwen3.5-0.8B',
     runtimeCandidates: ['litert-lm'],
@@ -118,14 +119,43 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
     },
     capabilities: {
       text: true,
-      vision: true,
+      vision: false,
       structuredActions: true,
       functionCalling: false,
       plannerCritique: 'moderate',
     },
     notes: [
-      'The current verified LiteRT text candidate is roughly 963 MB, so Qwen remains the heavier optional tier.',
-      'A smaller verified LiteRT artifact should replace it before MYELIN enables Qwen downloads broadly.',
+      'MYELIN fine-tuning and evaluation are in progress; no approved phone artifact is configured.',
+      'Size targets are estimates, not a measured download or working-RAM guarantee.',
+    ],
+  },
+  {
+    id: 'qwen3.5-2b',
+    displayName: 'Enhanced Offline AI · Qwen3.5 2B',
+    shortName: 'Qwen Enhanced',
+    vendor: 'qwen',
+    sourceModel: 'Qwen/Qwen3.5-2B',
+    license: 'Apache-2.0',
+    role: 'reasoning-assistant',
+    parameterLabel: '2B family',
+    description: 'A larger candidate for interpreting more involved requests. Phone speed and memory must be measured before release.',
+    requiresTaskFineTune: true,
+    availability: 'coming-soon',
+    sourceUrl: 'https://huggingface.co/Qwen/Qwen3.5-2B',
+    runtimeCandidates: ['litert-lm'],
+    artifact: null,
+    targetDownloadMb: { min: 1200, max: 1700, kind: 'engineering-target' },
+    capabilities: {
+      text: true,
+      vision: false,
+      structuredActions: true,
+      functionCalling: false,
+      plannerCritique: 'moderate',
+    },
+    notes: [
+      'Needs its own fine-tune; the 0.8B adapter cannot be reused for 2B.',
+      'Download remains disabled until quality, conversion and phone-runtime checks pass.',
+      'The current native runtime accepts LiteRT-LM bundles, not training adapters or GGUF files.',
     ],
   },
 ] as const;
@@ -133,3 +163,4 @@ export const LOCAL_AI_MODELS: readonly LocalAiModelDefinition[] = [
 export function localAiModelById(modelId: string) {
   return LOCAL_AI_MODELS.find((model) => model.id === modelId) ?? null;
 }
+

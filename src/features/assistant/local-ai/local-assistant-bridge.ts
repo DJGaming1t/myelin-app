@@ -10,6 +10,39 @@ import {
 } from '@/src/features/assistant/assistant-model-contract';
 
 import { LocalAiRuntimeSession } from './local-ai-runtime';
+import { MyelinMiniModelAdapter } from '../myelin-mini';
+import { QwenOfflineModelId } from './model-catalog';
+
+export function createLocalMiniAdapter(
+  modelId: QwenOfflineModelId,
+  getSession: () => Promise<LocalAiRuntimeSession>,
+): MyelinMiniModelAdapter {
+  return {
+    id: modelId,
+    async generate(request) {
+      if (request.signal?.aborted) {
+        const error = new Error('The assistant request was cancelled.');
+        error.name = 'AbortError';
+        throw error;
+      }
+      const session = await getSession();
+      if (session.modelId !== modelId) throw new Error('The loaded offline model does not match your selection.');
+      const result = await session.generate({
+        prompt: `${request.system}\nUSER_REQUEST_JSON:\n${request.user}`,
+        jsonSchema: request.responseSchema,
+        maxOutputTokens: request.maxOutputTokens,
+        signal: request.signal,
+      });
+      if (result.finishReason === 'cancelled' || request.signal?.aborted) {
+        const error = new Error('The assistant request was cancelled.');
+        error.name = 'AbortError';
+        throw error;
+      }
+      if (result.finishReason !== 'stop') throw new Error('The offline model did not finish its response.');
+      return parseExactJson(result.text);
+    },
+  };
+}
 
 const MAX_USER_REQUEST_CHARS = 2_000;
 const MAX_OUTPUT_TOKENS = 512;
@@ -175,3 +208,4 @@ export async function prepareLocalAssistantActions(
     );
   }
 }
+

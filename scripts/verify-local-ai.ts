@@ -237,7 +237,7 @@ const androidCapabilities: LocalAiDeviceCapabilities = {
 {
   assert.deepEqual(
     LOCAL_AI_MODELS.map((model) => model.id),
-    ['functiongemma-270m', 'qwen3.5-0.8b'],
+    ['functiongemma-270m', 'qwen3.5-0.8b', 'qwen3.5-2b'],
   );
 
   const functionGemma = LOCAL_AI_MODELS[0]!;
@@ -361,12 +361,12 @@ async function main() {
     assert.match(settingsSource, /Local AI \(experimental\)/);
     assert.match(settingsSource, /manual import of one verified FunctionGemma LiteRT candidate/);
     assert.match(modelScreenSource, /Unload AI in background/);
-    assert.match(modelScreenSource, /Local AI without pretending it is finished/);
+    assert.match(modelScreenSource, /Choose your offline AI/);
     assert.match(modelScreenSource, /Import licensed \.litertlm/);
     assert.match(modelScreenSource, /Run model test/);
     assert.match(modelScreenSource, /Open assistant/);
-    assert.match(modelScreenSource, /Where did Qwen go\?/);
-    assert.match(modelScreenSource, /research candidate is not a\s+user-facing model option/);
+    assert.match(modelScreenSource, /setPreferredOfflineModel/);
+    assert.match(modelScreenSource, /PHONE RELEASE PENDING/);
     assert.match(modelScreenSource, /manual_actions_q8_ekv1024\.litertlm|mobile_actions_q8_ekv1024\.litertlm/);
     assert.match(modelScreenSource, /nativeRuntimeAvailable/);
     assert.doesNotMatch(modelScreenSource, /Check AI setup/);
@@ -800,3 +800,4 @@ void main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+

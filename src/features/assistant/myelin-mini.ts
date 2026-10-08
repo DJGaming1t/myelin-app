@@ -410,9 +410,10 @@ export async function routeWithMyelinMini(input: {
   currentRoute?: string;
   now?: number;
   signal?: AbortSignal;
+  allowFastRouter?: boolean;
 }): Promise<MyelinMiniRouteResult> {
   const now = input.now ?? Date.now();
-  const fastRaw = tryBuildMyelinMiniFastDecision({
+  const fastRaw = input.allowFastRouter === false ? null : tryBuildMyelinMiniFastDecision({
     workspace: input.workspace,
     userRequest: input.userRequest,
     requestId: input.requestId,
@@ -471,3 +472,4 @@ export async function routeWithMyelinMini(input: {
     modelId,
   };
 }
+

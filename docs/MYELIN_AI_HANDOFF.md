@@ -172,8 +172,16 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - It now defers exam and chained-operation requests to the full decision path. A simple practice request still takes the shortcut. Targeted routing regressions and local TypeScript check passed.
 - This code change happened after the training workflow commit; it does not alter the running v4 data, model weights, benchmark or evaluation code. It has not been published to an app build.
 
+## Lite/Enhanced hybrid foundation — 2026-10-08
+- User approved two offline alternatives plus cloud fallback. Persistent master checklist: `docs/MYELIN_HYBRID_AI_PLAN.md`.
+- Added Qwen3.5 2B catalog entry and Lite/Enhanced preference. Preference survives restart independently of installation; downloads remain disabled without verified artifacts.
+- Added shared validated routing with explicit cloud consent. Clarification does not trigger cloud guesses; cancellation never triggers fallback. The app has no cloud provider yet and invokes no remote AI.
+- Connected Mini routing to the assistant screen: supported rules work without model weights; questions and unavailable-model messages are shown. Existing experimental FunctionGemma bridge remains separate.
+- New local regressions and existing Mini checks passed. Full app/local-manager verification runs through `verify-hybrid-ai.yml`; record its result below once available.
+- No 2B training, phone model release, cloud deployment, OTA or APK in this chunk. The active v4 training workflow remains on its original commit.
+
 ## Exact next step
-1. Inspect the v4 workflow run recorded below before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
+1. Inspect the v4 workflow run recorded above before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
 2. After completion, download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.
 3. Compare measured routing/action safety with previous results. Keep release blocked unless all gates pass. Frozen eval-v2 may be reported after this run, but must not be copied into training or used for checkpoint selection.
 4. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.

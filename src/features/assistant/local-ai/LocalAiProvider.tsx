@@ -28,12 +28,15 @@ import {
   LOCAL_AI_MODELS,
   LocalAiModelDefinition,
   LocalAiModelId,
+  QwenOfflineModelId,
 } from './model-catalog';
 import {
   liteRtLmRuntimeAdapter,
   liteRtLmRuntimeIds,
 } from './litert-lm-runtime';
-import { prepareLocalAssistantActions } from './local-assistant-bridge';
+import { createLocalMiniAdapter, prepareLocalAssistantActions } from './local-assistant-bridge';
+import { MyelinMiniRouteResult } from '../myelin-mini';
+import { routeWithHybridAssistant } from '../hybrid-assistant-router';
 import {
   PreparedSyllabusImport,
   prepareLocalSyllabusImport,
@@ -54,6 +57,14 @@ type LocalAiContextValue = {
   nativeRuntimeAvailable: boolean;
   refresh: () => Promise<void>;
   selectModel: (modelId: LocalAiModelId | null) => Promise<void>;
+  setPreferredOfflineModel: (modelId: QwenOfflineModelId) => Promise<void>;
+  prepareAssistantDecision: (request: {
+    workspace: WorkspaceState;
+    userRequest: string;
+    currentRoute?: string;
+    requestId?: string;
+    signal?: AbortSignal;
+  }) => Promise<MyelinMiniRouteResult>;
   downloadModel: (modelId: LocalAiModelId) => Promise<void>;
   importModelFile: (modelId: LocalAiModelId) => Promise<void>;
   cancelDownload: (modelId: LocalAiModelId) => void;
@@ -190,6 +201,36 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     },
     [manager],
   );
+
+  const setPreferredOfflineModel = useCallback(async (modelId: QwenOfflineModelId) => {
+    setError('');
+    try {
+      await manager.setPreferredOfflineModel(modelId);
+      setMessage('Offline preference saved. The model becomes usable after a verified phone release is installed.');
+    } catch (cause) {
+      setError(friendlyError(cause));
+      throw cause;
+    }
+  }, [manager]);
+
+  const prepareAssistantDecision = useCallback(async (request: {
+    workspace: WorkspaceState;
+    userRequest: string;
+    currentRoute?: string;
+    requestId?: string;
+    signal?: AbortSignal;
+  }) => {
+    setError('');
+    setMessage('');
+    const modelId = manager.snapshot().preferences.preferredOfflineModelId ?? 'qwen3.5-0.8b';
+    return routeWithHybridAssistant({
+      ...request,
+      requestId: request.requestId ?? `mini-${request.workspace.revision}-${Date.now().toString(36)}`,
+      offline: createLocalMiniAdapter(modelId, () => manager.load(modelId)),
+      // Cloud remains opt-in and disabled until an authenticated provider is wired.
+      allowCloudFallback: false,
+    });
+  }, [manager]);
 
   const downloadModel = useCallback(
     async (modelId: LocalAiModelId) => {
@@ -447,6 +488,8 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       nativeRuntimeAvailable,
       refresh,
       selectModel,
+      setPreferredOfflineModel,
+      prepareAssistantDecision,
       downloadModel,
       importModelFile,
       cancelDownload,
@@ -471,6 +514,8 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       refresh,
       removeModel,
       selectModel,
+      setPreferredOfflineModel,
+      prepareAssistantDecision,
       setAutoUnload,
       smokeTestModel,
       prepareAssistantActions,
@@ -491,3 +536,4 @@ export function useLocalAi() {
   if (!value) throw new Error('useLocalAi must be used inside LocalAiProvider.');
   return value;
 }
+

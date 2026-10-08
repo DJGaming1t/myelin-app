@@ -15,13 +15,14 @@ const KEY = '@myelin/local-ai/preferences';
 export function defaultLocalAiPreferences(): LocalAiPreferences {
   return {
     selectedModelId: null,
+    preferredOfflineModelId: 'qwen3.5-0.8b',
     acceptedLicenseModelIds: [],
     autoUnload: true,
   };
 }
 
 function modelId(value: unknown): LocalAiModelId | null {
-  if (value === 'functiongemma-270m' || value === 'qwen3.5-0.8b') return value;
+  if (value === 'functiongemma-270m' || value === 'qwen3.5-0.8b' || value === 'qwen3.5-2b') return value;
   return null;
 }
 
@@ -39,6 +40,7 @@ export function normalizeLocalAiPreferences(value: unknown): LocalAiPreferences 
 
   return {
     selectedModelId: modelId(raw.selectedModelId),
+    preferredOfflineModelId: raw.preferredOfflineModelId === 'qwen3.5-2b' ? 'qwen3.5-2b' : 'qwen3.5-0.8b',
     acceptedLicenseModelIds: [...new Set(accepted)],
     autoUnload: raw.autoUnload !== false,
   };
@@ -65,3 +67,4 @@ export function createLocalAiPreferenceStore(
     },
   };
 }
+

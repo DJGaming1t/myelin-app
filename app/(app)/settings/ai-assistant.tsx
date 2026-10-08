@@ -288,9 +288,11 @@ function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
 export default function LocalAiAssistantScreen() {
   const { workspace, commitAssistantWorkspace } = useWorkspace();
   const {
+    ready,
     snapshot,
     models,
     prepareAssistantActions,
+    prepareAssistantDecision,
     message: modelMessage,
     error: modelError,
     nativeRuntimeAvailable,
@@ -299,12 +301,14 @@ export default function LocalAiAssistantScreen() {
   const [prepared, setPrepared] = useState<PreparedAssistantActionBatch | null>(null);
   const [busy, setBusy] = useState<'prepare' | 'apply' | ''>('');
   const [notice, setNotice] = useState('');
+  const [reply, setReply] = useState('');
   const [error, setError] = useState('');
   const controllerRef = useRef<AbortController | null>(null);
 
   const selected = useMemo(
-    () => models.find((model) => model.definition.id === snapshot.selectedModelId) ?? null,
-    [models, snapshot.selectedModelId],
+    () => models.find((model) => model.definition.id === (snapshot.selectedModelId === 'functiongemma-270m'
+      ? snapshot.selectedModelId : snapshot.preferences.preferredOfflineModelId ?? 'qwen3.5-0.8b')) ?? null,
+    [models, snapshot.selectedModelId, snapshot.preferences.preferredOfflineModelId],
   );
   const installed = Boolean(selected?.state.install);
   const available = Boolean(selected && installed && selected.state.compatibility.runtimeId);
@@ -331,7 +335,7 @@ export default function LocalAiAssistantScreen() {
 
   async function prepare() {
     const userRequest = request.trim();
-    if (!userRequest || !available || busy) return;
+    if (!userRequest || !ready || busy) return;
 
     controllerRef.current?.abort();
     const controller = new AbortController();
@@ -339,17 +343,25 @@ export default function LocalAiAssistantScreen() {
     setBusy('prepare');
     setPrepared(null);
     setNotice('');
+    setReply('');
     setError('');
 
     try {
-      const next = await prepareAssistantActions({
+      const args = {
         workspace: currentWorkspace,
         userRequest,
         currentRoute: '/(app)/settings/ai-assistant',
         signal: controller.signal,
-      });
-      if (controller.signal.aborted) return;
-      setPrepared(next);
+      };
+      if (snapshot.selectedModelId === 'functiongemma-270m' && available) {
+        const next = await prepareAssistantActions(args);
+        if (!controller.signal.aborted) setPrepared(next);
+      } else {
+        const decision = await prepareAssistantDecision(args);
+        if (controller.signal.aborted) return;
+        if (decision.route === 'actions') setPrepared(decision.prepared);
+        else setReply(decision.route === 'clarify' ? decision.question : decision.note);
+      }
     } catch (cause) {
       if (!controller.signal.aborted) {
         setError(cause instanceof Error ? cause.message : 'The local assistant could not prepare these actions.');
@@ -394,6 +406,7 @@ export default function LocalAiAssistantScreen() {
     setRequest(value);
     setPrepared(null);
     setNotice('');
+    setReply('');
     setError('');
   }
 
@@ -417,21 +430,21 @@ export default function LocalAiAssistantScreen() {
           <View style={styles.statusCard}>
             <View style={styles.statusCopy}>
               <Text style={styles.statusKicker}>SELECTED MODEL</Text>
-              <Text style={styles.statusName}>{selected?.definition.shortName ?? 'None'}</Text>
+              <Text style={styles.statusName}>{selected?.definition.shortName ?? (snapshot.preferences.preferredOfflineModelId === 'qwen3.5-2b' ? 'Qwen Enhanced' : 'Qwen Lite')}</Text>
               <Text style={styles.statusText}>
                 {available
                   ? 'Runs on this device. MYELIN validates every proposed action before anything can change.'
                   : !nativeRuntimeAvailable
-                    ? 'This installed APK does not expose the native LiteRT-LM runtime. Open Manage AI models and run Check AI setup.'
+                    ? 'This installed APK does not expose the native LiteRT-LM runtime. Supported simple commands can still use MYELIN rules.'
                     : !selected
-                      ? 'Native AI is available. Choose a model first.'
+                      ? 'Simple supported commands use MYELIN rules. Your preferred Qwen model needs a verified phone release before other offline requests can run.'
                       : !installed
                         ? `${selected.definition.shortName} is selected, but its verified model file is not installed yet.`
                         : 'The selected model is installed, but its native runtime is not currently available.'}
               </Text>
             </View>
             <Text style={[styles.statusBadge, available ? styles.readyBadge : styles.blockedBadge]}>
-              {available ? 'READY' : 'NOT READY'}
+              {available ? 'READY' : 'RULES ONLY'}
             </Text>
           </View>
 
@@ -457,7 +470,7 @@ export default function LocalAiAssistantScreen() {
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
               <Text style={styles.primaryButtonText}>Manage AI models</Text>
             </Pressable>
-          ) : (
+          ) : null}
             <>
               <View style={styles.requestCard}>
                 <Text style={styles.sectionTitle}>WHAT SHOULD MYELIN INTERPRET?</Text>
@@ -471,6 +484,7 @@ export default function LocalAiAssistantScreen() {
                     setRequest(value);
                     setPrepared(null);
                     setNotice('');
+                    setReply('');
                     setError('');
                   }}
                   placeholder="Example: Add Quadratic Equations as a Maths topic."
@@ -482,11 +496,11 @@ export default function LocalAiAssistantScreen() {
                   <Text style={styles.counter}>{request.length}/2000</Text>
                   <Pressable
                     accessibilityRole="button"
-                    disabled={!request.trim() || Boolean(busy)}
+                    disabled={!ready || !request.trim() || Boolean(busy)}
                     onPress={() => void prepare()}
                     style={({ pressed }) => [
                       styles.prepareButton,
-                      (!request.trim() || Boolean(busy)) && styles.disabled,
+                      (!ready || !request.trim() || Boolean(busy)) && styles.disabled,
                       pressed && !busy && styles.pressed,
                     ]}>
                     <Text style={styles.prepareButtonText}>
@@ -583,9 +597,9 @@ export default function LocalAiAssistantScreen() {
                 </View>
               )}
             </>
-          )}
 
           {notice ? <Text accessibilityLiveRegion="polite" style={styles.success}>{notice}</Text> : null}
+          {reply ? <Text selectable accessibilityLiveRegion="polite" style={styles.modelMessage}>{reply}</Text> : null}
           {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
           {!error && modelError ? <Text style={styles.error}>{modelError}</Text> : null}
           {!notice && modelMessage ? <Text style={styles.modelMessage}>{modelMessage}</Text> : null}
@@ -916,3 +930,4 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.42 },
   pressed: { opacity: 0.7, transform: [{ scale: 0.995 }] },
 });
+

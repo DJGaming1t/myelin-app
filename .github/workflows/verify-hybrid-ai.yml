@@ -1,0 +1,39 @@
+name: Verify hybrid AI choices and routing
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - .github/workflows/verify-hybrid-ai.yml
+      - src/features/assistant/hybrid-assistant-router.ts
+      - src/features/assistant/myelin-mini.ts
+      - src/features/assistant/local-ai/**
+      - app/(app)/settings/ai-models.tsx
+      - app/(app)/settings/ai-assistant.tsx
+      - scripts/verify-hybrid-assistant.ts
+      - scripts/verify-local-ai.ts
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Full app type check
+        run: npx tsc --noEmit
+      - name: Hybrid consent, cancellation and safe previews
+        run: npx tsx scripts/verify-hybrid-assistant.ts
+      - name: Existing model lifecycle and native integration regressions
+        run: npm run verify:local-ai
+      - name: Mini protocol and safety regression
+        run: npx tsx scripts/verify-myelin-mini.ts

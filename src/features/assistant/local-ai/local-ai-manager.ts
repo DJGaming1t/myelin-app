@@ -3,6 +3,7 @@ import {
   LocalAiArtifactDescriptor,
   LocalAiModelDefinition,
   LocalAiModelId,
+  QwenOfflineModelId,
   localAiModelById,
 } from './model-catalog';
 import {
@@ -54,6 +55,7 @@ export type LocalAiModelFileStore = {
 
 export type LocalAiPreferences = {
   selectedModelId: LocalAiModelId | null;
+  preferredOfflineModelId?: QwenOfflineModelId;
   acceptedLicenseModelIds: LocalAiModelId[];
   autoUnload: boolean;
 };
@@ -111,6 +113,7 @@ export class LocalAiManagerError extends Error {
 function defaultPreferences(): LocalAiPreferences {
   return {
     selectedModelId: null,
+    preferredOfflineModelId: 'qwen3.5-0.8b',
     acceptedLicenseModelIds: [],
     autoUnload: true,
   };
@@ -293,6 +296,18 @@ export class LocalAiManager {
       selectedModelId: modelId,
     };
     await this.preferenceStore.save(this.preferences);
+    this.emit();
+  }
+
+  async setPreferredOfflineModel(modelId: QwenOfflineModelId) {
+    this.ensureIdle();
+    if (modelId !== 'qwen3.5-0.8b' && modelId !== 'qwen3.5-2b') {
+      throw new LocalAiManagerError('Choose Lite or Enhanced offline AI.', 'unknown_model');
+    }
+    // Preference and installation are separate; this does not load or download.
+    const next = { ...this.preferences, preferredOfflineModelId: modelId };
+    await this.preferenceStore.save(next);
+    this.preferences = next;
     this.emit();
   }
 
@@ -593,3 +608,4 @@ export class LocalAiManager {
     }
   }
 }
+

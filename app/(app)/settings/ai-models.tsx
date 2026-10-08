@@ -34,6 +34,7 @@ export default function AiModelsScreen() {
     error,
     nativeRuntimeAvailable,
     selectModel,
+    setPreferredOfflineModel,
     importModelFile,
     removeModel,
     acceptLicense,
@@ -146,13 +147,12 @@ export default function AiModelsScreen() {
             LOCAL • PRIVATE • OPTIONAL
           </Text>
           <Text style={styles.heroTitle}>
-            Local AI without pretending it is finished.
+            Choose your offline AI.
           </Text>
           <Text style={styles.heroText}>
-            MYELIN currently supports one experimental
-            local path: importing a licensed
-            FunctionGemma LiteRT model file. There is
-            no one-tap model download in this build.
+            Save a preference for Lite or Enhanced.
+            Qwen downloads open after model quality and phone tests pass.
+            Simple supported commands work through MYELIN rules already.
           </Text>
 
           <View style={styles.statusGrid}>
@@ -195,6 +195,33 @@ export default function AiModelsScreen() {
             </Text>
           </View>
         ) : null}
+
+        {models.filter(({ definition }) => definition.vendor === 'qwen').map(({ definition, state }) => {
+          const preferred = (snapshot.preferences.preferredOfflineModelId ?? 'qwen3.5-0.8b') === definition.id;
+          const modelId = definition.id as 'qwen3.5-0.8b' | 'qwen3.5-2b';
+          return (
+            <View key={definition.id} style={styles.modelCard}>
+              <Text style={styles.modelName}>{definition.displayName}</Text>
+              <Text style={styles.modelDescription}>{definition.description}</Text>
+              <Text selectable style={styles.verified}>
+                {state.install ? 'VERIFIED FILE INSTALLED' : 'PHONE RELEASE PENDING · DOWNLOAD UNAVAILABLE'}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Prefer ${definition.shortName}`}
+                accessibilityState={{ selected: preferred, disabled: !ready || Boolean(busy) }}
+                disabled={!ready || Boolean(busy)}
+                onPress={() => void run('offline-preference', () => setPreferredOfflineModel(modelId)).catch(() => undefined)}
+                style={({ pressed }) => [styles.secondaryButton, { marginTop: 14 }, (!ready || Boolean(busy)) && styles.disabled, pressed && !busy && styles.pressed]}>
+                <Text style={styles.secondaryButtonText}>{preferred ? 'Preferred offline model' : 'Save as preferred'}</Text>
+              </Pressable>
+            </View>
+          );
+        })}
+
+        <Pressable accessibilityRole="button" onPress={() => router.push('/(app)/settings/ai-assistant')} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Open MYELIN assistant</Text>
+        </Pressable>
 
         <View style={styles.modelCard}>
           <View style={styles.modelHeader}>
@@ -390,14 +417,11 @@ export default function AiModelsScreen() {
 
         <View style={styles.note}>
           <Text style={styles.noteTitle}>
-            Where did Qwen go?
+            Cloud AI
           </Text>
           <Text style={styles.noteText}>
-            It is intentionally hidden from the
-            install screen until MYELIN has a verified
-            mobile artifact that can actually run in
-            this app. A research candidate is not a
-            user-facing model option.
+            Cloud fallback needs a secure server connection, provider quota controls,
+            and your permission to send a request. That connection is not enabled in this build.
           </Text>
         </View>
 
@@ -731,3 +755,4 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.78 },
 });
+

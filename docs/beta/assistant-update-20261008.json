@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a11adc-d079-745b-a8bd-ea71b6da9816",
+    "createdAt": "2026-10-08T09:34:01.337Z",
+    "group": "13189175-e2b7-4fee-a910-8828facfe65e",
+    "branch": "preview",
+    "message": "MYELIN assistant beta fafbfeb6f223d44ea4a7538a3c3c4c62aa2d544b",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a11adc-d079-745b-a8bd-ea71b6da9816",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "fafbfeb6f223d44ea4a7538a3c3c4c62aa2d544b"
+  }
+]

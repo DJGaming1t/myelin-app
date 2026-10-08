@@ -14,7 +14,7 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 - [ ] Train and compare a separate 2B candidate using the same development splits and protocol. Future held-out versions are needed once current evaluation results are used for tuning.
 - [ ] Convert each approved adapter/base combination into a supported phone artifact, verify file hashes and test Android speed, RAM, context capacity and structured output.
 - [ ] Publish signed download descriptors; enable download/select/remove for released models through the existing one-session manager.
-- [ ] Run integrated device tests and publish a compatible preview update.
+- [ ] Run integrated device tests and publish a compatible preview update (tracked separately below).
 
 ## Completed first chunk
 
@@ -32,4 +32,16 @@ No Qwen download URL or phone artifact has been configured. A LoRA training adap
 
 No cloud endpoint is deployed by this chunk, and no app build/update is published. Download-size and RAM figures discussed earlier were estimates, not measurements.
 
-Next implementation chunk: authenticated cloud transport with quota/unavailability handling, then consent/mode controls. Continue checking the same active training run independently; do not relaunch it because app code changed.
+## Beta delivery chunk
+
+The user requested connection to the app for beta testing. Settings now exposes a direct MYELIN assistant beta link and accurately describes Lite/Enhanced as pending phone releases. `docs/MYELIN_BETA_TESTING.md` records the Android smoke test and limitations.
+
+- [x] Confirm preview APK `877c5749-c608-4d23-bca9-aca66fb2df06` runs on preview channel/runtime `0.2.13`.
+- [x] Add strict OTA compatibility comparison against APK source commit `137eee631edbe582da8c0e64ec89229a86a5aa9a`. Native inputs must be identical; only package scripts may differ from package metadata.
+- [x] Add bounded beta workflow (own-file push or manual invocation only), full regression verification, and preview-only publication from the verified commit.
+- [x] Confirm EAS publication receipt: group `13189175-e2b7-4fee-a910-8828facfe65e`, Android update `01a11adc-d079-745b-a8bd-ea71b6da9816`, runtime `0.2.13`, branch/channel `preview`, published 2026-10-08 09:34 UTC.
+- [ ] Exercise Android smoke test on a phone; automated regression is not device QA.
+
+Delivery evidence: GitHub run `37757132256` passed full app regressions, TypeScript, native compatibility and publication. Source commit `fafbfeb6f223d44ea4a7538a3c3c4c62aa2d544b`; receipt artifact `11540204341`. The first attempt `37756745657` passed verification but published nothing: creating its receipt inside the checkout tripped the existing clean-tree check. The retry writes its receipt under the runner's temporary directory without disabling that check. No production update or new APK was created.
+
+Next implementation chunk after beta delivery: authenticated cloud transport with quota/unavailability handling, then consent/mode controls. Continue checking the same active training run independently; do not relaunch it because app code changed.

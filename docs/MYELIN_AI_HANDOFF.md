@@ -180,11 +180,22 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - New local regressions and existing Mini checks passed. GitHub verification PASS: run `37755701533`, job `113239571939`, tested commit `b025d2033e8f33fb810556ad79c9bd575ed41559`. Full app TypeScript, hybrid regression, existing local model lifecycle/native-boundary regression, and Mini safety checks all passed. Screens have not been exercised on an Android device in this chunk.
 - No 2B training, phone model release, cloud deployment, OTA or APK in this chunk. The active v4 training workflow remains on its original commit.
 
+## Assistant beta delivery — 2026-10-08
+- User explicitly requested connection to the app for beta testing. Added Settings → MYELIN assistant (beta) → Open MYELIN assistant and accurate model-choice/availability copy. Kept native dependencies and runtime unchanged.
+- Confirmed existing Android preview APK `877c5749-c608-4d23-bca9-aca66fb2df06`, runtime `0.2.13`, source `137eee631edbe582da8c0e64ec89229a86a5aa9a` through Expo. Added strict comparison against its native inputs and runtime package metadata; package script-only changes are allowed.
+- Workflow `.github/workflows/beta-assistant-preview.yml` triggers only its own file pushes on this feature branch or manual invocation. Full TypeScript, every existing verify script (including Firebase rules), hybrid/adaptive/transition regressions and Expo config passed.
+- Initial run `37756745657` passed all verification but published nothing: an untracked receipt file inside the checkout violated the existing EAS clean-tree requirement. Fixed receipt output to the runner temporary directory; did not weaken the clean-tree requirement or mutate app runtime policy.
+- Retry run `37757132256`: full verification job `113244334348` and publisher `113244845497` both SUCCESS. EAS CLI 24.12.0 exported and uploaded Android bundle, then returned publication receipt. Published source commit: `fafbfeb6f223d44ea4a7538a3c3c4c62aa2d544b`.
+- Preview update group `13189175-e2b7-4fee-a910-8828facfe65e`; Android update `01a11adc-d079-745b-a8bd-ea71b6da9816`; branch/channel `preview`, runtime `0.2.13`; published at `2026-10-08T09:34:01.337Z`. Receipt artifact `11540204341`; committed copy `docs/beta/assistant-update-20261008.json`.
+- This is a rules-only assistant/preference beta, not released Qwen weights or cloud AI. Both Qwen phone downloads remain blocked; no cloud endpoint is connected. No production publication or new APK was created.
+- Android smoke-test steps and exact limitations are in `docs/MYELIN_BETA_TESTING.md`. Physical-device interaction, keyboard/large-text checks and actual OTA receipt on a user's phone have NOT been exercised here.
+- Last check of training run `37752290697`: clean-base training step still in progress; no v4 evaluation results yet. Left the run intact.
+
 ## Exact next step
 1. Inspect the v4 workflow run recorded above before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
 2. After completion, download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.
 3. Compare measured routing/action safety with previous results. Keep release blocked unless all gates pass. Frozen eval-v2 may be reported after this run, but must not be copied into training or used for checkpoint selection.
-4. Evaluate phone latency and publish an OTA only after model and integrated app checks pass.
+4. Evaluate phone latency before releasing Qwen weights. A rules-only assistant/preference beta may publish independently after compatible app checks pass; it must not claim working Qwen inference or cloud AI.
 
 ## Continuity instruction
 Read this file and current branch head before changing code. Inspect current workflows and artifacts before restarting any training. Work one sensible chunk at a time; verify, summarize, state the next step, then stop. Never claim visible app changes unless an OTA or APK was actually published.

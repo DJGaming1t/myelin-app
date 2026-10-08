@@ -37,6 +37,7 @@ import {
 import { createLocalMiniAdapter, prepareLocalAssistantActions } from './local-assistant-bridge';
 import { MyelinMiniRouteResult } from '../myelin-mini';
 import type { AssistantClarificationAnswers } from '../assistant-clarification';
+import { AssistantGroundingError } from '../assistant-request-grounding';
 import { routeWithHybridAssistant } from '../hybrid-assistant-router';
 import {
   PreparedSyllabusImport,
@@ -81,6 +82,8 @@ type LocalAiContextValue = {
     currentRoute?: string;
     requestId?: string;
     signal?: AbortSignal;
+    now?: number;
+    clarificationAnswers?: AssistantClarificationAnswers;
   }) => Promise<PreparedAssistantActionBatch>;
   prepareSyllabusImport: (request: {
     workspace: WorkspaceState;
@@ -392,6 +395,8 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
       currentRoute?: string;
       requestId?: string;
       signal?: AbortSignal;
+      now?: number;
+      clarificationAnswers?: AssistantClarificationAnswers;
     }) => {
       setError('');
       setMessage('');
@@ -415,7 +420,8 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
         );
         return prepared;
       } catch (cause) {
-        setError(friendlyError(cause));
+        if (cause instanceof AssistantGroundingError) setMessage(cause.clarification.question);
+        else setError(friendlyError(cause));
         throw cause;
       }
     },

@@ -26,6 +26,7 @@ import {
 import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
 import { localDateKeyFromTimestamp, tryBuildMyelinMiniFastDecision } from '@/src/features/assistant/myelin-mini-fast-router';
 import { answerAssistantClarification, beginAssistantClarification, type AssistantClarificationAnswers, type PendingAssistantClarification } from '@/src/features/assistant/assistant-clarification';
+import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/features/assistant/assistant-request-grounding';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const EXAMPLES = [
@@ -396,7 +397,7 @@ export default function LocalAiAssistantScreen() {
         now,
         clarificationAnswers,
       };
-      const hasRuleDecision = tryBuildMyelinMiniFastDecision({
+      const hasRuleDecision = checkAssistantRequestGrounding({ workspace: currentWorkspace, userRequest, currentDate: scope.currentDate, clarificationAnswers }) !== null || tryBuildMyelinMiniFastDecision({
         workspace: currentWorkspace, userRequest, requestId: 'screen-rule-check',
         currentDate: scope.currentDate,
         clarificationAnswers,
@@ -416,7 +417,12 @@ export default function LocalAiAssistantScreen() {
       }
     } catch (cause) {
       if (!controller.signal.aborted) {
-        setError(cause instanceof Error ? cause.message : 'The local assistant could not prepare these actions.');
+        if (cause instanceof AssistantGroundingError) {
+          const decision = { route: 'clarify' as const, confidence: 1, ...cause.clarification, modelId: 'myelin-request-grounding-v1' };
+          setReply(decision.question);
+          setPendingQuestion(beginAssistantClarification(userRequest, decision, scope, clarificationAnswers, pendingQuestion));
+          setAnswer('');
+        } else setError(cause instanceof Error ? cause.message : 'The local assistant could not prepare these actions.');
       }
     } finally {
       if (controllerRef.current === controller) { controllerRef.current = null; setBusy(''); }

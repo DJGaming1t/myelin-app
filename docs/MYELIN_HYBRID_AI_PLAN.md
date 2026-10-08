@@ -14,7 +14,7 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 - [ ] Add cloud consent and routing mode controls once the connection can perform the advertised operation.
 - [x] Finish 0.8B training run 37752290697; final adapter exported successfully.
 - [x] Recover evaluation of that same adapter; all 53 cases measured. Both release gates failed; separate Hinglish acceptance passed. Weights remain blocked.
-- [ ] Add shared request-grounding checks for missing exam dates and unresolved targets before model actions reach preview. Test generalized development requests without training on evaluated cases.
+- [x] Add shared request-grounding checks for missing exam dates and unresolved targets before model actions reach preview. Test generalized development requests without training on evaluated cases.
 - [ ] Train and compare a separate 2B candidate using the same development splits and protocol. Future held-out versions are needed once current evaluation results are used for tuning.
 - [ ] Convert each approved adapter/base combination into a supported phone artifact, verify file hashes and test Android speed, RAM, context capacity and structured output.
 - [ ] Publish signed download descriptors; enable download/select/remove for released models through the existing one-session manager.
@@ -87,3 +87,13 @@ Added a separate evaluation-only workflow using saved artifact `11548375885` and
 Historical v2 → v4: valid outputs 60% → 100%, route accuracy 50% → 80%, exact actions 10% → 40%, unsafe actions unchanged at 2. There is no v2 result on frozen eval-v2. Dates, references, chained actions and allowed fields still fail independently of title wording. High confidence does not distinguish wrong decisions. Frozen CPU latency p50 22.4 s / p95 30.0 s; historical p50 17.3 s / p95 26.0 s. These are unquantized CPU adapter measurements, not Android performance or independent human evaluation.
 
 Next chunk: shared missing-date/unresolved-target grounding checks before model previews. Later tuning must use generalized development data and a new frozen evaluation version; do not copy these observed evaluation requests into training or select checkpoints using them. No app update or new training was performed in this chunk. The existing rules beta remains the shipped assistant.
+
+## Shared request-grounding chunk — 2026-10-09 IST
+
+Added `assistant-request-grounding.ts` to Mini routing and the experimental FunctionGemma bridge. Clear exam creation requests without a supported day and vague topic edits ask for clarification before model generation. Explicit answers use the existing retained-request flow. Valid model batches are checked before preview: exam dates must equal one explicit supported date or answer, and existing record references must resolve and be named in the request or explicitly selected through a trusted topic answer. Duplicate names and ambiguous prefixes ask rather than letting the model choose. Broken clientRefs reject the whole batch; correctly ordered new-record chains remain supported.
+
+Grounding clarifications never trigger cloud fallback. Cloud output goes through the same checks. Existing deterministic task rules remain on their established validation path. Supported exam-day evidence is a valid ISO date, today/tonight/tomorrow/day after tomorrow or a numeric interval up to 30 days. Other date expressions, conflicting days and multiple new exams ask for clarification; this is a bounded safeguard, not unrestricted semantic verification.
+
+Local TypeScript, grounding, hybrid, retained clarification, Mini protocol, fast-router and model lifecycle regressions passed. Tests use generalized development requests; no evaluated requests were added to training. Original training/evaluation data, scores and release thresholds remain unchanged. Full app checks and compatible beta publication pending; physical-device QA pending. Qwen/cloud releases remain unavailable.
+
+Next implementation chunk after verification/publication: authenticated cloud transport with server-side quotas and cancellation, then enable consent/mode controls only when a connection is available. Keep failed Qwen release gates visible; future model tuning needs a new frozen evaluation version.

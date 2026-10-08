@@ -64,7 +64,7 @@ async function main() {
   output = { version: 1, requestId, route: 'actions', confidence: 0.95, batch: { version: 1, requestId, actions: [
     { type: 'update_topic', topic: { topicId: 'invented' }, patch: { priority: 3 } },
   ] } };
-  assert.equal((await routeWithHybridAssistant(input)).route, 'escalate', 'Invalid record references must not become previews.');
+  assert.equal((await routeWithHybridAssistant(input)).route, 'clarify', 'Invalid record references require a user answer before any preview.');
   const rulesCount = offlineCalls;
   const rules = await routeWithHybridAssistant({ ...input, userRequest: 'Practice Algebra for 20 minutes.' });
   assert.equal(rules.route, 'clarify');

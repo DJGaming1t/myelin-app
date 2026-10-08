@@ -1,5 +1,6 @@
 import { WorkspaceState } from '@/src/data/schema';
 import type { AssistantClarificationAnswers } from './assistant-clarification';
+import { checkAssistantActionGrounding, checkAssistantRequestGrounding } from './assistant-request-grounding';
 import {
   AssistantActionBatch,
   parseAssistantActionBatch,
@@ -416,6 +417,11 @@ export async function routeWithMyelinMini(input: {
   clarificationAnswers?: AssistantClarificationAnswers;
 }): Promise<MyelinMiniRouteResult> {
   const now = input.now ?? Date.now();
+  const groundingInput = { workspace: input.workspace, userRequest: input.userRequest,
+    currentDate: localDateKeyFromTimestamp(now), clarificationAnswers: input.clarificationAnswers };
+  const question = checkAssistantRequestGrounding(groundingInput);
+  if (input.signal?.aborted) { const error = new Error('The assistant request was cancelled.'); error.name = 'AbortError'; throw error; }
+  if (question) return { route: 'clarify', confidence: 1, ...question, modelId: 'myelin-request-grounding-v1' };
   const fastRaw = input.allowFastRouter === false ? null : tryBuildMyelinMiniFastDecision({
     workspace: input.workspace,
     userRequest: input.userRequest,
@@ -444,6 +450,7 @@ export async function routeWithMyelinMini(input: {
       signal: input.signal,
     }));
 
+  if (input.signal?.aborted) { const error = new Error('The assistant request was cancelled.'); error.name = 'AbortError'; throw error; }
   const decision = parseMyelinMiniDecision(raw, input.requestId);
   if (decision.route === 'clarify') {
     return {
@@ -466,6 +473,8 @@ export async function routeWithMyelinMini(input: {
     };
   }
 
+  const groundingQuestion = fastRaw ? null : checkAssistantActionGrounding(groundingInput, decision.batch);
+  if (groundingQuestion) return { route: 'clarify', confidence: 1, ...groundingQuestion, modelId };
   return {
     route: 'actions',
     confidence: decision.confidence,

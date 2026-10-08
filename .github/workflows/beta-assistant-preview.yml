@@ -53,6 +53,7 @@ jobs:
         run: |
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts
+          npx tsx scripts/verify-assistant-grounding.ts
           npx tsx scripts/verify-adaptive.ts
           npx tsx scripts/verify-transition.ts
       - name: Expo export configuration
@@ -87,7 +88,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN short clarification replies beta $GITHUB_SHA"
+          --message "MYELIN request grounding beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

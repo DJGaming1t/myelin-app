@@ -34,6 +34,13 @@ Cloud AI is not connected. Model preferences are not working Qwen inference. A t
 
 Automated checks cannot replace these phone interaction tests. Do not label device QA complete until exercised and recorded.
 
+## Request-grounding update QA (publication pending)
+
+- Ask `Record a Geography viva covering Climate Zones` (use a real topic in your workspace). It should ask for the exam day without loading a model or guessing a date. Reply with `YYYY-MM-DD` or `tomorrow`. Without an installed model/cloud connection, the next step should accurately report unavailability rather than pretend to create an exam.
+- Ask `Raise it to high priority`. It should ask which topic. Reply with one existing topic name and inspect the preview when the request is supported; no changes before confirmation.
+- For an available experimental FunctionGemma session, try a new-exam request with an explicit ISO day and real topic name. Any model date mismatch or unrequested/ambiguous target must ask a question instead of becoming a preview. Model installation is separate; neither Qwen download nor cloud inference is enabled by this update.
+- Check the separate answer field, keyboard, larger text, back navigation and original-request reset. Automated model simulations do not replace this device QA.
+
 ## Latest clarification update and QA
 
 Published 2026-10-08 15:11 UTC (20:41 IST): group `8a863ce8-93b1-4188-895f-00c87283e0ac`, Android update `01a11c12-0b62-79ae-a66b-a5f752cf8924`, preview runtime `0.2.13`. Source `a28dfa6bf734208cdce08f2845bc1889f062ba64`; verification and publisher succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37798325379. Receipt `docs/beta/clarification-update-20261008.json`, artifact `11559483080`. The existing compatible APK receives this OTA; fully close/reopen after downloading, up to twice. Device interaction is not yet verified.

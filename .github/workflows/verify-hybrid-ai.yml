@@ -12,6 +12,7 @@ on:
       - src/features/assistant/myelin-mini-fast-router.ts
       - src/features/assistant/schoolwork-language.ts
       - src/features/assistant/assistant-clarification.ts
+      - src/features/assistant/assistant-request-grounding.ts
       - src/features/assistant/local-ai/**
       - app/(app)/settings/ai-models.tsx
       - app/(app)/settings/ai-assistant.tsx
@@ -19,6 +20,7 @@ on:
       - scripts/verify-local-ai.ts
       - scripts/verify-myelin-mini-fast-router.ts
       - scripts/verify-assistant-clarification.ts
+      - scripts/verify-assistant-grounding.ts
 
 permissions:
   contents: read
@@ -40,6 +42,7 @@ jobs:
         run: |
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts
+          npx tsx scripts/verify-assistant-grounding.ts
       - name: Existing model lifecycle and native integration regressions
         run: npm run verify:local-ai
       - name: Mini protocol and safety regression

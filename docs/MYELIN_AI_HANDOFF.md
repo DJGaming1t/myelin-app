@@ -156,7 +156,9 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - A dependent job automatically evaluates all 53 cases: 32 frozen eval-v2, 20 historical eval-v1 regression, 1 separate Hinglish acceptance. Each gate is scored independently; artifacts upload even on failed quality gates. Evaluation timeout: 60 minutes.
 - Artifact names: `myelin-mini-balanced-v4-adapter` and `myelin-mini-balanced-v4-evaluation`. No app deployment is part of this workflow.
 - Local workflow syntax/recipe checks and schema dry run passed; the full data/preprocessing tests already passed in the preceding chunk.
-- Run ID will be recorded after launch.
+- Launched run `37752290697` on commit `0c0b68713e835932402b591edd336476cf7165b8`; training job `113228197390`. Setup, full data/protocol/TypeScript checks, actual TRL preprocessing and input-provenance recording passed. The training command is running; completed training metrics and evaluation are not available yet.
+- Run URL: https://github.com/DJGaming1t/myelin-app/actions/runs/37752290697
+- Continuation must inspect this same run first. Do not launch another candidate while it is still active.
 
 ## Exact next step
 1. Inspect the v4 workflow run recorded below before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.

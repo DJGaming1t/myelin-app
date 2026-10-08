@@ -8,6 +8,10 @@ on:
     paths:
       - .github/workflows/verify-hybrid-ai.yml
       - src/features/assistant/hybrid-assistant-router.ts
+      - src/features/assistant/cloud-assistant-adapter.ts
+      - functions/**
+      - scripts/export-assistant-cloud-protocol.ts
+      - scripts/verify-cloud-assistant.ts
       - src/features/assistant/myelin-mini.ts
       - src/features/assistant/myelin-mini-fast-router.ts
       - src/features/assistant/schoolwork-language.ts
@@ -43,6 +47,9 @@ jobs:
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts
           npx tsx scripts/verify-assistant-grounding.ts
+          npx tsx scripts/verify-cloud-assistant.ts
+          npx tsx scripts/export-assistant-cloud-protocol.ts --check
+          node --test functions/test/*.test.cjs
       - name: Existing model lifecycle and native integration regressions
         run: npm run verify:local-ai
       - name: Mini protocol and safety regression

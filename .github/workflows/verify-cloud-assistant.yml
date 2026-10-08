@@ -1,0 +1,51 @@
+name: Verify authenticated assistant backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/exam-autopilot-capacity-v1]
+    paths:
+      - .github/workflows/verify-cloud-assistant.yml
+      - functions/**
+      - firebase.json
+      - firestore.rules
+      - scripts/export-assistant-cloud-protocol.ts
+      - scripts/verify-cloud-assistant.ts
+      - src/features/assistant/cloud-assistant-adapter.ts
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci --no-audit --no-fund
+      - name: Install isolated server dependencies
+        run: npm install --prefix functions --ignore-scripts --no-audit --no-fund
+      - name: Full app check and exact server protocol parity
+        run: |
+          npx tsc --noEmit
+          npx tsx scripts/export-assistant-cloud-protocol.ts --check
+          npx tsx scripts/verify-cloud-assistant.ts
+      - name: Real server entry loads without credentials or provider calls
+        env:
+          GCLOUD_PROJECT: demo-myelin-assistant
+        run: node -e 'require("./functions/index.cjs")'
+      - name: Atomic quota concurrency and denied client access
+        run: npx firebase emulators:exec --project demo-myelin-assistant --only firestore 'npm --prefix functions test'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myelin-verified-backend-lock
+          path: functions/package-lock.json
+          if-no-files-found: error

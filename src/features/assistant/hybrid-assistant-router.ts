@@ -1,5 +1,6 @@
 import { WorkspaceState } from '@/src/data/schema';
 import type { AssistantClarificationAnswers } from './assistant-clarification';
+import { AssistantCloudError } from './cloud-assistant-adapter';
 import {
   MyelinMiniModelAdapter,
   MyelinMiniRouteResult,
@@ -51,6 +52,7 @@ export async function routeWithHybridAssistant(input: {
   } catch (error) {
     throwIfCancelled(input.signal);
     if (error instanceof Error && error.name === 'AbortError') throw error;
-    return { ...local, note: `${local.note} Cloud AI is also unavailable right now. Try again later.` };
+    const cloudNote = error instanceof AssistantCloudError ? error.message : 'Cloud AI is also unavailable right now. Try again later.';
+    return { ...local, note: `${local.note} ${cloudNote}` };
   }
 }

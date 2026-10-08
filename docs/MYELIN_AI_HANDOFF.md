@@ -245,10 +245,19 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - No native dependencies, new APK, production publication, training, model releases or cloud deployment in this chunk. Physical-device QA remains pending in `docs/MYELIN_BETA_TESTING.md`. Existing Qwen raw-model evaluation remains failed; these runtime guards do not relabel it as a passed model release.
 
 ## Exact next step
-1. Implement authenticated server-side cloud transport with quotas, timeout/backoff and cancellation. Inspect existing Firebase/auth/backend configuration first and choose the smallest integration that fits the app. Keep provider credentials outside the APK. Prepare concrete code/tests before requesting any genuinely missing setup.
+1. Finish/live-verify the prepared Firebase cloud transport, using `docs/MYELIN_CLOUD_SETUP.md`. The source is ready; the genuine missing setup is Firebase deployment credentials/billing/API availability and the provider key/model. Do not put provider credentials into the APK, fake a working endpoint or silently deploy with untested cost assumptions.
 2. Enable consent/mode controls only for an available connection; reuse shared safeguards and confirmation. Keep phone QA visibly pending until exercised. Preserve the same master checklist rather than starting a new plan.
 3. Keep Qwen weights blocked. Later model tuning should address field completeness, references/chains and routing, with a new frozen evaluation version authored before that next candidate. Do not select checkpoints using observed benchmarks.
 4. Evaluate phone latency before releasing Qwen weights. A rules-only assistant/preference beta may publish independently after compatible app checks pass; it must not claim working Qwen inference or cloud AI.
+
+## Cloud transport chunk — 2026-10-09 IST
+
+- Added `functions/` Firebase Admin/HTTP codebase (Node 22, asia-south1) and isolated server dependencies. Existing Firebase project/auth reused; Firestore sync/rules unchanged. Server-owned `protocol-v1.json` exactly matches Mini instructions/schema via generation/parity check.
+- Auth verifies revocation and requires verified non-anonymous identity. Provider key is a server secret; model has no unverified default. App remains without a cloud endpoint/controls until deployment smoke tests pass.
+- Atomic Firestore budgets 2/user/minute, 20/user/UTC day, 6/shared/minute and 120/shared/UTC day; 45-second user lease, ten-minute request-ID dedupe, charged attempts even on failure, shared provider-429 cooldown. Current default-deny rules protect server state.
+- `createCloudAssistantAdapter` is an unwired transport factory: Firebase token callback, explicit consent/current-owner checks, HTTPS, bounded inputs, cancellation/deadline, Retry-After cooldown and no hidden retries. Hybrid displays sanitized cloud failure reasons. Complete decisions still go through shared grounding/preview/confirmation.
+- Local backend/transport/hybrid/grounding/protocol parity and available TypeScript passed. Dedicated CI checks full app types, actual Admin SDK entry and emulator atomic concurrency/client denial. CI evidence pending this source save. No real provider calls, Firebase deployment, training, mobile weights or preview publication.
+- Deployment commands, prerequisite account access and the exact next integration are documented in `docs/MYELIN_CLOUD_SETUP.md`. Existing preview remains source `7680caa3726b1a865d59ac295768ea74f3d965b8`; phone QA still pending.
 
 ## Continuity instruction
 Read this file and current branch head before changing code. Inspect current workflows and artifacts before restarting any training. Work one sensible chunk at a time; verify, summarize, state the next step, then stop. Never claim visible app changes unless an OTA or APK was actually published.

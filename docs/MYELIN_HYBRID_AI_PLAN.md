@@ -11,6 +11,7 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 - [x] Understand clear everyday schoolwork requests through bounded local rules: practical notebooks, homework, projects, worksheets, subject shorthand, common typos and day deadlines. Keep durations unknown when not supplied.
 - [x] Retain incomplete requests and accept short typed clarification replies, with owner/workspace/day/expiry guards and explicit confirmation.
 - [ ] Configure an authenticated server-side cloud provider; enforce per-user quotas, timeouts and backoff. No provider key belongs in the APK.
+- [x] Prepare the Firebase server and cancellable client transport with server-owned protocol, atomic quotas, deduplication and explicit owner/consent checks. Deployment and live provider verification remain separate.
 - [ ] Add cloud consent and routing mode controls once the connection can perform the advertised operation.
 - [x] Finish 0.8B training run 37752290697; final adapter exported successfully.
 - [x] Recover evaluation of that same adapter; all 53 cases measured. Both release gates failed; separate Hinglish acceptance passed. Weights remain blocked.
@@ -99,3 +100,9 @@ Full app verification and preview publication succeeded: run `37836775724`, veri
 Published preview group `6452e5b5-2dc5-491e-bba5-f5003738b8a9`, Android update `01a11d22-679d-70f2-a989-b6e3b0d4e876`, runtime `0.2.13`, at `2026-10-08T20:09:16.445Z` (2026-10-09 01:39 IST). Receipt artifact `11575982497`, copy `docs/beta/grounding-update-20261009.json`. No new APK or production publication. Device QA remains pending. No evaluated requests were added to training; original data, scores and release thresholds remain unchanged. Qwen/cloud releases remain unavailable.
 
 Next implementation chunk after verification/publication: authenticated cloud transport with server-side quotas and cancellation, then enable consent/mode controls only when a connection is available. Keep failed Qwen release gates visible; future model tuning needs a new frozen evaluation version.
+
+## Authenticated cloud transport — 2026-10-09 IST
+
+Added an isolated Firebase Functions codebase using existing Firebase Auth/Firestore. Server owns instructions and token budget; verified/revocation-checked sign-in, atomic user/global minute/day budgets, one-request lease, deduplication and shared provider cooldown precede inference. Client adapter requires explicit consent and the same current owner, authenticates with Firebase ID tokens and aborts/discards timed-out or cancelled responses. Cloud errors reach the existing hybrid unavailable message safely. Detailed setup/limits: `docs/MYELIN_CLOUD_SETUP.md`.
+
+Local transport, backend, protocol parity, hybrid and grounding checks passed. Real Firestore concurrency/default-deny and full app TypeScript are pending GitHub verification at this save. No endpoint/key/model is configured for the app; no provider call, deployment, new model release or beta publication occurred in this chunk. Existing grounded preview remains shipped. Next: obtain the server deployment/provider setup, smoke-test a live model, then wire consent and mode controls and publish the compatible app update.

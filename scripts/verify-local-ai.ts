@@ -361,6 +361,9 @@ async function main() {
     assert.match(settingsSource, /MYELIN assistant \(beta\)/);
     assert.match(settingsSource, /href="\/\(app\)\/settings\/ai-assistant"/);
     assert.match(settingsSource, /AI model choices/);
+    assert.match(assistantScreenSource, /available && !hasRuleDecision/);
+    assert.match(assistantScreenSource, /<TaskPreviewDetails prepared=\{prepared\} index=\{index\}/);
+    assert.match(assistantScreenSource, /Duration not set — add an estimate before planning/);
     assert.match(settingsSource, /manual import of one verified FunctionGemma LiteRT candidate/);
     assert.match(modelScreenSource, /Unload AI in background/);
     assert.match(modelScreenSource, /Choose your offline AI/);

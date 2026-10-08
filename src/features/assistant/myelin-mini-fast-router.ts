@@ -1,4 +1,5 @@
 import { WorkspaceState } from '@/src/data/schema';
+import { normalizeSchoolworkLanguage, tryParseSchoolworkRequest } from './schoolwork-language';
 
 export const MYELIN_MINI_FAST_MODEL_ID = 'myelin-mini-fast-v1' as const;
 
@@ -294,7 +295,8 @@ export function localDateKeyFromTimestamp(now: number) {
 export function tryBuildMyelinMiniFastDecision(
   input: FastRouterInput,
 ): FastDecision | null {
-  const text = normalize(input.userRequest);
+  const language = normalizeSchoolworkLanguage(input.userRequest);
+  const text = normalize(language);
   if (!text) return null;
 
   const escalated = escalation(text, input.requestId);
@@ -309,8 +311,26 @@ export function tryBuildMyelinMiniFastDecision(
     return null;
   }
 
-  const taskType = detectTaskType(text);
+  if (/^(?:how|why|what|when|should i|did i|do i|does)\b/.test(language)) return null;
   const topicResult = resolveTopic(input.workspace, text);
+  const standalone = /\b(?:notebooks?|projects?|worksheets?|practical (?:file|record|journal)|lab (?:file|record|report))\b/.test(language);
+  const schoolwork = standalone || topicResult.kind === 'none'
+    ? tryParseSchoolworkRequest(input.userRequest, input.currentDate) : null;
+  if (schoolwork) {
+    const envelope = { version: 1 as const, requestId: input.requestId, confidence: 0.98 };
+    if (schoolwork.route === 'clarify') return { ...envelope, ...schoolwork };
+    return {
+      ...envelope, route: 'actions',
+      batch: { version: 1, requestId: input.requestId, actions: [schoolwork.action] },
+    };
+  }
+
+  // Do not reinterpret rejected schoolwork (negation, completed statements,
+  // questions) as the older topic-based homework shortcut.
+  if (/\b(?:notebooks?|homework|assignments?|projects?|worksheets?)\b/.test(language) &&
+      /\b(?:not|don't|doesn't|didn't|cannot|can't|already|completed|finished|submitted|yesterday|if|maybe|might|could|would|delete|remove|cancel)\b/.test(language)) return null;
+
+  const taskType = detectTaskType(text);
 
   if (taskType) {
     if (topicResult.kind === 'ambiguous') {
@@ -351,7 +371,7 @@ export function tryBuildMyelinMiniFastDecision(
     }
 
     const topic = topicResult.topic;
-    const dueDate = detectDueDate(text, input.currentDate);
+    const dueDate = detectDueDate(language, input.currentDate);
 
     return {
       version: 1,

@@ -8,6 +8,7 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 - [x] Persist the preferred offline variant separately from model installation; retain older FunctionGemma preferences.
 - [x] Connect Mini decision routing to the assistant screen, including rules without downloads, clarification and escalation messages.
 - [x] Implement a common provider fallback contract with explicit cloud consent and cancellation protection.
+- [x] Understand clear everyday schoolwork requests through bounded local rules: practical notebooks, homework, projects, worksheets, subject shorthand, common typos and day deadlines. Keep durations unknown when not supplied.
 - [ ] Configure an authenticated server-side cloud provider; enforce per-user quotas, timeouts and backoff. No provider key belongs in the APK.
 - [ ] Add cloud consent and routing mode controls once the connection can perform the advertised operation.
 - [ ] Finish and assess active 0.8B run 37752290697; keep it intact while it trains.
@@ -45,3 +46,13 @@ The user requested connection to the app for beta testing. Settings now exposes 
 Delivery evidence: GitHub run `37757132256` passed full app regressions, TypeScript, native compatibility and publication. Source commit `fafbfeb6f223d44ea4a7538a3c3c4c62aa2d544b`; receipt artifact `11540204341`. The first attempt `37756745657` passed verification but published nothing: creating its receipt inside the checkout tripped the existing clean-tree check. The retry writes its receipt under the runner's temporary directory without disabling that check. No production update or new APK was created.
 
 Next implementation chunk after beta delivery: authenticated cloud transport with quota/unavailability handling, then consent/mode controls. Continue checking the same active training run independently; do not relaunch it because app code changed.
+
+## Everyday schoolwork chunk
+
+User example: `I have to complite bio practical nb by tomorrow`. The assistant now previews `Complete Biology practical notebook`, subject Biology, homework type, tomorrow's local calendar date, no invented chapter, and duration unset. This works without model weights and still requires explicit confirmation. The experimental FunctionGemma selection also takes clear rule decisions before invoking its legacy model path.
+
+Supported bounded normalization includes `complite`, `nb`, `hw`, `tmr`, common subject abbreviations, numeric minute/hour estimates, half an hour, today/tonight/tomorrow/day after tomorrow, in 1–30 days (one–seven also as words), and valid ISO dates. Weekdays, time-of-day deadlines, conflicting/invalid dates, ambiguous subjects and compound tasks ask for clarification. Original text is retained in task notes. Topic-linked legacy tasks remain separate.
+
+This is a local language-rule improvement, not new Qwen weights or unrestricted natural-language comprehension. Training data, frozen evaluations and the active v4 run are unchanged. Follow-up answers still require editing the original request; conversational slot-filling remains a future chunk. The preview now displays task subject, type, due date and duration/unknown state.
+
+Local routing, protocol, hybrid, model lifecycle and available TypeScript checks passed. Full app verification and preview publication are pending the recorded workflow receipt; physical-device QA remains pending.

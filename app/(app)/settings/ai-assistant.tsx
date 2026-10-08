@@ -24,13 +24,26 @@ import {
   isAssistantExamPlanSummary,
 } from '@/src/features/assistant/ai-action-engine';
 import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
+import { localDateKeyFromTimestamp, tryBuildMyelinMiniFastDecision } from '@/src/features/assistant/myelin-mini-fast-router';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const EXAMPLES = [
-  'Add Quadratic Equations as a Maths topic.',
+  'I have to complite bio practical nb by tomorrow.',
   'Create a Science revision task for Magnetic Effects of Electric Current.',
   'Make an exam plan from my upcoming exams.',
 ] as const;
+
+function TaskPreviewDetails({ prepared, index }: { prepared: PreparedAssistantActionBatch; index: number }) {
+  const action = prepared.batch.actions[index];
+  if (action?.type !== 'create_task') return null;
+  return (
+    <Text selectable style={styles.resultSummary}>
+      {action.subject || 'Subject not specified'} · {action.taskType}{'\n'}
+      {action.dueDate ? `Due ${action.dueDate}` : 'No deadline'} ·{' '}
+      {action.estimatedMinutes ? `${action.estimatedMinutes} min` : 'Duration not set — add an estimate before planning'}
+    </Text>
+  );
+}
 
 function previewLabel(prepared: PreparedAssistantActionBatch) {
   const count = prepared.preview.results.length;
@@ -353,7 +366,11 @@ export default function LocalAiAssistantScreen() {
         currentRoute: '/(app)/settings/ai-assistant',
         signal: controller.signal,
       };
-      if (snapshot.selectedModelId === 'functiongemma-270m' && available) {
+      const hasRuleDecision = tryBuildMyelinMiniFastDecision({
+        workspace: currentWorkspace, userRequest, requestId: 'screen-rule-check',
+        currentDate: localDateKeyFromTimestamp(Date.now()),
+      }) !== null;
+      if (snapshot.selectedModelId === 'functiongemma-270m' && available && !hasRuleDecision) {
         const next = await prepareAssistantActions(args);
         if (!controller.signal.aborted) setPrepared(next);
       } else {
@@ -487,7 +504,7 @@ export default function LocalAiAssistantScreen() {
                     setReply('');
                     setError('');
                   }}
-                  placeholder="Example: Add Quadratic Equations as a Maths topic."
+                  placeholder="Example: I have to complete bio practical nb by tomorrow."
                   placeholderTextColor={colors.subtle}
                   style={styles.input}
                   textAlignVertical="top"
@@ -543,7 +560,8 @@ export default function LocalAiAssistantScreen() {
                           <Text style={styles.resultType}>
                             {result.type.replaceAll('_', ' ').toUpperCase()}
                           </Text>
-                          <Text style={styles.resultSummary}>{result.summary}</Text>
+                          <Text selectable style={styles.resultSummary}>{result.summary}</Text>
+                          <TaskPreviewDetails prepared={prepared} index={index} />
                           {result.type === 'generate_exam_plan' &&
                           isAssistantExamPlanSummary(result.data) ? (
                             <ExamPlanPreview plan={result.data} />

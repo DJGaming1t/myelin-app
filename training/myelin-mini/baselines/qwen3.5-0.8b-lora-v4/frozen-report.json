@@ -1,0 +1,92 @@
+{
+  "mode": "release",
+  "passes": false,
+  "report": {
+    "total": 32,
+    "predicted": 32,
+    "parseValid": 30,
+    "parseValidity": 0.9375,
+    "routeCorrect": 29,
+    "routeAccuracy": 0.90625,
+    "actionExamples": 16,
+    "actionExactCorrect": 9,
+    "actionExactAccuracy": 0.5625,
+    "actionTypeSequenceCorrect": 13,
+    "actionTypeSequenceAccuracy": 0.8125,
+    "clarifyExamples": 8,
+    "clarifyReasonCorrect": 5,
+    "clarifyReasonAccuracy": 0.625,
+    "escalateExamples": 8,
+    "escalateReasonCorrect": 7,
+    "escalateReasonAccuracy": 0.875,
+    "unsafeActionCount": 1,
+    "unsafeActionRate": 0.03125,
+    "overEscalationCount": 0,
+    "clarificationMissCount": 1,
+    "meanConfidenceCorrect": 0.9499999999999995,
+    "meanConfidenceIncorrect": 0.95,
+    "latencyMs": {
+      "count": 32,
+      "mean": 21362.31735759375,
+      "p50": 22365.11573199999,
+      "p95": 29950.299045999942
+    },
+    "failures": [
+      {
+        "id": "v3-evaluation-008",
+        "type": "invalid-output",
+        "detail": "generate_exam_plan action contains unsupported field: bufferPercent."
+      },
+      {
+        "id": "v3-evaluation-009",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "v3-evaluation-011",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "v3-evaluation-012",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "v3-evaluation-013",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "v3-evaluation-014",
+        "type": "invalid-output",
+        "detail": "update_topic action contains unsupported field: notes."
+      },
+      {
+        "id": "v3-evaluation-015",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "v3-evaluation-018",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received actions."
+      },
+      {
+        "id": "v3-evaluation-019",
+        "type": "wrong-clarification-reason",
+        "detail": "Expected missing-target; received missing-required-detail."
+      },
+      {
+        "id": "v3-evaluation-020",
+        "type": "wrong-clarification-reason",
+        "detail": "Expected missing-target; received ambiguous-reference."
+      },
+      {
+        "id": "v3-evaluation-031",
+        "type": "wrong-escalation-reason",
+        "detail": "Expected tutoring; received complex-reasoning."
+      }
+    ]
+  }
+}

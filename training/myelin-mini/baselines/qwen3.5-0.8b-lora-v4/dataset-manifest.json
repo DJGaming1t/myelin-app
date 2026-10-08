@@ -1,0 +1,95 @@
+{
+  "seed": 42,
+  "uniqueTrainingSources": 194,
+  "excludedRequestOverlapIds": [
+    "clarify-target-1",
+    "clarify-ambiguous-1",
+    "escalate-general-knowledge-3"
+  ],
+  "buckets": {
+    "actions/create_exam": {
+      "uniqueSources": 12,
+      "trainingRows": 12
+    },
+    "actions/create_task": {
+      "uniqueSources": 46,
+      "trainingRows": 46
+    },
+    "actions/create_topic": {
+      "uniqueSources": 33,
+      "trainingRows": 33
+    },
+    "actions/generate_exam_plan": {
+      "uniqueSources": 10,
+      "trainingRows": 12
+    },
+    "actions/update_topic": {
+      "uniqueSources": 22,
+      "trainingRows": 22
+    },
+    "clarify/ambiguous-reference": {
+      "uniqueSources": 7,
+      "trainingRows": 16
+    },
+    "clarify/missing-date": {
+      "uniqueSources": 9,
+      "trainingRows": 16
+    },
+    "clarify/missing-required-detail": {
+      "uniqueSources": 5,
+      "trainingRows": 16
+    },
+    "clarify/missing-target": {
+      "uniqueSources": 12,
+      "trainingRows": 16
+    },
+    "escalate/complex-reasoning": {
+      "uniqueSources": 7,
+      "trainingRows": 11
+    },
+    "escalate/general-knowledge": {
+      "uniqueSources": 5,
+      "trainingRows": 11
+    },
+    "escalate/multimodal": {
+      "uniqueSources": 7,
+      "trainingRows": 11
+    },
+    "escalate/safety": {
+      "uniqueSources": 5,
+      "trainingRows": 11
+    },
+    "escalate/tutoring": {
+      "uniqueSources": 7,
+      "trainingRows": 11
+    },
+    "escalate/unsupported-action": {
+      "uniqueSources": 7,
+      "trainingRows": 11
+    }
+  },
+  "balance": {
+    "rows": 255,
+    "routes": {
+      "clarify": 64,
+      "escalate": 66,
+      "actions": 125
+    },
+    "actionTypes": {
+      "create_topic": 33,
+      "create_task": 48,
+      "update_topic": 23,
+      "generate_exam_plan": 14,
+      "create_exam": 12
+    },
+    "problems": []
+  },
+  "note": "Minority examples are replayed, not new independent examples. Validation remains unweighted.",
+  "sourceSha256": {
+    "compiled/train-v1.jsonl": "0590ccfb8295099892be07afd875514db8cc2dd60b9ab889522bd64f63c76a26",
+    "compiled/validation-v1.jsonl": "1c9f1c31f9ab5d33abae55f74c2b1b822fad44910f8cb2c07d1c4877618de2b4",
+    "eval-v1.jsonl": "6c96e3880028e87cb9d817294ab534b9a1719a46bd6c678ae58a5d2545ac5db5",
+    "eval-v2.jsonl": "e8aa81783d5f392a3c4464d75401742d4ff28a78b569cffe1b97c695bca707e3",
+    "acceptance-v1.jsonl": "f1cedad8d36b65d5b6aa5281b5c3cae98d8534fe3c00aca48d94060dde91cb11"
+  }
+}

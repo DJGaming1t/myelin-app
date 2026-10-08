@@ -1,0 +1,65 @@
+{
+  "allowSmallDataset": false,
+  "baseModel": "principled-intelligence/Qwen3.5-0.8B-text-only",
+  "batchSize": 1,
+  "bf16": false,
+  "device": "cpu",
+  "epochs": 2.0,
+  "gradientAccumulation": 4,
+  "learningRate": 0.0002,
+  "loraAlpha": 32,
+  "loraR": 16,
+  "maxLength": 768,
+  "maxSteps": -1,
+  "method": "LoRA SFT",
+  "metrics": {
+    "epoch": 2.0,
+    "final_epoch": 2.0,
+    "final_eval_entropy": 1.6500538793103448,
+    "final_eval_loss": 0.1814500391483307,
+    "final_eval_mean_token_accuracy": 0.9535424277700227,
+    "final_eval_num_tokens": 238492.0,
+    "final_eval_runtime": 162.1819,
+    "final_eval_samples_per_second": 0.179,
+    "final_eval_steps_per_second": 0.179,
+    "total_flos": 728262987072000.0,
+    "train_loss": 0.17085253732511774,
+    "train_runtime": 9813.2886,
+    "train_samples_per_second": 0.052,
+    "train_steps_per_second": 0.013
+  },
+  "preflight": {
+    "chatTemplateSha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80",
+    "enableThinking": false,
+    "maxTrainTokens": 580,
+    "maxValidationTokens": 555,
+    "passes": true
+  },
+  "resumeAdapter": null,
+  "runTrainRoutes": {
+    "actions": 125,
+    "clarify": 64,
+    "escalate": 66
+  },
+  "runTrainRows": 255,
+  "runValidationRows": 29,
+  "schemaVersion": 1,
+  "seed": 42,
+  "smokeMode": false,
+  "trainFile": "training/myelin-mini/compiled/balanced-v3-train.jsonl",
+  "trainRoutes": {
+    "actions": 125,
+    "clarify": 64,
+    "escalate": 66
+  },
+  "trainRows": 255,
+  "trainSha256": "598bf244bef3cf25c76915da84320870610c77b0eda7f391dcc509fddeeb18a8",
+  "validationFile": "training/myelin-mini/compiled/balanced-v3-validation.jsonl",
+  "validationRoutes": {
+    "actions": 13,
+    "clarify": 7,
+    "escalate": 9
+  },
+  "validationRows": 29,
+  "validationSha256": "1c9f1c31f9ab5d33abae55f74c2b1b822fad44910f8cb2c07d1c4877618de2b4"
+}

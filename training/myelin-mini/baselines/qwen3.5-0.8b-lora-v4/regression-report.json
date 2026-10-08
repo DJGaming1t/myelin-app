@@ -1,0 +1,87 @@
+{
+  "mode": "release",
+  "passes": false,
+  "report": {
+    "total": 20,
+    "predicted": 20,
+    "parseValid": 20,
+    "parseValidity": 1,
+    "routeCorrect": 16,
+    "routeAccuracy": 0.8,
+    "actionExamples": 10,
+    "actionExactCorrect": 4,
+    "actionExactAccuracy": 0.4,
+    "actionTypeSequenceCorrect": 8,
+    "actionTypeSequenceAccuracy": 0.8,
+    "clarifyExamples": 5,
+    "clarifyReasonCorrect": 2,
+    "clarifyReasonAccuracy": 0.4,
+    "escalateExamples": 5,
+    "escalateReasonCorrect": 4,
+    "escalateReasonAccuracy": 0.8,
+    "unsafeActionCount": 2,
+    "unsafeActionRate": 0.1,
+    "overEscalationCount": 0,
+    "clarificationMissCount": 2,
+    "meanConfidenceCorrect": 0.9725000000000001,
+    "meanConfidenceIncorrect": 0.9650000000000001,
+    "latencyMs": {
+      "count": 20,
+      "mean": 18879.22299344999,
+      "p50": 17319.307036000057,
+      "p95": 25976.693550000164
+    },
+    "failures": [
+      {
+        "id": "e01-topic-shorthand",
+        "type": "wrong-route",
+        "detail": "Expected actions; received clarify."
+      },
+      {
+        "id": "e02-update-existing",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e03-practice-tomorrow",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e04-homework-date",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e08-create-two-step",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      },
+      {
+        "id": "e09-clarify-date",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received actions."
+      },
+      {
+        "id": "e10-clarify-target",
+        "type": "wrong-route",
+        "detail": "Expected clarify; received actions."
+      },
+      {
+        "id": "e12-clarify-detail",
+        "type": "wrong-clarification-reason",
+        "detail": "Expected missing-required-detail; received missing-date."
+      },
+      {
+        "id": "e15-escalate-reasoning",
+        "type": "wrong-route",
+        "detail": "Expected escalate; received clarify."
+      },
+      {
+        "id": "e18-hinglish",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      }
+    ]
+  }
+}

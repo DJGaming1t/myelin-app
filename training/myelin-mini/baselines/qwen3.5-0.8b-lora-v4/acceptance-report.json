@@ -1,0 +1,42 @@
+{
+  "mode": "acceptance",
+  "passes": true,
+  "report": {
+    "total": 1,
+    "predicted": 1,
+    "parseValid": 1,
+    "parseValidity": 1,
+    "routeCorrect": 1,
+    "routeAccuracy": 1,
+    "actionExamples": 1,
+    "actionExactCorrect": 0,
+    "actionExactAccuracy": 0,
+    "actionTypeSequenceCorrect": 1,
+    "actionTypeSequenceAccuracy": 1,
+    "clarifyExamples": 0,
+    "clarifyReasonCorrect": 0,
+    "clarifyReasonAccuracy": null,
+    "escalateExamples": 0,
+    "escalateReasonCorrect": 0,
+    "escalateReasonAccuracy": null,
+    "unsafeActionCount": 0,
+    "unsafeActionRate": 0,
+    "overEscalationCount": 0,
+    "clarificationMissCount": 0,
+    "meanConfidenceCorrect": 0.98,
+    "meanConfidenceIncorrect": null,
+    "latencyMs": {
+      "count": 1,
+      "mean": 27662.158509000164,
+      "p50": 27662.158509000164,
+      "p95": 27662.158509000164
+    },
+    "failures": [
+      {
+        "id": "accept-hinglish-trig-30m",
+        "type": "wrong-actions",
+        "detail": "Action payload does not exactly match the expected action list."
+      }
+    ]
+  }
+}

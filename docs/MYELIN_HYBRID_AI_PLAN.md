@@ -9,10 +9,12 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 - [x] Connect Mini decision routing to the assistant screen, including rules without downloads, clarification and escalation messages.
 - [x] Implement a common provider fallback contract with explicit cloud consent and cancellation protection.
 - [x] Understand clear everyday schoolwork requests through bounded local rules: practical notebooks, homework, projects, worksheets, subject shorthand, common typos and day deadlines. Keep durations unknown when not supplied.
+- [x] Retain incomplete requests and accept short typed clarification replies, with owner/workspace/day/expiry guards and explicit confirmation.
 - [ ] Configure an authenticated server-side cloud provider; enforce per-user quotas, timeouts and backoff. No provider key belongs in the APK.
 - [ ] Add cloud consent and routing mode controls once the connection can perform the advertised operation.
 - [x] Finish 0.8B training run 37752290697; final adapter exported successfully.
-- [ ] Recover evaluation of that same adapter; evaluation setup failed before inference, so model quality remains unmeasured and release blocked.
+- [x] Recover evaluation of that same adapter; all 53 cases measured. Both release gates failed; separate Hinglish acceptance passed. Weights remain blocked.
+- [ ] Add shared request-grounding checks for missing exam dates and unresolved targets before model actions reach preview. Test generalized development requests without training on evaluated cases.
 - [ ] Train and compare a separate 2B candidate using the same development splits and protocol. Future held-out versions are needed once current evaluation results are used for tuning.
 - [ ] Convert each approved adapter/base combination into a supported phone artifact, verify file hashes and test Android speed, RAM, context capacity and structured output.
 - [ ] Publish signed download descriptors; enable download/select/remove for released models through the existing one-session manager.
@@ -74,4 +76,14 @@ Training status: run `37752290697` successfully exported artifact `11548375885` 
 
 ## Evaluation recovery chunk
 
-Added a separate evaluation-only workflow using saved artifact `11548375885` and original source `0c0b68713e835932402b591edd336476cf7165b8`. It enforces the archive digest, regenerates required curriculum/compiled inputs, matches training hashes and frozen manifests, uses the saved Python environment and preserves all 53 cases and original gates. Five local isolation/provenance tests and workflow syntax checks passed. Run `37821590889` is active; archive and original data/protocol/full TypeScript checks passed. Release stays blocked until measured gates and phone tests pass. No app update or additional training in this chunk.
+Added a separate evaluation-only workflow using saved artifact `11548375885` and original source `0c0b68713e835932402b591edd336476cf7165b8`. It enforces the archive digest, regenerates required curriculum/compiled inputs, matches training hashes and frozen manifests, uses the saved Python environment and preserves all 53 cases and original gates. Five local isolation/provenance tests and workflow syntax checks passed. Run `37821590889`, job `113463700064`, completed: setup, original TypeScript/protocol/data checks and inference passed; enforcement correctly failed on measured quality. Evidence artifact `11570312936`, SHA-256 `5a2e44a11436d1c799f5a912f4879257b09ea5e741169c92f1f7e8df0078add1`. Raw predictions reproduce both reports locally and match the downloaded artifact. Committed evidence: `training/myelin-mini/baselines/qwen3.5-0.8b-lora-v4/`.
+
+| Set | Valid outputs | Correct route | Exact actions | Unsafe actions | Gate |
+| --- | --- | --- | --- | --- | --- |
+| Frozen eval-v2 (32) | 30/32 (93.75%) | 29/32 (90.625%) | 9/16 (56.25%) | 1 | FAIL |
+| Historical eval-v1 (20) | 20/20 (100%) | 16/20 (80%) | 4/10 (40%) | 2 | FAIL |
+| Separate Hinglish (1) | 1/1 | 1/1 | 0/1 (title differs) | 0 | Semantic PASS |
+
+Historical v2 → v4: valid outputs 60% → 100%, route accuracy 50% → 80%, exact actions 10% → 40%, unsafe actions unchanged at 2. There is no v2 result on frozen eval-v2. Dates, references, chained actions and allowed fields still fail independently of title wording. High confidence does not distinguish wrong decisions. Frozen CPU latency p50 22.4 s / p95 30.0 s; historical p50 17.3 s / p95 26.0 s. These are unquantized CPU adapter measurements, not Android performance or independent human evaluation.
+
+Next chunk: shared missing-date/unresolved-target grounding checks before model previews. Later tuning must use generalized development data and a new frozen evaluation version; do not copy these observed evaluation requests into training or select checkpoints using them. No app update or new training was performed in this chunk. The existing rules beta remains the shipped assistant.

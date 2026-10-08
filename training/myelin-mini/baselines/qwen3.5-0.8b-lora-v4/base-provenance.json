@@ -1,0 +1,7 @@
+{
+  "model": "principled-intelligence/Qwen3.5-0.8B-text-only",
+  "resolvedRevision": "d692a5787e0534f0fd3484d7a516bd3c2d23dbed",
+  "lastModified": "2026-03-12T13:09:53+00:00",
+  "chatTemplateSha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80",
+  "limit": "Historical trainer recorded model name but not resolved base revision. Repository revision predates training; template matches."
+}

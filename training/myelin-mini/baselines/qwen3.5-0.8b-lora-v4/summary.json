@@ -1,0 +1,84 @@
+{
+  "runId": 37821590889,
+  "jobId": 113463700064,
+  "recoveryCommit": "2cccc7531724edd3e63f2a7cd4fb4592329c9ff3",
+  "evaluatedSource": "0c0b68713e835932402b591edd336476cf7165b8",
+  "adapterArtifactId": 11548375885,
+  "evaluationArtifactId": 11570312936,
+  "evaluationArtifactDigest": "sha256:5a2e44a11436d1c799f5a912f4879257b09ea5e741169c92f1f7e8df0078add1",
+  "completed": "2026-10-08T18:26:28Z",
+  "setupPassed": true,
+  "allCases": 53,
+  "releasePassed": false,
+  "gates": {
+    "frozen": {
+      "passes": false,
+      "total": 32,
+      "parseValidity": 0.9375,
+      "routeAccuracy": 0.90625,
+      "actionExactAccuracy": 0.5625,
+      "actionTypeSequenceAccuracy": 0.8125,
+      "clarifyReasonAccuracy": 0.625,
+      "escalateReasonAccuracy": 0.875,
+      "unsafeActionCount": 1,
+      "p50LatencyMs": 22365.11573199999,
+      "p95LatencyMs": 29950.299045999942
+    },
+    "regression": {
+      "passes": false,
+      "total": 20,
+      "parseValidity": 1,
+      "routeAccuracy": 0.8,
+      "actionExactAccuracy": 0.4,
+      "actionTypeSequenceAccuracy": 0.8,
+      "clarifyReasonAccuracy": 0.4,
+      "escalateReasonAccuracy": 0.8,
+      "unsafeActionCount": 2,
+      "p50LatencyMs": 17319.307036000057,
+      "p95LatencyMs": 25976.693550000164
+    },
+    "acceptance": {
+      "passes": true,
+      "total": 1,
+      "parseValidity": 1,
+      "routeAccuracy": 1,
+      "actionExactAccuracy": 0,
+      "actionTypeSequenceAccuracy": 1,
+      "clarifyReasonAccuracy": null,
+      "escalateReasonAccuracy": null,
+      "unsafeActionCount": 0,
+      "p50LatencyMs": 27662.158509000164,
+      "p95LatencyMs": 27662.158509000164
+    }
+  },
+  "historicalComparison": {
+    "v2": {
+      "cases": 20,
+      "parseValidity": 0.6,
+      "routeAccuracy": 0.5,
+      "actionExactAccuracy": 0.1,
+      "unsafeActionCount": 2
+    },
+    "v4": {
+      "cases": 20,
+      "parseValidity": 1,
+      "routeAccuracy": 0.8,
+      "actionExactAccuracy": 0.4,
+      "unsafeActionCount": 2
+    },
+    "limits": "Same historical synthetic regression cases; known historical contamination and CPU/environment differences. Not pristine held-out or phone performance. No v2 frozen-v2 comparison exists."
+  },
+  "findings": [
+    "Omitted explicit and relative task deadlines; broken/missing clientRef chains and ignored planner operation.",
+    "Invented exam dates on missing-date requests and all as a target when no topic was specified.",
+    "Unsupported fields bufferPercent and update_topic notes; malformed status patch.",
+    "High confidence persists for wrong decisions; confidence threshold alone is insufficient.",
+    "Some strict task misses are title wording alone; semantic errors independently block release."
+  ],
+  "next": "Add model-independent request-grounding checks for missing exam dates and unresolved targets before preview; test generalized development cases. Keep weights blocked; do not copy evaluated requests into training. Later tuning requires a new frozen evaluation version.",
+  "limits": [
+    "Raw unquantized float32 CPU LoRA inference, not Android latency.",
+    "Historical trainer did not pin resolved base revision; recovered base revision predates training and chat-template hash matches.",
+    "Frozen eval-v2 is authored synthetic data, now observed; not independent human validation."
+  ]
+}

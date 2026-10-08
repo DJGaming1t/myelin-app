@@ -1,0 +1,2031 @@
+{
+  "schemaVersion": 1,
+  "model": "principled-intelligence/Qwen3.5-0.8B-text-only",
+  "smokeMode": false,
+  "trainSha256": "598bf244bef3cf25c76915da84320870610c77b0eda7f391dcc509fddeeb18a8",
+  "validationSha256": "1c9f1c31f9ab5d33abae55f74c2b1b822fad44910f8cb2c07d1c4877618de2b4",
+  "chatTemplateSha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80",
+  "balance": {
+    "rows": 255,
+    "routes": {
+      "clarify": 64,
+      "escalate": 66,
+      "actions": 125
+    },
+    "actionTypes": {
+      "create_topic": 33,
+      "create_task": 48,
+      "update_topic": 23,
+      "generate_exam_plan": 14,
+      "create_exam": 12
+    },
+    "problems": []
+  },
+  "train": {
+    "rows": 255,
+    "maxLength": 768,
+    "enableThinking": false,
+    "maxTotalTokens": 580,
+    "failedRows": 0,
+    "details": [
+      {
+        "id": "balanced-v3-train-045-2",
+        "promptTokens": 380,
+        "completionTokens": 53,
+        "totalTokens": 433,
+        "problems": []
+      },
+      {
+        "id": "balanced-t22-escalate-safety-0",
+        "promptTokens": 372,
+        "completionTokens": 53,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-050-1",
+        "promptTokens": 374,
+        "completionTokens": 50,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-acids-3-0",
+        "promptTokens": 388,
+        "completionTokens": 89,
+        "totalTokens": 477,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-028-0",
+        "promptTokens": 389,
+        "completionTokens": 83,
+        "totalTokens": 472,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-priority-topic-magnetic-0",
+        "promptTokens": 397,
+        "completionTokens": 72,
+        "totalTokens": 469,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-038-0",
+        "promptTokens": 419,
+        "completionTokens": 51,
+        "totalTokens": 470,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-058-1",
+        "promptTokens": 383,
+        "completionTokens": 53,
+        "totalTokens": 436,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-018-0",
+        "promptTokens": 455,
+        "completionTokens": 86,
+        "totalTokens": 541,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-044-1",
+        "promptTokens": 429,
+        "completionTokens": 53,
+        "totalTokens": 482,
+        "problems": []
+      },
+      {
+        "id": "balanced-t20-escalate-image-0",
+        "promptTokens": 374,
+        "completionTokens": 52,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-022-0",
+        "promptTokens": 450,
+        "completionTokens": 98,
+        "totalTokens": 548,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-statistics-2-0",
+        "promptTokens": 393,
+        "completionTokens": 109,
+        "totalTokens": 502,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-electricity-hinglish-0",
+        "promptTokens": 402,
+        "completionTokens": 113,
+        "totalTokens": 515,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-067-0",
+        "promptTokens": 378,
+        "completionTokens": 50,
+        "totalTokens": 428,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-045-0",
+        "promptTokens": 380,
+        "completionTokens": 53,
+        "totalTokens": 433,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-life-3-0",
+        "promptTokens": 381,
+        "completionTokens": 81,
+        "totalTokens": 462,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-016-0",
+        "promptTokens": 426,
+        "completionTokens": 92,
+        "totalTokens": 518,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-044-0",
+        "promptTokens": 429,
+        "completionTokens": 53,
+        "totalTokens": 482,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-056-0",
+        "promptTokens": 384,
+        "completionTokens": 49,
+        "totalTokens": 433,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-015-0",
+        "promptTokens": 405,
+        "completionTokens": 88,
+        "totalTokens": 493,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-033-0",
+        "promptTokens": 424,
+        "completionTokens": 53,
+        "totalTokens": 477,
+        "problems": []
+      },
+      {
+        "id": "balanced-t15-clarify-exam-topics-2",
+        "promptTokens": 406,
+        "completionTokens": 51,
+        "totalTokens": 457,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-acids-3-0",
+        "promptTokens": 403,
+        "completionTokens": 116,
+        "totalTokens": 519,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-026-0",
+        "promptTokens": 410,
+        "completionTokens": 105,
+        "totalTokens": 515,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-069-2",
+        "promptTokens": 378,
+        "completionTokens": 47,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-life-1-0",
+        "promptTokens": 397,
+        "completionTokens": 107,
+        "totalTokens": 504,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-statistics-1-0",
+        "promptTokens": 378,
+        "completionTokens": 82,
+        "totalTokens": 460,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-043-0",
+        "promptTokens": 417,
+        "completionTokens": 51,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-053-1",
+        "promptTokens": 376,
+        "completionTokens": 49,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-024-0",
+        "promptTokens": 445,
+        "completionTokens": 87,
+        "totalTokens": 532,
+        "problems": []
+      },
+      {
+        "id": "balanced-t15-clarify-exam-topics-0",
+        "promptTokens": 406,
+        "completionTokens": 51,
+        "totalTokens": 457,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-complex-reasoning-9-0",
+        "promptTokens": 384,
+        "completionTokens": 60,
+        "totalTokens": 444,
+        "problems": []
+      },
+      {
+        "id": "balanced-t16-clarify-ambiguous-topic-1",
+        "promptTokens": 403,
+        "completionTokens": 51,
+        "totalTokens": 454,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-032-0",
+        "promptTokens": 400,
+        "completionTokens": 52,
+        "totalTokens": 452,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-exam-physics-3-0",
+        "promptTokens": 416,
+        "completionTokens": 96,
+        "totalTokens": 512,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-trig-1-0",
+        "promptTokens": 399,
+        "completionTokens": 111,
+        "totalTokens": 510,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-federalism-4-0",
+        "promptTokens": 378,
+        "completionTokens": 85,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-040-0",
+        "promptTokens": 408,
+        "completionTokens": 53,
+        "totalTokens": 461,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-date-4-1",
+        "promptTokens": 373,
+        "completionTokens": 49,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-042-1",
+        "promptTokens": 417,
+        "completionTokens": 51,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-target-4-0",
+        "promptTokens": 372,
+        "completionTokens": 51,
+        "totalTokens": 423,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-067-1",
+        "promptTokens": 378,
+        "completionTokens": 50,
+        "totalTokens": 428,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-acids-1-0",
+        "promptTokens": 385,
+        "completionTokens": 89,
+        "totalTokens": 474,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-priority-topic-metals-0",
+        "promptTokens": 402,
+        "completionTokens": 75,
+        "totalTokens": 477,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-electricity-4-0",
+        "promptTokens": 398,
+        "completionTokens": 111,
+        "totalTokens": 509,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-multimodal-5-0",
+        "promptTokens": 379,
+        "completionTokens": 55,
+        "totalTokens": 434,
+        "problems": []
+      },
+      {
+        "id": "balanced-t13-task-no-due-0",
+        "promptTokens": 380,
+        "completionTokens": 74,
+        "totalTokens": 454,
+        "problems": []
+      },
+      {
+        "id": "balanced-t23-shorthand-practice-0",
+        "promptTokens": 391,
+        "completionTokens": 101,
+        "totalTokens": 492,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-046-1",
+        "promptTokens": 390,
+        "completionTokens": 54,
+        "totalTokens": 444,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-time-topic-magnetic-0",
+        "promptTokens": 404,
+        "completionTokens": 72,
+        "totalTokens": 476,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-general-knowledge-4-1",
+        "promptTokens": 377,
+        "completionTokens": 53,
+        "totalTokens": 430,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-049-2",
+        "promptTokens": 374,
+        "completionTokens": 50,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-electricity-1-0",
+        "promptTokens": 379,
+        "completionTokens": 84,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-039-1",
+        "promptTokens": 464,
+        "completionTokens": 51,
+        "totalTokens": 515,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-quadratic-1-0",
+        "promptTokens": 381,
+        "completionTokens": 85,
+        "totalTokens": 466,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-030-0",
+        "promptTokens": 414,
+        "completionTokens": 114,
+        "totalTokens": 528,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-003-0",
+        "promptTokens": 391,
+        "completionTokens": 82,
+        "totalTokens": 473,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-041-0",
+        "promptTokens": 427,
+        "completionTokens": 52,
+        "totalTokens": 479,
+        "problems": []
+      },
+      {
+        "id": "balanced-t18-escalate-concept-0",
+        "promptTokens": 376,
+        "completionTokens": 51,
+        "totalTokens": 427,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-acids-4-0",
+        "promptTokens": 379,
+        "completionTokens": 89,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-034-0",
+        "promptTokens": 405,
+        "completionTokens": 50,
+        "totalTokens": 455,
+        "problems": []
+      },
+      {
+        "id": "balanced-t14-clarify-date-1",
+        "promptTokens": 368,
+        "completionTokens": 47,
+        "totalTokens": 415,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-tutoring-1-0",
+        "promptTokens": 378,
+        "completionTokens": 56,
+        "totalTokens": 434,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-019-1",
+        "promptTokens": 437,
+        "completionTokens": 87,
+        "totalTokens": 524,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-date-3-1",
+        "promptTokens": 372,
+        "completionTokens": 49,
+        "totalTokens": 421,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-acids-2-0",
+        "promptTokens": 388,
+        "completionTokens": 89,
+        "totalTokens": 477,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-063-0",
+        "promptTokens": 378,
+        "completionTokens": 46,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-trig-hinglish-0",
+        "promptTokens": 404,
+        "completionTokens": 113,
+        "totalTokens": 517,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-life-3-0",
+        "promptTokens": 396,
+        "completionTokens": 107,
+        "totalTokens": 503,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-trig-3-0",
+        "promptTokens": 398,
+        "completionTokens": 111,
+        "totalTokens": 509,
+        "problems": []
+      },
+      {
+        "id": "balanced-t04-update-topic-status-0",
+        "promptTokens": 400,
+        "completionTokens": 63,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-045-1",
+        "promptTokens": 380,
+        "completionTokens": 53,
+        "totalTokens": 433,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-statistics-3-0",
+        "promptTokens": 396,
+        "completionTokens": 109,
+        "totalTokens": 505,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-023-0",
+        "promptTokens": 446,
+        "completionTokens": 80,
+        "totalTokens": 526,
+        "problems": []
+      },
+      {
+        "id": "balanced-t10-plan-hard-topic-0",
+        "promptTokens": 438,
+        "completionTokens": 89,
+        "totalTokens": 527,
+        "problems": []
+      },
+      {
+        "id": "balanced-t11-create-topic-task-0",
+        "promptTokens": 385,
+        "completionTokens": 141,
+        "totalTokens": 526,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-037-0",
+        "promptTokens": 419,
+        "completionTokens": 55,
+        "totalTokens": 474,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-statistics-3-0",
+        "promptTokens": 381,
+        "completionTokens": 82,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-055-0",
+        "promptTokens": 377,
+        "completionTokens": 50,
+        "totalTokens": 427,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-042-0",
+        "promptTokens": 417,
+        "completionTokens": 51,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-date-2-0",
+        "promptTokens": 375,
+        "completionTokens": 49,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-006-0",
+        "promptTokens": 404,
+        "completionTokens": 74,
+        "totalTokens": 478,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-statistics-2-0",
+        "promptTokens": 381,
+        "completionTokens": 82,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-multimodal-6-0",
+        "promptTokens": 377,
+        "completionTokens": 55,
+        "totalTokens": 432,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-exam-physics-1-0",
+        "promptTokens": 428,
+        "completionTokens": 96,
+        "totalTokens": 524,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-070-1",
+        "promptTokens": 375,
+        "completionTokens": 51,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-060-0",
+        "promptTokens": 377,
+        "completionTokens": 50,
+        "totalTokens": 427,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-statistics-5-0",
+        "promptTokens": 400,
+        "completionTokens": 109,
+        "totalTokens": 509,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-002-0",
+        "promptTokens": 386,
+        "completionTokens": 82,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-t14-clarify-date-0",
+        "promptTokens": 368,
+        "completionTokens": 47,
+        "totalTokens": 415,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-071-0",
+        "promptTokens": 384,
+        "completionTokens": 47,
+        "totalTokens": 431,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-027-0",
+        "promptTokens": 416,
+        "completionTokens": 107,
+        "totalTokens": 523,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-date-3-0",
+        "promptTokens": 372,
+        "completionTokens": 49,
+        "totalTokens": 421,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-068-1",
+        "promptTokens": 379,
+        "completionTokens": 49,
+        "totalTokens": 428,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-020-0",
+        "promptTokens": 500,
+        "completionTokens": 80,
+        "totalTokens": 580,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-019-0",
+        "promptTokens": 437,
+        "completionTokens": 87,
+        "totalTokens": 524,
+        "problems": []
+      },
+      {
+        "id": "balanced-t01-add-topic-0",
+        "promptTokens": 383,
+        "completionTokens": 77,
+        "totalTokens": 460,
+        "problems": []
+      },
+      {
+        "id": "balanced-t06-create-homework-0",
+        "promptTokens": 376,
+        "completionTokens": 92,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-complex-reasoning-10-1",
+        "promptTokens": 386,
+        "completionTokens": 61,
+        "totalTokens": 447,
+        "problems": []
+      },
+      {
+        "id": "balanced-t16-clarify-ambiguous-topic-0",
+        "promptTokens": 403,
+        "completionTokens": 51,
+        "totalTokens": 454,
+        "problems": []
+      },
+      {
+        "id": "balanced-t02-add-topic-shorthand-0",
+        "promptTokens": 374,
+        "completionTokens": 74,
+        "totalTokens": 448,
+        "problems": []
+      },
+      {
+        "id": "balanced-t22-escalate-safety-1",
+        "promptTokens": 372,
+        "completionTokens": 53,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-t20-escalate-image-1",
+        "promptTokens": 374,
+        "completionTokens": 52,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-048-1",
+        "promptTokens": 376,
+        "completionTokens": 53,
+        "totalTokens": 429,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-electricity-1-0",
+        "promptTokens": 399,
+        "completionTokens": 111,
+        "totalTokens": 510,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-060-1",
+        "promptTokens": 377,
+        "completionTokens": 50,
+        "totalTokens": 427,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-052-0",
+        "promptTokens": 376,
+        "completionTokens": 47,
+        "totalTokens": 423,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-069-0",
+        "promptTokens": 378,
+        "completionTokens": 47,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-036-0",
+        "promptTokens": 419,
+        "completionTokens": 51,
+        "totalTokens": 470,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-quadratic-2-0",
+        "promptTokens": 384,
+        "completionTokens": 85,
+        "totalTokens": 469,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-trig-english-0",
+        "promptTokens": 403,
+        "completionTokens": 111,
+        "totalTokens": 514,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-federalism-3-0",
+        "promptTokens": 384,
+        "completionTokens": 85,
+        "totalTokens": 469,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-071-1",
+        "promptTokens": 384,
+        "completionTokens": 47,
+        "totalTokens": 431,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-unsupported-action-8-1",
+        "promptTokens": 376,
+        "completionTokens": 55,
+        "totalTokens": 431,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-069-1",
+        "promptTokens": 378,
+        "completionTokens": 47,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-target-2-1",
+        "promptTokens": 371,
+        "completionTokens": 51,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-target-2-0",
+        "promptTokens": 371,
+        "completionTokens": 51,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "balanced-t24-status-and-time-0",
+        "promptTokens": 409,
+        "completionTokens": 71,
+        "totalTokens": 480,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-electricity-2-0",
+        "promptTokens": 381,
+        "completionTokens": 84,
+        "totalTokens": 465,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-051-1",
+        "promptTokens": 376,
+        "completionTokens": 52,
+        "totalTokens": 428,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-065-0",
+        "promptTokens": 376,
+        "completionTokens": 50,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-040-2",
+        "promptTokens": 408,
+        "completionTokens": 53,
+        "totalTokens": 461,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-exam-physics-2-0",
+        "promptTokens": 420,
+        "completionTokens": 96,
+        "totalTokens": 516,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-statistics-4-0",
+        "promptTokens": 375,
+        "completionTokens": 82,
+        "totalTokens": 457,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-ambiguous-3-0",
+        "promptTokens": 408,
+        "completionTokens": 55,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "balanced-t07-create-exam-0",
+        "promptTokens": 417,
+        "completionTokens": 86,
+        "totalTokens": 503,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-acids-english-0",
+        "promptTokens": 413,
+        "completionTokens": 116,
+        "totalTokens": 529,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-time-topic-metals-0",
+        "promptTokens": 409,
+        "completionTokens": 75,
+        "totalTokens": 484,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-046-0",
+        "promptTokens": 390,
+        "completionTokens": 54,
+        "totalTokens": 444,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-041-1",
+        "promptTokens": 427,
+        "completionTokens": 52,
+        "totalTokens": 479,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-029-0",
+        "promptTokens": 407,
+        "completionTokens": 144,
+        "totalTokens": 551,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-056-1",
+        "promptTokens": 384,
+        "completionTokens": 49,
+        "totalTokens": 433,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-electricity-6-0",
+        "promptTokens": 402,
+        "completionTokens": 111,
+        "totalTokens": 513,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-life-hinglish-0",
+        "promptTokens": 400,
+        "completionTokens": 109,
+        "totalTokens": 509,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-quadratic-4-0",
+        "promptTokens": 376,
+        "completionTokens": 85,
+        "totalTokens": 461,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-048-0",
+        "promptTokens": 376,
+        "completionTokens": 53,
+        "totalTokens": 429,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-life-5-0",
+        "promptTokens": 400,
+        "completionTokens": 107,
+        "totalTokens": 507,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-034-1",
+        "promptTokens": 405,
+        "completionTokens": 50,
+        "totalTokens": 455,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-target-3-0",
+        "promptTokens": 374,
+        "completionTokens": 51,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-electricity-3-0",
+        "promptTokens": 382,
+        "completionTokens": 84,
+        "totalTokens": 466,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-review-topic-control-0",
+        "promptTokens": 398,
+        "completionTokens": 67,
+        "totalTokens": 465,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-064-0",
+        "promptTokens": 374,
+        "completionTokens": 48,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "balanced-t09-plan-existing-exam-0",
+        "promptTokens": 402,
+        "completionTokens": 65,
+        "totalTokens": 467,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-013-0",
+        "promptTokens": 409,
+        "completionTokens": 85,
+        "totalTokens": 494,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-021-0",
+        "promptTokens": 476,
+        "completionTokens": 62,
+        "totalTokens": 538,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-032-1",
+        "promptTokens": 400,
+        "completionTokens": 52,
+        "totalTokens": 452,
+        "problems": []
+      },
+      {
+        "id": "balanced-t17-clarify-target-0",
+        "promptTokens": 370,
+        "completionTokens": 50,
+        "totalTokens": 420,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-054-0",
+        "promptTokens": 378,
+        "completionTokens": 46,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-050-0",
+        "promptTokens": 374,
+        "completionTokens": 50,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-008-0",
+        "promptTokens": 401,
+        "completionTokens": 71,
+        "totalTokens": 472,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-general-knowledge-4-0",
+        "promptTokens": 377,
+        "completionTokens": 53,
+        "totalTokens": 430,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-complex-reasoning-10-0",
+        "promptTokens": 386,
+        "completionTokens": 61,
+        "totalTokens": 447,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-066-0",
+        "promptTokens": 374,
+        "completionTokens": 47,
+        "totalTokens": 421,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-049-1",
+        "promptTokens": 374,
+        "completionTokens": 50,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-acids-2-0",
+        "promptTokens": 401,
+        "completionTokens": 116,
+        "totalTokens": 517,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-014-0",
+        "promptTokens": 412,
+        "completionTokens": 86,
+        "totalTokens": 498,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-049-0",
+        "promptTokens": 374,
+        "completionTokens": 50,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-electricity-2-0",
+        "promptTokens": 396,
+        "completionTokens": 111,
+        "totalTokens": 507,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-clarify-missing-target-1-0",
+        "promptTokens": 379,
+        "completionTokens": 56,
+        "totalTokens": 435,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-unsupported-action-7-0",
+        "promptTokens": 376,
+        "completionTokens": 55,
+        "totalTokens": 431,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-time-topic-control-0",
+        "promptTokens": 399,
+        "completionTokens": 69,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-trig-2-0",
+        "promptTokens": 396,
+        "completionTokens": 111,
+        "totalTokens": 507,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-clarify-missing-target-4-0",
+        "promptTokens": 379,
+        "completionTokens": 56,
+        "totalTokens": 435,
+        "problems": []
+      },
+      {
+        "id": "balanced-t12-update-priority-0",
+        "promptTokens": 386,
+        "completionTokens": 63,
+        "totalTokens": 449,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-051-0",
+        "promptTokens": 376,
+        "completionTokens": 52,
+        "totalTokens": 428,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-statistics-1-0",
+        "promptTokens": 397,
+        "completionTokens": 109,
+        "totalTokens": 506,
+        "problems": []
+      },
+      {
+        "id": "balanced-t19-escalate-reasoning-1",
+        "promptTokens": 455,
+        "completionTokens": 63,
+        "totalTokens": 518,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-025-0",
+        "promptTokens": 399,
+        "completionTokens": 98,
+        "totalTokens": 497,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-priority-topic-trig-0",
+        "promptTokens": 393,
+        "completionTokens": 72,
+        "totalTokens": 465,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-043-1",
+        "promptTokens": 417,
+        "completionTokens": 51,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-t19-escalate-reasoning-0",
+        "promptTokens": 455,
+        "completionTokens": 63,
+        "totalTokens": 518,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-trig-4-0",
+        "promptTokens": 398,
+        "completionTokens": 111,
+        "totalTokens": 509,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-070-0",
+        "promptTokens": 375,
+        "completionTokens": 51,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-trig-5-0",
+        "promptTokens": 402,
+        "completionTokens": 111,
+        "totalTokens": 513,
+        "problems": []
+      },
+      {
+        "id": "balanced-t21-escalate-unsupported-0",
+        "promptTokens": 371,
+        "completionTokens": 55,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-review-topic-trig-0",
+        "promptTokens": 398,
+        "completionTokens": 70,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-062-0",
+        "promptTokens": 377,
+        "completionTokens": 45,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-trig-6-0",
+        "promptTokens": 402,
+        "completionTokens": 111,
+        "totalTokens": 513,
+        "problems": []
+      },
+      {
+        "id": "balanced-t15-clarify-exam-topics-1",
+        "promptTokens": 406,
+        "completionTokens": 51,
+        "totalTokens": 457,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-044-2",
+        "promptTokens": 429,
+        "completionTokens": 53,
+        "totalTokens": 482,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-044-3",
+        "promptTokens": 429,
+        "completionTokens": 53,
+        "totalTokens": 482,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-life-2-0",
+        "promptTokens": 393,
+        "completionTokens": 107,
+        "totalTokens": 500,
+        "problems": []
+      },
+      {
+        "id": "balanced-t03-update-topic-time-0",
+        "promptTokens": 401,
+        "completionTokens": 67,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-priority-topic-control-0",
+        "promptTokens": 393,
+        "completionTokens": 69,
+        "totalTokens": 462,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-unsupported-action-8-0",
+        "promptTokens": 376,
+        "completionTokens": 55,
+        "totalTokens": 431,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-life-1-0",
+        "promptTokens": 378,
+        "completionTokens": 81,
+        "totalTokens": 459,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-010-0",
+        "promptTokens": 407,
+        "completionTokens": 76,
+        "totalTokens": 483,
+        "problems": []
+      },
+      {
+        "id": "balanced-t21-escalate-unsupported-1",
+        "promptTokens": 371,
+        "completionTokens": 55,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-058-0",
+        "promptTokens": 383,
+        "completionTokens": 53,
+        "totalTokens": 436,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-life-4-0",
+        "promptTokens": 396,
+        "completionTokens": 107,
+        "totalTokens": 503,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-acids-5-0",
+        "promptTokens": 407,
+        "completionTokens": 116,
+        "totalTokens": 523,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-review-topic-magnetic-0",
+        "promptTokens": 402,
+        "completionTokens": 70,
+        "totalTokens": 472,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-057-0",
+        "promptTokens": 381,
+        "completionTokens": 48,
+        "totalTokens": 429,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-quadratic-3-0",
+        "promptTokens": 384,
+        "completionTokens": 85,
+        "totalTokens": 469,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-065-1",
+        "promptTokens": 376,
+        "completionTokens": 50,
+        "totalTokens": 426,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-date-4-0",
+        "promptTokens": 373,
+        "completionTokens": 49,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-035-0",
+        "promptTokens": 396,
+        "completionTokens": 52,
+        "totalTokens": 448,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-clarify-missing-target-4-1",
+        "promptTokens": 379,
+        "completionTokens": 56,
+        "totalTokens": 435,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-acids-1-0",
+        "promptTokens": 404,
+        "completionTokens": 116,
+        "totalTokens": 520,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-054-1",
+        "promptTokens": 378,
+        "completionTokens": 46,
+        "totalTokens": 424,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-tutoring-1-1",
+        "promptTokens": 378,
+        "completionTokens": 56,
+        "totalTokens": 434,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-review-topic-metals-0",
+        "promptTokens": 407,
+        "completionTokens": 73,
+        "totalTokens": 480,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-053-0",
+        "promptTokens": 376,
+        "completionTokens": 49,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-005-0",
+        "promptTokens": 384,
+        "completionTokens": 81,
+        "totalTokens": 465,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-life-2-0",
+        "promptTokens": 381,
+        "completionTokens": 81,
+        "totalTokens": 462,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-ambiguous-2-0",
+        "promptTokens": 403,
+        "completionTokens": 55,
+        "totalTokens": 458,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-061-0",
+        "promptTokens": 377,
+        "completionTokens": 48,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-federalism-2-0",
+        "promptTokens": 383,
+        "completionTokens": 85,
+        "totalTokens": 468,
+        "problems": []
+      },
+      {
+        "id": "balanced-t08-create-and-plan-0",
+        "promptTokens": 415,
+        "completionTokens": 113,
+        "totalTokens": 528,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-acids-4-0",
+        "promptTokens": 403,
+        "completionTokens": 116,
+        "totalTokens": 519,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-062-1",
+        "promptTokens": 377,
+        "completionTokens": 45,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-electricity-3-0",
+        "promptTokens": 398,
+        "completionTokens": 111,
+        "totalTokens": 509,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-047-0",
+        "promptTokens": 432,
+        "completionTokens": 59,
+        "totalTokens": 491,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-clarify-missing-target-3-0",
+        "promptTokens": 375,
+        "completionTokens": 56,
+        "totalTokens": 431,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-statistics-6-0",
+        "promptTokens": 399,
+        "completionTokens": 109,
+        "totalTokens": 508,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-011-0",
+        "promptTokens": 428,
+        "completionTokens": 94,
+        "totalTokens": 522,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-acids-hinglish-0",
+        "promptTokens": 411,
+        "completionTokens": 118,
+        "totalTokens": 529,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-multimodal-5-1",
+        "promptTokens": 379,
+        "completionTokens": 55,
+        "totalTokens": 434,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-life-4-0",
+        "promptTokens": 375,
+        "completionTokens": 81,
+        "totalTokens": 456,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-date-1-0",
+        "promptTokens": 371,
+        "completionTokens": 49,
+        "totalTokens": 420,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-date-1-1",
+        "promptTokens": 371,
+        "completionTokens": 49,
+        "totalTokens": 420,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-012-0",
+        "promptTokens": 438,
+        "completionTokens": 94,
+        "totalTokens": 532,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-electricity-4-0",
+        "promptTokens": 376,
+        "completionTokens": 84,
+        "totalTokens": 460,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-electricity-5-0",
+        "promptTokens": 402,
+        "completionTokens": 111,
+        "totalTokens": 513,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-electricity-english-0",
+        "promptTokens": 401,
+        "completionTokens": 111,
+        "totalTokens": 512,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-001-0",
+        "promptTokens": 385,
+        "completionTokens": 81,
+        "totalTokens": 466,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-statistics-4-0",
+        "promptTokens": 396,
+        "completionTokens": 109,
+        "totalTokens": 505,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-007-0",
+        "promptTokens": 405,
+        "completionTokens": 72,
+        "totalTokens": 477,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-040-1",
+        "promptTokens": 408,
+        "completionTokens": 53,
+        "totalTokens": 461,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-009-0",
+        "promptTokens": 400,
+        "completionTokens": 74,
+        "totalTokens": 474,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-017-0",
+        "promptTokens": 440,
+        "completionTokens": 73,
+        "totalTokens": 513,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-047-1",
+        "promptTokens": 432,
+        "completionTokens": 59,
+        "totalTokens": 491,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-047-2",
+        "promptTokens": 432,
+        "completionTokens": 59,
+        "totalTokens": 491,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-024-1",
+        "promptTokens": 445,
+        "completionTokens": 87,
+        "totalTokens": 532,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-topic-federalism-1-0",
+        "promptTokens": 381,
+        "completionTokens": 85,
+        "totalTokens": 466,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-clarify-missing-target-2-0",
+        "promptTokens": 380,
+        "completionTokens": 56,
+        "totalTokens": 436,
+        "problems": []
+      },
+      {
+        "id": "balanced-t05-create-task-0",
+        "promptTokens": 395,
+        "completionTokens": 101,
+        "totalTokens": 496,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-039-0",
+        "promptTokens": 464,
+        "completionTokens": 51,
+        "totalTokens": 515,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-037-1",
+        "promptTokens": 419,
+        "completionTokens": 55,
+        "totalTokens": 474,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-059-0",
+        "promptTokens": 383,
+        "completionTokens": 52,
+        "totalTokens": 435,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-ambiguous-2-1",
+        "promptTokens": 403,
+        "completionTokens": 55,
+        "totalTokens": 458,
+        "problems": []
+      },
+      {
+        "id": "balanced-escalate-tutoring-2-0",
+        "promptTokens": 376,
+        "completionTokens": 56,
+        "totalTokens": 432,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-acids-6-0",
+        "promptTokens": 407,
+        "completionTokens": 116,
+        "totalTokens": 523,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-time-topic-trig-0",
+        "promptTokens": 399,
+        "completionTokens": 72,
+        "totalTokens": 471,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-035-1",
+        "promptTokens": 396,
+        "completionTokens": 52,
+        "totalTokens": 448,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-068-0",
+        "promptTokens": 379,
+        "completionTokens": 49,
+        "totalTokens": 428,
+        "problems": []
+      },
+      {
+        "id": "balanced-clarify-ambiguous-3-1",
+        "promptTokens": 408,
+        "completionTokens": 55,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-004-0",
+        "promptTokens": 388,
+        "completionTokens": 84,
+        "totalTokens": 472,
+        "problems": []
+      },
+      {
+        "id": "balanced-router-practice-topic-life-6-0",
+        "promptTokens": 399,
+        "completionTokens": 107,
+        "totalTokens": 506,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-041-2",
+        "promptTokens": 427,
+        "completionTokens": 52,
+        "totalTokens": 479,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-052-1",
+        "promptTokens": 376,
+        "completionTokens": 47,
+        "totalTokens": 423,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-031-0",
+        "promptTokens": 420,
+        "completionTokens": 92,
+        "totalTokens": 512,
+        "problems": []
+      },
+      {
+        "id": "balanced-v3-train-046-2",
+        "promptTokens": 390,
+        "completionTokens": 54,
+        "totalTokens": 444,
+        "problems": []
+      },
+      {
+        "id": "balanced-act-practice-life-english-0",
+        "promptTokens": 399,
+        "completionTokens": 107,
+        "totalTokens": 506,
+        "problems": []
+      }
+    ]
+  },
+  "validation": {
+    "rows": 29,
+    "maxLength": 768,
+    "enableThinking": false,
+    "maxTotalTokens": 555,
+    "failedRows": 0,
+    "details": [
+      {
+        "id": "v01-create-task-relative",
+        "promptTokens": 376,
+        "completionTokens": 91,
+        "totalTokens": 467,
+        "problems": []
+      },
+      {
+        "id": "v02-update-existing",
+        "promptTokens": 394,
+        "completionTokens": 69,
+        "totalTokens": 463,
+        "problems": []
+      },
+      {
+        "id": "v03-create-exam",
+        "promptTokens": 410,
+        "completionTokens": 85,
+        "totalTokens": 495,
+        "problems": []
+      },
+      {
+        "id": "v04-clarify",
+        "promptTokens": 369,
+        "completionTokens": 58,
+        "totalTokens": 427,
+        "problems": []
+      },
+      {
+        "id": "v05-escalate",
+        "promptTokens": 377,
+        "completionTokens": 52,
+        "totalTokens": 429,
+        "problems": []
+      },
+      {
+        "id": "v06-plan",
+        "promptTokens": 428,
+        "completionTokens": 78,
+        "totalTokens": 506,
+        "problems": []
+      },
+      {
+        "id": "fv-action-hinglish",
+        "promptTokens": 397,
+        "completionTokens": 107,
+        "totalTokens": 504,
+        "problems": []
+      },
+      {
+        "id": "fv-clarify-date",
+        "promptTokens": 371,
+        "completionTokens": 50,
+        "totalTokens": 421,
+        "problems": []
+      },
+      {
+        "id": "fv-clarify-target",
+        "promptTokens": 372,
+        "completionTokens": 53,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "fv-escalate-tutoring",
+        "promptTokens": 375,
+        "completionTokens": 56,
+        "totalTokens": 431,
+        "problems": []
+      },
+      {
+        "id": "fv-escalate-reasoning",
+        "promptTokens": 385,
+        "completionTokens": 58,
+        "totalTokens": 443,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-001",
+        "promptTokens": 383,
+        "completionTokens": 81,
+        "totalTokens": 464,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-002",
+        "promptTokens": 401,
+        "completionTokens": 70,
+        "totalTokens": 471,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-003",
+        "promptTokens": 405,
+        "completionTokens": 84,
+        "totalTokens": 489,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-004",
+        "promptTokens": 424,
+        "completionTokens": 84,
+        "totalTokens": 508,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-005",
+        "promptTokens": 432,
+        "completionTokens": 90,
+        "totalTokens": 522,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-006",
+        "promptTokens": 413,
+        "completionTokens": 106,
+        "totalTokens": 519,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-007",
+        "promptTokens": 412,
+        "completionTokens": 143,
+        "totalTokens": 555,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-008",
+        "promptTokens": 412,
+        "completionTokens": 113,
+        "totalTokens": 525,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-009",
+        "promptTokens": 402,
+        "completionTokens": 50,
+        "totalTokens": 452,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-010",
+        "promptTokens": 424,
+        "completionTokens": 51,
+        "totalTokens": 475,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-011",
+        "promptTokens": 406,
+        "completionTokens": 50,
+        "totalTokens": 456,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-012",
+        "promptTokens": 426,
+        "completionTokens": 52,
+        "totalTokens": 478,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-013",
+        "promptTokens": 376,
+        "completionTokens": 46,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-014",
+        "promptTokens": 377,
+        "completionTokens": 45,
+        "totalTokens": 422,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-015",
+        "promptTokens": 379,
+        "completionTokens": 46,
+        "totalTokens": 425,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-016",
+        "promptTokens": 374,
+        "completionTokens": 47,
+        "totalTokens": 421,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-017",
+        "promptTokens": 373,
+        "completionTokens": 46,
+        "totalTokens": 419,
+        "problems": []
+      },
+      {
+        "id": "v3-validation-018",
+        "promptTokens": 381,
+        "completionTokens": 44,
+        "totalTokens": 425,
+        "problems": []
+      }
+    ]
+  },
+  "passes": true
+}

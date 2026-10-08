@@ -1,0 +1,60 @@
+{
+  "source": "Supplementary diagnostics; release gate remains the scored report",
+  "cases": 32,
+  "gatePasses": false,
+  "expectedVsParsedRoute": {
+    "actions": {
+      "actions": 14,
+      "invalid-output": 2
+    },
+    "clarify": {
+      "clarify": 7,
+      "actions": 1
+    },
+    "escalate": {
+      "escalate": 8
+    }
+  },
+  "failureTypes": {
+    "invalid-output": 2,
+    "wrong-actions": 5,
+    "wrong-route": 1,
+    "wrong-clarification-reason": 2,
+    "wrong-escalation-reason": 1
+  },
+  "parsedActionTypeSequences": {
+    "create_topic": {
+      "create_topic": 1
+    },
+    "update_topic": {
+      "update_topic": 2
+    },
+    "create_exam": {
+      "create_exam": 2
+    },
+    "generate_exam_plan": {
+      "generate_exam_plan": 2
+    },
+    "create_task": {
+      "create_task": 5
+    },
+    "create_topic + create_task": {
+      "create_topic + create_task": 1
+    },
+    "create_exam + generate_exam_plan": {
+      "create_exam": 1
+    }
+  },
+  "unexpectedActionAttemptIds": [
+    "v3-evaluation-018"
+  ],
+  "protocolRejectedActionAttemptIds": [],
+  "validUnsafeActionIds": [
+    "v3-evaluation-018"
+  ],
+  "protocolInvalidIds": [
+    "v3-evaluation-008",
+    "v3-evaluation-014"
+  ],
+  "limits": "Malformed non-JSON text cannot be reliably classified as an action attempt; strict action scoring also penalizes differing descriptive wording."
+}

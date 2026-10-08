@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a11d22-679d-70f2-a989-b6e3b0d4e876",
+    "createdAt": "2026-10-08T20:09:16.445Z",
+    "group": "6452e5b5-2dc5-491e-bba5-f5003738b8a9",
+    "branch": "preview",
+    "message": "MYELIN grounded dates and exact targets beta 7680caa3726b1a865d59ac295768ea74f3d965b8",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a11d22-679d-70f2-a989-b6e3b0d4e876",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "7680caa3726b1a865d59ac295768ea74f3d965b8"
+  }
+]

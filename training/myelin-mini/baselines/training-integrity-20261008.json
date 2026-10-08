@@ -1,0 +1,325 @@
+{
+  "status": "preflight-passed-not-model-release",
+  "sourceCommit": "2d6ae4cdbc6e756fd9b5a39e525e62660d7a9c75",
+  "verificationRunId": 37706257119,
+  "verificationJobId": 113081225791,
+  "artifactId": 11519906524,
+  "verification": "Local tokenizer audit, corroborated by successful GitHub tokenizer audit and TRL integration check; no candidate training performed.",
+  "recipes": {
+    "model": "principled-intelligence/Qwen3.5-0.8B-text-only",
+    "reports": {
+      "v1-default-template": {
+        "sourceSha256": "78598ccece196299d5205b869ec7106b91c89dac1831aa0debcda9ecc1d7f934",
+        "balance": {
+          "rows": 126,
+          "routes": {
+            "actions": 92,
+            "clarify": 19,
+            "escalate": 15
+          },
+          "actionTypes": {
+            "create_topic": 27,
+            "update_topic": 16,
+            "create_task": 43,
+            "create_exam": 5,
+            "generate_exam_plan": 3
+          },
+          "problems": [
+            "escalate must cover at least 15% of training rows"
+          ]
+        },
+        "tokens": {
+          "rows": 126,
+          "maxLength": 1024,
+          "enableThinking": null,
+          "maxTotalTokens": 529,
+          "failedRows": 0,
+          "failedExamples": []
+        }
+      },
+      "v2-default-template": {
+        "sourceSha256": "06409fb82367dccfaba788a89e2f18f211cf811abb554bfe25cdca7e92b0c1ac",
+        "balance": {
+          "rows": 42,
+          "routes": {
+            "actions": 38,
+            "clarify": 4
+          },
+          "actionTypes": {
+            "create_task": 38
+          },
+          "problems": [
+            "clarify must cover at least 15% of training rows",
+            "escalate must cover at least 15% of training rows",
+            "Missing action types: create_exam, create_topic, generate_exam_plan, update_topic",
+            "One action type exceeds 65% of action examples"
+          ]
+        },
+        "tokens": {
+          "rows": 42,
+          "maxLength": 768,
+          "enableThinking": null,
+          "maxTotalTokens": 529,
+          "failedRows": 0,
+          "failedExamples": []
+        }
+      },
+      "v2-fast-default-template": {
+        "sourceSha256": "06409fb82367dccfaba788a89e2f18f211cf811abb554bfe25cdca7e92b0c1ac",
+        "balance": {
+          "rows": 16,
+          "routes": {
+            "actions": 16
+          },
+          "actionTypes": {
+            "create_task": 16
+          },
+          "problems": [
+            "clarify must cover at least 15% of training rows",
+            "escalate must cover at least 15% of training rows",
+            "Missing action types: create_exam, create_topic, generate_exam_plan, update_topic",
+            "One action type exceeds 65% of action examples"
+          ]
+        },
+        "tokens": {
+          "rows": 16,
+          "maxLength": 512,
+          "enableThinking": null,
+          "maxTotalTokens": 529,
+          "failedRows": 7,
+          "failedExamples": [
+            {
+              "id": "act-practice-trig-english",
+              "promptTokens": 403,
+              "completionTokens": 111,
+              "totalTokens": 514,
+              "problems": [
+                "target-would-be-truncated"
+              ]
+            },
+            {
+              "id": "act-practice-trig-hinglish",
+              "promptTokens": 404,
+              "completionTokens": 113,
+              "totalTokens": 517,
+              "problems": [
+                "target-would-be-truncated"
+              ]
+            },
+            {
+              "id": "act-practice-electricity-hinglish",
+              "promptTokens": 402,
+              "completionTokens": 113,
+              "totalTokens": 515,
+              "problems": [
+                "target-would-be-truncated"
+              ]
+            },
+            {
+              "id": "act-practice-acids-english",
+              "promptTokens": 413,
+              "completionTokens": 116,
+              "totalTokens": 529,
+              "problems": [
+                "target-would-be-truncated"
+              ]
+            },
+            {
+              "id": "act-practice-acids-hinglish",
+              "promptTokens": 411,
+              "completionTokens": 118,
+              "totalTokens": 529,
+              "problems": [
+                "target-would-be-truncated"
+              ]
+            },
+            {
+              "id": "router-practice-topic-trig-5",
+              "promptTokens": 402,
+              "completionTokens": 111,
+              "totalTokens": 513,
+              "problems": [
+                "target-would-be-truncated"
+              ]
+            },
+            {
+              "id": "router-practice-topic-trig-6",
+              "promptTokens": 402,
+              "completionTokens": 111,
+              "totalTokens": 513,
+              "problems": [
+                "target-would-be-truncated"
+              ]
+            }
+          ]
+        }
+      },
+      "balanced-v3-no-thinking": {
+        "sourceSha256": "dba99b27734919c2ce6b19db2de6e7c750dabfbdfcf3ee12ecde97d66f4f1e74",
+        "balance": {
+          "rows": 225,
+          "routes": {
+            "escalate": 60,
+            "clarify": 56,
+            "actions": 109
+          },
+          "actionTypes": {
+            "generate_exam_plan": 14,
+            "create_exam": 12,
+            "create_task": 43,
+            "create_topic": 27,
+            "update_topic": 16
+          },
+          "problems": []
+        },
+        "tokens": {
+          "rows": 225,
+          "maxLength": 768,
+          "enableThinking": false,
+          "maxTotalTokens": 529,
+          "failedRows": 0,
+          "failedExamples": []
+        }
+      }
+    }
+  },
+  "candidate": {
+    "schemaVersion": 1,
+    "model": "principled-intelligence/Qwen3.5-0.8B-text-only",
+    "smokeMode": false,
+    "trainSha256": "dba99b27734919c2ce6b19db2de6e7c750dabfbdfcf3ee12ecde97d66f4f1e74",
+    "validationSha256": "55fec145cfefe0518cc7e43be400b96024245dd6b132dff9b43f8f85fe3ba1e0",
+    "chatTemplateSha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80",
+    "balance": {
+      "rows": 225,
+      "routes": {
+        "escalate": 60,
+        "clarify": 56,
+        "actions": 109
+      },
+      "actionTypes": {
+        "generate_exam_plan": 14,
+        "create_exam": 12,
+        "create_task": 43,
+        "create_topic": 27,
+        "update_topic": 16
+      },
+      "problems": []
+    },
+    "train": {
+      "rows": 225,
+      "maxLength": 768,
+      "enableThinking": false,
+      "maxTotalTokens": 529,
+      "failedRows": 0
+    },
+    "validation": {
+      "rows": 11,
+      "maxLength": 768,
+      "enableThinking": false,
+      "maxTotalTokens": 506,
+      "failedRows": 0
+    },
+    "passes": true
+  },
+  "dataset": {
+    "seed": 42,
+    "uniqueTrainingSources": 123,
+    "excludedRequestOverlapIds": [
+      "clarify-target-1",
+      "clarify-ambiguous-1",
+      "escalate-general-knowledge-3"
+    ],
+    "buckets": {
+      "actions/create_exam": {
+        "uniqueSources": 5,
+        "trainingRows": 12
+      },
+      "actions/create_task": {
+        "uniqueSources": 42,
+        "trainingRows": 42
+      },
+      "actions/create_topic": {
+        "uniqueSources": 27,
+        "trainingRows": 27
+      },
+      "actions/generate_exam_plan": {
+        "uniqueSources": 2,
+        "trainingRows": 12
+      },
+      "actions/update_topic": {
+        "uniqueSources": 16,
+        "trainingRows": 16
+      },
+      "clarify/ambiguous-reference": {
+        "uniqueSources": 3,
+        "trainingRows": 14
+      },
+      "clarify/missing-date": {
+        "uniqueSources": 5,
+        "trainingRows": 14
+      },
+      "clarify/missing-required-detail": {
+        "uniqueSources": 1,
+        "trainingRows": 14
+      },
+      "clarify/missing-target": {
+        "uniqueSources": 8,
+        "trainingRows": 14
+      },
+      "escalate/complex-reasoning": {
+        "uniqueSources": 3,
+        "trainingRows": 10
+      },
+      "escalate/general-knowledge": {
+        "uniqueSources": 1,
+        "trainingRows": 10
+      },
+      "escalate/multimodal": {
+        "uniqueSources": 3,
+        "trainingRows": 10
+      },
+      "escalate/safety": {
+        "uniqueSources": 1,
+        "trainingRows": 10
+      },
+      "escalate/tutoring": {
+        "uniqueSources": 3,
+        "trainingRows": 10
+      },
+      "escalate/unsupported-action": {
+        "uniqueSources": 3,
+        "trainingRows": 10
+      }
+    },
+    "balance": {
+      "rows": 225,
+      "routes": {
+        "escalate": 60,
+        "clarify": 56,
+        "actions": 109
+      },
+      "actionTypes": {
+        "generate_exam_plan": 14,
+        "create_exam": 12,
+        "create_task": 43,
+        "create_topic": 27,
+        "update_topic": 16
+      },
+      "problems": []
+    },
+    "note": "Minority examples are replayed, not new independent examples. Validation remains unweighted.",
+    "sourceSha256": {
+      "compiled/train-v1.jsonl": "78598ccece196299d5205b869ec7106b91c89dac1831aa0debcda9ecc1d7f934",
+      "compiled/validation-v1.jsonl": "55fec145cfefe0518cc7e43be400b96024245dd6b132dff9b43f8f85fe3ba1e0",
+      "eval-v1.jsonl": "6c96e3880028e87cb9d817294ab534b9a1719a46bd6c678ae58a5d2545ac5db5",
+      "acceptance-v1.jsonl": "f1cedad8d36b65d5b6aa5281b5c3cae98d8534fe3c00aca48d94060dde91cb11"
+    }
+  },
+  "limitations": [
+    "Repeated minority rows do not add new independent examples.",
+    "Historical eval-v1 overlaps three training requests and was repeatedly used for tuning.",
+    "The 11-row validation set does not cover every action/reason.",
+    "Recipe audit uses regenerated current source data; v1 source has grown since original training."
+  ]
+}

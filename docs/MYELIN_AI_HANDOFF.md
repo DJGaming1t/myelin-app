@@ -135,10 +135,12 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Audited input_ids and completion masks are passed directly into TRL, with thinking disabled consistently. The completion mask excludes prompts and includes all answer tokens.
 - Use `--preflight-only` for the tokenizer audit; legacy `--dry-run` remains a schema-only check.
 - Fast and Hinglish v2 training workflows are now manual-only. The new `preflight-myelin-mini.yml` runs data checks and preprocessing integration tests without candidate training or model-weight downloads.
-- Six local regression tests passed. GitHub preflight integration result must be checked before training.
+- Six local and GitHub regression tests passed. GitHub run `37706257119`, job `113081225791`, succeeded on commit `2d6ae4cdbc6e756fd9b5a39e525e62660d7a9c75`; artifact `11519906524` (`myelin-mini-training-preflight`). Actual TRL preprocessing preserved every input token and correctly masked prompts/padding while supervising complete answers. Summary: `training/myelin-mini/baselines/training-integrity-20261008.json`.
+- Candidate tokenizer preflight: PASS, train max 529 tokens, validation max 506, limit 768; no target truncation or prefix mismatch.
+- No candidate training or OTA/APK was run in this chunk. Current v2 remains blocked by the failed model-quality gate.
 
 ## Exact next step
-1. Verify the latest "Preflight MYELIN Mini balanced training" run and its `myelin-mini-training-preflight` artifact.
+1. Read the successful preflight evidence above. Do not repeat this integrity-repair chunk.
 2. Add genuinely varied independent requests for sparse categories (exam planning, missing-required-detail, general knowledge, safety), including multi-action and ID-reference cases. Repetition alone cannot make a strong model.
 3. Freeze a fresh evaluation set separate from training and validation. Keep eval-v1 as a regression suite because of known historical request overlap and repeated tuning against its results.
 4. Build the balanced dataset and require tokenizer/preprocessing preflight to pass. Start the next candidate from the clean base model, not the historically contaminated v1/v2 adapters.

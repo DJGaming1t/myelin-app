@@ -160,6 +160,13 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - Run URL: https://github.com/DJGaming1t/myelin-app/actions/runs/37752290697
 - Continuation must inspect this same run first. Do not launch another candidate while it is still active.
 
+## Error diagnostics while v4 trains — 2026-10-08
+- v4 run `37752290697` remains in the training step; no measured v4 accuracy yet. Do not start another candidate.
+- Added `scripts/diagnose_myelin_mini_predictions.py` and a historical regression check. It consumes gold JSONL, raw predictions and the existing scorer report without changing release-gate decisions. It separates valid unsafe actions from protocol-rejected action attempts and displays route/action-type confusions.
+- Verified against v2 raw evidence: 20 cases, 6 structured action attempts on requests that should clarify or escalate; 4 rejected by protocol, 2 valid but wrong-route. The standard gate still reports the latter two as unsafe and failed overall.
+- Run it on each v4 evaluation set after downloading results, e.g. `python scripts/diagnose_myelin_mini_predictions.py training/myelin-mini/eval-v2.jsonl <frozen-predictions.jsonl> <frozen-report.json> <diagnostics.json>`.
+- Historical diagnostic output is saved under `training/myelin-mini/baselines/qwen3.5-0.8b-lora-v2/diagnostics.json`. This evidence does not establish v4 improvement.
+
 ## Exact next step
 1. Inspect the v4 workflow run recorded below before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
 2. After completion, download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.

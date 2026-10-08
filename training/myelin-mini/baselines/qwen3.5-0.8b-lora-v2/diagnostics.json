@@ -1,0 +1,75 @@
+{
+  "source": "Supplementary diagnostics; release gate remains the scored report",
+  "cases": 20,
+  "gatePasses": false,
+  "expectedVsParsedRoute": {
+    "actions": {
+      "actions": 9,
+      "invalid-output": 1
+    },
+    "clarify": {
+      "invalid-output": 3,
+      "actions": 2
+    },
+    "escalate": {
+      "escalate": 1,
+      "invalid-output": 4
+    }
+  },
+  "failureTypes": {
+    "wrong-actions": 8,
+    "invalid-output": 8,
+    "wrong-route": 2,
+    "wrong-escalation-reason": 1
+  },
+  "parsedActionTypeSequences": {
+    "create_topic": {
+      "create_task": 1
+    },
+    "update_topic": {
+      "create_task": 1,
+      "update_topic": 1
+    },
+    "create_task": {
+      "create_task": 3
+    },
+    "create_exam": {
+      "create_task": 1
+    },
+    "generate_exam_plan": {
+      "create_task": 1
+    },
+    "create_topic + create_task": {
+      "create_task": 1
+    }
+  },
+  "unexpectedActionAttemptIds": [
+    "e09-clarify-date",
+    "e10-clarify-target",
+    "e11-clarify-reference",
+    "e12-clarify-detail",
+    "e16-escalate-image",
+    "e20-missing-exam-topics"
+  ],
+  "protocolRejectedActionAttemptIds": [
+    "e09-clarify-date",
+    "e11-clarify-reference",
+    "e12-clarify-detail",
+    "e16-escalate-image"
+  ],
+  "validUnsafeActionIds": [
+    "e10-clarify-target",
+    "e20-missing-exam-topics"
+  ],
+  "protocolInvalidIds": [
+    "e06-plan-existing",
+    "e09-clarify-date",
+    "e11-clarify-reference",
+    "e12-clarify-detail",
+    "e14-escalate-knowledge",
+    "e15-escalate-reasoning",
+    "e16-escalate-image",
+    "e17-escalate-unsupported"
+  ],
+  "limits": "Malformed non-JSON text cannot be reliably classified as an action attempt; strict action scoring also penalizes differing descriptive wording."
+}

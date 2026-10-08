@@ -1,4 +1,5 @@
 import type { AssistantCreateTaskAction } from './ai-action-engine';
+import type { AssistantClarificationAnswers } from './assistant-clarification';
 
 type SchoolworkResult =
   | { route: 'actions'; action: AssistantCreateTaskAction }
@@ -30,17 +31,24 @@ const SUBJECTS = [
   { name: 'Computer Science', words: /\b(?:computer science|computers|computer|cs|it)\b/g },
 ] as const;
 
+export function schoolworkSubjectReply(value: string): string | null {
+  const text = normalizeSchoolworkLanguage(value).replace(/^(?:it is|it's|the subject is)\s+/, '').replace(/\s+please$/, '').replace(/[.!]$/, '').trim();
+  const subject = SUBJECTS.find(s => new RegExp(`^(?:${s.words.source.replace(/\\b/g, '').replace('|it', '')})$`).test(text));
+  return subject?.name ?? null;
+}
+
 function question(reason: Extract<SchoolworkResult, { route: 'clarify' }>['reason'], text: string, field: string): SchoolworkResult {
   return { route: 'clarify', reason, question: text, missingFields: [field] };
 }
 
-function validDate(date: string) {
+export function validSchoolworkDate(date: string) {
+  if (!/^20\d{2}-\d{2}-\d{2}$/.test(date)) return false;
   const parsed = new Date(`${date}T12:00:00Z`);
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
 }
 
 function plusDays(date: string, days: number) {
-  if (!validDate(date)) return null;
+  if (!validSchoolworkDate(date)) return null;
   const stamp = new Date(`${date}T12:00:00Z`);
   stamp.setUTCDate(stamp.getUTCDate() + days);
   return stamp.toISOString().slice(0, 10);
@@ -50,10 +58,11 @@ const WORD_DAYS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, f
 const DEADLINE = /\b(?:20\d{2}-\d{2}-\d{2}|day after tomorrow|tomorrow|today|tonight|in (?:\d+|one|two|three|four|five|six|seven) days?)\b/g;
 const DURATION = /\b(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)\b/g;
 
-export function tryParseSchoolworkRequest(raw: string, currentDate: string): SchoolworkResult | null {
+export function tryParseSchoolworkRequest(raw: string, currentDate: string, answers: AssistantClarificationAnswers = {}): SchoolworkResult | null {
   const text = normalizeSchoolworkLanguage(raw);
   const deliverable = /\b(?:notebooks?|homework|assignments?|projects?|worksheets?|practical (?:files?|records?|journals?)|lab (?:files?|records?|reports?))\b/;
   if (!deliverable.test(text)) return null;
+  if (answers.dueDate && !validSchoolworkDate(answers.dueDate)) return question('missing-date', 'Give one valid deadline date (YYYY-MM-DD).', 'dueDate');
   const intent = /\b(?:complete|finish|submit|hand in|add|create|schedule|need to|have to|must|gotta|due)\b/.test(text);
   if (!intent) return null;
   // Statements about completed work, negation, questions and hypotheticals are
@@ -68,22 +77,24 @@ export function tryParseSchoolworkRequest(raw: string, currentDate: string): Sch
 
   // Match long compound subjects first; "it" is a pronoun, not an IT subject.
   const subjectText = text.replace(/\bcomputer science\b/g, 'computers').replace(/\bsocial science\b/g, 'sst');
-  const subjects = SUBJECTS.filter(s => new RegExp(s.words.source.replace('|it', '')).test(subjectText));
+  const subjectAnswer = answers.subject ? schoolworkSubjectReply(answers.subject) : null;
+  if (answers.subject && !subjectAnswer) return question('missing-target', 'Which subject is this for?', 'subject');
+  const subjects = subjectAnswer ? SUBJECTS.filter(s => s.name === subjectAnswer) : SUBJECTS.filter(s => new RegExp(s.words.source.replace('|it', '')).test(subjectText));
   if (subjects.length !== 1) {
     return question(subjects.length ? 'ambiguous-reference' : 'missing-target',
-      subjects.length ? 'Which single subject is this task for? Add it to your request and preview again.' : 'Which subject is this for? Add it to your request and preview again.', 'subject');
+      subjects.length ? 'Which single subject is this task for?' : 'Which subject is this for?', 'subject');
   }
   const subject = subjects[0]!;
-  if (/\b(?:at\s+\d|\d\s*(?:am|pm)|\d{1,2}:\d{2}|morning|afternoon|evening|midnight|noon|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next week|next month)\b/.test(text) ||
-      /\b(?:on|by|before|due)\s+\d{1,2}[\/-]\d{1,2}\b/.test(text)) {
+  if (!answers.dueDate && (/\b(?:at\s+\d|\d\s*(?:am|pm)|\d{1,2}:\d{2}|morning|afternoon|evening|midnight|noon|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next week|next month)\b/.test(text) ||
+      /\b(?:on|by|before|due)\s+\d{1,2}[\/-]\d{1,2}\b/.test(text))) {
     return question('missing-date', 'What exact date (YYYY-MM-DD) should I use? This preview supports a day deadline, not a time of day.', 'dueDate');
   }
 
-  const dates = [...text.matchAll(DEADLINE)];
+  const dates = answers.dueDate ? [answers.dueDate] : [...text.matchAll(DEADLINE)].map(match => match[0]);
   const resolved: string[] = [];
-  for (const [value] of dates) {
+  for (const value of dates) {
     let date: string | null;
-    if (/^20\d{2}-/.test(value)) date = validDate(value) ? value : null;
+    if (/^20\d{2}-/.test(value)) date = validSchoolworkDate(value) ? value : null;
     else if (value.startsWith('in ')) {
       const amount = value.split(' ')[1]!;
       const days = WORD_DAYS[amount] ?? Number(amount);
@@ -98,10 +109,12 @@ export function tryParseSchoolworkRequest(raw: string, currentDate: string): Sch
 
   const durations = [...text.matchAll(DURATION)];
   let estimatedMinutes = 0;
-  if (durations.length > 1 || /\b\d+(?:\.\d+)?\s*[-–]\s*\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\b|(?:^|\s)[-−]\s*\d+\s*(?:min|hour)/.test(text)) {
+  if (answers.estimatedMinutes != null) {
+    if (!Number.isInteger(answers.estimatedMinutes) || answers.estimatedMinutes < 5 || answers.estimatedMinutes > 720) return question('missing-required-detail', 'Give one estimate between 5 and 720 minutes.', 'estimatedMinutes');
+    estimatedMinutes = answers.estimatedMinutes;
+  } else if (durations.length > 1 || /\b\d+(?:\.\d+)?\s*[-–]\s*\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\b|(?:^|\s)[-−]\s*\d+\s*(?:min|hour)/.test(text)) {
     return question('missing-required-detail', 'How many minutes should I use? Give one estimate between 5 and 720 minutes.', 'estimatedMinutes');
-  }
-  if (durations.length) {
+  } else if (durations.length) {
     const duration = durations[0]!;
     estimatedMinutes = Number(duration[1]) * (/^(?:h|hr|hour)/.test(duration[2]!) ? 60 : 1);
     if (!Number.isInteger(estimatedMinutes) || estimatedMinutes < 5 || estimatedMinutes > 720) {
@@ -117,11 +130,17 @@ export function tryParseSchoolworkRequest(raw: string, currentDate: string): Sch
   let body = text
     .replace(/^(?:please\s+)?(?:i\s+)?(?:(?:have|need|want)\s+to\s+|have\s+|must\s+|gotta\s+)?/, '')
     .replace(/^(?:complete|finish|submit|hand in|add|create|schedule)\s+(?:a\s+task\s+(?:to|for)\s+)?/, '')
-    .replace(DEADLINE, '').replace(DURATION, '')
+    .replace(DEADLINE, '')
+    .replace(/\b\d+(?:\.\d+)?\s*[-–]\s*\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\b/g, '')
+    .replace(/(?:^|\s)[-−]\s*\d+\s*(?:minutes?|mins?|hours?|hrs?)\b/g, '')
+    .replace(DURATION, '')
+    .replace(/\b(?:next\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month)\b/g, '')
+    .replace(/\bat\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/g, '')
     .replace(/\b(?:half (?:an? )?hour|(?:an|one) hour|high priority|low priority|urgent|very important|important)\b/g, '')
     .replace(/\b(?:by|before|due|for|please|my|a|an)\b/g, '')
     .replace(/[,.;!?]+/g, ' ').replace(/\s+/g, ' ').trim();
   body = body.replace(new RegExp(subject.words.source.replace('|it', ''), 'g'), subject.name);
+  if (subjectAnswer && !new RegExp(subject.words.source.replace('|it', '')).test(subjectText)) body = `${subject.name} ${body}`;
   const title = `${verb} ${body}`;
   if (title.length > 500) return question('missing-required-detail', 'Please shorten the task description to under 500 characters.', 'title');
   return {
@@ -131,7 +150,7 @@ export function tryParseSchoolworkRequest(raw: string, currentDate: string): Sch
       taskType: /\b(?:assignments?|projects?)\b/.test(text) ? 'assignment' : 'homework',
       ...(resolved[0] ? { dueDate: resolved[0] } : {}), estimatedMinutes,
       priority: /\b(?:high priority|urgent|very important|important)\b/.test(text) ? 3 : /\blow priority\b/.test(text) ? 1 : 2,
-      notes: `Original request: ${raw.trim()}${estimatedMinutes ? '' : '\nDuration not specified. Set an estimate before allocating study time.'}`,
+      notes: `Original request: ${raw.trim()}${Object.keys(answers).length ? `\nClarification answers: ${JSON.stringify(answers)}` : ''}${estimatedMinutes ? '' : '\nDuration not specified. Set an estimate before allocating study time.'}`,
     },
   };
 }

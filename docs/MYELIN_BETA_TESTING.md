@@ -29,7 +29,14 @@ Cloud AI is not connected. Model preferences are not working Qwen inference. A t
 6. In AI model choices, save Enhanced. Close/reopen and verify it remains preferred while download is still unavailable. Repeat with Lite.
 7. Try offline mode, a long topic name and larger system text. Verify the request field, preview confirmation and back controls remain reachable with the keyboard open.
 8. Try the exact practical-notebook example above. Verify the preview shows Biology, homework, tomorrow's date and duration unset. Check zero tasks are added before confirmation, then one task is added after confirmation. A missing estimate must not be presented as calculated study time.
-9. Try `Complete practical nb tomorrow` and `Complete bio practical notebook today tomorrow`. Verify clarification, not an invented subject or chosen deadline. Edit the original request to resolve the question; short standalone follow-up answers are not yet supported.
+9. Try `Complete practical nb tomorrow`. In the separate answer field reply `Biology`, then Continue to preview. Verify the original request is retained and the preview has Biology, tomorrow's date and unknown duration. Try `Complete bio practical notebook today tomorrow`, reply `tomorrow`, and verify the chosen date is shown before confirmation.
 10. Try `I already completed bio practical notebook yesterday` and `I don't have to complete bio practical nb tomorrow`. Verify no automatic create-task preview.
 
 Automated checks cannot replace these phone interaction tests. Do not label device QA complete until exercised and recorded.
+
+## Clarification update QA (publication pending)
+
+- Try `Add practice tomorrow`: answer with one existing topic name, then `45 minutes`. Check both answers survive and the preview has the correct topic, date and estimate.
+- Reply with an ambiguous topic prefix, `30 or 45 minutes`, or `tomorrow at 8pm`. Verify a retry message, retained question and zero workspace changes.
+- Start a new request or edit the original while a question is open. Verify the old answer is cleared. Switch accounts and verify both original request and answers are cleared.
+- Leave/reopen the screen or wait over ten minutes; verify the old context cannot apply an action. Repeat with larger text and the keyboard open.

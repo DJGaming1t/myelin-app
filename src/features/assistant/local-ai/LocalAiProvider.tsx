@@ -36,6 +36,7 @@ import {
 } from './litert-lm-runtime';
 import { createLocalMiniAdapter, prepareLocalAssistantActions } from './local-assistant-bridge';
 import { MyelinMiniRouteResult } from '../myelin-mini';
+import type { AssistantClarificationAnswers } from '../assistant-clarification';
 import { routeWithHybridAssistant } from '../hybrid-assistant-router';
 import {
   PreparedSyllabusImport,
@@ -64,6 +65,8 @@ type LocalAiContextValue = {
     currentRoute?: string;
     requestId?: string;
     signal?: AbortSignal;
+    now?: number;
+    clarificationAnswers?: AssistantClarificationAnswers;
   }) => Promise<MyelinMiniRouteResult>;
   downloadModel: (modelId: LocalAiModelId) => Promise<void>;
   importModelFile: (modelId: LocalAiModelId) => Promise<void>;
@@ -219,6 +222,8 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
     currentRoute?: string;
     requestId?: string;
     signal?: AbortSignal;
+    now?: number;
+    clarificationAnswers?: AssistantClarificationAnswers;
   }) => {
     setError('');
     setMessage('');

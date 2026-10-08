@@ -362,6 +362,9 @@ async function main() {
     assert.match(settingsSource, /href="\/\(app\)\/settings\/ai-assistant"/);
     assert.match(settingsSource, /AI model choices/);
     assert.match(assistantScreenSource, /available && !hasRuleDecision/);
+    assert.match(assistantScreenSource, /answerAssistantClarification\(pendingQuestion, answer, currentWorkspace, scope\)/);
+    assert.match(assistantScreenSource, /testID="assistant-clarification-answer"/);
+    assert.match(assistantScreenSource, /setPendingQuestion\(null\)/);
     assert.match(assistantScreenSource, /<TaskPreviewDetails prepared=\{prepared\} index=\{index\}/);
     assert.match(assistantScreenSource, /Duration not set — add an estimate before planning/);
     assert.match(settingsSource, /manual import of one verified FunctionGemma LiteRT candidate/);

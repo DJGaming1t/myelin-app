@@ -11,7 +11,8 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 - [x] Understand clear everyday schoolwork requests through bounded local rules: practical notebooks, homework, projects, worksheets, subject shorthand, common typos and day deadlines. Keep durations unknown when not supplied.
 - [ ] Configure an authenticated server-side cloud provider; enforce per-user quotas, timeouts and backoff. No provider key belongs in the APK.
 - [ ] Add cloud consent and routing mode controls once the connection can perform the advertised operation.
-- [ ] Finish and assess active 0.8B run 37752290697; keep it intact while it trains.
+- [x] Finish 0.8B training run 37752290697; final adapter exported successfully.
+- [ ] Recover evaluation of that same adapter; evaluation setup failed before inference, so model quality remains unmeasured and release blocked.
 - [ ] Train and compare a separate 2B candidate using the same development splits and protocol. Future held-out versions are needed once current evaluation results are used for tuning.
 - [ ] Convert each approved adapter/base combination into a supported phone artifact, verify file hashes and test Android speed, RAM, context capacity and structured output.
 - [ ] Publish signed download descriptors; enable download/select/remove for released models through the existing one-session manager.
@@ -59,4 +60,14 @@ Local routing, protocol, hybrid, model lifecycle and available TypeScript checks
 
 Published source `5c644549305790be1c005eec26a027559fa76e00`, Android preview runtime `0.2.13`, group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, update `01a11aee-348b-7bc9-a545-938c07316392`, at `2026-10-08T09:53:01.067Z`. Receipt artifact `11541334002`, committed copy `docs/beta/schoolwork-update-20261008.json`. No production or native build changes. Physical-device QA remains pending.
 
-Next user-facing language chunk: short clarification replies without retyping the original request. Broader free-form interpretation still needs the authenticated cloud connection and approved mobile model releases from the existing checklist.
+The next language chunk below adds short clarification replies. Broader free-form interpretation still needs the authenticated cloud connection and approved mobile model releases from the existing checklist.
+
+## Short clarification replies
+
+The assistant retains an incomplete request in screen memory and accepts one explicit answer at a time: a known subject, an existing topic name, a duration from 5–720 minutes, or a valid date. Answers are typed slots rather than appended commands. Earlier answers survive subsequent questions, and the final action still goes through validation, preview and confirmation.
+
+Editing the original request, starting a new request, leaving the screen, changing account/workspace revision, crossing a calendar day or exceeding ten minutes clears or expires the context. Invalid or ambiguous replies do not create tasks. Compound operations and unsupported questions still require a rewritten request or a future model connection.
+
+Local clarification, routing, protocol, hybrid, lifecycle and available TypeScript checks passed. Full app verification and preview publication are pending. No model weights, cloud connection, training inputs or frozen evaluation data changed.
+
+Training status: run `37752290697` successfully exported artifact `11548375885` (`myelin-mini-balanced-v4-adapter`, SHA-256 `0704a6c3e0a1ed1bbe099c7165cfb7bf48fb68183b7c369591a5dbadac3802ac`). Evaluation job `113291083789` failed on missing generated `training/myelin-mini/failure-curriculum-v1.jsonl` before inference. All 53 cases remain unevaluated; no evaluation evidence artifact was produced. Next model chunk is evaluation-only recovery against the same final adapter and original pinned source, regenerating the required inputs and preserving frozen hashes and all gates. Do not retrain to repair this setup failure.

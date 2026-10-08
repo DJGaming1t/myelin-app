@@ -203,9 +203,21 @@ The v2 dataset builder selects primarily practice requests plus missing-target e
 - This improves shipped local language rules, not Qwen weights or unrestricted conversational understanding. Qwen downloads/cloud remain blocked. Training inputs and frozen evaluations were not modified. Android physical-device/large-text/keyboard QA remains pending in `docs/MYELIN_BETA_TESTING.md`.
 - Next language chunk: retain an incomplete request so the user can answer a short clarification without rewriting it. Cloud transport and model evaluation/release remain on the existing master checklist.
 
+## Short clarification replies — 2026-10-08
+- Added typed, in-memory clarification answers for subject, existing topic, estimated minutes and due date. Original requests and prior answers survive successive questions; no text concatenation or invented references.
+- Added an answer field and Continue to preview button. Editing the original, new request, account/workspace changes and screen unmount reset context; ten-minute, day-change and backwards-clock guards expire it before a reply is processed.
+- Invalid/ambiguous replies ask again. All resolved actions retain the existing validated preview and explicit confirmation. No model loading or cloud calls are needed for these bounded rules.
+- Local TypeScript and clarification/routing/protocol/hybrid/lifecycle regressions passed. Full app verification/publication pending; device QA pending. No native dependencies changed.
+
+## Completed v4 training; evaluation setup failure — 2026-10-08
+- Same run `37752290697`, original source `0c0b68713e835932402b591edd336476cf7165b8`: training job `113228197390` completed SUCCESS.
+- Final adapter artifact `11548375885`, `myelin-mini-balanced-v4-adapter`, 43,961,081 compressed bytes; digest `sha256:0704a6c3e0a1ed1bbe099c7165cfb7bf48fb68183b7c369591a5dbadac3802ac`, created `2026-10-08T11:37:07Z`.
+- Evaluation job `113291083789` failed at provenance checks: `verify-myelin-mini-curriculum.ts` could not open generated `training/myelin-mini/failure-curriculum-v1.jsonl` in its fresh checkout. Required generation ran in the separate training job but was not repeated in evaluation.
+- Export/inference/scoring were skipped. No cases or accuracy were measured and the evidence directory was empty, so no evaluation artifact exists. This is a setup failure, not a measured quality-gate result. Qwen release remains blocked.
+
 ## Exact next step
-1. Inspect the v4 workflow run recorded above before starting any additional training. If still running, report its actual progress; do not duplicate or cancel the run.
-2. After completion, download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.
+1. Recover evaluation only against the existing final v4 adapter and pinned original source. Regenerate required curriculum/compiled inputs in a fresh job, preserve provenance and frozen hashes, then evaluate all 53 cases. Do not modify the training workflow trigger or start another training run for this repair.
+2. Download final training/evaluation artifacts and record model metrics, raw predictions, latency and all three gates. A failed quality gate is evidence, not a setup failure to conceal.
 3. Compare measured routing/action safety with previous results. Keep release blocked unless all gates pass. Frozen eval-v2 may be reported after this run, but must not be copied into training or used for checkpoint selection.
 4. Evaluate phone latency before releasing Qwen weights. A rules-only assistant/preference beta may publish independently after compatible app checks pass; it must not claim working Qwen inference or cloud AI.
 

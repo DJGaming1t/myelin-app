@@ -1,4 +1,5 @@
 import { WorkspaceState } from '@/src/data/schema';
+import type { AssistantClarificationAnswers } from './assistant-clarification';
 import {
   MyelinMiniModelAdapter,
   MyelinMiniRouteResult,
@@ -24,6 +25,7 @@ export async function routeWithHybridAssistant(input: {
   currentRoute?: string;
   now?: number;
   signal?: AbortSignal;
+  clarificationAnswers?: AssistantClarificationAnswers;
 }): Promise<MyelinMiniRouteResult> {
   throwIfCancelled(input.signal);
   if (!input.userRequest.trim()) throw new Error('Enter an assistant request first.');

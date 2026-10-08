@@ -1,4 +1,5 @@
 import { WorkspaceState } from '@/src/data/schema';
+import type { AssistantClarificationAnswers } from './assistant-clarification';
 import {
   AssistantActionBatch,
   parseAssistantActionBatch,
@@ -280,7 +281,7 @@ export function buildMyelinMiniUserPrompt(
   workspace: WorkspaceState,
   userRequest: string,
   requestId: string,
-  options: { currentRoute?: string; now?: number } = {},
+  options: { currentRoute?: string; now?: number; clarificationAnswers?: AssistantClarificationAnswers } = {},
 ) {
   const now = options.now ?? Date.now();
   const context = buildAssistantModelContext(workspace, now, {
@@ -295,6 +296,7 @@ export function buildMyelinMiniUserPrompt(
   return JSON.stringify({
     requestId,
     userRequest: userRequest.trim().slice(0, 4000),
+    ...(options.clarificationAnswers ? { clarificationAnswers: options.clarificationAnswers } : {}),
     context,
   });
 }
@@ -411,6 +413,7 @@ export async function routeWithMyelinMini(input: {
   now?: number;
   signal?: AbortSignal;
   allowFastRouter?: boolean;
+  clarificationAnswers?: AssistantClarificationAnswers;
 }): Promise<MyelinMiniRouteResult> {
   const now = input.now ?? Date.now();
   const fastRaw = input.allowFastRouter === false ? null : tryBuildMyelinMiniFastDecision({
@@ -418,6 +421,7 @@ export async function routeWithMyelinMini(input: {
     userRequest: input.userRequest,
     requestId: input.requestId,
     currentDate: localDateKeyFromTimestamp(now),
+    clarificationAnswers: input.clarificationAnswers,
   });
   const modelId = fastRaw ? MYELIN_MINI_FAST_MODEL_ID : input.model.id;
 
@@ -432,6 +436,7 @@ export async function routeWithMyelinMini(input: {
         {
           currentRoute: input.currentRoute,
           now,
+          clarificationAnswers: input.clarificationAnswers,
         },
       ),
       responseSchema: myelinMiniDecisionJsonSchema(),

@@ -25,6 +25,7 @@ import {
 } from '@/src/features/assistant/ai-action-engine';
 import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
 import { localDateKeyFromTimestamp, tryBuildMyelinMiniFastDecision } from '@/src/features/assistant/myelin-mini-fast-router';
+import { answerAssistantClarification, beginAssistantClarification, type AssistantClarificationAnswers, type PendingAssistantClarification } from '@/src/features/assistant/assistant-clarification';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const EXAMPLES = [
@@ -299,7 +300,7 @@ function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
 }
 
 export default function LocalAiAssistantScreen() {
-  const { workspace, commitAssistantWorkspace } = useWorkspace();
+  const { workspace, ownerKey, commitAssistantWorkspace } = useWorkspace();
   const {
     ready,
     snapshot,
@@ -316,7 +317,10 @@ export default function LocalAiAssistantScreen() {
   const [notice, setNotice] = useState('');
   const [reply, setReply] = useState('');
   const [error, setError] = useState('');
+  const [pendingQuestion, setPendingQuestion] = useState<PendingAssistantClarification | null>(null);
+  const [answer, setAnswer] = useState('');
   const controllerRef = useRef<AbortController | null>(null);
+  const lastOwnerRef = useRef(ownerKey);
 
   const selected = useMemo(
     () => models.find((model) => model.definition.id === (snapshot.selectedModelId === 'functiongemma-270m'
@@ -334,6 +338,18 @@ export default function LocalAiAssistantScreen() {
     [],
   );
 
+  useEffect(() => {
+    if (lastOwnerRef.current !== ownerKey) { setRequest(''); setNotice(''); lastOwnerRef.current = ownerKey; }
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    setPendingQuestion(null);
+    setAnswer('');
+    setPrepared(null);
+    setReply('');
+    setError('');
+    setBusy('');
+  }, [ownerKey, workspace?.revision]);
+
   if (!workspace) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -347,8 +363,20 @@ export default function LocalAiAssistantScreen() {
   const currentWorkspace = workspace;
 
   async function prepare() {
-    const userRequest = request.trim();
-    if (!userRequest || !ready || busy) return;
+    const userRequest = pendingQuestion?.userRequest ?? request.trim();
+    if (!userRequest || !ready || busy || !ownerKey) return;
+    const now = Date.now();
+    const scope = { ownerKey, revision: currentWorkspace.revision, now, currentDate: localDateKeyFromTimestamp(now) };
+    let clarificationAnswers: AssistantClarificationAnswers | undefined;
+    if (pendingQuestion) {
+      const resolved = answerAssistantClarification(pendingQuestion, answer, currentWorkspace, scope);
+      if (resolved.kind !== 'resolved') {
+        setError(resolved.message);
+        if (resolved.kind === 'expired') { setPendingQuestion(null); setAnswer(''); setReply(''); }
+        return;
+      }
+      clarificationAnswers = resolved.answers;
+    }
 
     controllerRef.current?.abort();
     const controller = new AbortController();
@@ -365,27 +393,33 @@ export default function LocalAiAssistantScreen() {
         userRequest,
         currentRoute: '/(app)/settings/ai-assistant',
         signal: controller.signal,
+        now,
+        clarificationAnswers,
       };
       const hasRuleDecision = tryBuildMyelinMiniFastDecision({
         workspace: currentWorkspace, userRequest, requestId: 'screen-rule-check',
-        currentDate: localDateKeyFromTimestamp(Date.now()),
+        currentDate: scope.currentDate,
+        clarificationAnswers,
       }) !== null;
       if (snapshot.selectedModelId === 'functiongemma-270m' && available && !hasRuleDecision) {
         const next = await prepareAssistantActions(args);
-        if (!controller.signal.aborted) setPrepared(next);
+        if (!controller.signal.aborted) { setPrepared(next); setPendingQuestion(null); setAnswer(''); }
       } else {
         const decision = await prepareAssistantDecision(args);
         if (controller.signal.aborted) return;
-        if (decision.route === 'actions') setPrepared(decision.prepared);
-        else setReply(decision.route === 'clarify' ? decision.question : decision.note);
+        if (decision.route === 'actions') { setPrepared(decision.prepared); setPendingQuestion(null); setAnswer(''); }
+        else {
+          setReply(decision.route === 'clarify' ? decision.question : decision.note);
+          setPendingQuestion(beginAssistantClarification(userRequest, decision, scope, clarificationAnswers, pendingQuestion));
+          setAnswer('');
+        }
       }
     } catch (cause) {
       if (!controller.signal.aborted) {
         setError(cause instanceof Error ? cause.message : 'The local assistant could not prepare these actions.');
       }
     } finally {
-      if (controllerRef.current === controller) controllerRef.current = null;
-      setBusy('');
+      if (controllerRef.current === controller) { controllerRef.current = null; setBusy(''); }
     }
   }
 
@@ -403,6 +437,8 @@ export default function LocalAiAssistantScreen() {
       );
       await commitAssistantWorkspace(applied.nextWorkspace, prepared.sourceRevision);
       setPrepared(null);
+      setPendingQuestion(null);
+      setAnswer('');
       setRequest('');
       setNotice(
         `Applied ${applied.results.length} ${applied.results.length === 1 ? 'change' : 'changes'} to MYELIN.`,
@@ -421,10 +457,18 @@ export default function LocalAiAssistantScreen() {
   function useExample(value: string) {
     if (busy) return;
     setRequest(value);
+    setPendingQuestion(null);
+    setAnswer('');
     setPrepared(null);
     setNotice('');
     setReply('');
     setError('');
+  }
+
+  function startNewRequest() {
+    if (busy) return;
+    setRequest(''); setPendingQuestion(null); setAnswer('');
+    setPrepared(null); setReply(''); setError(''); setNotice('');
   }
 
   return (
@@ -490,7 +534,7 @@ export default function LocalAiAssistantScreen() {
           ) : null}
             <>
               <View style={styles.requestCard}>
-                <Text style={styles.sectionTitle}>WHAT SHOULD MYELIN INTERPRET?</Text>
+                <Text style={styles.sectionTitle}>{pendingQuestion ? 'ORIGINAL REQUEST' : 'WHAT SHOULD MYELIN INTERPRET?'}</Text>
                 <TextInput
                   accessibilityLabel="Local AI request"
                   multiline
@@ -499,6 +543,8 @@ export default function LocalAiAssistantScreen() {
                   editable={!busy}
                   onChangeText={(value) => {
                     setRequest(value);
+                    setPendingQuestion(null);
+                    setAnswer('');
                     setPrepared(null);
                     setNotice('');
                     setReply('');
@@ -509,19 +555,38 @@ export default function LocalAiAssistantScreen() {
                   style={styles.input}
                   textAlignVertical="top"
                 />
+                {pendingQuestion ? (
+                  <View>
+                    <Text selectable accessibilityLiveRegion="polite" style={styles.modelMessage}>{pendingQuestion.question}</Text>
+                    <TextInput
+                      testID="assistant-clarification-answer"
+                      accessibilityLabel="Answer MYELIN's question"
+                      value={answer}
+                      maxLength={300}
+                      editable={!busy}
+                      onChangeText={(value) => { setAnswer(value); setError(''); }}
+                      placeholder={pendingQuestion.field === 'estimatedMinutes' ? 'Example: 45 minutes' : pendingQuestion.field === 'dueDate' ? 'Example: tomorrow or YYYY-MM-DD' : pendingQuestion.field === 'subject' ? 'Example: Biology' : 'Exact existing topic name'}
+                      placeholderTextColor={colors.subtle}
+                      style={styles.input}
+                    />
+                    <Pressable accessibilityRole="button" disabled={Boolean(busy)} onPress={startNewRequest} style={styles.example}>
+                      <Text style={styles.exampleText}>Start a new request</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
                 <View style={styles.requestFooter}>
                   <Text style={styles.counter}>{request.length}/2000</Text>
                   <Pressable
                     accessibilityRole="button"
-                    disabled={!ready || !request.trim() || Boolean(busy)}
+                    disabled={!ready || !request.trim() || (Boolean(pendingQuestion) && !answer.trim()) || Boolean(busy)}
                     onPress={() => void prepare()}
                     style={({ pressed }) => [
                       styles.prepareButton,
-                      (!ready || !request.trim() || Boolean(busy)) && styles.disabled,
+                      (!ready || !request.trim() || (Boolean(pendingQuestion) && !answer.trim()) || Boolean(busy)) && styles.disabled,
                       pressed && !busy && styles.pressed,
                     ]}>
                     <Text style={styles.prepareButtonText}>
-                      {busy === 'prepare' ? 'Thinking locally…' : 'Preview actions'}
+                      {busy === 'prepare' ? 'Thinking locally…' : pendingQuestion ? 'Continue to preview' : 'Preview actions'}
                     </Text>
                   </Pressable>
                 </View>
@@ -617,7 +682,7 @@ export default function LocalAiAssistantScreen() {
             </>
 
           {notice ? <Text accessibilityLiveRegion="polite" style={styles.success}>{notice}</Text> : null}
-          {reply ? <Text selectable accessibilityLiveRegion="polite" style={styles.modelMessage}>{reply}</Text> : null}
+          {reply && !pendingQuestion ? <Text selectable accessibilityLiveRegion="polite" style={styles.modelMessage}>{reply}</Text> : null}
           {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
           {!error && modelError ? <Text style={styles.error}>{modelError}</Text> : null}
           {!notice && modelMessage ? <Text style={styles.modelMessage}>{modelMessage}</Text> : null}

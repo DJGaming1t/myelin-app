@@ -11,12 +11,14 @@ on:
       - src/features/assistant/myelin-mini.ts
       - src/features/assistant/myelin-mini-fast-router.ts
       - src/features/assistant/schoolwork-language.ts
+      - src/features/assistant/assistant-clarification.ts
       - src/features/assistant/local-ai/**
       - app/(app)/settings/ai-models.tsx
       - app/(app)/settings/ai-assistant.tsx
       - scripts/verify-hybrid-assistant.ts
       - scripts/verify-local-ai.ts
       - scripts/verify-myelin-mini-fast-router.ts
+      - scripts/verify-assistant-clarification.ts
 
 permissions:
   contents: read
@@ -35,7 +37,9 @@ jobs:
       - name: Full app type check
         run: npx tsc --noEmit
       - name: Hybrid consent, cancellation and safe previews
-        run: npx tsx scripts/verify-hybrid-assistant.ts
+        run: |
+          npx tsx scripts/verify-hybrid-assistant.ts
+          npx tsx scripts/verify-assistant-clarification.ts
       - name: Existing model lifecycle and native integration regressions
         run: npm run verify:local-ai
       - name: Mini protocol and safety regression

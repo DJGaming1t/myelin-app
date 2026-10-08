@@ -52,6 +52,7 @@ jobs:
       - name: Hybrid and additional app safety regressions
         run: |
           npx tsx scripts/verify-hybrid-assistant.ts
+          npx tsx scripts/verify-assistant-clarification.ts
           npx tsx scripts/verify-adaptive.ts
           npx tsx scripts/verify-transition.ts
       - name: Expo export configuration
@@ -86,7 +87,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN everyday schoolwork beta $GITHUB_SHA"
+          --message "MYELIN short clarification replies beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

@@ -1,5 +1,6 @@
 import { WorkspaceState } from '@/src/data/schema';
-import { normalizeSchoolworkLanguage, tryParseSchoolworkRequest } from './schoolwork-language';
+import { normalizeSchoolworkLanguage, tryParseSchoolworkRequest, validSchoolworkDate } from './schoolwork-language';
+import type { AssistantClarificationAnswers } from './assistant-clarification';
 
 export const MYELIN_MINI_FAST_MODEL_ID = 'myelin-mini-fast-v1' as const;
 
@@ -50,6 +51,7 @@ type FastRouterInput = {
   userRequest: string;
   requestId: string;
   currentDate: string;
+  clarificationAnswers?: AssistantClarificationAnswers;
 };
 
 const STOP_WORDS = new Set([
@@ -312,10 +314,16 @@ export function tryBuildMyelinMiniFastDecision(
   }
 
   if (/^(?:how|why|what|when|should i|did i|do i|does)\b/.test(language)) return null;
-  const topicResult = resolveTopic(input.workspace, text);
+  const answers = input.clarificationAnswers ?? {};
+  const chosenTopic = answers.topicId ? input.workspace.topics.find(topic => topic.id === answers.topicId) : null;
+  if (answers.topicId && !chosenTopic) return { version: 1, requestId: input.requestId, route: 'clarify', confidence: 0.99, reason: 'missing-target', question: 'Which existing topic do you mean?', missingFields: ['topic'] };
+  if (answers.dueDate && !validSchoolworkDate(answers.dueDate)) return { version: 1, requestId: input.requestId, route: 'clarify', confidence: 0.99, reason: 'missing-date', question: 'What valid date (YYYY-MM-DD) should I use?', missingFields: ['dueDate'] };
+  const topicResult = answers.topicId
+    ? chosenTopic ? { kind: 'one' as const, topic: chosenTopic } : { kind: 'none' as const }
+    : resolveTopic(input.workspace, text);
   const standalone = /\b(?:notebooks?|projects?|worksheets?|practical (?:file|record|journal)|lab (?:file|record|report))\b/.test(language);
   const schoolwork = standalone || topicResult.kind === 'none'
-    ? tryParseSchoolworkRequest(input.userRequest, input.currentDate) : null;
+    ? tryParseSchoolworkRequest(input.userRequest, input.currentDate, answers) : null;
   if (schoolwork) {
     const envelope = { version: 1 as const, requestId: input.requestId, confidence: 0.98 };
     if (schoolwork.route === 'clarify') return { ...envelope, ...schoolwork };
@@ -357,8 +365,8 @@ export function tryBuildMyelinMiniFastDecision(
       };
     }
 
-    const minutes = detectMinutes(text);
-    if (minutes == null) {
+    const minutes = answers.estimatedMinutes ?? detectMinutes(text);
+    if (minutes == null || !Number.isInteger(minutes) || minutes < 5 || minutes > 720) {
       return {
         version: 1,
         requestId: input.requestId,
@@ -371,7 +379,7 @@ export function tryBuildMyelinMiniFastDecision(
     }
 
     const topic = topicResult.topic;
-    const dueDate = detectDueDate(language, input.currentDate);
+    const dueDate = answers.dueDate ?? detectDueDate(language, input.currentDate);
 
     return {
       version: 1,
@@ -391,7 +399,7 @@ export function tryBuildMyelinMiniFastDecision(
             ...(dueDate ? { dueDate } : {}),
             estimatedMinutes: minutes,
             priority: detectPriority(text),
-            notes: '',
+            notes: Object.keys(answers).length ? `Original request: ${input.userRequest}\nClarification answers: ${JSON.stringify(answers)}` : '',
           },
         ],
       },

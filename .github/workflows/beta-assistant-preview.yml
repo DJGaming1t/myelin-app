@@ -49,7 +49,7 @@ jobs:
             execFileSync('npm', ['run', name], { stdio: 'inherit' });
           }
           NODE
-      - name: Hybrid and additional app safety regressions
+      - name: Hybrid, local-only schedule protocol and app safety regressions
         run: |
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts

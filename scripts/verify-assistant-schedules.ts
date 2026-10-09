@@ -6,6 +6,8 @@ import { answerAssistantClarification, beginAssistantClarification } from '../sr
 import { applyPreparedAssistantActionBatch, prepareAssistantActionBatch } from '../src/features/assistant/assistant-action-session';
 import { parseAssistantActionBatch, assistantActionToolCatalog } from '../src/features/assistant/ai-action-engine';
 import { assistantActionBatchJsonSchema } from '../src/features/assistant/assistant-model-contract';
+import { parseMyelinMiniDecision } from '../src/features/assistant/myelin-mini';
+import { checkAssistantActionGrounding } from '../src/features/assistant/assistant-request-grounding';
 import { tryParseRecurringSchedule, parseScheduleTimeReply, parseWeeklyDaysReply } from '../src/features/assistant/recurring-schedule-language';
 import { commitmentOccurrencesForDay, freeStudyWindows } from '../src/features/planning/day-engine';
 import { createStudyTask } from '../src/features/planning/task-engine';
@@ -106,10 +108,15 @@ async function main() {
   }
   assert.doesNotMatch(JSON.stringify(assistantActionToolCatalog()), /create_commitment/);
   assert.doesNotMatch(JSON.stringify(assistantActionBatchJsonSchema()), /create_commitment/);
+  const invented = { version: 1, requestId: 'model-must-not-set-routine', route: 'actions', confidence: 1,
+    batch: { version: 1 as const, requestId: 'model-must-not-set-routine', actions: [action] } };
+  assert.throws(() => parseMyelinMiniDecision(invented, invented.requestId), /local-only/,
+    'Frozen model evaluation retains the existing protocol allowlist');
+  assert.ok(checkAssistantActionGrounding({ workspace: state, userRequest: 'Add Elasticity as a Physics topic', currentDate: scope.currentDate }, invented.batch));
   const modelProposed = await routeWithHybridAssistant({ workspace: state, userRequest: 'Add Elasticity as a Physics topic', requestId: 'model-must-not-set-routine',
     offline: { id: 'simulated-untrusted', async generate() { return { version: 1, requestId: 'model-must-not-set-routine', route: 'actions', confidence: 1,
       batch: { version: 1, requestId: 'model-must-not-set-routine', actions: [action] } }; } }, allowCloudFallback: false, now });
-  assert.equal(modelProposed.route, 'clarify', 'Model-originated fixed schedules cannot bypass the local schedule parser');
+  assert.equal(modelProposed.route, 'escalate', 'Model-originated fixed schedules cannot bypass the local schedule parser');
   const withTask = cloneWorkspace(state);
   const start = new Date(2026, 9, 9, 9).getTime();
   const task = createStudyTask({ title: 'Existing study', subject: 'Biology', type: 'homework', estimatedMinutes: 60, now });

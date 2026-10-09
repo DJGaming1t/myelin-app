@@ -302,9 +302,10 @@ export function buildMyelinMiniUserPrompt(
   });
 }
 
-export function parseMyelinMiniDecision(
+function parseMiniDecision(
   raw: unknown,
   expectedRequestId: string,
+  allowLocalCommitments = false,
 ): MyelinMiniDecision {
   const object = asObject(raw);
   if (object.version !== MYELIN_MINI_PROTOCOL_VERSION) {
@@ -381,6 +382,9 @@ export function parseMyelinMiniDecision(
   }
 
   const batch = parseAssistantActionBatch(object.batch);
+  if (!allowLocalCommitments && batch.actions.some(action => action.type === 'create_commitment')) {
+    throw new Error('Fixed schedules are local-only and are not part of the model protocol.');
+  }
   if (batch.requestId !== requestId) {
     throw new Error('MYELIN Mini action batch request ID does not match its decision.');
   }
@@ -403,6 +407,10 @@ export function parseMyelinMiniDecision(
     confidence: score,
     batch,
   };
+}
+
+export function parseMyelinMiniDecision(raw: unknown, expectedRequestId: string): MyelinMiniDecision {
+  return parseMiniDecision(raw, expectedRequestId);
 }
 
 export async function routeWithMyelinMini(input: {
@@ -451,7 +459,7 @@ export async function routeWithMyelinMini(input: {
     }));
 
   if (input.signal?.aborted) { const error = new Error('The assistant request was cancelled.'); error.name = 'AbortError'; throw error; }
-  const decision = parseMyelinMiniDecision(raw, input.requestId);
+  const decision = parseMiniDecision(raw, input.requestId, Boolean(fastRaw));
   if (decision.route === 'clarify') {
     return {
       route: 'clarify',

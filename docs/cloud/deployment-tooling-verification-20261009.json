@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "sourceCommit": "8132dffbfac31724b89e9f378f2a45ea272c110a",
+  "date": "2026-10-09",
+  "timezone": "Asia/Kolkata",
+  "checks": [
+    {
+      "workflow": "Verify authenticated assistant backend",
+      "runId": 37863781488,
+      "jobId": 113605539297,
+      "conclusion": "success",
+      "backendTests": 9,
+      "deploymentGuardTests": 4,
+      "failedTests": 0,
+      "fullAppTypecheck": true,
+      "protocolParity": true,
+      "syntheticProviderSmoke": true,
+      "realFirestoreConcurrency": true,
+      "signedInQuotaReadWriteDenied": true,
+      "workflowActionlint": true
+    },
+    {
+      "workflow": "Verify hybrid AI choices and routing",
+      "runId": 37863781435,
+      "jobId": 113605539672,
+      "conclusion": "success",
+      "fullAppTypecheck": true,
+      "existingAssistantAndModelRegressions": true
+    },
+    {
+      "workflow": "Deploy MYELIN cloud assistant beta",
+      "runId": 37863781627,
+      "event": "push",
+      "validationJobId": 113605541198,
+      "validationConclusion": "success",
+      "deployJobId": 113605543465,
+      "deployConclusion": "skipped",
+      "googleAuthenticationPerformed": false
+    }
+  ],
+  "activation": {
+    "backendDeployed": false,
+    "realProviderSmokePerformed": false,
+    "appCloudEnabled": false,
+    "betaPublishedThisChunk": false,
+    "billingPlanChanged": false,
+    "billingPlan": "unknown",
+    "remoteCredentialsVerified": false,
+    "phoneQaComplete": false
+  }
+}

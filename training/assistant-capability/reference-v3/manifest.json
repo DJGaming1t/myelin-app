@@ -1,0 +1,16 @@
+{
+  "version": 3,
+  "createdAt": "2026-10-09",
+  "frozenBeforeInference": true,
+  "cases": 6,
+  "turnsPerCondition": 8,
+  "conditions": 3,
+  "totalRecords": 24,
+  "purpose": "New authored reference/conversion probe after v1/v2; no training or output selection, not independent validation or a release gate.",
+  "files": {
+    "cases.jsonl": "b0b778f5688c4a3abcacfd8c6557ee51c6ccad4b7f3592e990d52b44973e8b47",
+    "system.txt": "64bcc58a02fb8e19bcc53fe987e109b09a6c01de144f9cb05e1811b6fafd64c6",
+    "settings.json": "eb7a9df86b928a339916fff64e4429dc36e7f4aac6efcdaaec3753b608548b54",
+    "../candidates.json": "f6be681adec44c2e7d6f188e93e4299fe2e6db9c24e489f96b2e7c2fddb5ce99"
+  }
+}

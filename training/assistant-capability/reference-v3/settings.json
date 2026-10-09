@@ -1,0 +1,17 @@
+{
+  "conditions": ["hf-official", "native-bundled", "native-official-raw"],
+  "original": {"repo": "Qwen/Qwen3.5-2B", "revision": "15852e8c16360a2fea060d615a32b45270f8a8fc", "class": "Qwen3_5ForCausalLM", "dtype": "bfloat16", "attention": "eager", "vision": false, "adapters": false},
+  "transformers": "5.3.0",
+  "torch": "2.8.0",
+  "nativeRuntime": "0.18.0",
+  "huggingfaceHub": "1.3.0",
+  "threads": 2,
+  "maxContextTokens": 4096,
+  "maxOutputTokens": 128,
+  "maxWords": 50,
+  "cache": ":memory",
+  "greedy": {"temperature": 0, "top_k": 1, "top_p": 1, "seed": 42},
+  "enableThinking": false,
+  "repeats": 1,
+  "note": "One greedy answer per declared condition. HF uses official rendered prompt and fresh cache; native raw feeds that same official format with templating disabled and checks tokenizer IDs. Bundled conversation uses its own template with separate render-only trace. Subsequent turns use each condition's actual generated history. Native INT8 vs HF BF16, runtime, precision and graph differ; this cannot independently isolate quantization from executor differences. The converter's exact upstream weight revision is not independently established."
+}

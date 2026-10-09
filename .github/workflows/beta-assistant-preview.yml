@@ -101,7 +101,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN plan review with before-deadline capacity checks beta $GITHUB_SHA"
+          --message "MYELIN exact study-time checks beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

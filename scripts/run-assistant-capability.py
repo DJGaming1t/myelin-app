@@ -39,7 +39,12 @@ def main():
 
     from huggingface_hub import hf_hub_download
     download_started = time.perf_counter()
-    path = Path(hf_hub_download(candidate['repo'], candidate['file'], revision=candidate['revision'], token=False)).resolve()
+    # Keep the snapshot filename's .litertlm extension. Resolving HF's
+    # symlink produces a hash-only blob name, rejected by the native path
+    # format detector even though the bytes are correct.
+    path = Path(hf_hub_download(candidate['repo'], candidate['file'], revision=candidate['revision'], token=False)).absolute()
+    if path.suffix != '.litertlm':
+        raise ValueError('Native model reference must retain its format extension')
     if path.stat().st_size != candidate['sizeBytes'] or sha(path) != candidate['sha256']:
         raise ValueError('Candidate bundle identity mismatch')
     provenance = {'candidate': candidate, 'sourceCommit': os.environ.get('GITHUB_SHA'),

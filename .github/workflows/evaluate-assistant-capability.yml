@@ -58,7 +58,7 @@ jobs:
           path.write_text(json.dumps(report,indent=2)+'\n')
           print('EVIDENCE_BEGIN app-runtime-audit.json');print(path.read_text());print('EVIDENCE_END app-runtime-audit.json')
           PYTHON
-      - name: Download exact bundle, verify digest, run actual model on every frozen case once
+      - name: Keep native format extension, verify exact bundle, generate every frozen turn once
         run: python -u scripts/run-assistant-capability.py --candidate "$CANDIDATE" --output "artifacts/assistant-capability/$CANDIDATE"
       - name: Preserve evidence on quality or runtime failure
         if: always()

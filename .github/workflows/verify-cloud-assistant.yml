@@ -9,6 +9,7 @@ on:
       - .github/workflows/verify-cloud-assistant.yml
       - .github/workflows/deploy-cloud-assistant.yml
       - functions/**
+      - workers/assistant/**
       - firebase.json
       - firestore.rules
       - scripts/export-assistant-cloud-protocol.ts
@@ -17,6 +18,7 @@ on:
       - scripts/test-cloud-deployment.cjs
       - scripts/smoke-assistant-cloud.ts
       - scripts/verify-cloud-smoke.ts
+      - scripts/verify-worker-assistant.ts
       - src/features/assistant/cloud-assistant-adapter.ts
 
 permissions:
@@ -47,6 +49,8 @@ jobs:
           npx tsx scripts/export-assistant-cloud-protocol.ts --check
           npx tsx scripts/verify-cloud-assistant.ts
           node --test scripts/test-cloud-deployment.cjs
+          node --test workers/assistant/test/assistant.test.mjs
+          npx tsx scripts/verify-worker-assistant.ts
           npx tsx scripts/verify-cloud-smoke.ts
       - name: Real server entry loads without credentials or provider calls
         env:

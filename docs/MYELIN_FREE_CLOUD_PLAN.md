@@ -6,7 +6,7 @@ The user cannot spend money currently. This supersedes the Firebase/Gemini deplo
 
 Preferred candidate: a Cloudflare Worker on **Workers Free**, using the native **Workers AI binding** and a **D1 Free** database for shared quotas. First model to evaluate: `@cf/qwen/qwen3-30b-a3b-fp8`. This is a hosted model, separate from the pending Qwen3.5 0.8B/2B phone alternatives. No model download is needed on the phone. Actual MYELIN quality and latency are unmeasured; size alone is not a release certificate.
 
-This chunk changes the implementation plan only. No Worker, D1 database, account, endpoint or app update was created. Cloud routing remains disabled.
+The initial chunk changed the implementation plan only. The next chunk has now implemented the isolated Worker/provider foundation under `workers/assistant/`, with an inactive default entry and simulated end-to-end preview checks. Real authentication, D1 quotas, Worker runtime/CPU checks, account setup and live provider verification are still pending. No deployed endpoint, database, account or app update was created. Cloud routing remains disabled.
 
 ## Why the previous route is paused
 
@@ -28,7 +28,7 @@ Some other Workers AI models require payment; they are outside this plan. Use th
 
 ## Next implementation chunks
 
-1. Build the isolated Worker decision endpoint and hosted-Qwen adapter using the existing protocol. Keep server-owned instructions, bounded output, exact request IDs and sanitized failures. Check the current Cloudflare response schema; do not assume the Gemini envelope or an undocumented thinking switch. Test JSON-mode failures and incomplete output; no automatic generation retry.
+1. Foundation implemented: isolated Worker endpoint and hosted-Qwen adapter using the existing protocol, server-owned instructions, bounded output, exact request IDs and sanitized failures. Eleven local HTTP/provider tests and four simulated output variants through the actual cloud-client/Mini preview passed. Current Cloudflare chat-completion envelope is used; no Gemini envelope or undocumented thinking switch. JSON-mode support still needs live verification; malformed/incomplete output is rejected without retries. Default entry has no permissive auth/quota fallback and consumes no inference.
 2. Preserve verified Firebase identity and disabled/revoked-account checks through a supported server authentication path. Do not replace revocation verification with decoding an unsigned JWT. Add atomic D1 user/shared budgets, request deduplication, expiring leases and provider cooldown. Test concurrent quota reservations and fail closed if authentication or D1 is unavailable. No Firebase Admin private key belongs in the APK.
 3. Verify local Worker compatibility/CPU constraints and Cloudflare account eligibility, service terms and model license. Qwen's upstream model card lists Apache-2.0; that does not replace the hosting agreement. Then obtain a Free account deployment identity, deploy and save a receipt. Account creation still needs the owner; ordinary code work can proceed before account setup.
 4. Run one real synthetic preview and a bounded development acceptance set, including shorthand, missing information, reference grounding and compound requests. Do not advertise better accuracy before measurements. Preserve existing failed offline release gates and benchmark separation.

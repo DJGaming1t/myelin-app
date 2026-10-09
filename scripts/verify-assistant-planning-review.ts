@@ -26,6 +26,7 @@ const r = reviewAssistantPlanning(ws, now);
 assert.deepEqual(ws, before, 'Review must never mutate the workspace');
 assert.equal(r.issues.find(i => i.code === 'commitment-overlap')?.minutes, 30);
 assert.equal(r.issues.find(i => i.code === 'after-deadline')?.minutes, 90);
+assert.equal(r.issues.find(i => i.code === 'deadline-capacity')?.minutes, 60, 'School blocks every minute before the13:00deadline');
 assert.equal(r.issues.find(i => i.code === 'daily-overload')?.minutes, 30, '110 work +10break -90capacity');
 assert.equal(r.unknownEstimates, 1);
 assert.equal(r.completedTasksExcluded, 1);
@@ -80,6 +81,28 @@ assert(context.checks.length <= 8);
 assert(!JSON.stringify(context).includes('PRIVATE_'), 'Full notes, mistakes and student answers stay outside model context');
 const empty = createEmptyWorkspace(now);
 assert.match(tryAssistantPlanningReply('Check my schedule', empty, now)!, /Unrecorded commitments/);
+const imminent = createEmptyWorkspace(now);
+imminent.settings.sleepEnabled = false;
+imminent.settings.dailyMinutes = 90;
+const urgent = createStudyTask({ title: 'Unscheduled urgent work', estimatedMinutes: 60, dueAt: at(day, 12, 30), now });
+imminent.tasks.push(urgent);
+assert.equal(reviewAssistantPlanning(imminent, now).issues.find(i => i.code === 'deadline-capacity')?.minutes, 30,
+  'A known60-minute task cannot fit into30minutes before its deadline even if unscheduled');
+urgent.estimatedMinutes = 0;
+assert(!reviewAssistantPlanning(imminent, now).issues.some(i => i.code === 'deadline-capacity'), 'Do not guess unknown duration');
+urgent.estimatedMinutes = 60; urgent.dueAt = at(addLocalDays(day, 1), 9);
+imminent.commitments = cloneWorkspace(ws).commitments;
+imminent.commitments[0]!.recurrenceDays = [6];
+const evening = at(day, 22);
+imminent.settings.sleepEnabled = true;
+assert.equal(reviewAssistantPlanning(imminent, evening).issues.find(i => i.code === 'deadline-capacity')?.minutes, 30,
+  'Only30minutes remain tonight before sleep; school blocks the next morning until after the09:00deadline');
+urgent.estimatedMinutes = 20;
+assert(!reviewAssistantPlanning(imminent, evening).issues.some(i => i.code === 'deadline-capacity'),
+  'Do not report individual deadline overload when the known work fits the optimistic bound');
+urgent.postponedUntil = at(addLocalDays(day, 1), 10);
+assert.equal(reviewAssistantPlanning(imminent, evening).issues.find(i => i.code === 'deadline-capacity')?.minutes, 20,
+  'Postponing availability until after the deadline leaves no recorded capacity');
 const screen = fs.readFileSync('app/(app)/settings/ai-assistant.tsx', 'utf8');
 assert.match(screen, /tryAssistantPlanningReply\(text, workspace, now\)/);
 console.log('Planning review: real task deadlines,30min school conflict,break budget,weekends,skips,overnight,sleep,read-only matching and bounded context passed.');

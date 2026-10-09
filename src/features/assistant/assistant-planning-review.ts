@@ -3,7 +3,7 @@ import { sleepWindows } from '@/src/features/adaptive/sleep-engine';
 import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, startOfLocalDay } from '@/src/features/planning/day-engine';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
-export type PlanningIssueCode = 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
+export type PlanningIssueCode = 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'deadline-capacity' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
 export type PlanningIssue = {
   code: PlanningIssueCode;
   taskIds: string[];
@@ -27,6 +27,27 @@ const minutes = (start: number, end: number) => Math.max(0, Math.round((end - st
 const overlapMinutes = (a: number, b: number, c: number, d: number) => minutes(Math.max(a, c), Math.min(b, d));
 const label = (text: string) => text.replace(/[\r\n\t]/g, ' ').trim().slice(0, 100);
 
+function remainingDailyBudget(workspace: WorkspaceState, day: number) {
+  const next = addLocalDays(day, 1);
+  const recorded = workspace.history.filter(item => item.at >= day && item.at < next).reduce((sum, item) => sum + item.minutes, 0)
+    + workspace.breaks.filter(item => item.at >= day && item.at < next).reduce((sum, item) => sum + item.minutes, 0)
+    + (workspace.focusOutcomes ?? []).filter(item => item.taskOnly && item.status === 'finished' && item.endedAt >= day && item.endedAt < next).reduce((sum, item) => sum + item.minutes, 0);
+  return Math.max(0, workspace.settings.dailyMinutes - recorded);
+}
+
+// An optimistic upper bound: excludes sleep/fixed commitments and respects the
+// recorded daily budget, but does not reserve time for other pending work.
+// Exceeding it establishes a problem; being below it does not establish a fit.
+function capacityBeforeDeadline(workspace: WorkspaceState, now: number, availableFrom: number, deadline: number) {
+  let capacity = 0;
+  for (let day = startOfLocalDay(now); day < deadline; day = addLocalDays(day, 1)) {
+    const windows = freeStudyWindows(workspace, day, { from: Math.max(now, availableFrom, day), minMinutes: 1, includeScheduledTasks: false });
+    const clockCapacity = windows.reduce((sum, window) => sum + Math.max(0, Math.floor((Math.min(window.end, deadline) - window.start) / 60000)), 0);
+    capacity += Math.min(clockCapacity, remainingDailyBudget(workspace, day));
+  }
+  return capacity;
+}
+
 // Uses the same local-calendar, recurrence, skip-date and sleep calculations as Day map.
 // This is a read-only review. Unknown estimates are never replaced with guesses.
 export function reviewAssistantPlanning(workspace: WorkspaceState, now = Date.now()): AssistantPlanningReview {
@@ -49,6 +70,12 @@ export function reviewAssistantPlanning(workspace: WorkspaceState, now = Date.no
     }
     if (task.dueAt > 0 && task.dueAt < now) issues.push({ code: 'overdue', taskIds: [task.id], day: localDayKey(task.dueAt),
       message: `“${name}” is still open after its recorded deadline (${localDayKey(task.dueAt)}). Check what remains.` });
+    if (task.dueAt > now && task.dueAt < end && taskRemainingMinutes(task) > 0) {
+      const capacity = capacityBeforeDeadline(workspace, now, task.postponedUntil, task.dueAt);
+      const remaining = taskRemainingMinutes(task);
+      if (remaining > capacity) issues.push({ code: 'deadline-capacity', taskIds: [task.id], day: localDayKey(task.dueAt), minutes: Math.ceil(remaining - capacity),
+        message: `“${name}” needs ${remaining} min, but at most ${Math.floor(capacity)} min fits before its deadline using recorded free time and your daily budget. It is short by ${Math.ceil(remaining - capacity)} min even before allowing for other work or new breaks. Review scope or genuinely available time.` });
+    }
     if (!scheduled) continue;
     if (task.scheduledEnd <= now) issues.push({ code: 'past-slot', taskIds: [task.id], day,
       message: `The planned time for “${name}” has passed, but it is still open. Check completion or choose a new time.` });
@@ -93,18 +120,15 @@ export function reviewAssistantPlanning(workspace: WorkspaceState, now = Date.no
     const unscheduledToday = offset === 0 ? open.filter(task => task.planState === 'today' && task.postponedUntil <= now) : [];
     const scheduledMinutes = scheduled.reduce((sum, task) => sum + overlapMinutes(from, next, task.scheduledStart, task.scheduledEnd), 0);
     const required = scheduledMinutes + unscheduledToday.reduce((sum, task) => sum + taskRemainingMinutes(task), 0);
-    const recorded = workspace.history.filter(item => item.at >= day && item.at < next).reduce((sum, item) => sum + item.minutes, 0)
-      + workspace.breaks.filter(item => item.at >= day && item.at < next).reduce((sum, item) => sum + item.minutes, 0)
-      + (workspace.focusOutcomes ?? []).filter(item => item.taskOnly && item.status === 'finished' && item.endedAt >= day && item.endedAt < next).reduce((sum, item) => sum + item.minutes, 0);
     const clockCapacity = freeStudyWindows(workspace, day, { from, minMinutes: 1, includeScheduledTasks: false })
       .reduce((sum, window) => sum + window.minutes, 0);
-    const capacity = Math.min(clockCapacity, Math.max(0, workspace.settings.dailyMinutes - recorded));
+    const capacity = Math.min(clockCapacity, remainingDailyBudget(workspace, day));
     const knownBlocks = scheduled.length + unscheduledToday.filter(task => taskRemainingMinutes(task) > 0).length;
     const breakReserve = Math.max(0, knownBlocks - 1) * workspace.settings.breakMinutes;
     if (required + breakReserve > capacity) {
       const shortfall = Math.ceil(required + breakReserve - capacity);
       issues.push({ code: 'daily-overload', taskIds: [...scheduled, ...unscheduledToday].map(task => task.id), day: dayKey, minutes: shortfall,
-        message: `${dayKey}: ${Math.round(required)} min of planned work + ${breakReserve} min between-block breaks exceeds ${Math.floor(capacity)} min of remaining capacity by ${shortfall} min. Move lower-priority work, reduce scope, or review your availability. Missing estimates are excluded.` });
+        message: `${dayKey}: ${Math.round(required)} min of planned work + ${breakReserve} min between-block breaks exceeds ${Math.floor(capacity)} min of remaining capacity by ${shortfall} min. Move lower-priority work, reduce scope, or review your availability. Additional work without an estimate is not counted.` });
     }
   }
   const dueMistakes = workspace.mistakes.filter(item => item.resolvedAt === 0 && item.dueAt <= now);

@@ -1,0 +1,46 @@
+{
+  "candidate": {
+    "id": "qwen35-lite-int8",
+    "repo": "litert-community/Qwen3.5-0.8B",
+    "revision": "10243c0a01d24e6b122a0e814f8c4d984c9c92d6",
+    "file": "Qwen3.5-0.8B_int8.litertlm",
+    "sizeBytes": 963184864,
+    "sha256": "64ed396fcdae75e5158945c77a08142b1322ce1bbf1be4d2198783119a1169e8",
+    "license": "Apache-2.0"
+  },
+  "sourceCommit": "addbe5616ea12ba1790c91fe24205f44046bce3c",
+  "suite": {
+    "version": 1,
+    "frozenBeforeInference": true,
+    "cases": 24,
+    "turns": 29,
+    "createdAt": "2026-10-09",
+    "purpose": "Synthetic development capability probe; not a production release gate or independent human benchmark. No training on these cases.",
+    "files": {
+      "eval-v1.jsonl": "f73bc7429591428a25b806c5c8ebce5e61aed821607675548829bf285f9ce9b7",
+      "system.txt": "226e6ad206430097208f2ef743dbacfc93830d1e1792b6ce3598432a89a0c031",
+      "candidates.json": "f6be681adec44c2e7d6f188e93e4299fe2e6db9c24e489f96b2e7c2fddb5ce99"
+    }
+  },
+  "runtime": {
+    "cli": "0.18.0",
+    "python": "3.12.15",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "cpuCount": 2,
+    "backend": "cpu",
+    "cpuThreads": 2,
+    "cache": "memory",
+    "maxContextTokens": 4096,
+    "maxOutputTokens": 384,
+    "temperature": 0,
+    "topK": 1,
+    "seed": 42,
+    "modelReference": "/home/runner/.cache/huggingface/hub/models--litert-community--Qwen3.5-0.8B/snapshots/10243c0a01d24e6b122a0e814f8c4d984c9c92d6/Qwen3.5-0.8B_int8.litertlm",
+    "outputLimitParameter": "max_completion_tokens"
+  },
+  "downloadAndHashSeconds": 16.183620983999994,
+  "phoneTested": false,
+  "appProtocolTested": false,
+  "fineTuned": false,
+  "limit": "Isolated synthetic capability probe; not a MYELIN release certificate. Linux CPU is not Android performance."
+}

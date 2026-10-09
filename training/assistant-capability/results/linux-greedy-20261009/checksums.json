@@ -1,0 +1,12 @@
+{
+  "README.md": "4257a83a86c39b95bff1b2f3cc15e62f0573610f29799e71cf14f3efe9d6fd21",
+  "app-runtime-audit.json": "a18fd3b15687703b66a017e43f11dfa965ec83e1fc775cb342c2610f6699a7f8",
+  "manual-review.json": "93472b5ed9a81fe5fa4e0e96bd1b63f37d84ffd06ae1f0144c4be07607c9c5b8",
+  "qwen35-enhanced-int8/predictions.jsonl": "3adf4ce05fcd8ae6af7f45d4db78a3b473d1ea5c493fd05580e594f31e988f0c",
+  "qwen35-enhanced-int8/provenance.json": "9064d826c895dfdc49aab150851a5d0952575d2456d8ae9c27998e664a1da233",
+  "qwen35-enhanced-int8/report.json": "dafdae944db6d2110909f2a76247e1d02973e664ab67eeda955746a89d209f7e",
+  "qwen35-lite-int8/predictions.jsonl": "00362164a3d03ec02d0ff71e14fd3048368178c8067c3f1819b60bdf19e8efa0",
+  "qwen35-lite-int8/provenance.json": "1b21ba9350f8cbab30bf0bbfa46fb18a4f771313c73aee01cf60fb170b2d2414",
+  "qwen35-lite-int8/report.json": "9ca2fb153a87748f885d5ca98262dfcb37cdfa5ca0e7ffe0fb8e1d759292e070",
+  "verification.json": "36abc8ec452bef990191b9610f25f3645422a3da639483b0eb978ae5f9141ab9"
+}

@@ -1,0 +1,66 @@
+{
+  "sourceCommit": "addbe5616ea12ba1790c91fe24205f44046bce3c",
+  "workflowRun": 37920623351,
+  "jobs": [
+    {
+      "id": 113787395761,
+      "name": "qwen35-enhanced-int8 on Linux CPU",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113787396001,
+      "name": "qwen35-lite-int8 on Linux CPU",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 11612621146,
+      "name": "assistant-capability-qwen35-enhanced-int8",
+      "digest": "sha256:0dd85d5672b3a6bdc63ed6a16271ba179854ddce6b88f5664ae5390c959a45a4",
+      "sizeBytes": 12374
+    },
+    {
+      "id": 11611937848,
+      "name": "assistant-capability-qwen35-lite-int8",
+      "digest": "sha256:8227adfea16a7e15757c8f52b8f5be7ce2baf3d821b6a91a9f80923d30562bac",
+      "sizeBytes": 10673
+    }
+  ],
+  "runtimeComplete": true,
+  "qualityAccepted": false,
+  "releaseApproved": false,
+  "phoneTested": false,
+  "appUpdated": false,
+  "cloudActivated": false,
+  "priorSetupFailures": [
+    {
+      "sourceCommit": "192f4cf00aa39c4e58998cf09a3e1c153a38a880",
+      "run": 37919737164,
+      "reason": "Registry models listed successfully, completion alias resolution returned HTTP 404. No generated answers.",
+      "artifacts": [
+        11610549278,
+        11611139677
+      ]
+    },
+    {
+      "sourceCommit": "f678786e6139c0ed990d57ea4b67c3d8cd64c1c1",
+      "run": 37920439445,
+      "reason": "Resolving the HF snapshot symlink removed .litertlm extension; native engine rejected the hash-only file path. No generated answers.",
+      "artifacts": [
+        {
+          "id": 11612070572,
+          "digest": "sha256:43b01974cca322d725f614a1c1e1bdc4a19aabce73ee093c41498462954d96e1"
+        },
+        {
+          "id": 11611746080,
+          "digest": "sha256:33c161f71289aef09afca5a836e3678067176fa3914e6a9d1012b9ab93bf3915"
+        }
+      ]
+    }
+  ],
+  "interpretation": "Workflow success means all frozen turns generated and evidence was preserved. It is not a passing model-quality gate. No model was approved or activated.",
+  "next": "Freeze new unseen diagnostic prompts before inference; isolate short/plain versus structured prompts, supported non-greedy sampling, and runtime 0.15 versus 0.18 with the same exact bundles. Verify supported settings actually apply. Do not tune on observed v1 requests or switch on downloads/chat for failing candidates."
+}

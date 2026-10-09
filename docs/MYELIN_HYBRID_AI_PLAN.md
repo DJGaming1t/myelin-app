@@ -2,6 +2,18 @@
 
 Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud fallback. MYELIN calculates plans and previews changes for explicit confirmation. Provider limits still apply; local routing reduces requests but does not remove cloud quotas.
 
+## Current ordering — model capability first, 2026-10-09
+
+The user prioritizes a strong assistant inside MYELIN over Cloudflare. Both actual published phone bundles were tested, with exact identities/frozen cases: [raw outputs and comparison](../training/assistant-capability/results/linux-greedy-20261009/README.md). Neither is useful enough in the tested greedy CLI configuration. Lite valid 0/29 and objective 0/29; Enhanced valid 5/29 and objective 1/29. Full inference/evidence passed, not model-quality acceptance. No model download or app update was enabled.
+
+- [x] Measure actual 0.8B/2B phone bundles on an isolated conversational capability probe; preserve all 58 outputs, provenance and qualitative review. Source `addbe5616ea12ba1790c91fe24205f44046bce3c`, run `37920623351`.
+- [ ] Freeze new unseen diagnostics and isolate prompt complexity/format, supported sampled decoding and native 0.15/0.18 behavior. Current greedy repetitions are not evidence that every configuration or the original base checkpoints fail. Never claim ignored presence penalty is applied.
+- [ ] Establish useful answers before selecting a conversational candidate. Format validation alone cannot fix wrong dates, calculations or explanations.
+- [ ] Add a bounded conversation/reply bridge and verified action proposals. The current action-only prompt/reset behavior cannot provide tutoring by swapping model sizes.
+- [ ] Verify actual app context, cancellation, Android memory/speed and compatibility; then enable reviewed descriptors and beta delivery. Native wrapper source reads SDK 0.15.0, but phone execution remains unverified.
+
+Older hosting and training tasks below remain available work, with this ordering taking precedence. No spending or paid fallback; cloud infrastructure is secondary to model quality.
+
 ## Master checklist
 
 - [x] Connect explicit weekly school/tuition/coaching facts to existing Day map commitments through confirmed local previews, retained day/time replies and planner availability. Duplicate/overlap/model-isolation checks passed in both timezones. Source `9928c859ac2fb8224aad6b137fc18f09b84963a7` passed full beta run `37911040195` and hybrid run `37911040180`; Android preview published 2026-10-09 14:58:44 IST. Receipt/evidence: `docs/beta/weekly-schedule-update-20261009.json`, `docs/beta/weekly-schedule-verification-20261009.json`. Model protocol remains unchanged; phone QA pending.

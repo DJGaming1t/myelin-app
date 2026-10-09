@@ -1,0 +1,99 @@
+{
+  "candidate": "qwen35-enhanced-int8",
+  "sourceCommit": "addbe5616ea12ba1790c91fe24205f44046bce3c",
+  "cases": 24,
+  "turns": 29,
+  "expectedTurns": 29,
+  "valid": 5,
+  "transportFailures": 0,
+  "objectivePass": 1,
+  "semanticQualityCertified": false,
+  "manualReviewRequired": 15,
+  "categories": {
+    "task": {
+      "turns": 2,
+      "valid": 1,
+      "objectivePass": 0
+    },
+    "conversation": {
+      "turns": 8,
+      "valid": 2,
+      "objectivePass": 0
+    },
+    "clarification": {
+      "turns": 2,
+      "valid": 0,
+      "objectivePass": 0
+    },
+    "guard": {
+      "turns": 5,
+      "valid": 0,
+      "objectivePass": 0
+    },
+    "schedule": {
+      "turns": 1,
+      "valid": 0,
+      "objectivePass": 0
+    },
+    "reasoning": {
+      "turns": 6,
+      "valid": 1,
+      "objectivePass": 1
+    },
+    "tutoring": {
+      "turns": 5,
+      "valid": 1,
+      "objectivePass": 0
+    }
+  },
+  "p50LatencyMs": 18991.23320000001,
+  "maxLatencyMs": 57960.56450500009,
+  "provenance": {
+    "candidate": {
+      "id": "qwen35-enhanced-int8",
+      "repo": "litert-community/Qwen3.5-2B",
+      "revision": "4327b7425533c26da2aec1d7b915e9742eead2cb",
+      "file": "Qwen3.5-2B_int8.litertlm",
+      "sizeBytes": 2116592816,
+      "sha256": "8ae5027136e0b89039ed76eedfb61f0cf4b7277024d99bf765359264295b86b1",
+      "license": "Apache-2.0"
+    },
+    "sourceCommit": "addbe5616ea12ba1790c91fe24205f44046bce3c",
+    "suite": {
+      "version": 1,
+      "frozenBeforeInference": true,
+      "cases": 24,
+      "turns": 29,
+      "createdAt": "2026-10-09",
+      "purpose": "Synthetic development capability probe; not a production release gate or independent human benchmark. No training on these cases.",
+      "files": {
+        "eval-v1.jsonl": "f73bc7429591428a25b806c5c8ebce5e61aed821607675548829bf285f9ce9b7",
+        "system.txt": "226e6ad206430097208f2ef743dbacfc93830d1e1792b6ce3598432a89a0c031",
+        "candidates.json": "f6be681adec44c2e7d6f188e93e4299fe2e6db9c24e489f96b2e7c2fddb5ce99"
+      }
+    },
+    "runtime": {
+      "cli": "0.18.0",
+      "python": "3.12.15",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "cpuCount": 2,
+      "backend": "cpu",
+      "cpuThreads": 2,
+      "cache": "memory",
+      "maxContextTokens": 4096,
+      "maxOutputTokens": 384,
+      "temperature": 0,
+      "topK": 1,
+      "seed": 42,
+      "modelReference": "/home/runner/.cache/huggingface/hub/models--litert-community--Qwen3.5-2B/snapshots/4327b7425533c26da2aec1d7b915e9742eead2cb/Qwen3.5-2B_int8.litertlm",
+      "outputLimitParameter": "max_completion_tokens"
+    },
+    "downloadAndHashSeconds": 16.256672291,
+    "phoneTested": false,
+    "appProtocolTested": false,
+    "fineTuned": false,
+    "limit": "Isolated synthetic capability probe; not a MYELIN release certificate. Linux CPU is not Android performance."
+  },
+  "releaseApproved": false,
+  "note": "Objective checks include format/fields and simple answer patterns. Correct explanations, title meaning and false success claims require separate review. No app actions executed."
+}

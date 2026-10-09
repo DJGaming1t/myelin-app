@@ -2,6 +2,8 @@
 
 The user's priority is stronger understanding and conversation inside MYELIN. The shipping beta uses bounded rules; its trained 0.8B LoRA failed task-release gates. Do not confuse fast replies, more canned rules, passing parser tests or cloud infrastructure with model quality.
 
+Completed actual comparison: [Linux greedy results, raw answers and review](results/linux-greedy-20261009/README.md). Both models generated all 29 turns; Lite had 0 valid envelopes and Enhanced 5, with only 1 Enhanced turn passing all objective checks. Neither is approved. Next is an unseen diagnostic isolating sampling, prompt format and native runtime before app activation.
+
 This experiment compares actual post-trained Qwen3.5 0.8B and 2B text-only INT8 `.litertlm` bundles from `litert-community`, not the failed MYELIN adapter. No new training or checkpoint selection. Both exact revisions/file hashes are frozen in `candidates.json`. They are Apache-2.0 models; runtime/conversion and target-phone behavior still need independent verification. The published text bundles use non-thinking templates: no pretend delay or unsupported thinking toggle is added.
 
 The 24 authored synthetic cases contain 29 turns: shorthand/Hinglish, missing details, corrections, followups, calendar/time/arithmetic, tutoring and non-command/no-tool guards. `manifest.json` freezes cases, instructions and candidates before inference. Cases are isolated fresh chats; subsequent turns include the actual earlier generated answer. Expectations/rubrics are never sent to the model. These are development probes, not independent human validation. Do not train on them; later tuning requires another unseen evaluation version.

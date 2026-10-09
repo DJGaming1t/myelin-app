@@ -1,0 +1,32 @@
+E0000 00:00:1791545644.437879    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545648.660498    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545652.901029    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545657.133286    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545661.407508    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545665.649880    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545669.887454    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545674.090088    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545678.329669    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545686.447090    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545702.325419    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545718.213437    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545734.151061    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545750.055205    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+E0000 00:00:1791545765.944927    2114 engine.cc:1619] Failed to send message: INVALID_ARGUMENT: Logits dimensions must be [batch_size, 1, vocab_size].
+third_party/odml/litert_lm/runtime/components/logits_processor/repetition_penalty_processor.cc:147
+##[error]    raise RuntimeError('Incomplete native diagnostic; preserved raw evidence is not a quality score')
+RuntimeError: Incomplete native diagnostic; preserved raw evidence is not a quality score

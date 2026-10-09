@@ -1,5 +1,7 @@
 # Isolate actual native-model failures
 
+Completed: [raw outputs, runtime failures and qualitative review](results/20261009/README.md). Both SDK versions were exercised; no model is approved. The initial cache-sentinel setup failure and any outputs from that attempt are preserved separately.
+
 This small new diagnostic follows the completed v1 failure. Four unseen authored cases/five turns were frozen before inference. It is a development experiment, not a benchmark accuracy estimate or app release gate. Do not train on either version or select outputs after inspecting results.
 
 Both unchanged text bundles run on native SDK 0.15.0 and 0.18.0, ordinary Linux CPU/two threads, memory cache, 4096 context and 192 maximum output tokens. Each model/runtime runs every condition once, one seed, fresh cases and explicit actual followup history: 30 turns per job, 120 total.

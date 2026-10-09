@@ -1,0 +1,96 @@
+{
+  "sourceCommit": "bd18222852a27d895b7836c466176192687b548d",
+  "candidate": {
+    "id": "qwen35-lite-int8",
+    "repo": "litert-community/Qwen3.5-0.8B",
+    "revision": "10243c0a01d24e6b122a0e814f8c4d984c9c92d6",
+    "file": "Qwen3.5-0.8B_int8.litertlm",
+    "sizeBytes": 963184864,
+    "sha256": "64ed396fcdae75e5158945c77a08142b1322ce1bbf1be4d2198783119a1169e8",
+    "license": "Apache-2.0"
+  },
+  "suite": {
+    "version": 2,
+    "createdAt": "2026-10-09",
+    "frozenBeforeInference": true,
+    "cases": 4,
+    "turns": 5,
+    "turnsPerJob": 30,
+    "conditionsPerJob": 6,
+    "jobs": 4,
+    "totalResponses": 120,
+    "purpose": "New synthetic development diagnostic, authored after inspecting v1 results; not independent human validation or a release gate. All conditions declared before inference, one output per condition, no training or output selection.",
+    "files": {
+      "cases.jsonl": "2913156eb3b808dddf40807fef6ee5af1966a72199624effb1f52509b21b91b1",
+      "settings.json": "11902c2a9f016bd8075b5dd2ab3146ea5dd5c8a8078a623f76b607bf3bd6181c",
+      "plain.txt": "a7ea28f241394fa302f52b4931e54f4bbdbb4ce9f7d7bee5042585fe0b331ea4",
+      "short-json.txt": "3d64e44efd8a0ee512df3dc22aa979ec3c529d844a0a7b930d9967ffe43285d8",
+      "../system.txt": "226e6ad206430097208f2ef743dbacfc93830d1e1792b6ce3598432a89a0c031",
+      "../candidates.json": "f6be681adec44c2e7d6f188e93e4299fe2e6db9c24e489f96b2e7c2fddb5ce99"
+    }
+  },
+  "runtime": "0.15.0",
+  "python": "3.12.15",
+  "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "cpuCount": 2,
+  "settings": {
+    "runtimes": [
+      "0.15.0",
+      "0.18.0"
+    ],
+    "prompts": [
+      "plain",
+      "short-json",
+      "long-json"
+    ],
+    "profiles": [
+      {
+        "id": "greedy",
+        "sampler": {
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": 1,
+          "seed": 42
+        },
+        "penalty": null
+      },
+      {
+        "id": "sampled-with-presence",
+        "sampler": {
+          "temperature": 1,
+          "top_p": 1,
+          "top_k": 20,
+          "seed": 42
+        },
+        "penalty": {
+          "repetition_penalty": 1,
+          "presence_penalty": 2,
+          "frequency_penalty": 0,
+          "window_size": 0
+        }
+      }
+    ],
+    "engine": {
+      "backend": "cpu",
+      "threads": 2,
+      "maxContextTokens": 4096,
+      "cache": ":memory:",
+      "useRingbuffersLocalAttention": true
+    },
+    "maxOutputTokens": 192,
+    "repeats": 1,
+    "longPrompt": "../system.txt",
+    "note": "Generation profile changes sampling and presence penalty together; this does not isolate their individual effects. No min-p filter is configured. No grammar constraint, tool, LoRA, output repair or best-of selection. Model IDs/identities reuse unchanged ../candidates.json."
+  },
+  "downloadAndHashSeconds": 8.713628445000005,
+  "promptHashes": {
+    "plain": "a7ea28f241394fa302f52b4931e54f4bbdbb4ce9f7d7bee5042585fe0b331ea4",
+    "short-json": "3d64e44efd8a0ee512df3dc22aa979ec3c529d844a0a7b930d9967ffe43285d8",
+    "long-json": "226e6ad206430097208f2ef743dbacfc93830d1e1792b6ce3598432a89a0c031"
+  },
+  "modelReference": "/home/runner/.cache/huggingface/hub/models--litert-community--Qwen3.5-0.8B/snapshots/10243c0a01d24e6b122a0e814f8c4d984c9c92d6/Qwen3.5-0.8B_int8.litertlm",
+  "phoneTested": false,
+  "appProtocolTested": false,
+  "note": "Native Python SDK experiment, not the CLI server or Android app. Greedy/sample comparisons use fresh conversations and one seed; no general accuracy certificate.",
+  "engineLoadSeconds": 33.826282123000006
+}

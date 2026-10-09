@@ -1,0 +1,18 @@
+[
+  {
+    "job": 113798561957,
+    "generatedResponses": 0,
+    "errors": [
+      "    raise RuntimeError(",
+      "RuntimeError: Failed to create LiteRT-LM engine for /home/runner/.cache/huggingface/hub/models--litert-community--Qwen3.5-2B/snapshots/4327b7425533c26da2aec1d7b915e9742eead2cb/Qwen3.5-2B_int8.litertlm"
+    ]
+  },
+  {
+    "job": 113798562116,
+    "generatedResponses": 0,
+    "errors": [
+      "    raise RuntimeError(",
+      "RuntimeError: Failed to create LiteRT-LM engine for /home/runner/.cache/huggingface/hub/models--litert-community--Qwen3.5-0.8B/snapshots/10243c0a01d24e6b122a0e814f8c4d984c9c92d6/Qwen3.5-0.8B_int8.litertlm"
+    ]
+  }
+]

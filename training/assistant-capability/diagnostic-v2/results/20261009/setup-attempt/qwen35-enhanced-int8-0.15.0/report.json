@@ -1,0 +1,60 @@
+{
+  "sourceCommit": "bd18222852a27d895b7836c466176192687b548d",
+  "candidate": "qwen35-enhanced-int8",
+  "runtime": "0.15.0",
+  "turns": 30,
+  "expectedTurns": 30,
+  "groups": {
+    "greedy/plain": {
+      "turns": 5,
+      "valid": 5,
+      "objectivePass": 4,
+      "runtimeErrors": 0,
+      "outputAtLimit": 0,
+      "medianLatencyMs": 7504.1500449999885
+    },
+    "greedy/short-json": {
+      "turns": 5,
+      "valid": 0,
+      "objectivePass": 0,
+      "runtimeErrors": 0,
+      "outputAtLimit": 1,
+      "medianLatencyMs": 7802.646092999965
+    },
+    "greedy/long-json": {
+      "turns": 5,
+      "valid": 1,
+      "objectivePass": 0,
+      "runtimeErrors": 0,
+      "outputAtLimit": 2,
+      "medianLatencyMs": 30555.23535399999
+    },
+    "sampled-with-presence/plain": {
+      "turns": 5,
+      "valid": 0,
+      "objectivePass": 0,
+      "runtimeErrors": 5,
+      "outputAtLimit": 0,
+      "medianLatencyMs": null
+    },
+    "sampled-with-presence/short-json": {
+      "turns": 5,
+      "valid": 0,
+      "objectivePass": 0,
+      "runtimeErrors": 5,
+      "outputAtLimit": 0,
+      "medianLatencyMs": null
+    },
+    "sampled-with-presence/long-json": {
+      "turns": 5,
+      "valid": 0,
+      "objectivePass": 0,
+      "runtimeErrors": 5,
+      "outputAtLimit": 0,
+      "medianLatencyMs": null
+    }
+  },
+  "releaseApproved": false,
+  "semanticQualityCertified": false,
+  "note": "Plain answers use text/pattern checks; JSON modes use the exact existing envelope scorer. All content needs qualitative review. No grammar enforcement, generated retries or output repair. Generation profile jointly changes sampling/presence penalty; no individual causal claim."
+}

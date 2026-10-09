@@ -1,0 +1,222 @@
+{
+  "sourceCommit": "5321c63703155b05f0d1bcb9c7de735d431165d9",
+  "run": 37924411783,
+  "artifacts": [
+    {
+      "id": 11613586374,
+      "name": "native-diagnostic-qwen35-lite-int8-0.15.0",
+      "size_in_bytes": 7984,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613586374",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613586374/zip",
+      "expired": false,
+      "created_at": "2026-10-09T11:36:07Z",
+      "expires_at": "2027-01-07T11:32:57Z",
+      "updated_at": "2026-10-09T11:36:07Z",
+      "digest": "sha256:0a4b622bcddf46a0b70c01298601f84959a694625213372be825466e81c40343",
+      "workflow_run": {
+        "id": 37924411783,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "5321c63703155b05f0d1bcb9c7de735d431165d9"
+      }
+    },
+    {
+      "id": 11613259333,
+      "name": "native-diagnostic-qwen35-enhanced-int8-0.18.0",
+      "size_in_bytes": 10669,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613259333",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613259333/zip",
+      "expired": false,
+      "created_at": "2026-10-09T11:41:20Z",
+      "expires_at": "2027-01-07T11:32:57Z",
+      "updated_at": "2026-10-09T11:41:20Z",
+      "digest": "sha256:eac18da9a6f48056af769ce48cac8e360e226ef62cc4857b2676b614cd8b99a1",
+      "workflow_run": {
+        "id": 37924411783,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "5321c63703155b05f0d1bcb9c7de735d431165d9"
+      }
+    },
+    {
+      "id": 11613033666,
+      "name": "native-diagnostic-qwen35-lite-int8-0.18.0",
+      "size_in_bytes": 9561,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613033666",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613033666/zip",
+      "expired": false,
+      "created_at": "2026-10-09T11:34:48Z",
+      "expires_at": "2027-01-07T11:32:57Z",
+      "updated_at": "2026-10-09T11:34:48Z",
+      "digest": "sha256:84307d66cda9d02a75e4f4b36a890edcefa275b3992e28cd36548750cb345194",
+      "workflow_run": {
+        "id": 37924411783,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "5321c63703155b05f0d1bcb9c7de735d431165d9"
+      }
+    },
+    {
+      "id": 11612948929,
+      "name": "native-diagnostic-qwen35-enhanced-int8-0.15.0",
+      "size_in_bytes": 8441,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612948929",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612948929/zip",
+      "expired": false,
+      "created_at": "2026-10-09T11:35:42Z",
+      "expires_at": "2027-01-07T11:32:57Z",
+      "updated_at": "2026-10-09T11:35:42Z",
+      "digest": "sha256:b02b37a2a5ccc91e162f94d9c75521e554adc4ed015d70b7420e4bd60d63b084",
+      "workflow_run": {
+        "id": 37924411783,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "5321c63703155b05f0d1bcb9c7de735d431165d9"
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "id": 113799799376,
+      "candidate": "qwen35-enhanced-int8",
+      "runtime": "0.18.0",
+      "conclusion": "success"
+    },
+    {
+      "id": 113799799571,
+      "candidate": "qwen35-lite-int8",
+      "runtime": "0.15.0",
+      "conclusion": "failure"
+    },
+    {
+      "id": 113799799586,
+      "candidate": "qwen35-lite-int8",
+      "runtime": "0.18.0",
+      "conclusion": "success"
+    },
+    {
+      "id": 113799799718,
+      "candidate": "qwen35-enhanced-int8",
+      "runtime": "0.15.0",
+      "conclusion": "failure"
+    }
+  ],
+  "records": 120,
+  "generatedResponses": 90,
+  "nativeErrors": 30,
+  "phoneTested": false,
+  "appActivated": false,
+  "releaseApproved": false,
+  "extraction": "Exact PREDICTION JSON records and evidence blocks retrieved from completed GitHub job logs. Python traceback lines interleaved with some metadata blocks; the original mixed extract is preserved alongside parsed metadata. Only those non-JSON log lines were separated; no generated model text or scores were repaired. Artifact archives contain original files and package freeze; their published archive digests identify archives, not individually downloaded-and-verified file bytes.",
+  "setupAttempt": {
+    "sourceCommit": "bd18222852a27d895b7836c466176192687b548d",
+    "run": 37924027041,
+    "artifacts": [
+      {
+        "id": 11613277169,
+        "name": "native-diagnostic-qwen35-lite-int8-0.18.0",
+        "size_in_bytes": 4304,
+        "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613277169",
+        "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11613277169/zip",
+        "expired": false,
+        "created_at": "2026-10-09T11:29:53Z",
+        "expires_at": "2027-01-07T11:29:19Z",
+        "updated_at": "2026-10-09T11:29:53Z",
+        "digest": "sha256:8a2fb4dcd7d0d6fbf5bcf25d465d37ddb138db00fa7056b764a172b74b63ff12",
+        "workflow_run": {
+          "id": 37924027041,
+          "repository_id": 1397490624,
+          "head_repository_id": 1397490624,
+          "head_branch": "codex/exam-autopilot-capacity-v1",
+          "head_sha": "bd18222852a27d895b7836c466176192687b548d"
+        }
+      },
+      {
+        "id": 11612948286,
+        "name": "native-diagnostic-qwen35-lite-int8-0.15.0",
+        "size_in_bytes": 7786,
+        "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612948286",
+        "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612948286/zip",
+        "expired": false,
+        "created_at": "2026-10-09T11:32:32Z",
+        "expires_at": "2027-01-07T11:29:19Z",
+        "updated_at": "2026-10-09T11:32:32Z",
+        "digest": "sha256:f87106dc79a6727ea4d6f02814b50f46f673713ae5b96786fa79f81f15e31a6c",
+        "workflow_run": {
+          "id": 37924027041,
+          "repository_id": 1397490624,
+          "head_repository_id": 1397490624,
+          "head_branch": "codex/exam-autopilot-capacity-v1",
+          "head_sha": "bd18222852a27d895b7836c466176192687b548d"
+        }
+      },
+      {
+        "id": 11612923873,
+        "name": "native-diagnostic-qwen35-enhanced-int8-0.15.0",
+        "size_in_bytes": 8542,
+        "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612923873",
+        "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612923873/zip",
+        "expired": false,
+        "created_at": "2026-10-09T11:36:07Z",
+        "expires_at": "2027-01-07T11:29:19Z",
+        "updated_at": "2026-10-09T11:36:07Z",
+        "digest": "sha256:137bfd6e695bdd4fd49a55fefc02bb9a2ceeef2096ce4c8dfb02bc050d76c85a",
+        "workflow_run": {
+          "id": 37924027041,
+          "repository_id": 1397490624,
+          "head_repository_id": 1397490624,
+          "head_branch": "codex/exam-autopilot-capacity-v1",
+          "head_sha": "bd18222852a27d895b7836c466176192687b548d"
+        }
+      },
+      {
+        "id": 11612912850,
+        "name": "native-diagnostic-qwen35-enhanced-int8-0.18.0",
+        "size_in_bytes": 4305,
+        "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612912850",
+        "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11612912850/zip",
+        "expired": false,
+        "created_at": "2026-10-09T11:30:03Z",
+        "expires_at": "2027-01-07T11:29:19Z",
+        "updated_at": "2026-10-09T11:30:03Z",
+        "digest": "sha256:f2f75bcedd955ac93f46f36d3d3f9fed0b0ad63c9b15738eed636e7ed73e68d6",
+        "workflow_run": {
+          "id": 37924027041,
+          "repository_id": 1397490624,
+          "head_repository_id": 1397490624,
+          "head_branch": "codex/exam-autopilot-capacity-v1",
+          "head_sha": "bd18222852a27d895b7836c466176192687b548d"
+        }
+      }
+    ],
+    "records": 60,
+    "generatedResponses": 30,
+    "nativeErrors": 30,
+    "excludedFromComparison": true,
+    "reason": "The initial cache sentinel :memory: was invalid. Runtime 0.18 failed before any generation; 0.15 allowed it and produced 30 greedy answers plus 30 native errors. Preserve those records separately; the corrected run was required for intended :memory configuration and was not chosen based on outputs."
+  },
+  "localChecks": {
+    "baselineScorerGroups": 4,
+    "diagnosticAdapterGroups": 3,
+    "passed": true,
+    "reproducedReports": 4,
+    "reproducedCorrectedRecords": 120,
+    "separatelyCheckedSetupRecords": 60,
+    "qualitativeReviewRows": 120,
+    "pythonCompilationPassed": true,
+    "command": "python scripts/verify-assistant-diagnostic-results.py",
+    "noAppCodeChanged": true,
+    "noOtaPublished": true
+  },
+  "wrapperSourceAudit": {
+    "repository": "hung-yueh/react-native-litert-lm",
+    "commit": "568552814d9e512a09763b547261918dccd5224b",
+    "specBlob": "868d324798d6028fdf57002d5fe00b48bed5b0d0",
+    "androidBlob": "b077466d5973117955e5371df524b2fc2c68b716",
+    "observation": "0.7.0 source exposes ExecuteOptions.presencePenalty and Android execute() maps options into RepetitionPenaltyConfig before sendMessage/sendMessageAsync; initialMessages seeds actual prior history. This is source inspection, not installed APK or on-device capability proof."
+  }
+}

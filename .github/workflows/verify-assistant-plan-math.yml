@@ -1,0 +1,38 @@
+name: Verify assistant time checks (no publishing)
+
+on:
+  push:
+    branches: [codex/exam-autopilot-capacity-v1]
+    paths:
+      - 'src/features/assistant/assistant-plan-math.ts'
+      - 'app/(app)/settings/ai-assistant.tsx'
+      - 'scripts/verify-assistant-planning-review.ts'
+      - '.github/workflows/verify-assistant-plan-math.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assistant-plan-math-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Typecheck full MYELIN app
+        run: npx tsc --noEmit
+      - name: Check planning and exact time answers in India timezone
+        run: TZ=Asia/Kolkata npx tsx scripts/verify-assistant-planning-review.ts
+      - name: Check planning and exact time answers in US timezone
+        run: TZ=America/Los_Angeles npx tsx scripts/verify-assistant-planning-review.ts
+      - name: Check assistant screen conversation integration
+        run: npx tsx scripts/verify-assistant-conversation.ts

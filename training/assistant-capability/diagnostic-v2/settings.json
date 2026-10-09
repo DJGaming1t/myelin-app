@@ -5,7 +5,7 @@
     {"id":"greedy","sampler":{"temperature":0.0,"top_p":1.0,"top_k":1,"seed":42},"penalty":null},
     {"id":"sampled-with-presence","sampler":{"temperature":1.0,"top_p":1.0,"top_k":20,"seed":42},"penalty":{"repetition_penalty":1.0,"presence_penalty":2.0,"frequency_penalty":0.0,"window_size":0}}
   ],
-  "engine": {"backend":"cpu","threads":2,"maxContextTokens":4096,"cache":":memory:","useRingbuffersLocalAttention":true},
+  "engine": {"backend":"cpu","threads":2,"maxContextTokens":4096,"cache":":memory","useRingbuffersLocalAttention":true},
   "maxOutputTokens":192,
   "repeats":1,
   "longPrompt":"../system.txt",

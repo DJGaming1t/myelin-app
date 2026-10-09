@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: myelin-native-diagnostic-${{ github.ref }}
+  group: myelin-native-diagnostic-valid-cache-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

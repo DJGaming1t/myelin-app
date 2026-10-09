@@ -18,6 +18,8 @@ def load_diagnostic():
             raise ValueError('Frozen diagnostic input changed: '+name)
     cases = [json.loads(line) for line in (ROOT/'cases.jsonl').read_text().splitlines()]
     settings = json.loads((ROOT/'settings.json').read_text())
+    if settings['engine']['cache'] not in [':memory', ':nocache']:
+        raise ValueError('Unsupported native cache sentinel')
     if len(cases) != 4 or len({case['id'] for case in cases}) != 4 or sum(len(case['turns']) for case in cases) != 5:
         raise ValueError('Incomplete diagnostic cases')
     prompts = {'plain': (ROOT/'plain.txt').read_text(),

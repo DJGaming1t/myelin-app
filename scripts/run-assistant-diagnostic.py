@@ -67,9 +67,11 @@ def main():
                 'note':'Native Python SDK experiment, not the CLI server or Android app. Greedy/sample comparisons use fresh conversations and one seed; no general accuracy certificate.'}
     save(args.output/'provenance.json',provenance)
     predictions=[]; model_started=time.perf_counter()
-    with litert_lm.Engine(str(path),backend=litert_lm.Backend.CPU(thread_count=2),
-                         max_num_tokens=4096,cache_dir=':memory:',vision_backend=None,audio_backend=None,
-                         enable_benchmark=True,use_ringbuffers_local_attention=True) as model:
+    engine_settings=settings['engine']
+    with litert_lm.Engine(str(path),backend=litert_lm.Backend.CPU(thread_count=engine_settings['threads']),
+                         max_num_tokens=engine_settings['maxContextTokens'],cache_dir=engine_settings['cache'],
+                         vision_backend=None,audio_backend=None,enable_benchmark=True,
+                         use_ringbuffers_local_attention=engine_settings['useRingbuffersLocalAttention']) as model:
         provenance['engineLoadSeconds']=time.perf_counter()-model_started
         save(args.output/'provenance.json',provenance)
         for profile in settings['profiles']:

@@ -138,6 +138,49 @@ export function reviewAssistantPlanning(workspace: WorkspaceState, now = Date.no
     completedTasksExcluded: workspace.tasks.length - open.length };
 }
 
+// A specific question about a SAVED task can use the same conservative bound
+// as Review my plan. This is not a general chatbot, schedule optimizer, or
+// proof that all pending tasks can be completed together.
+export function tryAssistantTaskDeadlineReply(request: string, workspace: WorkspaceState, now = Date.now()): string | null {
+  if (request.length > 300) return null;
+  const clean = request.trim().replace(/[?!]+$/, '').replace(/\s+/g, ' ');
+  const match = /^(?:can i finish|can i complete|will i finish) (?:my )?(.{1,160}?) (?:before|by) (?:its|the) (?:deadline|due date)$/i.exec(clean);
+  if (!match) return null;
+
+  const name = match[1]!.trim().replace(/^["“”']|["“”']$/g, '').trim();
+  const normalized = (value: string) => value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const matches = workspace.tasks.filter(task => normalized(task.title) === normalized(name));
+  const endNote = 'This is a read-only check of recorded MYELIN data. Nothing was changed.';
+  const shown = label(name);
+  if (!shown) return null;
+  if (!matches.length) return `I couldn't find a recorded task named “${shown}”. Use its exact title from Today or your tasks. ${endNote}`;
+  if (matches.length > 1) return `More than one task is named “${shown}”. I cannot safely choose one. Give the tasks distinct titles first. ${endNote}`;
+
+  const task = matches[0]!;
+  const taskName = label(task.title);
+  if (task.status === 'completed') return `“${taskName}” is already marked completed in MYELIN. ${endNote}`;
+  if (!task.dueAt) return `“${taskName}” has no recorded deadline. Set one to check whether its work could fit before it. ${endNote}`;
+  if (task.dueAt <= now) return `“${taskName}” is still open and its recorded deadline (${localDayKey(task.dueAt)}) has passed. I cannot count time after that deadline as available. ${endNote}`;
+  if (task.estimatedMinutes <= 0) return `“${taskName}” has no estimated duration. Add an estimate before I can compare the remaining work against recorded free time. ${endNote}`;
+  const remaining = taskRemainingMinutes(task);
+  if (remaining <= 0) return `“${taskName}” has no estimated minutes remaining but is still open. Check its completion status or estimate. ${endNote}`;
+
+  // Keep checks bounded to the same seven-local-date horizon as Review my plan.
+  const horizonEnd = addLocalDays(startOfLocalDay(now), 7);
+  if (task.dueAt > horizonEnd) return `“${taskName}” has ${remaining} estimated minutes remaining, but its deadline is beyond the next seven local dates. Review the task closer to its deadline; I cannot judge its full available time from this short check. ${endNote}`;
+
+  const upperBound = Math.floor(capacityBeforeDeadline(workspace, now, task.postponedUntil, task.dueAt));
+  const shortage = Math.max(0, remaining - upperBound);
+  const verdict = shortage > 0
+    ? `It cannot fit within the recorded upper bound: at least ${shortage} min short even before other tasks or new breaks.`
+    : `The individual upper bound is enough, so it might fit, but this does NOT guarantee a workable plan: other tasks, breaks and unrecorded commitments can use that time.`;
+  const related = reviewAssistantPlanning(workspace, now).issues.filter(issue =>
+    issue.taskIds.includes(task.id) &&
+    ['after-deadline', 'commitment-overlap', 'sleep-overlap', 'task-overlap', 'short-slot'].includes(issue.code));
+  const warnings = related.length ? `\n\nOther recorded conflicts: ${related.slice(0, 2).map(issue => issue.message).join(' ')}${related.length > 2 ? ` (${related.length - 2} additional checks in Review my plan.)` : ''}` : '';
+  return `“${taskName}” has ${remaining} estimated min left before its recorded deadline (${localDayKey(task.dueAt)}). MYELIN estimates at most ${upperBound} min of individually usable time before then, after fixed commitments, sleep and your remaining daily study budget. ${verdict}${warnings}\n\n${endNote}`;
+}
+
 export function planningReviewReply(review: AssistantPlanningReview): string {
   const intro = `I checked your recorded tasks and schedule for today through ${review.throughDate}.`;
   const visible = review.issues.slice(0, 6);

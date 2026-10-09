@@ -57,9 +57,27 @@ const early = createStudyTask({ title: 'Early study', estimatedMinutes: 30, now 
 scheduleTask(early, at(addLocalDays(day, 1), 7), at(addLocalDays(day, 1), 7, 30), now); midnight.tasks.push(early);
 assert.equal(reviewAssistantPlanning(midnight, now).issues.find(i => i.code === 'commitment-overlap')?.minutes, 30, 'Overnight recurrence carries to Saturday');
 const bounds = cloneWorkspace(ws); bounds.tasks[0]!.notes = 'PRIVATE_NOTE';
+const recorded = cloneWorkspace(ws);
+recorded.history.push({ id: 'history', topicId: 'respiration', at: at(day, 10), kind: 'study', minutes: 30,
+  grade: 2, effort: 3, prompt: 'PRIVATE_RESPONSE_PROMPT', response: 'PRIVATE_RESPONSE', confidence: 'partial' });
+assert.equal(reviewAssistantPlanning(recorded, now).issues.find(i => i.code === 'daily-overload')?.minutes, 60,
+  'Thirty minutes already studied must reduce the remaining daily budget');
+bounds.topics.push({ id: 'respiration', name: 'Respiration', subject: 'Biology', createdAt: now, status: 'review', priority: 2,
+  estimate: 30, notes: 'PRIVATE_TOPIC_NOTE', dueAt: now, intervalDays: 1, lastGrade: 1, lastReviewed: now - 86400000, snoozeUntil: 0, cards: [] });
+const mistake = { id: 'due-mistake', topicId: 'respiration', cardId: null, prompt: 'PRIVATE_MISTAKE_PROMPT',
+  detail: 'PRIVATE_MISTAKE_DETAIL', correction: 'PRIVATE_CORRECTION', reason: 'concept' as const,
+  createdAt: now - 86400000, dueAt: now, resolvedAt: 0, wins: 0, lastWinDay: '', intervalDays: 1 };
+bounds.mistakes.push(mistake, { ...mistake, id: 'resolved', resolvedAt: now - 1000 },
+  { ...mistake, id: 'future', dueAt: now + 86400000 });
+const mistakeBefore = cloneWorkspace(bounds);
+const mistakeReview = reviewAssistantPlanning(bounds, now);
+assert.equal(mistakeReview.dueMistakes, 1, 'Resolved and future mistakes must not appear as due');
+assert.deepEqual(mistakeReview.dueMistakeTopics, ['Respiration']);
+assert.match(tryAssistantPlanningReply('Review my plan', bounds, now)!, /1 saved mistake is due for review \(Respiration\)/);
+assert.deepEqual(bounds, mistakeBefore, 'Review must not resolve or postpone saved mistakes');
 const context = JSON.parse(planningModelContext(reviewAssistantPlanning(bounds, now)));
 assert(context.checks.length <= 8);
-assert(!JSON.stringify(context).includes('PRIVATE_NOTE'));
+assert(!JSON.stringify(context).includes('PRIVATE_'), 'Full notes, mistakes and student answers stay outside model context');
 const empty = createEmptyWorkspace(now);
 assert.match(tryAssistantPlanningReply('Check my schedule', empty, now)!, /Unrecorded commitments/);
 const screen = fs.readFileSync('app/(app)/settings/ai-assistant.tsx', 'utf8');

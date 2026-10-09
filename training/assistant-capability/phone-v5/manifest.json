@@ -1,0 +1,12 @@
+{
+  "version": 5,
+  "freshCases": 6,
+  "freshTurns": 8,
+  "regressionTurns": 14,
+  "sha256": {
+    "cases.jsonl": "5426f716e2f67dca046b8e10ce942c4f263e492e631ce82fd3d692fd1ae3decc",
+    "settings.json": "182731a42f4c09ee59d7831b79bc499055bd65135b1c7eeef6b40a7247b7df63",
+    "system.txt": "17f9d7cf8271888865c849dd285cad6b6d0ce33bd193c32c14179c3b42b398d3"
+  },
+  "policy": "Freeze before generation; observed v4 cases are regression only; profile settings are compared together, not causal isolates; no training."
+}

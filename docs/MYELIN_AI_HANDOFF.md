@@ -1,5 +1,15 @@
 # MYELIN AI Handoff
 
+## Stronger hosted model: auth and atomic quota adapters — 2026-10-09 IST
+
+The user reports the AI is weak and instant; current beta rules are not running a trained Qwen model. This chunk advances the existing zero-spending hosted-Qwen path instead of adding canned replies or a fake thinking delay. It does not activate model inference in the app.
+
+- Added Firebase REST `accounts:lookup` verification of each complete token at a fixed HTTPS origin, no redirects, bounded fetch/body and no identity caching. Local claim decoding cannot authorize access without Google's successful validation. Expected project/issuer/UID/timestamps and unsupported tenant checks apply; current account UID must match, original `auth_time` must be at least `validSince`, and disabled/deleted/invalid credentials reject. Missing revocation metadata and Google/configuration errors block generation. Current and token verified email must agree; anonymous identity is rejected by the service. No Admin private key or APK credential added.
+- Added D1 migration plus atomic transactional conditional inserts enforcing user/shared minute/day limits and active leases. Production uses database UTC time at transaction execution. User defaults 2/minute and 8/day; shared defaults 4/minute and 24/day, two active shared requests. These are conservative application limits, not a neurons/day capacity claim. Attempts persist only hashed UID/request ID, random lease ID and times; seven-day deduplication, 90-second crash leases and fenced release. Admitted errors/cancellation remain counted. Shared cooldown is monotonic; missing/broken D1 or ambiguous responses block generation. No in-memory fallback or runtime cap override.
+- Default Worker constructs real adapters from required AI/D1/Firebase server bindings. AI alone and activation-looking flags cannot bypass guards. No deployment config, Cloudflare identity, actual database, live model call, app cloud connection or new OTA in this backend-only chunk.
+- Local checks passed: 25 Worker/auth/quota tests, including production SQL against actual SQLite and 12 independent concurrent connections for shared limits/deduplication/last daily slots; four simulated Worker→cloud-client→strict Mini/grounding preview variants; available TypeScript. Google token validation/revocation responses and AI are simulated; SQLite concurrency is not actual D1/workerd proof. Full CI evidence is pending this commit.
+- Exact next chunk: bundle and test the actual Worker/D1 runtime and Free CPU constraints. Then obtain a Free deployment identity, verify live Firebase revocation and provider JSON/errors/cost/quality, deploy with receipt, add validated conversation context/replies and connect to app consent/routing. Zero spending remains required. Existing installed Android beta stays on the verified weekly-schedule OTA; physical device QA and Qwen phone release gates remain pending.
+
 ## Screenshot fix: weekly school hours — 2026-10-09 IST
 
 User's Android screenshot confirms the conversational beta arrived, but `I have school on everyday except sat and sun , from 5:30am to 2pm` still falls through to model unavailability. Existing `Commitment` recurrence and Day map already support fixed-time blocks; the assistant lacked a connection.
@@ -39,7 +49,7 @@ The user says they cannot spend money. This supersedes the Firebase/Gemini setup
 
 Current candidate: Workers Free + native Workers AI hosted `@cf/qwen/qwen3-30b-a3b-fp8` + D1 Free atomic quotas. Official research and bounded implementation sequence: `docs/MYELIN_FREE_CLOUD_PLAN.md`. Free AI allowance is account-wide 10,000 neurons/day and stops at exhaustion; no unlimited capacity claim. No Cloudflare account access, endpoint, live inference evidence or app update exists. Hosting/model eligibility and real quality still need verification.
 
-The isolated free-host decision endpoint/provider foundation is now implemented; see the chunk below. Next sensible chunk: supported revocation-aware Firebase authentication and atomic D1 quota integration, followed by real Worker runtime verification. Code can proceed without another Firebase billing question. Owner setup is still needed to deploy the eventual free service. Never switch to paid hosting/credits or activate the existing Gemini workflow under this budget. Keep app cloud disabled and failed Qwen phone gates visible.
+The isolated free-host endpoint/provider foundation and authentication/quota adapters are now implemented; see the newest chunk above. Next sensible chunk: real Worker/D1 runtime and CPU verification. Code can proceed without another Firebase billing question. Owner setup is still needed to deploy the eventual free service. Never switch to paid hosting/credits or activate the existing Gemini workflow under this budget. Keep app cloud disabled and failed Qwen phone gates visible.
 
 ### Hosted Qwen endpoint foundation — 2026-10-09 IST
 

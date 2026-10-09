@@ -27,7 +27,7 @@ export async function generateDecision({ authorization, body, signal }, deps = {
       typeof deps.quota?.cooldown !== 'function' || typeof deps.ai?.run !== 'function')
     throw new CloudError(503, 'cloud-not-configured');
   let identity;
-  try { identity = await bounded(signal, () => deps.verifyToken(authorization.slice(7))); }
+  try { identity = await bounded(signal, () => deps.verifyToken(authorization.slice(7), signal)); }
   catch (error) {
     checkAbort(signal);
     if (invalidTokenCodes.has(error?.code)) throw new CloudError(401, 'sign-in-required');

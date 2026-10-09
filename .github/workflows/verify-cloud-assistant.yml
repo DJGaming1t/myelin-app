@@ -49,7 +49,7 @@ jobs:
           npx tsx scripts/export-assistant-cloud-protocol.ts --check
           npx tsx scripts/verify-cloud-assistant.ts
           node --test scripts/test-cloud-deployment.cjs
-          node --test workers/assistant/test/assistant.test.mjs
+          node --test workers/assistant/test/*.test.mjs
           npx tsx scripts/verify-worker-assistant.ts
           npx tsx scripts/verify-cloud-smoke.ts
       - name: Real server entry loads without credentials or provider calls

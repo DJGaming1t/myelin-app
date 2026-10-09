@@ -1,5 +1,7 @@
 import { bounded, checkAbort, CloudError } from './errors.mjs';
 import { generateDecision } from './decision-service.mjs';
+import { createFirebaseVerifier } from './firebase-auth.mjs';
+import { createD1Quota } from './d1-quota.mjs';
 
 const encoder = new TextEncoder();
 
@@ -65,10 +67,19 @@ export function createHandler(deps = {}, { releaseCommit = '', timeoutMs = 25_00
   };
 }
 
-// Deliberately inactive until real revocation-aware auth and atomic D1 quotas exist.
-// Request bodies cannot supply dependencies. AI alone never permits generation.
+// Real bindings only. No deployment config exists yet; app cloud stays disabled.
+// Request bodies and activation flags cannot inject a verifier or quota fallback.
+export function createWorkerDependencies(env) {
+  try {
+    if (typeof env?.AI?.run !== 'function') return {};
+    return { ai: env.AI,
+      verifyToken: createFirebaseVerifier({ projectId: env.FIREBASE_PROJECT_ID, apiKey: env.FIREBASE_WEB_API_KEY }),
+      quota: createD1Quota(env.ASSISTANT_DB) };
+  } catch { return {}; }
+}
+
 export default {
   fetch(request, env, context) {
-    return createHandler({ ai: env?.AI }, { releaseCommit: env?.MYELIN_RELEASE_COMMIT })(request, context);
+    return createHandler(createWorkerDependencies(env), { releaseCommit: env?.MYELIN_RELEASE_COMMIT })(request, context);
   },
 };

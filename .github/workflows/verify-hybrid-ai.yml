@@ -8,6 +8,8 @@ on:
     paths:
       - .github/workflows/verify-hybrid-ai.yml
       - src/features/assistant/hybrid-assistant-router.ts
+      - src/features/assistant/assistant-planning-review.ts
+      - scripts/verify-assistant-planning-review.ts
       - src/features/assistant/cloud-assistant-adapter.ts
       - functions/**
       - scripts/export-assistant-cloud-protocol.ts
@@ -47,6 +49,8 @@ jobs:
         run: npx tsc --noEmit
       - name: Hybrid consent, cancellation and safe previews
         run: |
+          TZ=Asia/Kolkata npx tsx scripts/verify-assistant-planning-review.ts
+          TZ=America/Los_Angeles npx tsx scripts/verify-assistant-planning-review.ts
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts
           npx tsx scripts/verify-assistant-grounding.ts

@@ -51,6 +51,8 @@ jobs:
           NODE
       - name: Hybrid, local-only schedule protocol and app safety regressions
         run: |
+          TZ=Asia/Kolkata npx tsx scripts/verify-assistant-planning-review.ts
+          TZ=America/Los_Angeles npx tsx scripts/verify-assistant-planning-review.ts
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts
           npx tsx scripts/verify-assistant-grounding.ts
@@ -99,7 +101,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN weekly school hours and planner integration beta $GITHUB_SHA"
+          --message "MYELIN recorded plan review and basic planning mistake checks beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

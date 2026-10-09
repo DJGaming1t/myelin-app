@@ -28,12 +28,13 @@ import { localDateKeyFromTimestamp, tryBuildMyelinMiniFastDecision } from '@/src
 import { answerAssistantClarification, beginAssistantClarification, type AssistantClarificationAnswers, type PendingAssistantClarification } from '@/src/features/assistant/assistant-clarification';
 import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/features/assistant/assistant-request-grounding';
 import { assistantChatReducer, assistantOfflineStatus, createAssistantChat, tryAssistantChatReply, type AssistantChatScope } from '@/src/features/assistant/assistant-conversation';
+import { tryAssistantPlanningReply } from '@/src/features/assistant/assistant-planning-review';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const EXAMPLES = [
   'I have to complete bio practical nb by tomorrow.',
   'What can you do?',
-  'How do I use Focus?',
+  'Review my plan',
 ] as const;
 
 function TaskPreviewDetails({ prepared, index }: { prepared: PreparedAssistantActionBatch; index: number }) {
@@ -383,7 +384,7 @@ export default function LocalAiAssistantScreen() {
       }
       clarificationAnswers = resolved.answers;
     } else {
-      const reply = tryAssistantChatReply(text, offlineStatus);
+      const reply = tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantChatReply(text, offlineStatus);
       if (reply) { append(scope, 'assistant', reply); return; }
     }
     const controller = new AbortController(); controllerRef.current = controller; setBusy('prepare');
@@ -453,7 +454,7 @@ export default function LocalAiAssistantScreen() {
         <ScreenHeader title="MYELIN assistant" variant="compact" onBack={() => router.back()} actionLabel="New chat" onAction={newChat} />
         <View style={styles.chatStatus}>
           <View style={styles.statusCopy}>
-            <Text style={styles.chatStatusTitle}>Tasks and weekly routines</Text>
+            <Text style={styles.chatStatusTitle}>Tasks, routines and plan checks</Text>
             <Text style={styles.statusText}>{available ? 'Offline actions available · General chat is not connected' : 'Basic task help · Qwen and general chat are not connected'}</Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Manage AI models" onPress={() => router.push('/(app)/settings/ai-models')} style={styles.modelLink}>
@@ -465,7 +466,7 @@ export default function LocalAiAssistantScreen() {
           {!hasMessages ? (
             <View style={styles.chatWelcome}>
               <Text style={styles.welcomeTitle}>What do you need to get done?</Text>
-              <Text style={styles.welcomeText}>Tell me about work to finish or your weekly school, tuition or coaching hours. I’ll ask for details and show a preview.</Text>
+              <Text style={styles.welcomeText}>Tell me about work to finish or your weekly routine. Ask “Review my plan” to check recorded deadlines, overlaps and workload. I’ll show a preview before changing anything.</Text>
               <View style={styles.examples}>
                 {EXAMPLES.map(example => <Pressable key={example} accessibilityRole="button" onPress={() => setRequest(example)} style={({ pressed }) => [styles.example, pressed && styles.pressed]}>
                   <Text style={styles.exampleText}>{example}</Text><Text style={styles.arrow}>↗</Text>

@@ -1,0 +1,143 @@
+import type { WorkspaceState } from '@/src/data/schema';
+import { sleepWindows } from '@/src/features/adaptive/sleep-engine';
+import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, startOfLocalDay } from '@/src/features/planning/day-engine';
+import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
+
+export type PlanningIssueCode = 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
+export type PlanningIssue = {
+  code: PlanningIssueCode;
+  taskIds: string[];
+  day: string;
+  minutes?: number;
+  message: string;
+};
+export type AssistantPlanningReview = {
+  revision: number;
+  reviewedAt: number;
+  throughDate: string;
+  issues: PlanningIssue[];
+  openTasks: number;
+  unknownEstimates: number;
+  dueMistakes: number;
+  dueMistakeTopics: string[];
+  completedTasksExcluded: number;
+};
+
+const minutes = (start: number, end: number) => Math.max(0, Math.round((end - start) / 60000));
+const overlapMinutes = (a: number, b: number, c: number, d: number) => minutes(Math.max(a, c), Math.min(b, d));
+const label = (text: string) => text.replace(/[\r\n\t]/g, ' ').trim().slice(0, 100);
+
+// Uses the same local-calendar, recurrence, skip-date and sleep calculations as Day map.
+// This is a read-only review. Unknown estimates are never replaced with guesses.
+export function reviewAssistantPlanning(workspace: WorkspaceState, now = Date.now()): AssistantPlanningReview {
+  const today = startOfLocalDay(now);
+  const end = addLocalDays(today, 7);
+  const open = workspace.tasks.filter(task => task.status === 'open');
+  const issues: PlanningIssue[] = [];
+  let unknownEstimates = 0;
+  for (const task of open) {
+    const scheduled = task.planState === 'scheduled' && task.scheduledStart > 0 && task.scheduledEnd > task.scheduledStart;
+    const inHorizon = task.planState === 'today' || (task.dueAt > 0 && task.dueAt < end) ||
+      (scheduled && task.scheduledStart < end && task.scheduledEnd > today);
+    if (!inHorizon) continue;
+    const name = label(task.title);
+    const day = localDayKey(scheduled ? task.scheduledStart : task.dueAt || now);
+    if (task.estimatedMinutes <= 0) {
+      unknownEstimates++;
+      issues.push({ code: 'missing-estimate', taskIds: [task.id], day,
+        message: `“${name}” needs a duration estimate before I can judge whether all the work fits.` });
+    }
+    if (task.dueAt > 0 && task.dueAt < now) issues.push({ code: 'overdue', taskIds: [task.id], day: localDayKey(task.dueAt),
+      message: `“${name}” is still open after its recorded deadline (${localDayKey(task.dueAt)}). Check what remains.` });
+    if (!scheduled) continue;
+    if (task.scheduledEnd <= now) issues.push({ code: 'past-slot', taskIds: [task.id], day,
+      message: `The planned time for “${name}” has passed, but it is still open. Check completion or choose a new time.` });
+    if (task.dueAt > 0 && task.scheduledEnd > task.dueAt) {
+      const late = minutes(task.dueAt, task.scheduledEnd);
+      issues.push({ code: 'after-deadline', taskIds: [task.id], day, minutes: late,
+        message: `“${name}” finishes ${late} min after its recorded deadline. Move the work before the deadline or review the deadline.` });
+    }
+    const shortage = taskRemainingMinutes(task) - minutes(task.scheduledStart, task.scheduledEnd);
+    if (shortage > 0) issues.push({ code: 'short-slot', taskIds: [task.id], day, minutes: shortage,
+      message: `“${name}” has ${shortage} min more estimated work than its scheduled block. You may need another block.` });
+  }
+  for (let offset = 0; offset < 7; offset++) {
+    const day = addLocalDays(today, offset);
+    const next = addLocalDays(day, 1);
+    const from = offset === 0 ? now : day;
+    const dayKey = localDayKey(day);
+    const scheduled = open.filter(task => task.planState === 'scheduled' && task.scheduledStart > 0 &&
+      task.scheduledEnd > task.scheduledStart && task.scheduledStart < next && task.scheduledEnd > from)
+      .sort((a, b) => a.scheduledStart - b.scheduledStart);
+    const fixed = commitmentOccurrencesForDay(workspace.commitments, day);
+    for (let i = 0; i < scheduled.length; i++) {
+      const task = scheduled[i]!;
+      const start = Math.max(from, task.scheduledStart);
+      const finish = Math.min(next, task.scheduledEnd);
+      for (const commitment of fixed) {
+        const overlap = overlapMinutes(start, finish, commitment.start, commitment.end);
+        if (overlap > 0) issues.push({ code: 'commitment-overlap', taskIds: [task.id], day: dayKey, minutes: overlap,
+          message: `“${label(task.title)}” overlaps “${label(commitment.title)}” by ${overlap} min on ${dayKey}. Keep the fixed commitment and choose another study time.` });
+      }
+      const sleep = sleepWindows(workspace.settings, day).reduce((sum, window) => sum + overlapMinutes(start, finish, window.start, window.end), 0);
+      if (sleep > 0) issues.push({ code: 'sleep-overlap', taskIds: [task.id], day: dayKey, minutes: sleep,
+        message: `“${label(task.title)}” overlaps your sleep hours by ${sleep} min on ${dayKey}. Review the block rather than cutting sleep.` });
+      for (let j = i + 1; j < scheduled.length; j++) {
+        const other = scheduled[j]!;
+        if (other.scheduledStart >= finish) break;
+        const overlap = overlapMinutes(start, finish, Math.max(from, other.scheduledStart), Math.min(next, other.scheduledEnd));
+        if (overlap > 0) issues.push({ code: 'task-overlap', taskIds: [task.id, other.id], day: dayKey, minutes: overlap,
+          message: `“${label(task.title)}” and “${label(other.title)}” overlap by ${overlap} min on ${dayKey}. These need separate time.` });
+      }
+    }
+    const unscheduledToday = offset === 0 ? open.filter(task => task.planState === 'today' && task.postponedUntil <= now) : [];
+    const scheduledMinutes = scheduled.reduce((sum, task) => sum + overlapMinutes(from, next, task.scheduledStart, task.scheduledEnd), 0);
+    const required = scheduledMinutes + unscheduledToday.reduce((sum, task) => sum + taskRemainingMinutes(task), 0);
+    const recorded = workspace.history.filter(item => item.at >= day && item.at < next).reduce((sum, item) => sum + item.minutes, 0)
+      + workspace.breaks.filter(item => item.at >= day && item.at < next).reduce((sum, item) => sum + item.minutes, 0)
+      + (workspace.focusOutcomes ?? []).filter(item => item.taskOnly && item.status === 'finished' && item.endedAt >= day && item.endedAt < next).reduce((sum, item) => sum + item.minutes, 0);
+    const clockCapacity = freeStudyWindows(workspace, day, { from, minMinutes: 1, includeScheduledTasks: false })
+      .reduce((sum, window) => sum + window.minutes, 0);
+    const capacity = Math.min(clockCapacity, Math.max(0, workspace.settings.dailyMinutes - recorded));
+    const knownBlocks = scheduled.length + unscheduledToday.filter(task => taskRemainingMinutes(task) > 0).length;
+    const breakReserve = Math.max(0, knownBlocks - 1) * workspace.settings.breakMinutes;
+    if (required + breakReserve > capacity) {
+      const shortfall = Math.ceil(required + breakReserve - capacity);
+      issues.push({ code: 'daily-overload', taskIds: [...scheduled, ...unscheduledToday].map(task => task.id), day: dayKey, minutes: shortfall,
+        message: `${dayKey}: ${Math.round(required)} min of planned work + ${breakReserve} min between-block breaks exceeds ${Math.floor(capacity)} min of remaining capacity by ${shortfall} min. Move lower-priority work, reduce scope, or review your availability. Missing estimates are excluded.` });
+    }
+  }
+  const dueMistakes = workspace.mistakes.filter(item => item.resolvedAt === 0 && item.dueAt <= now);
+  const dueMistakeTopics = [...new Set(dueMistakes.map(item => workspace.topics.find(topic => topic.id === item.topicId)?.name).filter((name): name is string => Boolean(name)))];
+  return { revision: workspace.revision, reviewedAt: now, throughDate: localDayKey(addLocalDays(today, 6)), issues,
+    openTasks: open.length, unknownEstimates, dueMistakes: dueMistakes.length, dueMistakeTopics,
+    completedTasksExcluded: workspace.tasks.length - open.length };
+}
+
+export function planningReviewReply(review: AssistantPlanningReview): string {
+  const intro = `I checked your recorded tasks and schedule for today through ${review.throughDate}.`;
+  const visible = review.issues.slice(0, 6);
+  const findings = visible.length ? visible.map((issue, index) => `${index + 1}. ${issue.message}`).join('\n\n') :
+    'I found no deadline, overlap, missing-estimate or daily-capacity issue in the recorded tasks I checked. Unrecorded commitments and remaining work may still affect the plan.';
+  const more = review.issues.length > visible.length ? `\n\nThere are ${review.issues.length - visible.length} more checks to review in your tasks and Day map.` : '';
+  const mistakes = review.dueMistakes ? `\n\n${review.dueMistakes} saved ${review.dueMistakes === 1 ? 'mistake is' : 'mistakes are'} due for review${review.dueMistakeTopics.length ? ` (${review.dueMistakeTopics.slice(0, 3).map(label).join(', ')})` : ''}. Open Review to revisit them.` : '';
+  return `${intro}\n\n${findings}${more}${mistakes}\n\nThis is a check of your recorded plan, not a guarantee. Nothing was changed.`;
+}
+
+export function tryAssistantPlanningReply(request: string, workspace: WorkspaceState, now = Date.now()): string | null {
+  const text = request.toLowerCase().trim().replace(/[.!?]+$/, '').replace(/\s+/g, ' ');
+  if (!/^(?:(?:please )?(?:review|check|analyse|analyze) (?:my |the )?(?:study )?(?:plan|planning|schedule|timetable)|(?:find|spot) (?:basic )?(?:mistakes|problems|conflicts) (?:in|with) (?:my |the )?(?:plan|schedule)|does my (?:plan|schedule) fit|what(?:'s| is) wrong with my (?:plan|schedule))$/.test(text)) return null;
+  return planningReviewReply(reviewAssistantPlanning(workspace, now));
+}
+
+// Grounding for a future conversational phone model: no full notes, answers,
+// sessions or guessed availability; limits are explicit rather than hidden.
+export function planningModelContext(review: AssistantPlanningReview) {
+  return JSON.stringify({ type: 'MYELIN_CALCULATED_PLAN_REVIEW', revision: review.revision,
+    date: localDayKey(review.reviewedAt), throughDate: review.throughDate,
+    openTasks: review.openTasks, unknownEstimates: review.unknownEstimates,
+    dueMistakes: review.dueMistakes, checks: review.issues.slice(0, 8).map(issue => ({
+      code: issue.code, day: issue.day, minutes: issue.minutes, description: issue.message,
+    })), omittedChecks: Math.max(0, review.issues.length - 8),
+    limits: 'Recorded data only; unknown estimates excluded; cannot change anything from this review.' });
+}

@@ -28,7 +28,7 @@ import { localDateKeyFromTimestamp, tryBuildMyelinMiniFastDecision } from '@/src
 import { answerAssistantClarification, beginAssistantClarification, type AssistantClarificationAnswers, type PendingAssistantClarification } from '@/src/features/assistant/assistant-clarification';
 import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/features/assistant/assistant-request-grounding';
 import { assistantChatReducer, assistantOfflineStatus, createAssistantChat, tryAssistantChatReply, type AssistantChatScope } from '@/src/features/assistant/assistant-conversation';
-import { tryAssistantPlanningReply } from '@/src/features/assistant/assistant-planning-review';
+import { tryAssistantPlanningReply, tryAssistantTaskDeadlineReply } from '@/src/features/assistant/assistant-planning-review';
 import { tryAssistantPlanMathReply } from '@/src/features/assistant/assistant-plan-math';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
@@ -385,7 +385,7 @@ export default function LocalAiAssistantScreen() {
       }
       clarificationAnswers = resolved.answers;
     } else {
-      const reply = tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantPlanMathReply(text) ?? tryAssistantChatReply(text, offlineStatus);
+      const reply = tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantTaskDeadlineReply(text, workspace, now) ?? tryAssistantPlanMathReply(text) ?? tryAssistantChatReply(text, offlineStatus);
       if (reply) { append(scope, 'assistant', reply); return; }
     }
     const controller = new AbortController(); controllerRef.current = controller; setBusy('prepare');

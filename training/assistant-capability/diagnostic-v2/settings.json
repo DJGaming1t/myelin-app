@@ -1,0 +1,13 @@
+{
+  "runtimes": ["0.15.0", "0.18.0"],
+  "prompts": ["plain", "short-json", "long-json"],
+  "profiles": [
+    {"id":"greedy","sampler":{"temperature":0.0,"top_p":1.0,"top_k":1,"seed":42},"penalty":null},
+    {"id":"sampled-with-presence","sampler":{"temperature":1.0,"top_p":1.0,"top_k":20,"seed":42},"penalty":{"repetition_penalty":1.0,"presence_penalty":2.0,"frequency_penalty":0.0,"window_size":0}}
+  ],
+  "engine": {"backend":"cpu","threads":2,"maxContextTokens":4096,"cache":":memory:","useRingbuffersLocalAttention":true},
+  "maxOutputTokens":192,
+  "repeats":1,
+  "longPrompt":"../system.txt",
+  "note":"Generation profile changes sampling and presence penalty together; this does not isolate their individual effects. No min-p filter is configured. No grammar constraint, tool, LoRA, output repair or best-of selection. Model IDs/identities reuse unchanged ../candidates.json."
+}

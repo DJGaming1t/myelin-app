@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "createdAt": "2026-10-09",
+  "frozenBeforeInference": true,
+  "cases": 4,
+  "turns": 5,
+  "turnsPerJob": 30,
+  "conditionsPerJob": 6,
+  "jobs": 4,
+  "totalResponses": 120,
+  "purpose": "New synthetic development diagnostic, authored after inspecting v1 results; not independent human validation or a release gate. All conditions declared before inference, one output per condition, no training or output selection.",
+  "files": {
+    "cases.jsonl": "2913156eb3b808dddf40807fef6ee5af1966a72199624effb1f52509b21b91b1",
+    "settings.json": "11902c2a9f016bd8075b5dd2ab3146ea5dd5c8a8078a623f76b607bf3bd6181c",
+    "plain.txt": "a7ea28f241394fa302f52b4931e54f4bbdbb4ce9f7d7bee5042585fe0b331ea4",
+    "short-json.txt": "3d64e44efd8a0ee512df3dc22aa979ec3c529d844a0a7b930d9967ffe43285d8",
+    "../system.txt": "226e6ad206430097208f2ef743dbacfc93830d1e1792b6ce3598432a89a0c031",
+    "../candidates.json": "f6be681adec44c2e7d6f188e93e4299fe2e6db9c24e489f96b2e7c2fddb5ce99"
+  }
+}

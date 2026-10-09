@@ -1,0 +1,55 @@
+name: Isolate Qwen native prompt and generation failures
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/exam-autopilot-capacity-v1]
+    paths: [.github/workflows/diagnose-assistant-native.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: myelin-native-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    name: ${{ matrix.candidate }} native ${{ matrix.runtime }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        candidate: [qwen35-lite-int8, qwen35-enhanced-int8]
+        runtime: ['0.15.0', '0.18.0']
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+      CANDIDATE: ${{ matrix.candidate }}
+      NATIVE_RUNTIME: ${{ matrix.runtime }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify untouched baseline, new frozen inputs and exact output adapter
+        run: |
+          python scripts/test-assistant-capability.py
+          python scripts/test-assistant-diagnostic.py
+          python -m py_compile scripts/run-assistant-diagnostic.py
+      - name: Install exact native API and record all dependencies
+        run: |
+          python -m pip install "litert-lm-api==$NATIVE_RUNTIME" huggingface-hub==1.1.7
+          mkdir -p "artifacts/native-diagnostic/$CANDIDATE-$NATIVE_RUNTIME"
+          python -m pip freeze > "artifacts/native-diagnostic/$CANDIDATE-$NATIVE_RUNTIME/packages.txt"
+      - name: Run every declared condition once through real native SDK
+        run: timeout --signal=TERM --kill-after=15s 30m python -u scripts/run-assistant-diagnostic.py --candidate "$CANDIDATE" --runtime "$NATIVE_RUNTIME" --output "artifacts/native-diagnostic/$CANDIDATE-$NATIVE_RUNTIME"
+      - name: Preserve partial outputs and native errors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-diagnostic-${{ matrix.candidate }}-${{ matrix.runtime }}
+          path: artifacts/native-diagnostic/${{ matrix.candidate }}-${{ matrix.runtime }}
+          if-no-files-found: warn
+          retention-days: 90

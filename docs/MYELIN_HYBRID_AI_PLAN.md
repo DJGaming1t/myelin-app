@@ -4,6 +4,8 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 
 ## Master checklist
 
+- [x] Record the user's zero-spending requirement; pause Firebase/Gemini activation and research a free hosting/inference alternative. Current decision: `docs/MYELIN_FREE_CLOUD_PLAN.md`.
+- [ ] Implement and verify Workers Free + hosted Qwen + D1 Free, preserving authentication, shared quotas, cancellation and the existing protocol. Account access and live model quality remain unverified.
 - [x] Catalog both Qwen variants and keep unavailable mobile releases blocked.
 - [x] Persist the preferred offline variant separately from model installation; retain older FunctionGemma preferences.
 - [x] Connect Mini decision routing to the assistant screen, including rules without downloads, clarification and escalation messages.
@@ -116,4 +118,10 @@ Added a manual assistant-only workflow using service-account Workload Identity F
 
 Source `8132dffbfac31724b89e9f378f2a45ea272c110a` verified: backend run `37863781488`, job `113605539297`, passed 9/9 backend tests, 4/4 deployment guards, synthetic smoke, exact protocol parity, full app types and actionlint. Real emulator tests now include signed-in read/write denial of server quotas. Hybrid run `37863781435`, job `113605539672`, passed existing assistant/model regressions. Workflow registration/push run `37863781627`, validation job `113605541198`, passed; actual deploy job `113605543465` and Google authentication were skipped. Evidence: `docs/cloud/deployment-tooling-verification-20261009.json`.
 
-Usable account setup is still unavailable here: no deployment credentials or Gemini key in the workspace; the connector cannot read/manage repository secrets/variables. Remote setup and billing are unverified, and no billing-plan response was supplied. No live deployment/provider call, app activation, beta update, training or model release occurred. The next required step is one-time Firebase/Gemini setup described in `docs/MYELIN_CLOUD_SETUP.md`, then deployment and authenticated smoke before app controls.
+Usable account setup was unavailable: no deployment credentials or Gemini key in the workspace; the connector cannot read/manage repository secrets/variables. No live deployment/provider call, app activation, beta update, training or model release occurred. The subsequent zero-spending decision below supersedes the proposed Firebase/Gemini account setup.
+
+## Zero-spending pivot — 2026-10-09 IST
+
+The user cannot spend money. Firebase/Gemini activation is paused. Gemini API's current terms also exclude clients likely to be accessed by under-18s, independently of hosting or account ownership. Preferred replacement candidate: Workers Free + native Workers AI `@cf/qwen/qwen3-30b-a3b-fp8` + D1 Free quotas. Documented inference allowance is 10,000 account-wide neurons/day; exhausted Free allowance stops requests. Model quality, actual access, authentication implementation, Worker CPU fit and account eligibility are still unverified.
+
+Research and boundaries are saved in `docs/MYELIN_FREE_CLOUD_PLAN.md`; older setup commands are clearly marked historical. No account was created, no billing changed and no app update was published. Next chunk: implement the isolated free Worker endpoint/provider adapter, then verify auth/atomic quotas before deployment. Keep app cloud disabled until live verification succeeds. The existing local assistant and 0.8B/2B offline release gates remain unchanged.

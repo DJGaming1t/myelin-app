@@ -1,5 +1,11 @@
 # MYELIN cloud assistant setup
 
+## Superseding budget and provider decision — 2026-10-09 IST
+
+The user cannot spend money. **Do not follow the Firebase/Gemini deployment steps below for the current school beta.** This prepared route is paused: Firebase Functions needs billing, and Gemini API terms exclude clients likely to be accessed by under-18s. An adult account or alternative host does not remove that Gemini client restriction. These sections describe historical prepared code, not the active next action.
+
+The current replacement plan is [MYELIN_FREE_CLOUD_PLAN.md](MYELIN_FREE_CLOUD_PLAN.md): Workers Free + native Workers AI hosted Qwen + D1 Free, subject to account eligibility and live verification. No replacement endpoint is built/deployed or enabled yet. Next: implement the isolated free-host endpoint and preserve authentication/atomic quotas before deployment and app integration.
+
 ## Current status
 
 Server and client transport code is prepared; it is not deployed or enabled in the app. The existing preview still runs local rules and the existing experimental offline path. A configured Firebase account alone does not grant a Gemini API key or permission to deploy Cloud Functions.

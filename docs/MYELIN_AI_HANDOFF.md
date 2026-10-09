@@ -1,5 +1,13 @@
 # MYELIN AI Handoff
 
+## Active next step — zero spending, 2026-10-09 IST
+
+The user says they cannot spend money. This supersedes the Firebase/Gemini setup proposed later in this historical handoff. Pause that activation: Firebase Functions requires billing, and current Gemini API terms exclude clients likely to be accessed by under-18s. MYELIN's school audience makes that a provider mismatch; an adult API owner would not remove it.
+
+Current candidate: Workers Free + native Workers AI hosted `@cf/qwen/qwen3-30b-a3b-fp8` + D1 Free atomic quotas. Official research and bounded implementation sequence: `docs/MYELIN_FREE_CLOUD_PLAN.md`. Free AI allowance is account-wide 10,000 neurons/day and stops at exhaustion; no unlimited capacity claim. No Cloudflare account access, endpoint, live inference evidence or app update exists. Hosting/model eligibility and real quality still need verification.
+
+Next sensible chunk: implement the isolated free-host decision endpoint/provider adapter against the existing Mini protocol, followed by verified authentication and atomic quota integration. Code can proceed without another Firebase billing question. Owner setup is still needed to deploy the eventual free service. Never switch to paid hosting/credits or activate the existing Gemini workflow under this budget. Keep app cloud disabled and failed Qwen phone gates visible.
+
 ## Repo / branch
 - Repo: `DJGaming1t/myelin-app`
 - Active branch: `codex/exam-autopilot-capacity-v1`

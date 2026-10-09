@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "verifiedAt": "2026-10-09T10:27:47.879Z",
+  "sourceCommit": "0ac5f0642a01910fbf9a0ed7de126d1189a5b18e",
+  "repository": "DJGaming1t/myelin-app",
+  "branch": "codex/exam-autopilot-capacity-v1",
+  "workflow": {
+    "runId": 37917520391,
+    "url": "https://github.com/DJGaming1t/myelin-app/actions/runs/37917520391",
+    "status": "completed",
+    "conclusion": "success",
+    "updatedAt": "2026-10-09T10:26:44Z",
+    "jobs": [
+      {
+        "id": 113777217595,
+        "name": "backend",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v6",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run actions/setup-java@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run npm ci --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Validate deployment and reusable workflow syntax",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Install isolated server dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Full app check and exact server protocol parity",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Real server entry loads without credentials or provider calls",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Atomic quota concurrency and denied client access",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Post Run actions/setup-java@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 20
+          },
+          {
+            "name": "Post Run actions/setup-node@v6",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 21
+          },
+          {
+            "name": "Post Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 22
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 23
+          }
+        ]
+      }
+    ]
+  },
+  "artifact": {
+    "id": 11610581747,
+    "name": "myelin-verified-backend-lock",
+    "digest": "sha256:5127d30c654d51980aaf94cb1c061a7574d72a64d0084d65e0791718ca828bf1",
+    "createdAt": "2026-10-09T10:26:41Z",
+    "expiresAt": "2027-01-07T10:25:34Z"
+  },
+  "checks": {
+    "workerAuthQuotaTests": 25,
+    "workerAuthQuotaPassed": 25,
+    "actualSQLiteSql": true,
+    "independentConcurrentConnections": 12,
+    "concurrencyScenarios": [
+      "shared minute/active limits",
+      "same UID/request deduplication",
+      "last user daily slot",
+      "last shared daily slot"
+    ],
+    "simulatedWorkerClientMiniVariants": 4,
+    "fullAppTypeScript": true,
+    "canonicalProtocolParity": true,
+    "legacyFirebaseBackendTests": 9,
+    "legacyFirestoreEmulatorConcurrencyAndDeniedAccess": true,
+    "clientTransportAndDeploymentSmokeRegressions": true,
+    "workflowSyntax": true
+  },
+  "limits": {
+    "userMinute": 2,
+    "userDay": 8,
+    "sharedMinute": 4,
+    "sharedDay": 24,
+    "sharedActive": 2,
+    "leaseSeconds": 90,
+    "deduplicationDays": 7,
+    "reset": "UTC"
+  },
+  "boundaries": {
+    "googleTokenValidationSimulated": true,
+    "aiResponsesSimulated": true,
+    "actualD1Tested": false,
+    "actualWorkerdTested": false,
+    "freeCpuMeasured": false,
+    "liveFirebaseRevocationTested": false,
+    "liveProviderInference": false,
+    "neuronsCapacityCertified": false,
+    "deployed": false,
+    "paidActivation": false,
+    "appCloudConnected": false,
+    "androidOtaPublished": false
+  },
+  "next": "Verify actual Worker/D1 runtime and Free CPU limits, then Free deployment identity and live auth/provider acceptance before app integration"
+}

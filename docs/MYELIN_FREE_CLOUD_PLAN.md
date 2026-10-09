@@ -10,6 +10,8 @@ The Worker/provider foundation and Firebase REST verification/atomic D1 quota ad
 
 ## Why the previous route is paused
 
+Auth/quota source `0ac5f0642a01910fbf9a0ed7de126d1189a5b18e` passed backend CI `37917520391` / job `113777217595`: full app TypeScript, all 25 Worker/auth/quota checks, canonical protocol parity, simulated cloud-client/Mini integration and existing backend regressions. Verification record: `docs/cloud/auth-d1-verification-20261009.json`. Actual workerd/D1 and live Firebase/provider checks remain the next gates; this does not publish an app or endpoint.
+
 Firebase Cloud Functions requires Blaze billing. Application quotas do not make a billing-enabled host a zero-spending service.
 
 There is also a provider mismatch that should have been caught earlier: Gemini API's published terms require adult API users and exclude clients directed at, or likely to be accessed by, under-18s. MYELIN is a school study app. A different host or an adult-owned Gemini key does not remove that client restriction. Do not activate the prepared Gemini backend for this audience.

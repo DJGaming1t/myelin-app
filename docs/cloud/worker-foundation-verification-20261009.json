@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "sourceCommit": "8174722e8aac2182d2a4fa6d500f9fd7a3ca2962",
+  "verifiedAt": "2026-10-09T01:08:13Z",
+  "workflow": {
+    "runId": 37868173508,
+    "jobId": 113619803483,
+    "url": "https://github.com/DJGaming1t/myelin-app/actions/runs/37868173508",
+    "conclusion": "success"
+  },
+  "checks": {
+    "fullAppTypeScript": true,
+    "canonicalProtocolParity": true,
+    "workerWebApiTests": {
+      "passed": 11,
+      "failed": 0,
+      "runtime": "Node 22 Web APIs; simulated AI/auth/quota dependencies"
+    },
+    "workerClientPreviewIntegration": {
+      "variants": 4,
+      "passed": true,
+      "workspaceMutations": 0,
+      "explicitConfirmationRequired": true,
+      "missingExamDaySkipsCloud": true
+    },
+    "existingClientTransport": true,
+    "deploymentGuardTestsPassed": 4,
+    "simulatedProviderSmoke": true,
+    "existingFirebaseBackendTests": {
+      "passed": 9,
+      "realFirestoreEmulator": true
+    },
+    "workflowActionlint": true
+  },
+  "limitations": {
+    "defaultWorkerInactive": true,
+    "realFirebaseRevocationAdapter": false,
+    "realD1AtomicQuota": false,
+    "workerdVerified": false,
+    "freeCpuBudgetMeasured": false,
+    "cloudflareDeployed": false,
+    "providerLiveTested": false,
+    "modelQualityMeasured": false,
+    "appCloudEnabled": false,
+    "betaPublished": false,
+    "phoneQa": false,
+    "billingChanged": false
+  },
+  "nextStep": "Implement and verify supported revocation-aware Firebase authentication and atomic D1 quotas; then real Worker runtime and live Free deployment."
+}

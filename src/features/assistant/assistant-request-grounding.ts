@@ -89,6 +89,9 @@ function explicitlyNamesId(text: string, id: string) {
 }
 
 export function checkAssistantActionGrounding(input: Input, batch: AssistantActionBatch): GroundingQuestion | null {
+  if (batch.actions.some(action => action.type === 'create_commitment')) return {
+    reason: 'ambiguous-reference', question: 'Weekly fixed-time entries need explicit days and times. Send one schedule such as “School weekdays from 5:30 AM to 2 PM”.', missingFields: ['request'],
+  };
   const createdTopics = new Set<string>();
   const createdExams = new Set<string>();
   const examActions = batch.actions.filter(action => action.type === 'create_exam');

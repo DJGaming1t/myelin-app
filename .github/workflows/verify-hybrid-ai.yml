@@ -27,6 +27,7 @@ on:
       - scripts/verify-assistant-grounding.ts
       - scripts/verify-assistant-app-scenarios.ts
       - scripts/verify-assistant-conversation.ts
+      - scripts/verify-assistant-schedules.ts
 
 permissions:
   contents: read
@@ -51,6 +52,8 @@ jobs:
           npx tsx scripts/verify-assistant-grounding.ts
           TZ=Asia/Kolkata npx tsx scripts/verify-assistant-conversation.ts
           TZ=America/Los_Angeles npx tsx scripts/verify-assistant-conversation.ts
+          TZ=Asia/Kolkata npx tsx scripts/verify-assistant-schedules.ts
+          TZ=America/Los_Angeles npx tsx scripts/verify-assistant-schedules.ts
           TZ=Asia/Kolkata npx tsx scripts/verify-assistant-app-scenarios.ts
           TZ=America/Los_Angeles npx tsx scripts/verify-assistant-app-scenarios.ts
           npx tsx scripts/verify-cloud-assistant.ts

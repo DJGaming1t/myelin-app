@@ -11,6 +11,8 @@ import {
   buildJointExamPreparationPlan,
 } from '@/src/features/exams/exam-plan-engine';
 import { createStudyTask } from '@/src/features/planning/task-engine';
+import { commitmentOccurrencesForDay, addLocalDays, startOfLocalDay } from '@/src/features/planning/day-engine';
+import { scheduleTimeLabel, weeklyDaysLabel } from './recurring-schedule-language';
 import {
   applyTopicInput,
   createTopic,
@@ -94,11 +96,23 @@ export type AssistantGenerateExamPlanAction = {
   revisionLeadDays?: number;
 };
 
+// Local schedule parsing only. This is deliberately absent from the model tool
+// catalog/JSON schema; model-originated instances are rejected by grounding.
+export type AssistantCreateCommitmentAction = {
+  type: 'create_commitment';
+  title: string;
+  kind: 'school' | 'tuition' | 'coaching';
+  startMinutes: number;
+  endMinutes: number;
+  recurrenceDays: number[];
+};
+
 export type AssistantAction =
   | AssistantCreateTopicAction
   | AssistantUpdateTopicAction
   | AssistantCreateExamAction
   | AssistantCreateTaskAction
+  | AssistantCreateCommitmentAction
   | AssistantGenerateExamPlanAction;
 
 export type AssistantActionBatch = {
@@ -628,6 +642,18 @@ function parseGeneratePlan(raw: Record<string, unknown>): AssistantGenerateExamP
   };
 }
 
+function parseCreateCommitment(raw: Record<string, unknown>): AssistantCreateCommitmentAction {
+  strictKeys(raw, ['type', 'title', 'kind', 'startMinutes', 'endMinutes', 'recurrenceDays'], 'create_commitment action');
+  const days = asArray(raw.recurrenceDays, 'recurrence days', 7).map(day => integerInRange(day, 'recurrence day', 0, 6));
+  if (!days.length || new Set(days).size !== days.length) throw new AssistantActionError('Select distinct weekly days.');
+  const startMinutes = integerInRange(raw.startMinutes, 'start time', 0, 1439);
+  const endMinutes = integerInRange(raw.endMinutes, 'end time', 0, 1439);
+  if (endMinutes - startMinutes < 5) throw new AssistantActionError('Use one same-day interval of at least five minutes.');
+  return { type: 'create_commitment', title: cleanString(raw.title, 'commitment title', 300),
+    kind: oneOf(raw.kind, ['school', 'tuition', 'coaching'] as const, 'commitment kind'),
+    startMinutes, endMinutes, recurrenceDays: days.sort((a, b) => a - b) };
+}
+
 function parseAction(raw: unknown): AssistantAction {
   const action = asObject(raw, 'assistant action');
   const type = cleanString(action.type, 'action type', 80);
@@ -640,6 +666,8 @@ function parseAction(raw: unknown): AssistantAction {
       return parseCreateExam(action);
     case 'create_task':
       return parseCreateTask(action);
+    case 'create_commitment':
+      return parseCreateCommitment(action);
     case 'generate_exam_plan':
       return parseGeneratePlan(action);
     default:
@@ -1018,6 +1046,36 @@ function executeParsedBatch(
           break;
         }
 
+        case 'create_commitment': {
+          if (draft.commitments.some(item => item.kind === action.kind && item.startMinutes === action.startMinutes &&
+              item.endMinutes === action.endMinutes && [...item.recurrenceDays].sort((a, b) => a - b).join(',') === action.recurrenceDays.join(','))) {
+            throw new AssistantActionError('This weekly entry already exists. Open Day map to edit it.');
+          }
+          const date = new Date(now);
+          const at = (minutes: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), Math.floor(minutes / 60), minutes % 60).getTime();
+          const commitment = { id: `commit_assistant_${now.toString(36)}_${index}_${assistantRequestDigest(batch).replace(':', '_')}`,
+            title: action.title, kind: action.kind, startAt: at(action.startMinutes), endAt: at(action.endMinutes),
+            startMinutes: action.startMinutes, endMinutes: action.endMinutes, recurrenceDays: [...action.recurrenceDays],
+            skippedDates: [], createdAt: now + index, updatedAt: now + index };
+          const conflicts = new Set<string>();
+          for (let offset = 0; offset < 7; offset++) {
+            const day = addLocalDays(startOfLocalDay(now), offset);
+            const proposed = commitmentOccurrencesForDay([commitment], day)[0];
+            if (!proposed) continue;
+            for (const existing of commitmentOccurrencesForDay(draft.commitments, day)) {
+              if (proposed.start < existing.end && proposed.end > existing.start) conflicts.add(existing.title);
+            }
+            for (const task of draft.tasks) {
+              if (task.status === 'open' && task.planState === 'scheduled' && proposed.start < task.scheduledEnd && proposed.end > task.scheduledStart) conflicts.add(task.title);
+            }
+          }
+          draft.commitments.push(commitment);
+          results.push({ index, type: action.type, risk: 'confirm',
+            summary: `Add ${action.title}: ${weeklyDaysLabel(action.recurrenceDays)}, ${scheduleTimeLabel(action.startMinutes)}–${scheduleTimeLabel(action.endMinutes)} every week.`,
+            data: { commitmentId: commitment.id, conflicts: [...conflicts].slice(0, 10) } });
+          break;
+        }
+
         case 'generate_exam_plan': {
           const examIds = action.examRefs?.map(
             (ref) => resolveExam(draft, ref, examClientRefs).id,
@@ -1159,3 +1217,4 @@ export function assistantActionToolCatalog() {
     },
   ] as const;
 }
+

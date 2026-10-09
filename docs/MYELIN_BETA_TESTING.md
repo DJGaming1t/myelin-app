@@ -19,7 +19,23 @@ Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73b
 
 Cloud AI is not connected. Model preferences are not working Qwen inference. A training adapter is not a downloadable phone model.
 
-## Latest conversational assistant — published 2026-10-09
+## Weekly school-hours fix — verification/publication pending
+
+The user's phone screenshot shows the conversational update but the exact school-hours fact is unsupported there. New source connects explicit recurring school/tuition/coaching requests to the existing Day map commitments through the same confirmation layer. Full app CI and an EAS receipt must be checked before calling this new fix published.
+
+After updating the existing preview APK, check:
+
+1. Send `I have school on everyday except sat and sun , from 5:30am to 2pm`. Expect a School proposal showing Monday–Friday and 5:30 AM–2:00 PM every week. Verify no entry before confirmation.
+2. Confirm once. Open Today → Day map and inspect a weekday: school blocks those hours. Saturday/Sunday should have no school occurrence. Existing scheduled tasks keep their times; inspect any overlap warnings.
+3. Send the same request again. It should say the weekly entry already exists and direct you to Day map rather than duplicating it. Repeated confirmation must not create duplicates either.
+4. Send `I have school`. Answer `every day except Sat and Sun`, then `5:30am to 2pm`. Check both answers and the original request survive into the correct proposal.
+5. Send `School weekdays from 5:30 to 2pm`. It should ask for both times with AM/PM; reply `5:30 AM to 2 PM`. Send `School weekdays from 10pm to 2am` and verify it requests one same-day interval; use Day map for overnight entries.
+6. Send `School and tuition weekdays from 8am to 2pm` or `School weekdays from 8am to 2pm and add bio homework`. It should ask for one clear schedule without applying part of a compound request.
+7. Dismiss, edit the workspace, switch accounts or leave/reopen before confirming. Old proposals/questions must not apply. Check keyboard, large text, long overlap labels and navigation on the phone.
+
+This is bounded local schedule understanding. Qwen inference, cloud and general teaching/chat remain unconnected; automated routing/planner tests do not replace Android interaction QA.
+
+## Previous conversational assistant — published 2026-10-09
 
 Published 2026-10-09 09:01:42 UTC (14:31:42 IST): group `9a841170-04a8-4b45-94f6-fd538cdc8af6`, Android update `01a11fe5-9669-7a19-ac68-8709253bb214`, runtime `0.2.13`, branch `preview`, source `789c89e75e9cb836dd97f4aa40269d19e55ef673`. Full verification and publication succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37908290974. Hybrid run also SUCCESS: https://github.com/DJGaming1t/myelin-app/actions/runs/37908291086. Actual EAS receipt checked: `docs/beta/conversation-update-20261009.json`, artifact `11605083288`. Scenario artifact `11605607042`; evidence `docs/beta/conversation-verification-20261009.json`. This supersedes all earlier updates below. Open the existing compatible preview APK online, allow download and fully close/reopen up to twice; no reinstall/data clearing needed.
 

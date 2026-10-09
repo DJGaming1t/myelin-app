@@ -56,6 +56,8 @@ jobs:
           npx tsx scripts/verify-assistant-grounding.ts
           TZ=Asia/Kolkata npx tsx scripts/verify-assistant-conversation.ts
           TZ=America/Los_Angeles npx tsx scripts/verify-assistant-conversation.ts
+          TZ=Asia/Kolkata npx tsx scripts/verify-assistant-schedules.ts
+          TZ=America/Los_Angeles npx tsx scripts/verify-assistant-schedules.ts
           TZ=Asia/Kolkata MYELIN_ASSISTANT_SCENARIO_REPORT="$RUNNER_TEMP/assistant-scenarios-india.json" npx tsx scripts/verify-assistant-app-scenarios.ts
           TZ=America/Los_Angeles MYELIN_ASSISTANT_SCENARIO_REPORT="$RUNNER_TEMP/assistant-scenarios-us.json" npx tsx scripts/verify-assistant-app-scenarios.ts
           npx tsx scripts/verify-adaptive.ts
@@ -97,7 +99,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN conversational task assistant and clearer model availability beta $GITHUB_SHA"
+          --message "MYELIN weekly school hours and planner integration beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

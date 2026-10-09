@@ -1,5 +1,15 @@
 # MYELIN AI Handoff
 
+## Screenshot fix: weekly school hours — 2026-10-09 IST
+
+User's Android screenshot confirms the conversational beta arrived, but `I have school on everyday except sat and sun , from 5:30am to 2pm` still falls through to model unavailability. Existing `Commitment` recurrence and Day map already support fixed-time blocks; the assistant lacked a connection.
+
+- Added bounded local parsing for one weekly school/tuition/coaching interval. The exact screenshot request previews School, Monday–Friday, 330–840 local minutes (5:30 AM–2 PM), with explicit confirmation. Daily/weekdays/weekends, explicit weekly day lists/ranges, exclusions, AM/PM and explicit two-digit 24-hour clocks are supported. Ambiguous days/clocks ask; overnight, one-off/alternating/compound/negated schedules ask for a clear supported request or Day map instead of guessing.
+- Missing weekly days and a same-day time interval can be answered in the same composer while retaining the original request and previous answers. Existing owner/revision/day/ten-minute guards apply. Preview labels show exact days/times; overlaps with fixed entries or already-scheduled tasks in the next seven calendar days are visible. Existing task times are not silently moved.
+- Added local-only `create_commitment` execution to the existing Action Layer, with strict keys/types/ranges, workspace validation, receipts, stale-preview and confirmation safeguards. Duplicate weekly intervals reject, including a fresh request. Model tool catalog, JSON schema, cloud protocol and training sets are unchanged; grounding rejects every model-originated instance of this internal action. This does not grant a model permission to invent availability.
+- `verify-assistant-schedules.ts` passes in India and US timezones: eight exact schedules, 14 missing/invalid/compound clarification scenarios, natural typed replies, recurrence across weekdays/weekends/DST, actual `freeStudyWindows` blocking, overlap visibility, confirmation, duplicates, stale scope and model isolation. Existing hybrid/clarification/grounding/chat/model lifecycle/31-task checks, available TypeScript and canonical protocol parity passed locally. Full app CI and compatible beta publication are pending; phone QA for the new schedule path remains pending.
+- Next after verified delivery: return to revocation-aware auth/atomic D1 quotas for the free stronger hosted model. Qwen phone weights, live cloud inference and general chat remain unavailable. No paid activation.
+
 ## Conversational task assistant and honest availability — 2026-10-09 IST
 
 User reports weak capability, wants conversational interaction and sees the generic offline-unavailable message. Root cause: Qwen phone artifacts are unreleased and cloud remains unconnected; previous changes strengthened bounded rules, not model inference. This chunk improves the actual assistant screen while preserving that distinction.

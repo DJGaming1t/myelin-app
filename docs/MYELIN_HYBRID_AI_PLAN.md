@@ -4,6 +4,8 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 
 ## Master checklist
 
+- [x] Connect explicit weekly school/tuition/coaching facts to existing Day map commitments through confirmed local previews, retained day/time replies and planner availability. Add duplicate/overlap/model-isolation checks in both timezones. Local verification passed; full app CI and beta publication pending.
+
 - [x] Replace the assistant form with a conversational task thread and single message/reply composer; add bounded app-help replies and precise model availability. Confirmed actions and scoped followups remain enforced. Final source `789c89e75e9cb836dd97f4aa40269d19e55ef673` passed full beta run `37908290974` and hybrid run `37908291086`, including both timezone suites; Android preview published 2026-10-09 14:31:42 IST. Receipt/evidence: `docs/beta/conversation-update-20261009.json`, `docs/beta/conversation-verification-20261009.json`. Phone QA and general model chat remain pending.
 - [ ] Extend the validated hosted-model protocol to conversational answers and safe action proposals after live provider/auth/quota checks. Screen-local history and deterministic help are not a working general chat model.
 

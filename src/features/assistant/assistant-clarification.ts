@@ -1,15 +1,19 @@
 import type { WorkspaceState } from '@/src/data/schema';
 import type { MyelinMiniRouteResult } from './myelin-mini';
 import { normalizeSchoolworkLanguage, schoolworkSubjectReply } from './schoolwork-language';
+import { parseScheduleTimeReply, parseWeeklyDaysReply } from './recurring-schedule-language';
 
 export type AssistantClarificationAnswers = {
   subject?: string;
   topicId?: string;
   estimatedMinutes?: number;
   dueDate?: string;
+  recurrenceDays?: number[];
+  startMinutes?: number;
+  endMinutes?: number;
 };
 export type ClarificationScope = { ownerKey: string; revision: number; currentDate: string; now: number };
-type Field = 'subject' | 'topic' | 'estimatedMinutes' | 'dueDate';
+type Field = 'subject' | 'topic' | 'estimatedMinutes' | 'dueDate' | 'recurrenceDays' | 'timeRange';
 export type PendingAssistantClarification = {
   userRequest: string;
   question: string;
@@ -21,7 +25,7 @@ export type PendingAssistantClarification = {
   startedAt: number;
   turns: number;
 };
-const FIELDS: Field[] = ['subject', 'topic', 'estimatedMinutes', 'dueDate'];
+const FIELDS: Field[] = ['subject', 'topic', 'estimatedMinutes', 'dueDate', 'recurrenceDays', 'timeRange'];
 const TEN_MINUTES = 10 * 60_000;
 
 export function beginAssistantClarification(
@@ -93,6 +97,14 @@ export function answerAssistantClarification(
     const date = dateReply(answer, scope.currentDate);
     if (!date) return { kind: 'retry', message: 'Reply with one valid date (YYYY-MM-DD), today or tomorrow. Time-of-day deadlines are not supported here.' };
     answers.dueDate = date;
+  } else if (pending.field === 'recurrenceDays') {
+    const days = parseWeeklyDaysReply(answer);
+    if (!days) return { kind: 'retry', message: 'Reply with weekly days, e.g. weekdays, every day except Sat and Sun, or Mon, Wed, Fri. No changes were made.' };
+    answers.recurrenceDays = days;
+  } else if (pending.field === 'timeRange') {
+    const times = parseScheduleTimeReply(answer);
+    if (!times) return { kind: 'retry', message: 'Reply with one same-day interval, e.g. 5:30 AM to 2 PM or 05:30 to 14:00. Include AM/PM for both 12-hour times.' };
+    Object.assign(answers, times);
   } else {
     const key = topicKey(answer.replace(/^(?:it is|it's|the topic is)\s+/i, ''));
     const exact = workspace.topics.filter(topic => topicKey(topic.name) === key);

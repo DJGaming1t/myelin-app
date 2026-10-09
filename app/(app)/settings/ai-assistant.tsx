@@ -38,6 +38,15 @@ const EXAMPLES = [
 
 function TaskPreviewDetails({ prepared, index }: { prepared: PreparedAssistantActionBatch; index: number }) {
   const action = prepared.batch.actions[index];
+  if (action?.type === 'create_commitment') {
+    const data = prepared.preview.results[index]?.data;
+    const conflicts = data && typeof data === 'object' && 'conflicts' in data && Array.isArray(data.conflicts)
+      ? data.conflicts.filter((name): name is string => typeof name === 'string') : [];
+    return <Text selectable style={styles.resultSummary}>
+      Blocks these hours in Day map and reduces available study time.
+      {conflicts.length ? `\nOverlaps in the next week: ${conflicts.join(', ')}. Existing tasks keep their scheduled times; review them in Day map.` : ''}
+    </Text>;
+  }
   if (action?.type !== 'create_task') return null;
   return (
     <Text selectable style={styles.resultSummary}>
@@ -444,7 +453,7 @@ export default function LocalAiAssistantScreen() {
         <ScreenHeader title="MYELIN assistant" variant="compact" onBack={() => router.back()} actionLabel="New chat" onAction={newChat} />
         <View style={styles.chatStatus}>
           <View style={styles.statusCopy}>
-            <Text style={styles.chatStatusTitle}>Task help is ready</Text>
+            <Text style={styles.chatStatusTitle}>Tasks and weekly routines</Text>
             <Text style={styles.statusText}>{available ? 'Offline actions available · General chat is not connected' : 'Basic task help · Qwen and general chat are not connected'}</Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Manage AI models" onPress={() => router.push('/(app)/settings/ai-models')} style={styles.modelLink}>
@@ -456,7 +465,7 @@ export default function LocalAiAssistantScreen() {
           {!hasMessages ? (
             <View style={styles.chatWelcome}>
               <Text style={styles.welcomeTitle}>What do you need to get done?</Text>
-              <Text style={styles.welcomeText}>Tell me in your own words. I can help with supported tasks, ask for details and guide you around MYELIN.</Text>
+              <Text style={styles.welcomeText}>Tell me about work to finish or your weekly school, tuition or coaching hours. I’ll ask for details and show a preview.</Text>
               <View style={styles.examples}>
                 {EXAMPLES.map(example => <Pressable key={example} accessibilityRole="button" onPress={() => setRequest(example)} style={({ pressed }) => [styles.example, pressed && styles.pressed]}>
                   <Text style={styles.exampleText}>{example}</Text><Text style={styles.arrow}>↗</Text>
@@ -509,7 +518,7 @@ export default function LocalAiAssistantScreen() {
           <View style={styles.composerRow}>
             <TextInput testID="assistant-chat-composer" accessibilityLabel={pendingQuestion ? "Answer MYELIN's question" : 'Message MYELIN'} multiline maxLength={pendingQuestion ? 300 : 2000}
               value={request} editable={!busy} onChangeText={value => { setRequest(value); setError(''); }}
-              placeholder={pendingQuestion ? pendingQuestion.field === 'estimatedMinutes' ? 'e.g. 45 minutes' : pendingQuestion.field === 'dueDate' ? 'e.g. tomorrow or YYYY-MM-DD' : pendingQuestion.field === 'subject' ? 'e.g. Biology' : 'Exact existing topic name' : 'Message MYELIN…'}
+              placeholder={pendingQuestion ? pendingQuestion.field === 'estimatedMinutes' ? 'e.g. 45 minutes' : pendingQuestion.field === 'dueDate' ? 'e.g. tomorrow or YYYY-MM-DD' : pendingQuestion.field === 'subject' ? 'e.g. Biology' : pendingQuestion.field === 'recurrenceDays' ? 'e.g. weekdays or Mon, Wed, Fri' : pendingQuestion.field === 'timeRange' ? 'e.g. 5:30 AM to 2 PM' : 'Exact existing topic name' : 'Message MYELIN…'}
               placeholderTextColor={colors.subtle} style={styles.chatInput} textAlignVertical="top" />
             <Pressable accessibilityRole="button" accessibilityLabel="Send message" disabled={!ready || !request.trim() || Boolean(busy)} onPress={() => void send()}
               style={({ pressed }) => [styles.sendButton, (!ready || !request.trim() || Boolean(busy)) && styles.disabled, pressed && styles.pressed]}><Text style={styles.prepareButtonText}>Send</Text></Pressable>

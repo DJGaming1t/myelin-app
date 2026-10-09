@@ -1,6 +1,7 @@
 import { WorkspaceState } from '@/src/data/schema';
 import { normalizeAssistantCommand, parseAssistantTaskDetails, tryParseSchoolworkRequest, validSchoolworkDate } from './schoolwork-language';
 import type { AssistantClarificationAnswers } from './assistant-clarification';
+import { tryParseRecurringSchedule } from './recurring-schedule-language';
 
 export const MYELIN_MINI_FAST_MODEL_ID = 'myelin-mini-fast-v1' as const;
 
@@ -245,6 +246,18 @@ export function tryBuildMyelinMiniFastDecision(
   const language = normalizeAssistantCommand(input.userRequest);
   const text = normalize(language);
   if (!text) return null;
+
+  const schedule = tryParseRecurringSchedule(input.userRequest, input.clarificationAnswers);
+  if (schedule) {
+    if (schedule.route === 'clarify') return { version: 1, requestId: input.requestId, confidence: 0.99, ...schedule };
+    const action = schedule.action;
+    const existing = input.workspace.commitments.some(item => item.kind === action.kind && item.startMinutes === action.startMinutes && item.endMinutes === action.endMinutes &&
+      [...item.recurrenceDays].sort((a, b) => a - b).join(',') === action.recurrenceDays.join(','));
+    if (existing) return { version: 1, requestId: input.requestId, route: 'clarify', confidence: 1, reason: 'ambiguous-reference',
+      question: 'That weekly entry already exists. Open Day map to inspect or change it.', missingFields: ['request'] };
+    return { version: 1, requestId: input.requestId, route: 'actions', confidence: 0.99,
+      batch: { version: 1, requestId: input.requestId, actions: [action] } };
+  }
 
   const escalated = escalation(text, input.requestId);
   if (escalated) return escalated;

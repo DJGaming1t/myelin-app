@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/home/runner/work/myelin-app/myelin-app/scripts/run-assistant-reference.py", line 219, in <module>
+    main()
+  File "/home/runner/work/myelin-app/myelin-app/scripts/run-assistant-reference.py", line 130, in main
+    save(args.output, 'provenance.json', provenance)
+  File "/home/runner/work/myelin-app/myelin-app/scripts/run-assistant-reference.py", line 19, in save
+    (output / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/json/__init__.py", line 238, in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/json/encoder.py", line 202, in encode
+    chunks = list(chunks)
+             ^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/json/encoder.py", line 432, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/json/encoder.py", line 439, in _iterencode
+    o = _default(o)
+        ^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/json/encoder.py", line 180, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+TypeError: Object of type set is not JSON serializable
+##[error]Process completed with exit code 1.

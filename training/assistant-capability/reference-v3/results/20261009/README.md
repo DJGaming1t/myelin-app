@@ -1,0 +1,38 @@
+# Original versus converted 2B results — 2026-10-09
+
+The original post-trained 2B checkpoint is more stable in this small probe: it finishes every answer without looping and resolves the misspelled lab-record request to October 10. It still contradicts itself in a price answer and misses sentence-count instructions. The tested phone conversion adds repetitions and, with the official prompt, a wrong negative-product answer. No candidate is approved for general MYELIN tutoring.
+
+All **24 declared responses** completed, with zero native/generation errors. Six new authored cases/eight turns per condition, one greedy answer, common study instructions, 128 maximum output tokens and each condition's actual generated history. This is development evidence, not general benchmark accuracy or independent human validation.
+
+| Condition | Automatic checks | Content complete on review | All content/instruction checks on review | Hit output cap |
+| --- | --- | --- | --- | --- |
+| Original HF BF16, official prompt | 7/8 | 7/8 | 5/8 | 0/8 |
+| Phone INT8, bundled conversation | 5/8 | 6/8 | 5/8 | 1/8 |
+| Phone INT8, official prompt through raw session | 6/8 | 5/8 | 5/8 | 2/8 |
+
+Automatic scores remain exactly as initially recorded. They are not a semantic judge: the original price reply opens with “9 pens cost 72 rupees” and then correctly computes 108, so the number pattern passes despite contradiction. Native raw says `-24` and gives a contradictory sign explanation; its digit pattern also passes. Both the original and bundled-native negative-product replies correctly use the words “twenty-four,” which the frozen digit pattern misses, but both use two sentences when one was requested. Original ice explanation is correct but uses one sentence instead of two. Strict review was not relaxed to promote a model.
+
+The original interprets `finsh chem lab record by tomorow`, returns Chemistry Lab Record and October 10, 2026, but adds an unnecessary followup asking for task detail. Bundled native understands the task but leaves the date as “tomorrow”; raw native repeats the task/date text until the cap. All three remember the correction from respiration to osmosis over three actual turns. Both native paths explain ice density correctly. See every exact prompt, raw answer and review note in the corresponding JSONL and `qualitative-review.json`.
+
+Template/tokenizer evidence:
+
+- The actual bundled render already contains `<think>\n\n</think>\n\n`. An early hypothesis that this block might be absent was disproved. First turns include the study system prompt and user message. The bundled template retains the empty block in prior assistant turns; its system content preserves a trailing newline that the official template trims.
+- The raw native condition feeds the exact official HF-rendered prompt into a fresh session with templating disabled. HF/native token IDs match on all eight official prompts. This avoids the stock template's incremental-history prefix issue. Changing the prompt path alone does not fix unit-price reasoning, repetitions or sign errors.
+- Render tracing uses a separate conversation, so it cannot mutate the generation conversation. A render can be incremental and omit prefilled context; these captured fresh-message renders include the full provided history. Do not infer context loss merely from the render API's incremental contract.
+
+Original identity: `Qwen/Qwen3.5-2B`, revision `15852e8c16360a2fea060d615a32b45270f8a8fc`, safetensors bytes `4548221488`, SHA-256 `aa33250c4fc64891ddfaba3a314fd9542ea371843c387178b425fbcc5ed680b1`. Downloaded snapshot files were checked against pinned HF Git/LFS metadata before generation; full hashes are in provenance. Official Transformers 5.3.0 `qwen3_5_text` mapping loads text-only `Qwen3_5ForCausalLM`; missing/mismatched/unexpected/error key lists are empty, all parameters BF16/CPU, `1881825088` text parameters. Vision/MTP are excluded by the official text-load contract, with no adapter, training or added quantization. Torch 2.8.0 CPU, Hub 1.3.0, two threads, eager attention. This is a BF16 reference, not FP32 logits parity.
+
+Phone identity is the unchanged 2B INT8 descriptor in [candidates.json](../../../candidates.json), pinned revision `4327b7425533c26da2aec1d7b915e9742eead2cb`, SHA-256 `8ae5027136e0b89039ed76eedfb61f0cf4b7277024d99bf765359264295b86b1`, SDK 0.18.0, CPU/two threads, 4096 context, `:memory` cache. Native binary/module fingerprints are retained. Original BF16 versus native INT8 changes precision, graph and runtime together; the converter's exact upstream weight revision is not independently established. These differences do not individually prove quantization damage or a particular executor bug. Later history differs when earlier actual answers differ; first turns are the cleanest identical-message comparison.
+
+Runs and setup correction:
+
+- Native inference source `f804bc405739a5c830be80b1be8268d0631f0d4d`, [run 37928015501](https://github.com/DJGaming1t/myelin-app/actions/runs/37928015501), job `113811557139`, SUCCESS, 16 answers across both native conditions. The overall initial run failed because of its separate original setup error.
+- The initial original job `113811556976` loaded the text weights, then failed serializing Transformers' metadata sets. **Zero answers were generated.** Original metadata/error are preserved in `setup-original/`, with artifact identity in `verification.json`. This is not a zero-quality model result.
+- Corrected only metadata-set serialization and added a dedicated original-only retry workflow. Cases/prompts/model weights/sampling/output bound/frozen manifest stayed identical; native was not rerun or selected between attempts. Original inference source `e7e065cca6687487616eb4f4fda9f05b5d375d3f`, [run 37928445408](https://github.com/DJGaming1t/myelin-app/actions/runs/37928445408), job `113812961590`, SUCCESS, eight answers.
+- All 11 scorer/adapter/reference test groups and Python compilation passed. `verify-assistant-reference-results.py` reproduces both reports from all 24 exact records, checks actual history/settings/native envelopes/token bounds and all review notes. Original native/hash metadata was read from completed logs; published artifact archive digests are recorded, but archive downloads were not independently verified locally. Last provenance log entry is the final saved file; no generated text was repaired.
+
+Latency is not phone performance. Original median is 54.54 seconds on its standard CPU runner; native medians about 6.14/6.18 seconds. The bundled arm's timer includes a separate render-only trace, original first use can include lazy weight-page loading, and runner hosts differ. No speedup or Android memory claim follows from these numbers.
+
+Exact next chunk: evaluate a pinned **GGUF/llama.cpp CPU path** against the same original checkpoint identity on a new frozen probe. The official llama.cpp repository has a Qwen3.5 implementation (`src/models/qwen35.cpp`, source inspected 2026-10-09); that is capability to test, not proof of Android quality. Retain all answers and verify the chosen artifact's lineage before selecting it. A different native runtime would require a compatible APK, followed by real phone memory/speed/cancellation/quality checks; it cannot be delivered as an OTA-only change. A bounded conversational bridge and confirmed app proposals follow useful answers. Existing stronger hosted-model foundation remains available, without paid activation or new Cloudflare setup.
+
+No app code, model download descriptor, native APK, hosted endpoint or OTA changed here. Latest shipped beta remains weekly-schedule update `01a11ffe-5531-77e9-846a-72ffc82828ec`, runtime `0.2.13`.

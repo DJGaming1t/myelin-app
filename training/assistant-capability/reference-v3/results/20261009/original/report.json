@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "e7e065cca6687487616eb4f4fda9f05b5d375d3f",
+  "conditions": {
+    "hf-official": {
+      "turns": 8,
+      "objectivePass": 7,
+      "runtimeErrors": 0,
+      "outputAtLimit": 0,
+      "medianLatencyMs": 54542.91371600001
+    }
+  },
+  "records": 8,
+  "releaseApproved": false,
+  "semanticQualityCertified": false,
+  "note": "Automatic pattern/word checks only; all content needs qualitative review. Original BF16 vs INT8/native graph/precision/runtime confounded; not app or phone proof."
+}

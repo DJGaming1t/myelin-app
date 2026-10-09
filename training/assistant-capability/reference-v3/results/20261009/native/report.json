@@ -1,0 +1,23 @@
+{
+  "sourceCommit": "f804bc405739a5c830be80b1be8268d0631f0d4d",
+  "conditions": {
+    "native-bundled": {
+      "turns": 8,
+      "objectivePass": 5,
+      "runtimeErrors": 0,
+      "outputAtLimit": 1,
+      "medianLatencyMs": 6137.811762499993
+    },
+    "native-official-raw": {
+      "turns": 8,
+      "objectivePass": 6,
+      "runtimeErrors": 0,
+      "outputAtLimit": 2,
+      "medianLatencyMs": 6184.684783999984
+    }
+  },
+  "records": 16,
+  "releaseApproved": false,
+  "semanticQualityCertified": false,
+  "note": "Automatic pattern/word checks only; all content needs qualitative review. Original BF16 vs INT8/native graph/precision/runtime confounded; not app or phone proof."
+}

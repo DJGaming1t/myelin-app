@@ -1,5 +1,7 @@
 # Original checkpoint versus phone conversion
 
+Completed: [24 raw answers, template/tokenizer evidence and qualitative review](results/20261009/README.md). Both native paths and corrected original inference completed; no candidate is approved. The original metadata-serialization setup error generated no answers and is preserved separately.
+
 Six new authored cases/eight turns are frozen before inference. Three conditions use one greedy answer per turn, a common concise study prompt, 128 output tokens and explicit actual prior replies. This is a small development probe, not an independent benchmark, trained model, app protocol gate or phone test.
 
 1. Original post-trained `Qwen/Qwen3.5-2B` at revision `15852e8c16360a2fea060d615a32b45270f8a8fc`, official tokenizer/chat template with `enable_thinking=False`, Transformers 5.3.0 text-only `Qwen3_5ForCausalLM`, BF16 CPU/eager attention. Verify pinned snapshot file identities against HF metadata, missing-weight errors, and record complete hashes/load diagnostics. No LoRA or quantization added.

@@ -1,0 +1,223 @@
+{
+  "reviewer": "Codex qualitative review, not independent human validation",
+  "rubric": "Apply frozen content rubrics, prompt word limit and the user's explicit one/two-sentence or exact-name/number constraints. Keep correct content distinct from complete instruction adherence. No automatic-score edits or semantic certification.",
+  "rows": [
+    {
+      "condition": "hf-official",
+      "id": "multiply",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct exact 63."
+    },
+    {
+      "condition": "hf-official",
+      "id": "pen-price",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": false,
+      "reviewAccepted": false,
+      "note": "Correct calculation ends at 108, but opening claim '9 pens cost 72 rupees' contradicts it. Automatic 108 match is a false positive."
+    },
+    {
+      "condition": "hf-official",
+      "id": "ice",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": false,
+      "note": "Correct lower-density/open-structure explanation, but one sentence rather than the requested two."
+    },
+    {
+      "condition": "hf-official",
+      "id": "schoolwork",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct chemistry lab-record meaning and October 10, 2026 date despite spelling errors. Followup asks for unnecessary task detail, so helpfulness is imperfect."
+    },
+    {
+      "condition": "hf-official",
+      "id": "negative-product",
+      "turn": 1,
+      "automaticPass": false,
+      "contentComplete": true,
+      "reviewAccepted": false,
+      "note": "Correct positive twenty-four in words; frozen digit pattern is a false negative. Uses two sentences rather than the requested one."
+    },
+    {
+      "condition": "hf-official",
+      "id": "corrected-topic",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Concise standard respiration definition releases energy from glucose; does not switch to photosynthesis."
+    },
+    {
+      "condition": "hf-official",
+      "id": "corrected-topic",
+      "turn": 2,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Uses corrected osmosis topic and gives a brief accurate definition without claiming persistent app storage."
+    },
+    {
+      "condition": "hf-official",
+      "id": "corrected-topic",
+      "turn": 3,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Exact corrected topic Osmosis."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "multiply",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct exact 63."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "pen-price",
+      "turn": 1,
+      "automaticPass": false,
+      "contentComplete": false,
+      "reviewAccepted": false,
+      "note": "Incorrect 81 rupees, repeated until 128-token cap; no valid unit-price calculation."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "ice",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct lower density and open structure, in two short sentences."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "schoolwork",
+      "turn": 1,
+      "automaticPass": false,
+      "contentComplete": false,
+      "reviewAccepted": false,
+      "note": "Correct task meaning and relative tomorrow, but does not resolve the supplied date to October 10; incomplete concrete date handling."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "negative-product",
+      "turn": 1,
+      "automaticPass": false,
+      "contentComplete": true,
+      "reviewAccepted": false,
+      "note": "Correct positive twenty-four in words; frozen digit pattern is a false negative. Two sentences instead of one."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "corrected-topic",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct concise respiration definition."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "corrected-topic",
+      "turn": 2,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct osmosis definition and topic correction, without false persistent-save claim."
+    },
+    {
+      "condition": "native-bundled",
+      "id": "corrected-topic",
+      "turn": 3,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Exact corrected topic Osmosis."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "multiply",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct exact 63."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "pen-price",
+      "turn": 1,
+      "automaticPass": false,
+      "contentComplete": false,
+      "reviewAccepted": false,
+      "note": "Echoes and corrupts price question, repeats to cap; no correct 108 calculation."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "ice",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct density/open-structure explanation in two sentences."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "schoolwork",
+      "turn": 1,
+      "automaticPass": false,
+      "contentComplete": false,
+      "reviewAccepted": false,
+      "note": "Correct task words but loops to cap and leaves due date as tomorrow instead of October 10."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "negative-product",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": false,
+      "reviewAccepted": false,
+      "note": "Claims -24 and says the sign is negative while simultaneously stating two negatives give a positive. Automatic digit match is a false positive."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "corrected-topic",
+      "turn": 1,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Useful concise respiration explanation about extracting energy from nutrients."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "corrected-topic",
+      "turn": 2,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Correct osmosis definition, respects topic correction without persistent-storage claim."
+    },
+    {
+      "condition": "native-official-raw",
+      "id": "corrected-topic",
+      "turn": 3,
+      "automaticPass": true,
+      "contentComplete": true,
+      "reviewAccepted": true,
+      "note": "Exact corrected topic Osmosis."
+    }
+  ],
+  "releaseApproved": false
+}

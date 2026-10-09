@@ -1,0 +1,110 @@
+{
+  "sources": {
+    "original": "e7e065cca6687487616eb4f4fda9f05b5d375d3f",
+    "native": "f804bc405739a5c830be80b1be8268d0631f0d4d"
+  },
+  "runs": {
+    "original": 37928445408,
+    "native": 37928015501
+  },
+  "jobs": {
+    "original": 113812961590,
+    "native": 113811557139
+  },
+  "conclusions": {
+    "original": "success",
+    "native": "success"
+  },
+  "records": 24,
+  "generatedResponses": 24,
+  "runtimeErrors": 0,
+  "originalWeightsSha256": "aa33250c4fc64891ddfaba3a314fd9542ea371843c387178b425fbcc5ed680b1",
+  "originalWeightsBytes": 4548221488,
+  "artifacts": [
+    {
+      "id": 11615515305,
+      "name": "assistant-reference-original",
+      "size_in_bytes": 5069,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11615515305",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11615515305/zip",
+      "expired": false,
+      "created_at": "2026-10-09T12:09:12Z",
+      "expires_at": "2027-01-07T12:07:42Z",
+      "updated_at": "2026-10-09T12:09:12Z",
+      "digest": "sha256:e2a33ecfb831c153032b3b84b139fe2b022d459821e8d8ed8cca06de64c694d3",
+      "workflow_run": {
+        "id": 37928015501,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "f804bc405739a5c830be80b1be8268d0631f0d4d"
+      }
+    },
+    {
+      "id": 11614554774,
+      "name": "assistant-reference-native",
+      "size_in_bytes": 11633,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11614554774",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11614554774/zip",
+      "expired": false,
+      "created_at": "2026-10-09T12:11:29Z",
+      "expires_at": "2027-01-07T12:07:42Z",
+      "updated_at": "2026-10-09T12:11:29Z",
+      "digest": "sha256:60437fc9dd5c8ab9936985ac24aaf1b6482992d9f8afbe5cf957c30c699b06a0",
+      "workflow_run": {
+        "id": 37928015501,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "f804bc405739a5c830be80b1be8268d0631f0d4d"
+      }
+    },
+    {
+      "id": 11615976140,
+      "name": "assistant-reference-original-corrected",
+      "size_in_bytes": 8846,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11615976140",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11615976140/zip",
+      "expired": false,
+      "created_at": "2026-10-09T12:20:41Z",
+      "expires_at": "2027-01-07T12:11:44Z",
+      "updated_at": "2026-10-09T12:20:41Z",
+      "digest": "sha256:33d2f07193ad7e231f837bb5f0196646c90a838fb95caa6bb2948222ebc128de",
+      "workflow_run": {
+        "id": 37928445408,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "e7e065cca6687487616eb4f4fda9f05b5d375d3f"
+      }
+    }
+  ],
+  "setupAttempt": {
+    "source": "f804bc405739a5c830be80b1be8268d0631f0d4d",
+    "run": 37928015501,
+    "job": 113811556976,
+    "generatedAnswers": 0,
+    "reason": "Original text weights loaded and passed missing-weight checks, but saving Transformers load diagnostics failed because its empty sets were not JSON serializable. Normalize only metadata sets; no prompt, cases, settings, model weights or output change. Rerun original only; native result retained unchanged. No best-answer selection."
+  },
+  "extraction": "Exact PREDICTION and EVIDENCE JSON lines from completed job logs; no model-output repair. Metadata's last provenance entry is the final written file. Artifact digests are published archive digests, not locally verified archive downloads; original package freeze remains in artifacts.",
+  "limits": [
+    "Six authored cases/eight turns per condition, one greedy output; not benchmark accuracy or general app release approval.",
+    "HF BF16 versus native INT8 also changes precision, graph and runtime; conversion publisher's exact parent-weight revision is not independently established.",
+    "Each condition uses its own actual generated history; first turns share identical messages, later prompts can differ.",
+    "Bundled latency includes a separate render-only trace conversation; HF first turn can include page faults. Different CPU hosts, not phone timing or a runtime speedup claim."
+  ],
+  "phoneTested": false,
+  "appActivated": false,
+  "releaseApproved": false,
+  "localChecks": {
+    "baselineScorerGroups": 4,
+    "diagnosticAdapterGroups": 3,
+    "referenceGroups": 4,
+    "passed": true,
+    "reproducedReports": 2,
+    "reproducedRecords": 24,
+    "qualitativeReviewRows": 24,
+    "pythonCompilationPassed": true
+  },
+  "next": "Evaluate a pinned GGUF/llama.cpp CPU conversion against the original on a new frozen probe before selecting an offline chat runtime. Any future native runtime replacement needs a compatible APK and real phone QA, not an OTA-only change."
+}

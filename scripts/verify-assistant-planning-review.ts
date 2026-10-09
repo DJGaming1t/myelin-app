@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { cloneWorkspace, createEmptyWorkspace } from '../src/data/schema';
 import { createStudyTask, scheduleTask } from '../src/features/planning/task-engine';
-import { planningModelContext, reviewAssistantPlanning, tryAssistantPlanningReply } from '../src/features/assistant/assistant-planning-review';
+import { planningModelContext, reviewAssistantPlanning, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply } from '../src/features/assistant/assistant-planning-review';
 import { tryAssistantPlanMathReply } from '../src/features/assistant/assistant-plan-math';
 import { addLocalDays, startOfLocalDay } from '../src/features/planning/day-engine';
 
@@ -131,7 +131,72 @@ for (const query of [
   'I have 100 minutes free. I want 3 25-minute study blocks and 2 0-minute breaks. Does it fit?',
 ]) assert.equal(tryAssistantPlanMathReply(query), null, 'Unsupported or compound requests must not be partially answered: ' + query);
 
+// Grounded saved-task questions use the existing planner's actual constraints.
+// They never mutate task state, invent availability, or guarantee that several tasks fit.
+const safeBefore = cloneWorkspace(ws);
+const exactBio = tryAssistantTaskDeadlineReply('Can I finish "Biology notebook" before its deadline?', ws, now)!;
+assert.match(exactBio, /60 estimated min left/);
+assert.match(exactBio, /at most 0 min/);
+assert.match(exactBio, /at least 60 min short/);
+assert.match(exactBio, /Other recorded conflicts/);
+assert.match(exactBio, /90 min after its recorded deadline/);
+assert.deepEqual(ws, safeBefore, 'Read-only task check cannot update workspace');
+
+const targetTask = createEmptyWorkspace(now);
+targetTask.settings.sleepEnabled = false;
+targetTask.settings.dailyMinutes = 90;
+const deadlineTask = createStudyTask({ title: 'Chemistry practical notebook', estimatedMinutes: 60, dueAt: at(day, 12, 30), now });
+targetTask.tasks.push(deadlineTask);
+assert.match(tryAssistantTaskDeadlineReply('Can I finish my Chemistry practical notebook before its deadline?', targetTask, now)!, /at most 30 min.*at least 30 min short/s);
+deadlineTask.estimatedMinutes = 20;
+const optimistic = tryAssistantTaskDeadlineReply('Will I finish chemistry practical NOTEBOOK by the due date?', targetTask, now)!;
+assert.match(optimistic, /at most 30 min/);
+assert.match(optimistic, /might fit/);
+assert.match(optimistic, /does NOT guarantee/);
+assert.doesNotMatch(optimistic, /will definitely fit/i);
+
+const used = cloneWorkspace(targetTask);
+used.history.push({ ...recorded.history[0]!, at: at(day, 11), minutes: 85 });
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', used, now)!, /at most 5 min.*at least 15 min short/s);
+const postponed = cloneWorkspace(targetTask);
+postponed.tasks[0]!.postponedUntil = at(day, 13);
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', postponed, now)!, /at most 0 min.*at least 20 min short/s);
+
+const unknownTitle = tryAssistantTaskDeadlineReply('Can I finish History essay before its deadline?', targetTask, now)!;
+assert.match(unknownTitle, /couldn't find a recorded task/);
+assert.match(unknownTitle, /Nothing was changed/);
+const missingDue = cloneWorkspace(targetTask);
+missingDue.tasks[0]!.dueAt = 0;
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', missingDue, now)!, /no recorded deadline/);
+const missingEstimate = cloneWorkspace(targetTask);
+missingEstimate.tasks[0]!.estimatedMinutes = 0;
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', missingEstimate, now)!, /no estimated duration/);
+const completed = cloneWorkspace(targetTask);
+completed.tasks[0]!.status = 'completed';
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', completed, now)!, /already marked completed/);
+const overdue = cloneWorkspace(targetTask);
+overdue.tasks[0]!.dueAt = now - 1000;
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', overdue, now)!, /has passed/);
+const beyondHorizon = cloneWorkspace(targetTask);
+beyondHorizon.tasks[0]!.dueAt = at(addLocalDays(day, 20), 15);
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', beyondHorizon, now)!, /beyond the next seven local dates/);
+const duplicates = cloneWorkspace(targetTask);
+duplicates.tasks.push(createStudyTask({ title: 'Chemistry practical notebook', estimatedMinutes: 30, now }));
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', duplicates, now)!, /More than one task/);
+assert.deepEqual(targetTask.tasks.length, 1);
+
+for (const query of [
+  'Can I finish Chemistry practical notebook before its deadline and delete it?',
+  'Can I finish Chemistry before its deadline?',
+  'Can I finish Biology notebook tomorrow?',
+  'Review my tasks and can I finish Chemistry practical notebook before its deadline?',
+  'Can I finish Chemistry practical notebook before its deadline? Also add Maths',
+  'Can I finish a new task before its deadline? Also delete my existing work',
+]) assert.equal(tryAssistantTaskDeadlineReply(query, targetTask, now), null,
+  'Unsupported request must not be partially interpreted: ' + query);
+
 const screen = fs.readFileSync('app/(app)/settings/ai-assistant.tsx', 'utf8');
 assert.match(screen, /tryAssistantPlanningReply\(text, workspace, now\)/);
 assert.match(screen, /tryAssistantPlanMathReply\(text\)/);
+assert.match(screen, /tryAssistantTaskDeadlineReply\(text, workspace, now\)/);
 console.log('Planning review: real task deadlines,30min school conflict,break budget,weekends,skips,overnight,sleep,read-only matching and bounded context passed.');

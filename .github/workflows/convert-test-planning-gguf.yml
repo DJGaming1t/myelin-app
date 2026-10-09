@@ -1,0 +1,80 @@
+name: Convert official Qwen to phone GGUF and test fresh planning cases
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/exam-autopilot-capacity-v1]
+    paths: [.github/workflows/convert-test-planning-gguf.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: myelin-planning-gguf-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    name: Planning v4 ${{ matrix.runner }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [original, gguf]
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+      PROBE_RUNNER: ${{ matrix.runner }}
+      LLAMA_COMMIT: 609290be6b15db02f9d73443435403cbff6e7802
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify frozen inputs before any answer
+        run: |
+          python -m py_compile scripts/run-assistant-gguf.py
+          PYTHONPATH=scripts python -c 'from runpy import run_path; run_path("scripts/run-assistant-gguf.py")["load_probe"]()'
+      - name: Install pinned CPU conversion/reference dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+          python -m pip install transformers==5.3.0 huggingface-hub==1.3.0 numpy==2.2.6 sentencepiece==0.2.1 protobuf==4.25.8
+          mkdir -p "artifacts/planning-gguf/$PROBE_RUNNER"
+          python -m pip freeze > "artifacts/planning-gguf/$PROBE_RUNNER/packages.txt"
+      - name: Build exact unmodified llama.cpp source on CPU
+        if: matrix.runner == 'gguf'
+        run: |
+          git clone --filter=blob:none https://github.com/ggml-org/llama.cpp.git "$RUNNER_TEMP/llama.cpp"
+          git -C "$RUNNER_TEMP/llama.cpp" checkout --detach "$LLAMA_COMMIT"
+          test "$(git -C "$RUNNER_TEMP/llama.cpp" rev-parse HEAD)" = "$LLAMA_COMMIT"
+          cmake -S "$RUNNER_TEMP/llama.cpp" -B "$RUNNER_TEMP/llama.cpp/build" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF -DGGML_CUDA=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_CURL=OFF
+          cmake --build "$RUNNER_TEMP/llama.cpp/build" --config Release --target llama-server llama-quantize -j 2
+      - name: Convert and generate once for every declared condition
+        run: >
+          timeout --signal=TERM --kill-after=15s 45m python -u scripts/run-assistant-gguf.py
+          --runner "$PROBE_RUNNER" --llama "$RUNNER_TEMP/llama.cpp"
+          --output "artifacts/planning-gguf/$PROBE_RUNNER"
+      - name: Preserve all raw answers and conversion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: planning-gguf-${{ matrix.runner }}-evidence
+          path: |
+            artifacts/planning-gguf/${{ matrix.runner }}/*.json
+            artifacts/planning-gguf/${{ matrix.runner }}/*.jsonl
+            artifacts/planning-gguf/${{ matrix.runner }}/*.log
+            artifacts/planning-gguf/${{ matrix.runner }}/packages.txt
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Save both already converted candidate model files
+        if: always() && matrix.runner == 'gguf'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MYELIN-Qwen3.5-2B-converted-GGUF-candidates
+          path: |
+            artifacts/planning-gguf/gguf/MYELIN-Qwen3.5-2B-*.gguf
+            artifacts/planning-gguf/gguf/model-manifest.json
+          compression-level: 0
+          if-no-files-found: warn
+          retention-days: 90

@@ -1,0 +1,11 @@
+{
+  "version": 4,
+  "caseCount": 12,
+  "turnCount": 14,
+  "sha256": {
+    "cases.jsonl": "c0d673307626c6b8f809d7d3ed7354f6a08f6a480c409ca04edcfd2e8140efd7",
+    "settings.json": "f5d80b4f54451cd4e61c968a8488d231dac20110b59d91709f3393cbf3c4f230",
+    "system.txt": "f4c9052f2233d6459da1e23489986029921480a9abd2da1bd525ded8b7e35c4e"
+  },
+  "policy": "Freeze before generation; prior v1-v3 are observed diagnostics, this is a new development probe, not broad held-out certification."
+}

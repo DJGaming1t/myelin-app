@@ -8,6 +8,24 @@ Published 2026-10-08 09:34 UTC: update group `13189175-e2b7-4fee-a910-8828facfe6
 
 Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, Android update `01a11aee-348b-7bc9-a545-938c07316392`, runtime `0.2.13`, branch `preview`. Full verification and publication: https://github.com/DJGaming1t/myelin-app/actions/runs/37759348032. Receipt: `docs/beta/schoolwork-update-20261008.json`. Source `5c644549305790be1c005eec26a027559fa76e00`. The existing compatible APK receives this OTA; no reinstall or data clearing is required.
 
+## Current recorded-plan review — published 2026-10-09
+
+Current update `01a1213c-96eb-7033-819a-55d2716f8dc2`, group `d90d6a3e-d1d1-48d3-871f-bd75f87db78f`, source `ac7de0571f916eba704c1089072f4fbb23382569`, Android preview/runtime `0.2.13`, published 20:46:21 IST. Full app verification and publishing: https://github.com/DJGaming1t/myelin-app/actions/runs/37949968016. Hybrid verification: https://github.com/DJGaming1t/myelin-app/actions/runs/37949967883. Both SUCCESS. Receipts and checks: `docs/beta/planning-deadline-update-20261009.json`, `docs/beta/planning-deadline-verification-20261009.json`. This supersedes the older receipts below. Open the existing compatible APK online, allow the preview update to download, then fully close/reopen it; a second reopen may be needed. No new native APK was published.
+
+“Review my plan” uses recorded tasks and availability over seven local dates. It checks fixed/task/sleep overlaps, deadlines, insufficient blocks, missing duration estimates, remaining daily capacity after recorded study and breaks, and due saved mistakes. It also detects known work that cannot fit before its deadline even when unscheduled. That check is an optimistic individual upper bound: being below it does not prove all tasks fit. This is a read-only planner check, not an activated conversational model.
+
+Phone smoke test, using temporary test tasks that can be removed afterward:
+
+1. Open Settings → MYELIN assistant and start New chat. Send `Review my plan`. Check the date range and recorded-data wording, readable long replies with the keyboard open and larger system text. Verify it creates no task or proposal and does not change existing tasks.
+2. On a school weekday, schedule a Biology block partly inside the recorded school commitment. Send `Check my schedule`; compare the overlap minutes with Day map. On a weekend or skipped occurrence, the same hours should not incorrectly count as school.
+3. Create an open task with an exact deadline 30 minutes from now and 60 estimated minutes remaining. Leave it unscheduled. The review should flag insufficient before-deadline capacity of at least 30 minutes, even if the daily budget is large. Mark it completed and review again; its issues should disappear.
+4. Record a task with an unknown duration and a deadline tomorrow. Review should ask for an estimate without assigning a duration or guaranteeing completion. A task ending after its deadline should separately report lateness.
+5. With a small daily budget, record completed study, then review remaining planned work. The used minutes should reduce capacity. Between-block breaks should also be included. Check that adding an unrelated future task does not consume today's budget.
+6. Add an unresolved mistake due for review and one future/resolved mistake. Only the due unresolved item should count. The reply should direct you to Review, without claiming to have checked the written answer or resolved it.
+7. Send `Review my plan and delete Maths`. It must not be consumed as a plain review or delete anything. Existing action preview/confirmation rules still apply. While a clarification is pending, use Different request or New chat before starting a review.
+
+Automated app logic, both timezone suites and native compatibility passed. Actual Android interaction QA remains pending. No Qwen or cloud model is enabled by this update; the separately measured model candidates still require quality review and compatible native integration.
+
 ## What is testable
 
 - Settings → MYELIN assistant (beta) → Open MYELIN assistant.
@@ -19,7 +37,7 @@ Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73b
 
 Cloud AI is not connected. Model preferences are not working Qwen inference. A training adapter is not a downloadable phone model.
 
-## Latest weekly school-hours fix — published 2026-10-09
+## Previous weekly school-hours fix — published 2026-10-09
 
 The user's phone screenshot shows the previous conversational update but the exact school-hours fact was unsupported there. This fix connects explicit recurring school/tuition/coaching requests to the existing Day map commitments through the same confirmation layer.
 

@@ -16,4 +16,6 @@ Primary sources checked2026-10-09:
 - https://huggingface.co/lmstudio-community/Qwen3.5-4B-GGUF/blob/main/Qwen3.5-4B-Q4_K_M.gguf
 - https://huggingface.co/Qwen/Qwen3.5-4B
 
-Freeze and setup checks: python scripts/test-assistant-stronger-phone.py. Inference workflow: test-stronger-phone-planning.yml. Never report CI latency as phone latency or this small authored probe as all-planning competence.
+Initial setup run37952612818/job113894988528/source7cd3d4cc38cf85b8c9ff07e9b6d7999b95107fb5 verified the actual file hash,32layers/426tensors/2560embedding and loaded the native server. It then failed before any completion request because Jinja2 was missing from the tokenizer environment. There are zero generated answers and no quality conclusion. All provenance/server props and failure metadata are retained in setup-failure-20261009. Recovery installs pinned Jinja2 and preflights the official templates before the build. Frozen questions, prompt, file, sampling and budgets are unchanged; this is a setup recovery, not a quality retry.
+
+Freeze and identity checks: python scripts/test-assistant-stronger-phone.py. Template preflight: python scripts/run-assistant-stronger-phone.py --preflight after installing the declared helpers. Inference workflow: test-stronger-phone-planning.yml. Never report CI latency as phone latency or this small authored probe as all-planning competence.

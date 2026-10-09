@@ -44,18 +44,30 @@ def download_model(settings):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--llama',type=Path,required=True)
-    parser.add_argument('--output',type=Path,required=True)
-    args = parser.parse_args(); args.output.mkdir(parents=True,exist_ok=True)
+    parser.add_argument('--llama',type=Path)
+    parser.add_argument('--output',type=Path)
+    parser.add_argument('--preflight',action='store_true')
+    args = parser.parse_args()
     fresh, regression, settings, system, manifest, regression_manifest = load()
-    if subprocess.check_output(['git','-C',str(args.llama),'rev-parse','HEAD'],text=True).strip()!=settings['runtimeLlamaCommit']:
-        raise ValueError('Runtime does not match phone library pin')
-    versions = {name:importlib.metadata.version(name) for name in ['transformers','huggingface-hub']}
-    if versions != {'transformers':'5.3.0','huggingface-hub':'1.3.0'}: raise ValueError('Tokenizer dependency mismatch')
-    model = download_model(settings)
+    versions = {name:importlib.metadata.version(name) for name in ['transformers','huggingface-hub','jinja2']}
+    if versions != {'transformers':'5.3.0','huggingface-hub':'1.3.0','jinja2':'3.1.6'}: raise ValueError('Tokenizer dependency mismatch')
     folder, identities = HELPERS['snapshot'](settings,False)
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(folder,local_files_only=True,trust_remote_code=False)
+    if args.preflight:
+        for profile in settings['profiles']:
+            for case in fresh+regression:
+                messages=[{'role':'system','content':system},{'role':'user','content':case['turns'][0]['user']}]
+                prompt=tokenizer.apply_chat_template(messages,tokenize=False,add_generation_prompt=True,enable_thinking=profile['thinking'])
+                ids=tokenizer(prompt,add_special_tokens=False)['input_ids']
+                if not ids or len(ids)+profile['outputTokens']>settings['contextTokens']: raise ValueError('Initial prompt overflow')
+        print('Official tokenizer/template preflight passed for every initial fresh/regression request and both thinking modes; no inference.')
+        return
+    if args.llama is None or args.output is None: parser.error('--llama and --output required for inference')
+    args.output.mkdir(parents=True,exist_ok=True)
+    if subprocess.check_output(['git','-C',str(args.llama),'rev-parse','HEAD'],text=True).strip()!=settings['runtimeLlamaCommit']:
+        raise ValueError('Runtime does not match phone library pin')
+    model = download_model(settings)
     sys.path.insert(0,str(args.llama/'gguf-py'))
     import gguf
     reader = gguf.GGUFReader(model)

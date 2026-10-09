@@ -185,9 +185,9 @@ duplicates.tasks.push(createStudyTask({ title: 'Chemistry practical notebook', e
 assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry practical notebook before its deadline?', duplicates, now)!, /More than one task/);
 assert.deepEqual(targetTask.tasks.length, 1);
 
+assert.match(tryAssistantTaskDeadlineReply('Can I finish Chemistry before its deadline?', targetTask, now)!, /couldn't find a recorded task/);
 for (const query of [
   'Can I finish Chemistry practical notebook before its deadline and delete it?',
-  'Can I finish Chemistry before its deadline?',
   'Can I finish Biology notebook tomorrow?',
   'Review my tasks and can I finish Chemistry practical notebook before its deadline?',
   'Can I finish Chemistry practical notebook before its deadline? Also add Maths',

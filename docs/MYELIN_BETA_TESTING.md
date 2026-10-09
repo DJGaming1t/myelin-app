@@ -19,6 +19,28 @@ Latest schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc
 
 Cloud AI is not connected. Model preferences are not working Qwen inference. A training adapter is not a downloadable phone model.
 
+## Task-detail update — verification/publication pending
+
+New source recognizes polite supported action requests and uses the same date/minute/priority checks for topic practice and standalone schoolwork. The beta workflow now runs 31 app-flow development regressions in `Asia/Kolkata` and `America/Los_Angeles` and uploads both reports as `myelin-assistant-app-scenarios`. It also retains full TypeScript, all existing app regression scripts and exact installed-APK compatibility checks. This section does not establish publication until a new EAS receipt is recorded.
+
+After receiving the update, exercise these on Android:
+
+| Request/action | Expected behavior |
+| --- | --- |
+| `Could you please add a task to finish bio practical nb by tomorrow?` | One clean Biology homework preview, local tomorrow, duration unknown, no invented topic. |
+| `Can you schedule a task to submit chem project tomorrow for 1.5 hours?` | Chemistry assignment, 90 minutes, local tomorrow; title `Submit Chemistry project`. |
+| `Add Trigonometry practice tomorrow for 1 hour 30 minutes` (use an actual topic name) | One linked practice task with 90 minutes; no changes before confirmation. |
+| `Add 30 min Trigonometry questions tomorrow, not important` | Low priority, not high. |
+| `Add Trigonometry practice 30 min 1 hour tomorrow` | Ask for one duration; do not keep the first number. |
+| `Add Trigonometry practice 30-45 minutes by Friday` | Ask for an exact date, then a duration; replying with both separately retains previous answers. |
+| `Could you record an exam on Trigonometry?` | Ask for its day before loading a model. A date answer alone does not install an exam-capable model. |
+| `Don't add 30 min Trigonometry practice tomorrow` | No mutation/model call; ask for a rewritten instruction if an action is desired. |
+| Change workspace after generating a preview | Reject stale confirmation; generate a fresh preview. |
+| Tap confirmation repeatedly | Exactly one task; repeated application does not duplicate it. |
+| Switch accounts, edit/start a request, leave/reopen, cross midnight or wait over ten minutes | Old retained question/result cannot be reused; verify fields and previews clear. |
+
+Check actual keyboard visibility, larger text, back navigation, slow responses and OTA receipt on a phone. Pure workflow tests call the shared app logic; they do not render React Native screens or test phone performance. Qwen/cloud quality is still unmeasured/unreleased. No paid service is enabled by this update.
+
 ## Android smoke test
 
 1. Use the preview 0.2.13 APK. Open online and allow the update to download; fully close and reopen, up to twice if necessary. Do not clear app data.

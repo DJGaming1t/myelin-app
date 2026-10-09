@@ -1,5 +1,15 @@
 # MYELIN AI Handoff
 
+## Clearer task interpretation and app-flow testing — 2026-10-09 IST
+
+User requested stronger AI and better app testing. This bounded chunk improves the shipped local interpreter and verifies the same routing/clarification/preview/apply functions used by the screen. It does not train another model or claim stronger measured cloud quality.
+
+- Recognizes polite supported commands such as `Could you please add a task to finish bio practical nb by tomorrow?`, with clean task titles. Polite exam creation without a day and vague topic changes now clarify before loading any model/cloud. Leading negated supported operations require a rewritten instruction before generation.
+- Topic-linked practice and standalone schoolwork share exact task-detail parsing. Multiple/ranged/negative/fractional-minute estimates and conflicting/invalid/unsupported dates ask instead of taking the first value or rounding. A conventional adjacent `1 hour 30 minutes` is one 90-minute duration. `not important` means low priority; high/low contradictions ask. Questions/hypotheticals/completed statements and negated dates cannot become shortcut actions. Explicit typed date/minute answers can resolve an earlier ambiguity.
+- Added `scripts/verify-assistant-app-scenarios.ts`: 31 development checks in India and US timezones. Valid cases verify exact fields, no mutation during preview, required confirmation, stale revision rejection, idempotent apply and conflicting reuse of request IDs. Typed followups retain the original request/previous answers and expire on owner/revision/day/time changes. Reports explicitly mark no live-model or physical-device testing. These are synthetic development regressions, not frozen model evaluation or independent accuracy estimates.
+- Existing rule, grounding, clarification/hybrid and available TypeScript checks passed locally. Full app verification and compatible preview publication are pending the GitHub beta workflow; do not call this published until the receipt is checked. It also uploads both timezone reports before publication.
+- Next after verified beta delivery: real revocation-aware authentication and atomic D1 quotas for the free hosted-Qwen path, then actual Worker/provider checks. Physical Android keyboard/navigation/text-size/OTA checks remain pending. Zero-spending requirement and failed Qwen phone gates remain in force.
+
 ## Active next step — zero spending, 2026-10-09 IST
 
 The user says they cannot spend money. This supersedes the Firebase/Gemini setup proposed later in this historical handoff. Pause that activation: Firebase Functions requires billing, and current Gemini API terms exclude clients likely to be accessed by under-18s. MYELIN's school audience makes that a provider mismatch; an adult API owner would not remove it.

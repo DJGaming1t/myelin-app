@@ -91,7 +91,7 @@ async function main() {
   output = batch([exam('2026-10-19')]);
   const remote = await routeWithHybridAssistant({ workspace, requestId, now, userRequest: 'Could you record a Geography viva covering Climate Zones?', allowCloudFallback: true,
     offline: { id: 'unavailable', async generate() { throw new Error('Not installed'); } }, cloud });
-  assert.equal(remote.route, 'clarify'); assert.equal(cloudCalls, 1, 'Cloud-generated dates face the same checks.');
+  assert.equal(remote.route, 'clarify'); assert.equal(cloudCalls, 0, 'Polite exam requests ask for a day before loading a model or cloud.');
   const session = { modelId: 'functiongemma-270m' as const, async close() {}, async generate() { return { text: JSON.stringify(output), finishReason: 'stop' as const }; } };
   await assert.rejects(() => prepareLocalAssistantActions({ workspace, session, requestId, now, userRequest: 'Could you record a Geography viva covering Climate Zones?' }), error => error instanceof AssistantGroundingError && error.clarification.reason === 'missing-date');
   assert.equal((await prepareLocalAssistantActions({ workspace, session, requestId, now, userRequest: `${original} on 2026-10-19` })).preview.requiresConfirmation, true);

@@ -25,6 +25,7 @@ on:
       - scripts/verify-myelin-mini-fast-router.ts
       - scripts/verify-assistant-clarification.ts
       - scripts/verify-assistant-grounding.ts
+      - scripts/verify-assistant-app-scenarios.ts
 
 permissions:
   contents: read
@@ -47,6 +48,8 @@ jobs:
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts
           npx tsx scripts/verify-assistant-grounding.ts
+          TZ=Asia/Kolkata npx tsx scripts/verify-assistant-app-scenarios.ts
+          TZ=America/Los_Angeles npx tsx scripts/verify-assistant-app-scenarios.ts
           npx tsx scripts/verify-cloud-assistant.ts
           npx tsx scripts/export-assistant-cloud-protocol.ts --check
           node --test functions/test/*.test.cjs

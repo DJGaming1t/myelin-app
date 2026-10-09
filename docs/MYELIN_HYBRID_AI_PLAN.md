@@ -4,6 +4,7 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 
 ## Master checklist
 
+- [x] Improve polite commands and shared task detail parsing; add 31 app-flow development checks in two timezones covering preview/confirmation, stale state, duplicate apply and retained-reply expiry. Full beta CI/publication evidence pending.
 - [x] Record the user's zero-spending requirement; pause Firebase/Gemini activation and research a free hosting/inference alternative. Current decision: `docs/MYELIN_FREE_CLOUD_PLAN.md`.
 - [x] Implement the isolated Web API Worker/Qwen provider foundation with bounded HTTP behavior and simulated integration through the existing confirmed preview. Default entry remains inactive pending auth/quotas; no live model evidence.
 - [ ] Implement and verify Workers Free + hosted Qwen + D1 Free, preserving authentication, shared quotas, cancellation and the existing protocol. Account access and live model quality remain unverified.

@@ -1,7 +1,7 @@
 import type { WorkspaceState } from '@/src/data/schema';
 import type { AssistantActionBatch, AssistantExamRef, AssistantTopicRef } from './ai-action-engine';
 import type { AssistantClarificationAnswers } from './assistant-clarification';
-import { normalizeSchoolworkLanguage, validSchoolworkDate } from './schoolwork-language';
+import { normalizeAssistantCommand, normalizeSchoolworkLanguage, validSchoolworkDate } from './schoolwork-language';
 
 export type GroundingQuestion = {
   reason: 'missing-date' | 'missing-target' | 'ambiguous-reference';
@@ -57,7 +57,10 @@ export function checkAssistantRequestGrounding(input: Input): GroundingQuestion 
   const answers = input.clarificationAnswers;
   if (answers?.topicId && !input.workspace.topics.some(t => t.id === answers.topicId)) return targetQuestion('topic');
   if (answers?.dueDate != null && !validSchoolworkDate(answers.dueDate)) return dateQuestion();
-  const text = normalizeSchoolworkLanguage(input.userRequest);
+  const text = normalizeAssistantCommand(input.userRequest);
+  if (/^(?:please\s+)?(?:don't|do not|never)\s+(?:add|create|record|schedule|set|mark|update|raise|lower|increase|decrease)\b/.test(text)) return {
+    reason: 'ambiguous-reference', question: 'This request says to leave something unchanged. If you want an action, rewrite it as one clear instruction.', missingFields: ['request'],
+  };
   if (/^(?:please\s+)?(?:add|create|record|schedule)\b.{0,70}\b(?:exam|quiz|test|assessment|viva)\b/.test(text) &&
       !/\b(?:exam|quiz|test|assessment)\s+plan\b|\b(?:don't|do not|already|completed|if|maybe)\b/.test(text) && !dateEvidence(input)) return dateQuestion();
   if (/^(?:please\s+)?(?:make|set|mark|update|raise|lower|increase|decrease)\s+(?:it|this|that|the selected (?:topic|chapter))\b/.test(text) &&

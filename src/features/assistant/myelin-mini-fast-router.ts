@@ -1,5 +1,5 @@
 import { WorkspaceState } from '@/src/data/schema';
-import { normalizeSchoolworkLanguage, tryParseSchoolworkRequest, validSchoolworkDate } from './schoolwork-language';
+import { normalizeAssistantCommand, parseAssistantTaskDetails, tryParseSchoolworkRequest, validSchoolworkDate } from './schoolwork-language';
 import type { AssistantClarificationAnswers } from './assistant-clarification';
 
 export const MYELIN_MINI_FAST_MODEL_ID = 'myelin-mini-fast-v1' as const;
@@ -93,61 +93,6 @@ function words(value: string) {
   return normalize(value)
     .split(' ')
     .filter((word) => word && !STOP_WORDS.has(word));
-}
-
-function addDaysIso(date: string, days: number) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!match) return null;
-  const stamp = Date.UTC(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]) + days,
-  );
-  const next = new Date(stamp);
-  return [
-    next.getUTCFullYear().toString().padStart(4, '0'),
-    String(next.getUTCMonth() + 1).padStart(2, '0'),
-    String(next.getUTCDate()).padStart(2, '0'),
-  ].join('-');
-}
-
-function detectDueDate(text: string, currentDate: string) {
-  const explicit = /\b(20\d{2}-\d{2}-\d{2})\b/.exec(text)?.[1];
-  if (explicit) return explicit;
-
-  if (/\b(?:tomorrow|tmr|kal)\b/.test(text)) {
-    return addDaysIso(currentDate, 1) ?? undefined;
-  }
-  if (/\b(?:today|aaj)\b/.test(text)) {
-    return currentDate;
-  }
-  return undefined;
-}
-
-function detectMinutes(text: string) {
-  const minuteMatch = /\b(\d{1,3})\s*(?:m|min|mins|minute|minutes)\b/.exec(text);
-  if (minuteMatch) {
-    const value = Number(minuteMatch[1]);
-    return value >= 5 && value <= 240 ? value : null;
-  }
-
-  const hourMatch = /\b(\d{1,2}(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/.exec(text);
-  if (hourMatch) {
-    const value = Math.round(Number(hourMatch[1]) * 60);
-    return value >= 5 && value <= 240 ? value : null;
-  }
-
-  return null;
-}
-
-function detectPriority(text: string): 1 | 2 | 3 {
-  if (/\b(?:high priority|urgent|very important|important)\b/.test(text)) {
-    return 3;
-  }
-  if (/\b(?:low priority|not important)\b/.test(text)) {
-    return 1;
-  }
-  return 2;
 }
 
 function detectTaskType(text: string) {
@@ -297,7 +242,7 @@ export function localDateKeyFromTimestamp(now: number) {
 export function tryBuildMyelinMiniFastDecision(
   input: FastRouterInput,
 ): FastDecision | null {
-  const language = normalizeSchoolworkLanguage(input.userRequest);
+  const language = normalizeAssistantCommand(input.userRequest);
   const text = normalize(language);
   if (!text) return null;
 
@@ -313,7 +258,8 @@ export function tryBuildMyelinMiniFastDecision(
     return null;
   }
 
-  if (/^(?:how|why|what|when|should i|did i|do i|does)\b/.test(language)) return null;
+  if (/^(?:how|why|what|when|should|did|do|does|is|are|can|could|would|will)\b/.test(language)) return null;
+  if (/\b(?:not|don't|do not|cannot|can't|already|completed|finished|yesterday|if|maybe|might|could|would)\b/.test(language.replace(/\bnot important\b/g, ''))) return null;
   const answers = input.clarificationAnswers ?? {};
   const chosenTopic = answers.topicId ? input.workspace.topics.find(topic => topic.id === answers.topicId) : null;
   if (answers.topicId && !chosenTopic) return { version: 1, requestId: input.requestId, route: 'clarify', confidence: 0.99, reason: 'missing-target', question: 'Which existing topic do you mean?', missingFields: ['topic'] };
@@ -336,7 +282,7 @@ export function tryBuildMyelinMiniFastDecision(
   // Do not reinterpret rejected schoolwork (negation, completed statements,
   // questions) as the older topic-based homework shortcut.
   if (/\b(?:notebooks?|homework|assignments?|projects?|worksheets?)\b/.test(language) &&
-      /\b(?:not|don't|doesn't|didn't|cannot|can't|already|completed|finished|submitted|yesterday|if|maybe|might|could|would|delete|remove|cancel)\b/.test(language)) return null;
+      /\b(?:not|don't|doesn't|didn't|cannot|can't|already|completed|finished|submitted|yesterday|if|maybe|might|could|would|delete|remove|cancel)\b/.test(language.replace(/\bnot important\b/g, ''))) return null;
 
   const taskType = detectTaskType(text);
 
@@ -365,8 +311,10 @@ export function tryBuildMyelinMiniFastDecision(
       };
     }
 
-    const minutes = answers.estimatedMinutes ?? detectMinutes(text);
-    if (minutes == null || !Number.isInteger(minutes) || minutes < 5 || minutes > 720) {
+    const details = parseAssistantTaskDetails(language, input.currentDate, answers);
+    if (details.route === 'clarify') return { version: 1, requestId: input.requestId, confidence: 0.99, ...details };
+    const minutes = details.estimatedMinutes;
+    if (!Number.isInteger(minutes) || minutes < 5 || minutes > 720) {
       return {
         version: 1,
         requestId: input.requestId,
@@ -379,7 +327,7 @@ export function tryBuildMyelinMiniFastDecision(
     }
 
     const topic = topicResult.topic;
-    const dueDate = answers.dueDate ?? detectDueDate(language, input.currentDate);
+    const dueDate = details.dueDate;
 
     return {
       version: 1,
@@ -398,7 +346,7 @@ export function tryBuildMyelinMiniFastDecision(
             taskType,
             ...(dueDate ? { dueDate } : {}),
             estimatedMinutes: minutes,
-            priority: detectPriority(text),
+            priority: details.priority,
             notes: Object.keys(answers).length ? `Original request: ${input.userRequest}\nClarification answers: ${JSON.stringify(answers)}` : '',
           },
         ],

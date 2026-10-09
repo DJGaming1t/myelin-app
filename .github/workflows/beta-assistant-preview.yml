@@ -54,10 +54,17 @@ jobs:
           npx tsx scripts/verify-hybrid-assistant.ts
           npx tsx scripts/verify-assistant-clarification.ts
           npx tsx scripts/verify-assistant-grounding.ts
+          TZ=Asia/Kolkata MYELIN_ASSISTANT_SCENARIO_REPORT="$RUNNER_TEMP/assistant-scenarios-india.json" npx tsx scripts/verify-assistant-app-scenarios.ts
+          TZ=America/Los_Angeles MYELIN_ASSISTANT_SCENARIO_REPORT="$RUNNER_TEMP/assistant-scenarios-us.json" npx tsx scripts/verify-assistant-app-scenarios.ts
           npx tsx scripts/verify-adaptive.ts
           npx tsx scripts/verify-transition.ts
       - name: Expo export configuration
         run: npx expo config --type prebuild > /dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myelin-assistant-app-scenarios
+          path: ${{ runner.temp }}/assistant-scenarios-*.json
+          if-no-files-found: error
 
   publish_preview:
     needs: verify
@@ -88,7 +95,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN grounded dates and exact targets beta $GITHUB_SHA"
+          --message "MYELIN clearer task details and expanded app-flow checks beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

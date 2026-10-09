@@ -1,0 +1,68 @@
+{
+  "sourceCommit": "44d85491e84e5ee51b1e3a4e631c62573bf10aaf",
+  "runId": 37933683037,
+  "originalJob": 113830345246,
+  "ggufJob": 113830345764,
+  "artifacts": [
+    {
+      "id": 11619386143,
+      "name": "planning-gguf-original-evidence",
+      "size_in_bytes": 10847,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11619386143",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11619386143/zip",
+      "expired": false,
+      "created_at": "2026-10-09T13:39:35Z",
+      "expires_at": "2027-01-07T12:59:20Z",
+      "updated_at": "2026-10-09T13:39:35Z",
+      "digest": "sha256:6162ae434aacb04dfbbe3eb3dd236566525316c651a8f48df0f40ec03fd639dc",
+      "workflow_run": {
+        "id": 37933683037,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "44d85491e84e5ee51b1e3a4e631c62573bf10aaf"
+      }
+    },
+    {
+      "id": 11618830746,
+      "name": "MYELIN-Qwen3.5-2B-converted-GGUF-candidates",
+      "size_in_bytes": 3286427541,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11618830746",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11618830746/zip",
+      "expired": false,
+      "created_at": "2026-10-09T13:19:39Z",
+      "expires_at": "2027-01-07T12:59:20Z",
+      "updated_at": "2026-10-09T13:19:39Z",
+      "digest": "sha256:aaa7ae3b916f422f3db10e1dc9b067754ebfcda5781a4a09bbcdfe3a4f941804",
+      "workflow_run": {
+        "id": 37933683037,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "44d85491e84e5ee51b1e3a4e631c62573bf10aaf"
+      }
+    },
+    {
+      "id": 11617628609,
+      "name": "planning-gguf-gguf-evidence",
+      "size_in_bytes": 40164,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11617628609",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11617628609/zip",
+      "expired": false,
+      "created_at": "2026-10-09T13:19:16Z",
+      "expires_at": "2027-01-07T12:59:20Z",
+      "updated_at": "2026-10-09T13:19:16Z",
+      "digest": "sha256:bfde6aec9b080ee04dd13ffe80fcc1ca1b813b3456886a62ad9713284941ec32",
+      "workflow_run": {
+        "id": 37933683037,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "44d85491e84e5ee51b1e3a4e631c62573bf10aaf"
+      }
+    }
+  ],
+  "archiveDigestSource": "GitHub publisher metadata; archives were not independently downloaded locally.",
+  "phoneTested": false,
+  "releaseApproved": false
+}

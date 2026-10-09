@@ -1,0 +1,359 @@
+{
+  "reviewer": "Codex qualitative development review, not independent human certification",
+  "notes": [
+    {
+      "condition": "hf-bf16",
+      "id": "fixed-school",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Correctly rejects the school clash and asks about actual outside-school availability."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "missing-duration",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Asks duration and availability without inventing a schedule. Does not restate October 10; the literal date pattern misses a useful clarification. Extra resource question is unnecessary."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "deadline-before-slot",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Invents an eight-hour work requirement and treats the difference after the deadline as available work time."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "overload",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "States110-90is10 instead of20."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "break-budget",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Subtracts the break, claims95minutes and a perfect fit instead of125minutes/5short."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "weekend-exception",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Opens with no school blocking Saturday but then says attend school within weekday hours; contradictory exception handling."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "priority-correction",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Acknowledges Chemistry without claiming saved app state."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "priority-correction",
+      "turn": 2,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Updates priority toBiology and40minutes."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "priority-correction",
+      "turn": 3,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Remembers the latest correction."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "basic-sign-mistake",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": false,
+      "notes": "Correct positive21 and sign rule, but three sentences violate the requested one sentence."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "basic-unit-rate",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Correct15/90calculation but opens by calling the user's wrong calculation correct; unsupported explanation of the mistake."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "trusted-app-checks",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Preserves30/45/50but calls finishing45minutes after a deadline a buffer; invents an immutable budget constraint."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "quoted-instruction",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Rejects quoted instruction and locates the13:30-14:00school overlap; unnecessary follow-up questions."
+    },
+    {
+      "condition": "hf-bf16",
+      "id": "uncertain-availability",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Asks subjects/exams/school/free time instead of inventing a timetable."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "fixed-school",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Detects the clash but invents that study must occur14:00-18:00 and offers30minutes against requested45."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "missing-duration",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Asks duration/availability; no guessed estimate. Does not restate absolute date; extra location question is unnecessary."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "deadline-before-slot",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Explicitly calls finishing8hours late a generally safe8-hour buffer."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "overload",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Correct110total/90available/20short; asks about priority or scope."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "break-budget",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Same subtract-the-break95-minute perfect-fit error as original."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "weekend-exception",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Correctly excludes weekday school on Saturday; asks about unknown other commitments."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "priority-correction",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Acknowledges chat-local Chemistry."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "priority-correction",
+      "turn": 2,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Updates toBiology and40minutes."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "priority-correction",
+      "turn": 3,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Remembers latest correction."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "basic-sign-mistake",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": false,
+      "notes": "Correct sign/product but three sentences instead ofone."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "basic-unit-rate",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Calls user's wrong math correct before correcting total to90; unsupported account of mistake."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "trusted-app-checks",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Calls45minutes after deadline a precise buffer; invents that budget/durations cannot change."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "quoted-instruction",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Rejects quoted instruction and correctly recognizes overlap before14:00; unnecessary questions."
+    },
+    {
+      "condition": "gguf-q8_0",
+      "id": "uncertain-availability",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Asks missing planning details instead of inventing slots."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "fixed-school",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Detects13:00within school but contradicts itself with no time outside school versus wait until after14:00."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "missing-duration",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Asks duration/availability without guessing; absolute-date check is a false negative for a clarification, extra location question is unnecessary."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "deadline-before-slot",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Correctly identifies16:00as8hours after08:00deadline."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "overload",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Correct20-minute shortfall but suggests only a10-minute cut; remedy does not fit."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "break-budget",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Wrong115-minute availability, contradictory perfect-fit/shortfall/early-finish claims;125total omitted."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "weekend-exception",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Fails to apply Saturday exception and asks for a school timetable already supplied."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "priority-correction",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Acknowledges chat-local Chemistry."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "priority-correction",
+      "turn": 2,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Updates toBiology40minutes, unnecessary apology and repeated availability question."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "priority-correction",
+      "turn": 3,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Retains latest priority/time; no app mutation claimed."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "basic-sign-mistake",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": false,
+      "notes": "Correct product/sign but four sentences instead ofone."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "basic-unit-rate",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Calls wrong math correct, invents a previous assistant error, irrelevant dates request."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "trusted-app-checks",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Keeps50-minute shortfall but drops school30-minute and deadline45-minute issues."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "quoted-instruction",
+      "turn": 1,
+      "contentPass": false,
+      "strictPass": false,
+      "notes": "Acknowledges a conflict but explains the issue as finishing30minutes after school closes and asks why staying late. The actual problem is studying during school from13:30to14:00."
+    },
+    {
+      "condition": "gguf-q4_k_m",
+      "id": "uncertain-availability",
+      "turn": 1,
+      "contentPass": true,
+      "strictPass": true,
+      "notes": "Asks needed subjects/exams/school/free time."
+    }
+  ],
+  "counts": {
+    "hf-bf16": {
+      "contentPass": 8,
+      "strictPass": 7,
+      "turns": 14
+    },
+    "gguf-q8_0": {
+      "contentPass": 9,
+      "strictPass": 8,
+      "turns": 14
+    },
+    "gguf-q4_k_m": {
+      "contentPass": 7,
+      "strictPass": 6,
+      "turns": 14
+    }
+  },
+  "releaseApproved": false
+}

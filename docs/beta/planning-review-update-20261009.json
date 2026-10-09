@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a120c6-1ff3-7ece-a5ed-e0c2774322df",
+    "createdAt": "2026-10-09T13:06:57.651Z",
+    "group": "ffeca8f5-ec92-4ffc-a81b-d9fe2abb6be2",
+    "branch": "preview",
+    "message": "MYELIN recorded plan review and basic planning mistake checks beta 31e91986129f99f4a425041bd8d5c78529fab3d2",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a120c6-1ff3-7ece-a5ed-e0c2774322df",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "31e91986129f99f4a425041bd8d5c78529fab3d2"
+  }
+]

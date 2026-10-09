@@ -1,0 +1,22 @@
+{
+  "conditions": {
+    "gguf-q8_0": {
+      "turns": 14,
+      "patternPass": 12,
+      "runtimeErrors": 0,
+      "outputAtLimit": 0,
+      "medianCpuLatencyMs": 18638.228144000037
+    },
+    "gguf-q4_k_m": {
+      "turns": 14,
+      "patternPass": 10,
+      "runtimeErrors": 0,
+      "outputAtLimit": 0,
+      "medianCpuLatencyMs": 14413.241686000049
+    }
+  },
+  "records": 28,
+  "phoneTested": false,
+  "releaseApproved": false,
+  "note": "Pattern checks do not certify semantics. Preserve all answers including mistakes; qualitative review required."
+}

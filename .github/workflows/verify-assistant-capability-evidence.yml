@@ -1,0 +1,30 @@
+name: Verify saved model capability evidence without repeating inference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/exam-autopilot-capacity-v1]
+    paths:
+      - .github/workflows/verify-assistant-capability-evidence.yml
+      - scripts/verify-assistant-gguf-results.py
+      - scripts/test-assistant-phone-profiles.py
+      - training/assistant-capability/gguf-v4/results/**
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Replay exact saved outputs and validate the next frozen profile
+        run: |
+          python scripts/verify-assistant-gguf-results.py
+          python scripts/test-assistant-reference.py
+          python scripts/test-assistant-phone-profiles.py
+          python -m py_compile scripts/run-assistant-gguf.py scripts/run-assistant-phone-profiles.py

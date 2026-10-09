@@ -1,0 +1,15 @@
+{
+  "conditions": {
+    "hf-bf16": {
+      "turns": 14,
+      "patternPass": 9,
+      "runtimeErrors": 0,
+      "outputAtLimit": 0,
+      "medianCpuLatencyMs": 165328.54611599992
+    }
+  },
+  "records": 14,
+  "phoneTested": false,
+  "releaseApproved": false,
+  "note": "Pattern checks do not certify semantics. Preserve all answers including mistakes; qualitative review required."
+}

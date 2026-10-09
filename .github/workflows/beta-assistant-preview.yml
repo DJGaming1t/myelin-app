@@ -39,7 +39,7 @@ jobs:
           node scripts/check-beta-ota-compatibility.cjs
       - run: npm ci --no-audit --no-fund
       - run: npx tsc --noEmit
-      - name: All existing app regression scripts
+      - name: App regressions, including chat screen integration
         run: |
           node <<'NODE'
           const { execFileSync } = require('node:child_process');

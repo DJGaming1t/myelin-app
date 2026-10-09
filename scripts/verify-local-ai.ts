@@ -362,8 +362,8 @@ async function main() {
     assert.match(settingsSource, /href="\/\(app\)\/settings\/ai-assistant"/);
     assert.match(settingsSource, /AI model choices/);
     assert.match(assistantScreenSource, /available && !hasRuleDecision/);
-    assert.match(assistantScreenSource, /answerAssistantClarification\(pendingQuestion, answer, currentWorkspace, scope\)/);
-    assert.match(assistantScreenSource, /testID="assistant-clarification-answer"/);
+    assert.match(assistantScreenSource, /answerAssistantClarification\(pendingQuestion, text, workspace, clarificationScope\)/);
+    assert.match(assistantScreenSource, /testID="assistant-chat-composer"/);
     assert.match(assistantScreenSource, /setPendingQuestion\(null\)/);
     assert.match(assistantScreenSource, /<TaskPreviewDetails prepared=\{prepared\} index=\{index\}/);
     assert.match(assistantScreenSource, /Duration not set — add an estimate before planning/);
@@ -385,18 +385,19 @@ async function main() {
     assert.doesNotMatch(modelScreenSource, /Linking\.openURL/);
     assert.doesNotMatch(providerSource, /testAiSetup/);
     assert.match(providerSource, /nativeRuntimeAvailable/);
-    assert.match(assistantScreenSource, /installed APK does not expose the native LiteRT-LM runtime/);
+    assert.match(assistantScreenSource, /assistantOfflineStatus/);
+    assert.match(providerSource, /offlineStatus,/);
 
     assert.match(modelScreenSource, /\/\(app\)\/settings\/ai-assistant/);
-    assert.match(assistantScreenSource, /Preview actions/);
+    assert.match(assistantScreenSource, /assistant-chat-action-preview/);
     assert.match(assistantScreenSource, /REVIEW BEFORE APPLYING/);
-    assert.match(assistantScreenSource, /Apply changes/);
+    assert.match(assistantScreenSource, /Confirm changes/);
     assert.match(assistantScreenSource, /applyPreparedAssistantActionBatch/);
     assert.match(assistantScreenSource, /commitAssistantWorkspace/);
     assert.match(assistantScreenSource, /prepared\.confirmationKey/);
     assert.match(assistantScreenSource, /prepared\.sourceRevision/);
-    assert.match(assistantScreenSource, /MYELIN stays in control/);
-    assert.match(assistantScreenSource, /deterministic planner/);
+    assert.match(assistantScreenSource, /Nothing changes until you confirm/);
+    assert.match(assistantScreenSource, /assistantChatReducer/);
     assert.match(assistantScreenSource, /MYELIN CALCULATED PLAN/);
     assert.match(assistantScreenSource, /DAILY MILEAGE/);
     assert.match(assistantScreenSource, /USABLE CAPACITY/);

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { cloneWorkspace, createEmptyWorkspace } from '../src/data/schema';
 import { createStudyTask, scheduleTask } from '../src/features/planning/task-engine';
 import { planningModelContext, reviewAssistantPlanning, tryAssistantPlanningReply } from '../src/features/assistant/assistant-planning-review';
+import { tryAssistantPlanMathReply } from '../src/features/assistant/assistant-plan-math';
 import { addLocalDays, startOfLocalDay } from '../src/features/planning/day-engine';
 
 const at = (day: number, hour: number, minute = 0) => { const d = new Date(day); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute).getTime(); };
@@ -103,6 +104,34 @@ assert(!reviewAssistantPlanning(imminent, evening).issues.some(i => i.code === '
 urgent.postponedUntil = at(addLocalDays(day, 1), 10);
 assert.equal(reviewAssistantPlanning(imminent, evening).issues.find(i => i.code === 'deadline-capacity')?.minutes, 20,
   'Postponing availability until after the deadline leaves no recorded capacity');
+
+// These are generic, user-supplied arithmetic checks, NOT an evaluation of Qwen.
+// A supported match is read-only; compound actions and ambiguous dates must fall through.
+const mathCases: [string, RegExp][] = [
+  ['I have 100 minutes free. I want 3 25-minute study blocks and 2 10-minute breaks. Does it fit?', /95 minutes.*5 minutes left/s],
+  ['I have 85 minutes free, I want 2 40-minute study blocks and 1 12-minute break. Does it fit?', /92 minutes.*short by 7 minutes/s],
+  ['Maths is 08:35-09:20 and English is 09:05-09:40 on the same day. What is the overlap?', /09:05 to 09:20 for 15 minutes/],
+  ['Maths is 08:35-09:20 and English is 09:20-09:40 on the same day. What is the overlap?', /do not overlap/],
+  ['My assignment is due at 14:30 and I plan to finish at 15:10 on the same day. Am I late?', /40 minutes after/],
+  ['My homework is due at 18:00 and I expect to finish it at 17:25 on the same day. Is that on time?', /35 minutes before/],
+];
+for (const [query, expected] of mathCases) {
+  const reply = tryAssistantPlanMathReply(query);
+  assert.match(reply!, expected, query);
+  assert.match(reply!, /Nothing was changed/);
+}
+for (const query of [
+  'I have 100 minutes free. I want 3 25-minute study blocks and 2 10-minute breaks. Does it fit? Also delete Maths',
+  'Maths is 08:35-09:20 and English is 09:05-09:40. What is the overlap?',
+  'Maths is 08:35-08:20 and English is 08:05-08:40 on the same day. What is the overlap?',
+  'Maths is 24:35-25:20 and English is 09:05-09:40 on the same day. What is the overlap?',
+  'My task is due tomorrow at 14:30 and I plan to finish at 15:10 on the same day. Am I late?',
+  'My assignment is due at 14:30 and I plan to finish at 15:10 on the same day. Am I late? Move it.',
+  'I have 0 minutes free. I want 3 25-minute study blocks and 2 10-minute breaks. Does it fit?',
+  'I have 100 minutes free. I want 3 25-minute study blocks and 2 0-minute breaks. Does it fit?',
+]) assert.equal(tryAssistantPlanMathReply(query), null, 'Unsupported or compound requests must not be partially answered: ' + query);
+
 const screen = fs.readFileSync('app/(app)/settings/ai-assistant.tsx', 'utf8');
 assert.match(screen, /tryAssistantPlanningReply\(text, workspace, now\)/);
+assert.match(screen, /tryAssistantPlanMathReply\(text\)/);
 console.log('Planning review: real task deadlines,30min school conflict,break budget,weekends,skips,overnight,sleep,read-only matching and bounded context passed.');

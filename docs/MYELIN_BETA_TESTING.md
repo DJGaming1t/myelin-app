@@ -8,6 +8,23 @@ Published 2026-10-08 09:34 UTC: update group `13189175-e2b7-4fee-a910-8828facfe6
 
 Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, Android update `01a11aee-348b-7bc9-a545-938c07316392`, runtime `0.2.13`, branch `preview`. Full verification and publication: https://github.com/DJGaming1t/myelin-app/actions/runs/37759348032. Receipt: `docs/beta/schoolwork-update-20261008.json`. Source `5c644549305790be1c005eec26a027559fa76e00`. The existing compatible APK receives this OTA; no reinstall or data clearing is required.
 
+## Current exact-time questions — published 2026-10-10 IST
+
+Published Android `preview` OTA from `f776e97a0492f0f76630421ed50b67f750683e4b` at 2026-10-09 20:14:24 UTC (2026-10-10 01:44:24 IST): update `01a1224d-75d2-7e3c-906a-d6afc3ba392b`, group `66d95760-36ff-48bc-8956-33daf88d981d`, runtime `0.2.13`. Full beta verify and publish jobs both **SUCCESS** in [run 37985197692](https://github.com/DJGaming1t/myelin-app/actions/runs/37985197692). Beta receipt artifact `11642965729`, scenario artifact `11641964736`. Dedicated no-publish compile/two-timezone/chat verification was already **SUCCESS** in [run 37985081308](https://github.com/DJGaming1t/myelin-app/actions/runs/37985081308).
+
+The previously installed compatible Android preview APK gets this update without a new APK. Open with internet, let the preview update load and fully close/reopen if necessary. This does **not** activate Qwen/general teaching AI, change the model runtime, or modify tasks.
+
+Phone smoke checks, in **Settings → MYELIN assistant**, New chat:
+
+1. `I have 100 minutes free. I want 3 25-minute study blocks and 2 10-minute breaks. Does it fit?` → “MYELIN time check”, 95 minutes required, 5 left.
+2. `Maths is 08:35-09:20 and English is 09:05-09:40 on the same day. What is the overlap?` → 09:05–09:20, 15 minutes.
+3. `My assignment is due at 14:30 and I plan to finish at 15:10 on the same day. Am I late?` → 40 minutes after deadline.
+4. `Maths is 08:35-09:20 and English is 09:05-09:40. What is the overlap?` → should **not** invent a same-day assumption. Use an explicit supported request to get the exact time check.
+5. `I have 100 minutes free. I want 3 25-minute study blocks and 2 10-minute breaks. Does it fit? Also delete Maths` → must not silently answer a portion as a time check or delete any tasks. Review any proposed action before confirming; check workspace remains unchanged.
+6. Repeat “Review my plan” with recorded actual work and compare against Day map. Existing recorded-plan review still takes priority; exact supplied-time arithmetic is **not** an assessment of recorded schedule availability.
+
+Automated tests cannot prove phone keyboard behavior, long-message layout, cached-OTA delivery, or the actual on-device view. Complete those checks manually before calling this physically QA-approved.
+
 ## Current recorded-plan review — published 2026-10-09
 
 Current update `01a1213c-96eb-7033-819a-55d2716f8dc2`, group `d90d6a3e-d1d1-48d3-871f-bd75f87db78f`, source `ac7de0571f916eba704c1089072f4fbb23382569`, Android preview/runtime `0.2.13`, published 20:46:21 IST. Full app verification and publishing: https://github.com/DJGaming1t/myelin-app/actions/runs/37949968016. Hybrid verification: https://github.com/DJGaming1t/myelin-app/actions/runs/37949967883. Both SUCCESS. Receipts and checks: `docs/beta/planning-deadline-update-20261009.json`, `docs/beta/planning-deadline-verification-20261009.json`. This supersedes the older receipts below. Open the existing compatible APK online, allow the preview update to download, then fully close/reopen it; a second reopen may be needed. No new native APK was published.

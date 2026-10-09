@@ -4,6 +4,8 @@
 
 Server and client transport code is prepared; it is not deployed or enabled in the app. The existing preview still runs local rules and the existing experimental offline path. A configured Firebase account alone does not grant a Gemini API key or permission to deploy Cloud Functions.
 
+Verified source `c298f44ec777cc7c437de1d0aa756db8b9616102`: backend [run 37862323680](https://github.com/DJGaming1t/myelin-app/actions/runs/37862323680) passed 8/8 tests including real emulator transactions; [hybrid run 37862323690](https://github.com/DJGaming1t/myelin-app/actions/runs/37862323690) passed full app TypeScript and assistant/model lifecycle regressions. These checks do not establish live provider quality, deployment readiness or Android interaction. Evidence: `docs/cloud/transport-verification-20261009.json`.
+
 The endpoint is a narrow study-management decision service, using the same Mini protocol, clarification, grounding, preview and confirmation checks. It does not add unrestricted tutoring, photo parsing or automatic timetable generation. A stronger provider must still be evaluated on MYELIN requests before its capability is advertised.
 
 ## Server contract

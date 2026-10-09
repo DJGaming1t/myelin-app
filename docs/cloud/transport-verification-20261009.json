@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "sourceCommit": "c298f44ec777cc7c437de1d0aa756db8b9616102",
+  "date": "2026-10-09",
+  "timezone": "Asia/Kolkata",
+  "checks": [
+    {
+      "workflow": "Verify authenticated assistant backend",
+      "runId": 37862323680,
+      "jobId": 113600718584,
+      "conclusion": "success",
+      "backendTests": 8,
+      "failedTests": 0,
+      "usesRealFirestoreEmulator": true,
+      "usesLockedServerDependencies": true
+    },
+    {
+      "workflow": "Verify hybrid AI choices and routing",
+      "runId": 37862323690,
+      "jobId": 113600718535,
+      "conclusion": "success",
+      "fullAppTypecheck": true,
+      "transportAndGrounding": true,
+      "existingModelLifecycle": true
+    }
+  ],
+  "serverLock": {
+    "sha256": "a68c77a6d42a6cf8fa95743d6b1caf3643737b8228f8cb428fdaa890e876d47d",
+    "originArtifactId": 11586538424,
+    "archiveSha256": "28fa7160f37d33fd4c4729d00fef60a87c4a038e046907e4f6dadb33d6b26922",
+    "firebaseAdmin": "13.10.0",
+    "firebaseFunctions": "6.6.0"
+  },
+  "deployment": {
+    "backendDeployed": false,
+    "realProviderCalls": false,
+    "appCloudEnabled": false,
+    "betaPublishedThisChunk": false,
+    "phoneQaComplete": false
+  }
+}

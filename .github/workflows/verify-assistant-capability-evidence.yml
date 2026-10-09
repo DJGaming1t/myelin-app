@@ -8,7 +8,11 @@ on:
       - .github/workflows/verify-assistant-capability-evidence.yml
       - scripts/verify-assistant-gguf-results.py
       - scripts/test-assistant-phone-profiles.py
+      - scripts/verify-assistant-phone-results.py
+      - scripts/test-assistant-stronger-phone.py
       - training/assistant-capability/gguf-v4/results/**
+      - training/assistant-capability/phone-v5/results/**
+      - training/assistant-capability/phone-v6/**
 
 permissions:
   contents: read
@@ -25,6 +29,8 @@ jobs:
       - name: Replay exact saved outputs and validate the next frozen profile
         run: |
           python scripts/verify-assistant-gguf-results.py
+          python scripts/verify-assistant-phone-results.py
           python scripts/test-assistant-reference.py
           python scripts/test-assistant-phone-profiles.py
+          python scripts/test-assistant-stronger-phone.py
           python -m py_compile scripts/run-assistant-gguf.py scripts/run-assistant-phone-profiles.py

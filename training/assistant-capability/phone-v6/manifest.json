@@ -1,0 +1,12 @@
+{
+  "version": 6,
+  "freshCases": 8,
+  "freshTurns": 10,
+  "regressionTurns": 8,
+  "sha256": {
+    "cases.jsonl": "85ec631db2f4618d65fa825cfaea7676446e6abee06deb69a6a60b837a777446",
+    "settings.json": "13dfc00b6290209aa18c77c2c4a6f7285e2ec870438f6d2b33a0508b05d7c24d",
+    "system.txt": "271ec98647aed86a074b584116bc9866dce84fd56bced200e790694100102677"
+  },
+  "policy": "Freeze before inference; no training or retries; observed v5 is regression only; every raw answer retained."
+}

@@ -1,0 +1,62 @@
+{
+  "sourceCommit": "ac7de0571f916eba704c1089072f4fbb23382569",
+  "runtime": "0.2.13",
+  "betaRun": 37949968016,
+  "verifyJob": 113885892282,
+  "publishJob": 113886531105,
+  "hybridRun": 37949967883,
+  "hybridJob": 113885891842,
+  "conclusion": "success",
+  "checks": [
+    "Full app typecheck",
+    "Every app verify script and Firebase rules",
+    "Plan review in Asia/Kolkata and America/Los_Angeles",
+    "Individual before-deadline capacity including unscheduled tasks",
+    "Recorded study budget subtraction and due/resolved/future mistake filtering",
+    "Private notes and student answers excluded from bounded model context",
+    "Assistant app scenarios and confirmation/stale/account/cancellation guards",
+    "Strict installed-APK OTA compatibility"
+  ],
+  "modelActivated": false,
+  "phoneQa": "Pending physical phone testing",
+  "artifacts": [
+    {
+      "id": 11626055644,
+      "name": "myelin-assistant-app-scenarios",
+      "size_in_bytes": 1410,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11626055644",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11626055644/zip",
+      "expired": false,
+      "created_at": "2026-10-09T15:13:48Z",
+      "expires_at": "2027-01-07T15:12:22Z",
+      "updated_at": "2026-10-09T15:13:48Z",
+      "digest": "sha256:2e14dd921ee739cf1315eb4ffdabbef85b5580394c4ba8464abf803c3f0f3fa6",
+      "workflow_run": {
+        "id": 37949968016,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "ac7de0571f916eba704c1089072f4fbb23382569"
+      }
+    },
+    {
+      "id": 11625217913,
+      "name": "myelin-assistant-beta-update",
+      "size_in_bytes": 483,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11625217913",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11625217913/zip",
+      "expired": false,
+      "created_at": "2026-10-09T15:16:23Z",
+      "expires_at": "2027-01-07T15:12:22Z",
+      "updated_at": "2026-10-09T15:16:23Z",
+      "digest": "sha256:d6e8db847248be9a537ff0e095740b3eebca2afaf5087c6d2fc0a71914ba9824",
+      "workflow_run": {
+        "id": 37949968016,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "ac7de0571f916eba704c1089072f4fbb23382569"
+      }
+    }
+  ]
+}

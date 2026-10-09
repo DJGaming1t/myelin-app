@@ -1,0 +1,36 @@
+{
+  "sourceCommit": "4c9d86bdc3721ec81a4c6c7d8d3e1291dfd5b2fa",
+  "run": 37946626546,
+  "job": 113874446070,
+  "conclusion": "success",
+  "records": 44,
+  "exactTemplateTokenMatches": 44,
+  "modelHashVerified": true,
+  "runtimeErrors": 0,
+  "emptyFinal": 0,
+  "boundedReasoningCaps": 10,
+  "phoneTested": false,
+  "releaseApproved": false,
+  "artifacts": [
+    {
+      "id": 11625757345,
+      "name": "MYELIN-phone-planning-profiles-evidence",
+      "size_in_bytes": 56218,
+      "url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11625757345",
+      "archive_download_url": "https://api.github.com/repos/DJGaming1t/myelin-app/actions/artifacts/11625757345/zip",
+      "expired": false,
+      "created_at": "2026-10-09T15:16:53Z",
+      "expires_at": "2027-01-07T14:45:55Z",
+      "updated_at": "2026-10-09T15:16:53Z",
+      "digest": "sha256:6805031b7b438bd87f5da491e54eb6988edc40bca37f3427c03753276c070d96",
+      "workflow_run": {
+        "id": 37946626546,
+        "repository_id": 1397490624,
+        "head_repository_id": 1397490624,
+        "head_branch": "codex/exam-autopilot-capacity-v1",
+        "head_sha": "4c9d86bdc3721ec81a4c6c7d8d3e1291dfd5b2fa"
+      }
+    }
+  ],
+  "note": "Model SHA verified by runner. Archive digest is publisher metadata; local archive download not verified. Raw records reconstructed from complete JSON log lines without selection or modification. Requested sampler is recorded; chat endpoint does not echo decoded sampler parameters."
+}

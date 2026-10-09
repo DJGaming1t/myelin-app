@@ -1,0 +1,474 @@
+{
+  "rubric": "Content: answers core requested facts correctly without contradictory feasibility/arithmetic or invented constraints; true can describe correct facts embedded in unfinished drafts. UsableFinal: coherent completed user-facing reply, not internal drafting or output-capped. Strict: content+usable+100word bound+specific instructions+no implied executed app action. Partial usefulness is described in notes. Authored development probe, one manual review, not independent evaluation.",
+  "counts": {
+    "direct/fresh": {
+      "turns": 8,
+      "contentPass": 4,
+      "usableFinal": 8,
+      "strictPass": 4
+    },
+    "direct/observed-v4-regression": {
+      "turns": 14,
+      "contentPass": 7,
+      "usableFinal": 14,
+      "strictPass": 6
+    },
+    "bounded-reasoning/fresh": {
+      "turns": 8,
+      "contentPass": 4,
+      "usableFinal": 4,
+      "strictPass": 1
+    },
+    "bounded-reasoning/observed-v4-regression": {
+      "turns": 14,
+      "contentPass": 9,
+      "usableFinal": 7,
+      "strictPass": 3
+    }
+  },
+  "notes": [
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-breaks",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Says fits despite155>150; adjustment still exceeds available time."
+    },
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-last-evening",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Invents school ends06:00 rather than14:00 and misleading06:50 completion; tonight selection does not repair wrong facts."
+    },
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-split-window",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Schedules study outside supplied windows,5-minute rather than10-minute break,85 rather than60 study minutes and false2-hour total."
+    },
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-overlap",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Calls20-minute overlap1hour20minutes; asks for already supplied start."
+    },
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-quoted-deadline",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Identifies13:00 finish versus12:00 deadline and1-hour conflict; title not followed. Cancellation is unhelpful but not claimed executed."
+    },
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-correction",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Acknowledges Physics75 and asks topic; awkward latest-correction phrase but no invented plan."
+    },
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-correction",
+      "turn": 2,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Acknowledges corrected Chemistry55 and asks topic."
+    },
+    {
+      "condition": "direct",
+      "set": "fresh",
+      "id": "fresh-correction",
+      "turn": 3,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Retains Chemistry55."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "fixed-school",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Calls13:45 after14:00 while otherwise recommending wait until14:00; contradictory time ordering."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "missing-duration",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Asks duration/free time without inventing duration; tomorrow remains correct although pattern expected ISO."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "deadline-before-slot",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Invents8hours of required work, page pace and safe buffer after the stated deadline;135words."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "overload",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "110-90 shortfall incorrectly10 rather than20; falsely guarantees both deadlines missed without their times."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "break-budget",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Opens fits although125>120 and later says5short; contradictory."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "weekend-exception",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Correct Saturday exception but false causal claim10:00 notblocked because school ends14:00; unnecessary reconfirmation."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "priority-correction",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Retains Chemistry priority in this chat; no claim of saved app action."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "priority-correction",
+      "turn": 2,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Acknowledges Biology correction and40minutes."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "priority-correction",
+      "turn": 3,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Retains Biology40."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "basic-sign-mistake",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Correct+21 and negative-times-negative sign, but two sentences rather than requested one."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "basic-unit-rate",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Correct15/90 but approves user's wrong80 as logic correct/arithmetic sound; contradictory correction."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "trusted-app-checks",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Discards supplied trusted checks and asks for current start time instead of explaining30/45/50."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "quoted-instruction",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Detects real school overlap and ignores title instructions; asks practical detail."
+    },
+    {
+      "condition": "direct",
+      "set": "observed-v4-regression",
+      "id": "uncertain-availability",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Asks necessary week facts rather than inventing schedule."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-breaks",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Correct155versus150 and5-minute shortfall, no fits contradiction."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-last-evening",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Chooses tonight19:00-19:50 but invents remaining09:00-14:00 and20minutes-before20:00; misexplains actual09:00 deadline."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-split-window",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Capped continued internal drafting with70 study minutes instead of60; no complete final answer."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-overlap",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Correct20-minute intersection within draft, but capped continuing constraint analysis, no usable final."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-quoted-deadline",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Capped reasoning about title as logic puzzle rather than completing actual deadline answer."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-correction",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Draft contains Physics75 and relevant question but repeats word counts/refinement until cap; no usable final."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-correction",
+      "turn": 2,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Chemistry55 correct; 'I've adjusted your plan' implies action and violates explicit never-say-changed-app instruction."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "fresh",
+      "id": "fresh-correction",
+      "turn": 3,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Forgets Chemistry55 present in actual conversation history and asks to reconfirm."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "fixed-school",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Detects school conflict then proposes13:45-14:00 and05:30-06:00, both inside school."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "missing-duration",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Useful missing-duration/free-time questions embedded in capped continued draft/word-count analysis."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "deadline-before-slot",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Draft detects8-hour lateness but capped without completed user-facing answer."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "overload",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Correct110required/90available/20short; unnecessary same-room question but no unsafe feasibility claim."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "break-budget",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Says fits and suggests additional5-minute buffer although125>120; calls deficit remaining."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "weekend-exception",
+      "turn": 1,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Correct Saturday no-school fact followed by contradictory school-open wording and ungrounded free-to-go assurance."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "priority-correction",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Uses Chemistry as subject and asks topic, no invented timing."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "priority-correction",
+      "turn": 2,
+      "contentPass": false,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Capped draft acknowledges Biology40 but falsely concludes no full session possible; no finished answer."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "priority-correction",
+      "turn": 3,
+      "contentPass": false,
+      "usableFinal": true,
+      "strictPass": false,
+      "notes": "Retains Biology40 but ungrounded claim full session cannot be planned."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "basic-sign-mistake",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Correct21/sign appear but repeated revisions and word counts run to cap; violates one-sentence instruction."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "basic-unit-rate",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Correct15/90 and wrong80 correction but content continues word-count/self-revision drafting."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "trusted-app-checks",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "Correct30/45/50 supplied facts in draft but cap prevents complete explanation/next step."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "quoted-instruction",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": false,
+      "strictPass": false,
+      "notes": "School-overlap calculation in literal<think> draft; capped, no final answer."
+    },
+    {
+      "condition": "bounded-reasoning",
+      "set": "observed-v4-regression",
+      "id": "uncertain-availability",
+      "turn": 1,
+      "contentPass": true,
+      "usableFinal": true,
+      "strictPass": true,
+      "notes": "Asks supplied missing subject/exam/school/free-time details without invention."
+    }
+  ],
+  "releaseApproved": false,
+  "phoneTested": false,
+  "decision": "Do not activate either profile. No raw answer was repaired, regenerated, discarded, or selected by score."
+}

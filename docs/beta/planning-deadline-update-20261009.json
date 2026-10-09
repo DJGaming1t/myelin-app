@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a1213c-96eb-7033-819a-55d2716f8dc2",
+    "createdAt": "2026-10-09T15:16:21.355Z",
+    "group": "d90d6a3e-d1d1-48d3-871f-bd75f87db78f",
+    "branch": "preview",
+    "message": "MYELIN plan review with before-deadline capacity checks beta ac7de0571f916eba704c1089072f4fbb23382569",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a1213c-96eb-7033-819a-55d2716f8dc2",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "ac7de0571f916eba704c1089072f4fbb23382569"
+  }
+]

@@ -1,0 +1,44 @@
+{
+  "conditions": {
+    "direct/fresh": {
+      "turns": 8,
+      "patternPass": 7,
+      "runtimeErrors": 0,
+      "emptyFinal": 0,
+      "outputAtLimit": 0,
+      "reasoningPresent": 0,
+      "medianCpuLatencyMs": 8428.573862500001
+    },
+    "direct/observed-v4-regression": {
+      "turns": 14,
+      "patternPass": 10,
+      "runtimeErrors": 0,
+      "emptyFinal": 0,
+      "outputAtLimit": 0,
+      "reasoningPresent": 0,
+      "medianCpuLatencyMs": 8602.824753999983
+    },
+    "bounded-reasoning/fresh": {
+      "turns": 8,
+      "patternPass": 7,
+      "runtimeErrors": 0,
+      "emptyFinal": 0,
+      "outputAtLimit": 4,
+      "reasoningPresent": 8,
+      "medianCpuLatencyMs": 48226.65888899996
+    },
+    "bounded-reasoning/observed-v4-regression": {
+      "turns": 14,
+      "patternPass": 12,
+      "runtimeErrors": 0,
+      "emptyFinal": 0,
+      "outputAtLimit": 6,
+      "reasoningPresent": 14,
+      "medianCpuLatencyMs": 40747.402251000036
+    }
+  },
+  "records": 44,
+  "phoneTested": false,
+  "releaseApproved": false,
+  "note": "Fresh v5 and observed v4 separately reported. Automatic patterns are not semantic certification."
+}

@@ -26,7 +26,8 @@ export function parseProviderOutput(raw, requestId) {
   const choice = raw.choices[0];
   if (choice.finish_reason !== 'stop') throw new CloudError(502, 'incomplete-provider-response');
   const content = choice.message?.content;
-  if (choice.message?.role !== 'assistant' || choice.message?.tool_calls?.length ||
+  if (choice.message?.role !== 'assistant' || choice.message?.refusal || choice.message?.function_call ||
+      (choice.message?.tool_calls != null && (!Array.isArray(choice.message.tool_calls) || choice.message.tool_calls.length > 0)) ||
       typeof content !== 'string' || encoder.encode(content).length > 64_000)
     throw new CloudError(502, 'invalid-provider-response');
   let decision;

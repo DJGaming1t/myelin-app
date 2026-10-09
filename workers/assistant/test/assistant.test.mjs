@@ -104,6 +104,8 @@ test('truncation, refusals, ambiguous candidates, wrong IDs and non-JSON output 
     { ...completion(decision), choices: [...completion(decision).choices, ...completion(decision).choices] },
     { object: 'chat.completion', choices: [{ finish_reason: 'length', message: { role: 'assistant', content: JSON.stringify(decision) } }] },
     completion({ ...decision, requestId: 'other' }), completion({ ...decision, route: 'unknown' }),
+    { object: 'chat.completion', choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(decision), refusal: 'Cannot comply' } }] },
+    { object: 'chat.completion', choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(decision), tool_calls: [{}] } }] },
     { object: 'chat.completion', choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '```json\n{}\n```' } }] },
     { object: 'chat.completion', choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '界'.repeat(22_000) } }] }];
   for (const raw of variants) {

@@ -5,18 +5,23 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { CloudError, createFirestoreQuota } = require('./quota.cjs');
 const { generateDecision } = require('./assistant-core.cjs');
+const { releaseHeaders } = require('./deployment-meta.cjs');
 
 initializeApp();
 const key = defineSecret('MYELIN_GEMINI_API_KEY');
 // No untested model default; select an available model during deployment smoke tests.
 const model = defineString('MYELIN_GEMINI_MODEL', { default: '' });
+const runtimeAccount = defineString('MYELIN_ASSISTANT_RUNTIME_ACCOUNT', {
+  default: 'myelin-assistant-runtime@myelin-a0ba7.iam.gserviceaccount.com',
+});
 const quota = createFirestoreQuota(getFirestore());
 
 exports.myelinAssistant = onRequest({
   region: 'asia-south1', timeoutSeconds: 40, memory: '256MiB', maxInstances: 2,
-  concurrency: 8, cors: false, secrets: [key], invoker: 'public',
+  concurrency: 8, cors: false, secrets: [key], invoker: 'public', serviceAccount: runtimeAccount,
 }, async (req, res) => {
   res.set('Cache-Control', 'no-store');
+  for (const [name, value] of Object.entries(releaseHeaders())) res.set(name, value);
   if (req.method !== 'POST') { res.status(405).set('Allow', 'POST').json({ error: 'method-not-allowed' }); return; }
   if (!req.is('application/json') || (req.rawBody?.length ?? 0) > 128_000) {
     res.status(400).json({ error: 'invalid-request' }); return;

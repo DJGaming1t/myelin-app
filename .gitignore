@@ -15,6 +15,7 @@ yarn-error.log*
 *.key
 *.mobileprovision
 assets/generated/
+gha-creds-*.json
 
 # Generated MYELIN Mini training artifacts
 training/myelin-mini/failure-curriculum-v1.jsonl

@@ -28,17 +28,43 @@ Server timeout is 25 seconds, function hard timeout 40 seconds, client deadline 
 
 ## Deployment prerequisites and commands
 
-Required: a Firebase deployment identity for project `myelin-a0ba7`, billing/API enablement required by Cloud Functions/Secret Manager, and a Gemini API key/model available to that provider account. Never put the provider key in an Expo environment variable, app settings or source control.
+Required: a Firebase deployment identity for project `myelin-a0ba7`, Blaze billing/API enablement required by Cloud Functions/Secret Manager, and a Gemini API key/model available to that provider account. Billing status is not known from this workspace; no billing plan was changed. Never put the provider key in an Expo environment variable, app settings or source control.
+
+Create the dedicated runtime account `myelin-assistant-runtime@myelin-a0ba7.iam.gserviceaccount.com` first. Give it Firestore access (`roles/datastore.user`), Firebase Auth read access for revocation checks (`roles/firebaseauth.viewer`) and Secret Accessor on **only** `MYELIN_GEMINI_API_KEY`. Do not grant it Owner/Editor. `MYELIN_ASSISTANT_RUNTIME_ACCOUNT` defaults to that account and is included in prepared configuration. Runtime permissions must be exercised live; emulator Admin access cannot prove IAM.
 
 From a signed-in trusted development machine, after verification:
 
 ```sh
+npm ci
 npm --prefix functions ci
+npx firebase login
 npx firebase functions:secrets:set MYELIN_GEMINI_API_KEY --project myelin-a0ba7
+node scripts/cloud-deployment-contract.cjs --write-env YOUR_GEMINI_MODEL YOUR_EXACT_COMMIT_SHA
 npx firebase deploy --only functions:assistant --project myelin-a0ba7
 ```
 
-Set `MYELIN_GEMINI_MODEL` in `functions/.env.myelin-a0ba7` before deploying (only the non-secret model identifier belongs there). The checked-in package lock records the verified server dependency resolution. Do not check in secret files or deployment credentials. Deploy only this codebase; do not replace existing Firestore rules or sync data to activate AI.
+Replace `YOUR_GEMINI_MODEL` with the model available in the provider account and `YOUR_EXACT_COMMIT_SHA` with `git rev-parse HEAD` from the verified checkout. The helper writes only the public model, release commit and runtime account to ignored `functions/.env.myelin-a0ba7`. The provider key is entered through Firebase's own secret prompt. The checked-in package lock records the verified server dependency resolution. Do not check in secret files or deployment credentials. Deploy only this codebase; do not replace existing Firestore rules or sync data to activate AI.
+
+## Prepared GitHub deployment
+
+`.github/workflows/deploy-cloud-assistant.yml` is prepared for a manual deployment. A push validates syntax only; it never authenticates to Google or deploys. Manual execution is restricted to `codex/exam-autopilot-capacity-v1`, checks public inputs, runs the reusable backend verification, then deploys only `functions:assistant`. Missing setup stops with a specific error. There is no automatic fallback to a project-wide service-account key.
+
+One-time operator setup:
+
+1. Configure Google Workload Identity Federation **through a service account** in project number `14373433855`, using the official setup below. Map repository ID, ref and workflow_ref claims and restrict admission to repository ID `1397490624`, beta ref `refs/heads/codex/exam-autopilot-capacity-v1` and this workflow path. A recommended condition after mapping those claims is `assertion.repository_id == '1397490624' && assertion.ref == 'refs/heads/codex/exam-autopilot-capacity-v1' && assertion.workflow_ref == 'DJGaming1t/myelin-app/.github/workflows/deploy-cloud-assistant.yml@refs/heads/codex/exam-autopilot-capacity-v1'`. Give this principal `roles/iam.workloadIdentityUser` on the dedicated deploy account.
+2. Grant the deploy account the roles needed by the existing Firebase project and second-generation function deployment. Start with Cloud Functions Developer, Firebase Viewer and Service Account User on the specific runtime/build identities; public invocation configuration also needs Cloud Run IAM policy permissions, and the metadata preflight needs Secret Manager metadata read access. Provision build/service-agent permissions following the official guide rather than granting Owner/Editor or service-agent roles to the deploy account. Secret metadata checks never read the key value. Existing runtime Secret Accessor binding should be set by the project owner before deployment.
+3. Add **repository variables**, not secret contents: `MYELIN_GCP_WIF_PROVIDER` (full `projects/14373433855/locations/global/workloadIdentityPools/.../providers/...` resource) and `MYELIN_GCP_DEPLOY_SERVICE_ACCOUNT` (the deploy service-account email in `myelin-a0ba7`). Ensure the runtime account and an enabled version of the Gemini secret already exist.
+4. Register the workflow before dispatch. GitHub's UI requires the workflow on the default branch to show Run workflow; this chunk does not merge the app branch. Once registered by its validation run, use GitHub CLI/API with the beta ref where supported, or use the trusted local commands above. Do not change the repository default branch merely to expose a button. If using `gh`: `gh workflow run deploy-cloud-assistant.yml --ref codex/exam-autopilot-capacity-v1 -f gemini_model=YOUR_GEMINI_MODEL`.
+
+The deploy job requests short-lived Google credentials only after source verification. It does not export a long-lived service-account key. This federation/Cloud Functions deployment has not been exercised live here; real credential/billing/role/provider setup is still required. The runtime Admin SDK uses the deployed runtime service account, not the CI federation identity.
+
+After deployment, the workflow checks method rejection, missing authentication and unsupported body fields, and verifies `X-Myelin-Protocol` plus the exact `X-Myelin-Release` response header. It saves a `myelin-cloud-deployment-receipt` with **transport verified, provider unverified, app disabled**. These public probes never request model generation. Failure does not automatically roll back a successful deploy; keep the app disabled and inspect the failed check.
+
+## Live provider smoke
+
+`scripts/smoke-assistant-cloud.ts` repeats those bounded public checks. When supplied a short-lived, verified-account Firebase ID token through `MYELIN_SMOKE_ID_TOKEN`, it sends one synthetic empty-workspace request through the real cloud adapter, strict protocol, grounding and preview engine. It requires the exact expected topic, subject, status, priority, duration, revision and confirmation requirement. It never applies the action. A successful synthetic probe is not a general model benchmark.
+
+Set `MYELIN_RELEASE_COMMIT` to the deployed commit and optionally `MYELIN_SMOKE_RECEIPT` to a local output path, then run `npx tsx scripts/smoke-assistant-cloud.ts`. No token means only transport is tested. Never put a user ID token into workflow inputs, commits, chat, receipts or logs. A future Android connection test should reuse the current signed-in user's `getIdToken` directly so phone testers do not need to export credentials. Consent/mode integration remains the next app chunk after a usable deployment.
 
 Smoke-test the deployment with a real verified user's ID token: missing/revoked token fails, unsupported body fails, an explicit valid topic request produces a bounded protocol decision, consecutive requests hit shared/user caps with Retry-After, cancellation leaves no actionable result, provider failures remain sanitized. Confirm the selected model's pricing/quotas from the actual account; emulator tests cannot establish live inference quality or billing.
 
@@ -51,4 +77,9 @@ Only after that, configure the public tested endpoint in the app and wire `creat
 - https://firebase.google.com/docs/auth/admin/verify-id-tokens
 - https://firebase.google.com/docs/auth/admin/manage-sessions
 - https://ai.google.dev/api/generate-content
+- https://firebase.google.com/docs/functions/get-started
+- https://firebase.google.com/docs/cli
+- https://github.com/google-github-actions/auth
+- https://docs.cloud.google.com/functions/docs/concepts/iam
+- https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
 

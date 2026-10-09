@@ -30,9 +30,18 @@ test('authentication and request limits reject before quota or provider calls', 
     const { deps, input, state } = setup(); deps.verifyToken = async () => identity;
     await assert.rejects(generateDecision(input, deps), { status: 403 }); assert.equal(state.calls, 0);
   }
-  const { deps, input, state } = setup(); deps.verifyToken = async () => { throw new Error('revoked-token-details'); };
+  const { deps, input, state } = setup(); deps.verifyToken = async () => { throw Object.assign(new Error('revoked-token-details'), { code: 'auth/id-token-revoked' }); };
   await assert.rejects(generateDecision(input, deps), { status: 401, code: 'sign-in-required' }); assert.equal(state.reserves, 0);
   assert.throws(() => validateBody({ version: 1, prompt: JSON.stringify({ requestId: 'id', userRequest: 'hello', context: null }) }), CloudError);
+});
+
+test('server authentication permissions/outages are not reported as invalid user credentials', async () => {
+  for (const code of ['auth/insufficient-permission', 'auth/internal-error', 'app/invalid-credential']) {
+    const { deps, input, state } = setup();
+    deps.verifyToken = async () => { throw Object.assign(new Error('private deployment diagnostic'), { code }); };
+    await assert.rejects(generateDecision(input, deps), { status: 503, code: 'authentication-unavailable' });
+    assert.equal(state.calls, 0); assert.equal(state.reserves, 0);
+  }
 });
 
 test('server owns instructions, token budget and key; output is a proposal only', async () => {
@@ -128,5 +137,14 @@ test('Firestore transactions serialize concurrent reservations and preserve newe
     // Unauthenticated and signed-in clients have no access to server quota state.
     const endpoint = 'http://' + process.env.FIRESTORE_EMULATOR_HOST + '/v1/projects/demo-myelin-assistant/databases/(default)/documents/_assistantQuota/global';
     const read = await fetch(endpoint); assert.equal(read.status, 403);
+    const { initializeTestEnvironment, assertFails } = require('@firebase/rules-unit-testing');
+    const { doc, getDoc, setDoc } = require('firebase/firestore');
+    const [host, port] = process.env.FIRESTORE_EMULATOR_HOST.split(':');
+    const rules = await initializeTestEnvironment({ projectId: 'demo-myelin-assistant', firestore: { host, port: Number(port) } });
+    try {
+      const client = rules.authenticatedContext('one-user').firestore();
+      await assertFails(getDoc(doc(client, '_assistantQuota', 'global')));
+      await assertFails(setDoc(doc(client, '_assistantQuota', 'global'), { minuteCount: 0 }));
+    } finally { await rules.cleanup(); }
   } finally { await db.terminate(); await deleteApp(app); }
 });

@@ -1,0 +1,105 @@
+name: Deploy MYELIN cloud assistant beta
+
+on:
+  push:
+    branches: [codex/exam-autopilot-capacity-v1]
+    paths: [.github/workflows/deploy-cloud-assistant.yml]
+  workflow_dispatch:
+    inputs:
+      gemini_model:
+        description: Gemini model available to the configured provider account
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: myelin-cloud-assistant-deployment
+  cancel-in-progress: false
+
+jobs:
+  validate_only:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Check workflow without deployment access
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 .github/workflows/deploy-cloud-assistant.yml .github/workflows/verify-cloud-assistant.yml
+
+  preflight:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DJGaming1t/myelin-app' && github.ref == 'refs/heads/codex/exam-autopilot-capacity-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Require configured short-lived deployment identity
+        env:
+          MYELIN_GEMINI_MODEL: ${{ inputs.gemini_model }}
+          MYELIN_GCP_WIF_PROVIDER: ${{ vars.MYELIN_GCP_WIF_PROVIDER }}
+          MYELIN_GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.MYELIN_GCP_DEPLOY_SERVICE_ACCOUNT }}
+        run: node scripts/cloud-deployment-contract.cjs --github-preflight
+
+  verify:
+    needs: preflight
+    uses: ./.github/workflows/verify-cloud-assistant.yml
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MYELIN_GEMINI_MODEL: ${{ inputs.gemini_model }}
+      MYELIN_RELEASE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm ci --prefix functions --ignore-scripts --no-audit --no-fund
+      - name: Prepare public model/release configuration
+        run: |
+          node scripts/cloud-deployment-contract.cjs --write-env "$MYELIN_GEMINI_MODEL" "$MYELIN_RELEASE_COMMIT"
+          echo "MYELIN_SMOKE_RECEIPT=$RUNNER_TEMP/myelin-cloud-deployment.json" >> "$GITHUB_ENV"
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: myelin-a0ba7
+          workload_identity_provider: ${{ vars.MYELIN_GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.MYELIN_GCP_DEPLOY_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Require the existing runtime identity and enabled provider secret
+        run: |
+          gcloud iam service-accounts describe myelin-assistant-runtime@myelin-a0ba7.iam.gserviceaccount.com --project=myelin-a0ba7 --format='value(email)'
+          gcloud secrets versions list MYELIN_GEMINI_API_KEY --project=myelin-a0ba7 --filter='state=ENABLED' --limit=1 --format='value(name)' > "$RUNNER_TEMP/myelin-secret-version.txt"
+          test -s "$RUNNER_TEMP/myelin-secret-version.txt" || { echo 'Configure the server provider secret first.'; exit 1; }
+      - name: Deploy only the verified assistant codebase
+        run: npx firebase deploy --only functions:assistant --project myelin-a0ba7 --non-interactive
+      - name: Verify exact revision and protected HTTP transport
+        run: npx tsx scripts/smoke-assistant-cloud.ts
+      - name: Record remaining live provider check
+        run: |
+          node -e 'const r=JSON.parse(require("node:fs").readFileSync(process.env.MYELIN_SMOKE_RECEIPT,"utf8")); if(r.providerVerified!==false || r.appCloudEnabled!==false) throw new Error("Unexpected activation"); console.log("Backend transport verified. Authenticated provider smoke and app activation are still pending.");'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myelin-cloud-deployment-receipt
+          path: ${{ runner.temp }}/myelin-cloud-deployment.json
+          if-no-files-found: error
+      - name: Remove public deployment configuration
+        if: always()
+        run: rm -f functions/.env.myelin-a0ba7

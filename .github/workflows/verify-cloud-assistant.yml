@@ -1,16 +1,22 @@
 name: Verify authenticated assistant backend
 
 on:
+  workflow_call:
   workflow_dispatch:
   push:
     branches: [codex/exam-autopilot-capacity-v1]
     paths:
       - .github/workflows/verify-cloud-assistant.yml
+      - .github/workflows/deploy-cloud-assistant.yml
       - functions/**
       - firebase.json
       - firestore.rules
       - scripts/export-assistant-cloud-protocol.ts
       - scripts/verify-cloud-assistant.ts
+      - scripts/cloud-deployment-contract.cjs
+      - scripts/test-cloud-deployment.cjs
+      - scripts/smoke-assistant-cloud.ts
+      - scripts/verify-cloud-smoke.ts
       - src/features/assistant/cloud-assistant-adapter.ts
 
 permissions:
@@ -31,6 +37,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci --no-audit --no-fund
+      - name: Validate deployment and reusable workflow syntax
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 .github/workflows/deploy-cloud-assistant.yml .github/workflows/verify-cloud-assistant.yml
       - name: Install isolated server dependencies
         run: npm ci --prefix functions --ignore-scripts --no-audit --no-fund
       - name: Full app check and exact server protocol parity
@@ -38,6 +46,8 @@ jobs:
           npx tsc --noEmit
           npx tsx scripts/export-assistant-cloud-protocol.ts --check
           npx tsx scripts/verify-cloud-assistant.ts
+          node --test scripts/test-cloud-deployment.cjs
+          npx tsx scripts/verify-cloud-smoke.ts
       - name: Real server entry loads without credentials or provider calls
         env:
           GCLOUD_PROJECT: demo-myelin-assistant

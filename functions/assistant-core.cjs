@@ -1,5 +1,7 @@
 const { CloudError } = require('./quota.cjs');
 const protocol = require('./protocol-v1.json');
+const invalidTokenCodes = new Set(['auth/id-token-expired', 'auth/id-token-revoked', 'auth/argument-error',
+  'auth/invalid-argument', 'auth/invalid-id-token', 'auth/user-disabled', 'auth/user-not-found']);
 
 function validateBody(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body) || body.version !== 1 ||
@@ -33,7 +35,12 @@ async function generateDecision({ authorization, body, signal }, deps) {
     throw new CloudError(401, 'sign-in-required');
   let identity;
   try { identity = await bounded(signal, () => deps.verifyToken(authorization.slice(7))); }
-  catch (error) { if (signal.aborted) throw signal.reason; throw new CloudError(401, 'sign-in-required'); }
+  catch (error) {
+    if (signal.aborted) throw signal.reason;
+    // IAM/configuration/outage errors are server failures, not a bad user login.
+    if (invalidTokenCodes.has(error?.code)) throw new CloudError(401, 'sign-in-required');
+    throw new CloudError(503, 'authentication-unavailable');
+  }
   if (!identity?.uid || identity.email_verified !== true || identity.firebase?.sign_in_provider === 'anonymous')
     throw new CloudError(403, 'verified-account-required');
   if (!deps.apiKey || !/^gemini-[a-z0-9.-]+$/.test(deps.model ?? '')) throw new CloudError(503, 'cloud-not-configured');

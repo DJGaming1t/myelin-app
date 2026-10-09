@@ -12,6 +12,7 @@ Accepted direction: optional Lite Qwen3.5 0.8B, Enhanced Qwen3.5 2B, and cloud f
 - [x] Retain incomplete requests and accept short typed clarification replies, with owner/workspace/day/expiry guards and explicit confirmation.
 - [ ] Configure an authenticated server-side cloud provider; enforce per-user quotas, timeouts and backoff. No provider key belongs in the APK.
 - [x] Prepare the Firebase server and cancellable client transport with server-owned protocol, atomic quotas, deduplication and explicit owner/consent checks. Deployment and live provider verification remain separate.
+- [x] Prepare scoped manual deployment, dedicated runtime identity, release probes and synthetic provider smoke. Account setup and actual deployment remain pending.
 - [ ] Add cloud consent and routing mode controls once the connection can perform the advertised operation.
 - [x] Finish 0.8B training run 37752290697; final adapter exported successfully.
 - [x] Recover evaluation of that same adapter; all 53 cases measured. Both release gates failed; separate Hinglish acceptance passed. Weights remain blocked.
@@ -108,3 +109,9 @@ Added an isolated Firebase Functions codebase using existing Firebase Auth/Fires
 Final source `c298f44ec777cc7c437de1d0aa756db8b9616102` passed full app TypeScript, protocol parity, transport, hybrid/grounding/clarification and model lifecycle checks: hybrid run `37862323690`, job `113600718535`. Backend run `37862323680`, job `113600718584`, passed all 8 tests including real Firestore concurrent reservations, old/new lease protection and default-deny client read. Actual server entry loaded without deployment credentials; server install uses `npm ci` against the saved lock. Initial source `95413835c83b82579d628eb79a9dfddbb07dfb8a` also passed runs `37861950234` and `37861950201`; the final source adds locked dependencies and explicitly terminates expired HTTP replies. Evidence: `docs/cloud/transport-verification-20261009.json`.
 
 No endpoint/key/model is configured for the app; no provider call, deployment, new model release or beta publication occurred in this chunk. Existing grounded preview remains shipped. Next: obtain the server deployment/provider setup, smoke-test a live model, then wire consent and mode controls and publish the compatible app update.
+
+## Deployment and smoke preparation — 2026-10-09 IST
+
+Added a manual assistant-only workflow using service-account Workload Identity Federation, reusable backend verification and source-specific public HTTP probes. Pushes validate the workflow only. Runtime now defaults to a dedicated assistant account rather than the broad default identity; it must be provisioned before deployment. Synthetic authenticated smoke goes through the real cloud adapter and strict preview checks, with no workspace apply. Transport-only receipts cannot mark the provider or app active. Release metadata headers contain only public protocol/source identifiers.
+
+Local deployment guards, probe timeout/cancellation, synthetic smoke and TypeScript passed; final CI pending this source save. Verified account setup is still absent: the workspace has no deployment credentials or Gemini key; the connector cannot read/manage repository secrets/variables. No live deployment/provider call, app activation, beta update, training or model release occurred. The next required step is one-time Firebase/Gemini setup described in `docs/MYELIN_CLOUD_SETUP.md`, then deployment and authenticated smoke before app controls.

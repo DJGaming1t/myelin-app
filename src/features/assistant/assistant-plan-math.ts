@@ -31,18 +31,18 @@ export function tryAssistantPlanMathReply(request: string): string | null {
     if (blocks * blockMinutes + breaks * breakMinutes > 1440) return null;
     const needed = blocks * blockMinutes + breaks * breakMinutes;
     const difference = available - needed;
-    return `MYELIN time check: ${blocks} × ${blockMinutes} study minutes + ${breaks} × ${breakMinutes} break minutes = ${needed} minutes. With ${available} minutes available, ${difference >= 0 ? `it fits with ${minutesLabel(difference)} left` : `it does not fit; you are short by ${minutesLabel(-difference)}`}.\\n\\n${disclaimer}`;
+    return `MYELIN time check: ${blocks} × ${blockMinutes} study minutes + ${breaks} × ${breakMinutes} break minutes = ${needed} minutes. With ${available} minutes available, ${difference >= 0 ? `it fits with ${minutesLabel(difference)} left` : `it does not fit; you are short by ${minutesLabel(-difference)}`}.\n\n${disclaimer}`;
   }
 
-  const overlap = new RegExp(`^([a-z][a-z ]{1,30}) (?:is |from )?${clock}\\\\s*(?:-|to)\\\\s*${clock} and ([a-z][a-z ]{1,30}) (?:is |from )?${clock}\\\\s*(?:-|to)\\\\s*${clock} on the same day[,.]? (?:what(?:'s| is) the (?:overlap|overlapping interval)(?: and (?:its )?duration)?|how (?:long|many minutes) (?:do they )?overlap)$`, 'i').exec(text);
+  const overlap = new RegExp(`^([a-z][a-z ]{1,30}) (?:is |from )?${clock}\\s*(?:-|to)\\s*${clock} and ([a-z][a-z ]{1,30}) (?:is |from )?${clock}\\s*(?:-|to)\\s*${clock} on the same day[,.]? (?:what(?:'s| is) the (?:overlap|overlapping interval)(?: and (?:its )?duration)?|how (?:long|many minutes) (?:do they )?overlap)$`, 'i').exec(text);
   if (overlap) {
     const a = clockValue(overlap[2]!); const b = clockValue(overlap[3]!);
     const c = clockValue(overlap[5]!); const d = clockValue(overlap[6]!);
     if (a === null || b === null || c === null || d === null || b <= a || d <= c) return null;
     const start = Math.max(a, c); const end = Math.min(b, d);
-    if (end <= start) return `MYELIN time check: These two intervals do not overlap.\\n\\n${disclaimer}`;
+    if (end <= start) return `MYELIN time check: These two intervals do not overlap.\n\n${disclaimer}`;
     const fmt = (value: number) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
-    return `MYELIN time check: They overlap from ${fmt(start)} to ${fmt(end)} for ${minutesLabel(end - start)}.\\n\\n${disclaimer}`;
+    return `MYELIN time check: They overlap from ${fmt(start)} to ${fmt(end)} for ${minutesLabel(end - start)}.\n\n${disclaimer}`;
   }
 
   const due = new RegExp(`^my (?:task|assignment|project|homework) is due at ${clock} and i (?:plan|expect) to finish (?:it )?at ${clock} on the same day[,.]? (?:am i late|will (?:it|i) be late|is (?:that|this) on time)$`, 'i').exec(text);
@@ -50,7 +50,7 @@ export function tryAssistantPlanMathReply(request: string): string | null {
     const deadline = clockValue(due[1]!); const finish = clockValue(due[2]!);
     if (deadline === null || finish === null) return null;
     const diff = finish - deadline;
-    return `MYELIN time check: ${diff > 0 ? `Finishing at ${due[2]} is ${minutesLabel(diff)} after the ${due[1]} deadline` : diff < 0 ? `Finishing at ${due[2]} is ${minutesLabel(-diff)} before the ${due[1]} deadline` : `Finishing at ${due[2]} is exactly at the ${due[1]} deadline`}.\\n\\n${disclaimer}`;
+    return `MYELIN time check: ${diff > 0 ? `Finishing at ${due[2]} is ${minutesLabel(diff)} after the ${due[1]} deadline` : diff < 0 ? `Finishing at ${due[2]} is ${minutesLabel(-diff)} before the ${due[1]} deadline` : `Finishing at ${due[2]} is exactly at the ${due[1]} deadline`}.\n\n${disclaimer}`;
   }
   return null;
 }

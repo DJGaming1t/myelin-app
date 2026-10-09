@@ -50,9 +50,10 @@ jobs:
           import hashlib, base64, os
           assert metadata['dist']['integrity']=='sha512-'+base64.b64encode(hashlib.sha512(data).digest()).decode()
           with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as archive:
-              names=[name for name in archive.getnames() if name.endswith(('build.gradle','gradle.properties','libs.versions.toml'))]
+              names=[name for name in archive.getnames() if name.endswith(('build.gradle','gradle.properties','libs.versions.toml')) or name=='package/package.json']
               contents={name:archive.extractfile(name).read().decode() for name in names}
-          report={'package':'react-native-litert-lm','version':'0.7.0','npmIntegrity':metadata['dist']['integrity'],'nativeFiles':contents,'limit':'Source dependency audit only; not the installed APK dependency resolution or Android execution.'}
+          sdk=json.loads(contents['package/package.json'])['litertLm']
+          report={'package':'react-native-litert-lm','version':'0.7.0','npmIntegrity':metadata['dist']['integrity'],'nativeSdk':sdk,'nativeFiles':contents,'limit':'Source dependency audit only; not the installed APK dependency resolution or Android execution.'}
           path=Path('artifacts/assistant-capability')/os.environ['CANDIDATE']/'app-runtime-audit.json'
           path.write_text(json.dumps(report,indent=2)+'\n')
           print('EVIDENCE_BEGIN app-runtime-audit.json');print(path.read_text());print('EVIDENCE_END app-runtime-audit.json')

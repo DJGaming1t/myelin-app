@@ -39,7 +39,7 @@ def main():
 
     from huggingface_hub import hf_hub_download
     download_started = time.perf_counter()
-    path = Path(hf_hub_download(candidate['repo'], candidate['file'], revision=candidate['revision'], token=False))
+    path = Path(hf_hub_download(candidate['repo'], candidate['file'], revision=candidate['revision'], token=False)).resolve()
     if path.stat().st_size != candidate['sizeBytes'] or sha(path) != candidate['sha256']:
         raise ValueError('Candidate bundle identity mismatch')
     provenance = {'candidate': candidate, 'sourceCommit': os.environ.get('GITHUB_SHA'),
@@ -47,7 +47,8 @@ def main():
                    'python': platform.python_version(), 'platform': platform.platform(),
                    'cpuCount': os.cpu_count(), 'backend': 'cpu', 'cpuThreads': 2,
                    'cache': 'memory', 'maxContextTokens': 4096, 'maxOutputTokens': 384,
-                   'temperature': 0, 'topK': 1, 'seed': 42},
+                   'temperature': 0, 'topK': 1, 'seed': 42,
+                   'modelReference': str(path), 'outputLimitParameter': 'max_completion_tokens'},
                   'downloadAndHashSeconds': time.perf_counter()-download_started,
                   'phoneTested': False, 'appProtocolTested': False, 'fineTuned': False,
                   'limit': 'Isolated synthetic capability probe; not a MYELIN release certificate. Linux CPU is not Android performance.'}
@@ -88,8 +89,12 @@ def main():
                     text = ''; finish = None; transport_error = None; usage = None
                     try:
                         envelope = fetch_json(origin+'/v1/chat/completions', {
-                            'model': candidate['id'], 'messages': messages, 'stream': False,
-                            'temperature': 0, 'max_tokens': 384, 'seed': 42}, timeout=180)
+                            # The official CLI also accepts an existing absolute
+                            # file. Use the verified bundle directly: registry
+                            # listing succeeded in the first run but alias
+                            # resolution during completion returned 404.
+                            'model': str(path), 'messages': messages, 'stream': False,
+                            'temperature': 0, 'max_completion_tokens': 384, 'seed': 42}, timeout=180)
                         choices = envelope.get('choices')
                         if not isinstance(choices, list) or len(choices) != 1:
                             raise ValueError('Invalid completion choices')
@@ -114,6 +119,10 @@ def main():
             process.terminate()
             try: process.wait(timeout=15)
             except subprocess.TimeoutExpired: process.kill(); process.wait()
+            log.flush()
+            print('RUNTIME_LOG_TAIL_BEGIN', flush=True)
+            print((args.output/'runtime.log').read_text(errors='replace')[-24000:], flush=True)
+            print('RUNTIME_LOG_TAIL_END', flush=True)
     latencies = [row['latencyMs'] for row in predictions if row['transportError'] is None]
     categories = {}
     for row in predictions:
@@ -122,6 +131,7 @@ def main():
     report = {'candidate': candidate['id'], 'sourceCommit': provenance['sourceCommit'],
               'cases': len(rows), 'turns': len(predictions), 'expectedTurns': manifest['turns'],
               'valid': sum(row['score']['valid'] for row in predictions),
+              'transportFailures': sum(row['transportError'] is not None for row in predictions),
               'objectivePass': sum(row['score']['objectivePass'] for row in predictions),
               'semanticQualityCertified': False, 'manualReviewRequired': sum(row['score']['reviewRequired'] for row in predictions),
               'categories': categories, 'p50LatencyMs': statistics.median(latencies) if latencies else None,

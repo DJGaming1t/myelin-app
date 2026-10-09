@@ -46,6 +46,8 @@ jobs:
         run: >
           timeout --signal=TERM --kill-after=15s 45m python -u scripts/run-assistant-stronger-phone.py
           --llama "$RUNNER_TEMP/llama.cpp" --output artifacts/stronger-phone
+      - name: Verify recorded v6 evidence before accepting results
+        run: python scripts/verify-assistant-stronger-phone-results.py --input artifacts/stronger-phone
       - name: Preserve all answers, reasoning and provenance even on failure
         if: always()
         uses: actions/upload-artifact@v4

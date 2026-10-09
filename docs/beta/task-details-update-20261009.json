@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a11e42-70f1-75cf-95a7-2dc0478e1385",
+    "createdAt": "2026-10-09T01:23:53.201Z",
+    "group": "950c9fca-525b-4dd0-8532-076259d2cf11",
+    "branch": "preview",
+    "message": "MYELIN clearer task details and expanded app-flow checks beta 05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a11e42-70f1-75cf-95a7-2dc0478e1385",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd"
+  }
+]

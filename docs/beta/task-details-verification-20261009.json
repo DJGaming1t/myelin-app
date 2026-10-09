@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "verifiedAtUtc": "2026-10-09T01:27:58.153Z",
+  "sourceCommit": "05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd",
+  "repository": "DJGaming1t/myelin-app",
+  "branch": "codex/exam-autopilot-capacity-v1",
+  "verification": {
+    "beta": {
+      "runId": 37869225289,
+      "url": "https://github.com/DJGaming1t/myelin-app/actions/runs/37869225289",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 113623167983,
+          "name": "verify",
+          "conclusion": "success"
+        },
+        {
+          "id": 113623569547,
+          "name": "publish_preview",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "hybrid": {
+      "runId": 37869225004,
+      "url": "https://github.com/DJGaming1t/myelin-app/actions/runs/37869225004",
+      "conclusion": "success",
+      "jobId": 113623166470
+    },
+    "coverage": [
+      "Full app TypeScript",
+      "Existing app regression scripts",
+      "Hybrid routing, clarification and request grounding",
+      "Strict native inputs/dependency compatibility with installed preview APK",
+      "31 development app-flow checks in each timezone"
+    ],
+    "scenarioRuns": [
+      {
+        "requestedTimezone": "Asia/Kolkata",
+        "reportedTimezone": "Asia/Calcutta",
+        "passed": 31,
+        "failed": 0
+      },
+      {
+        "requestedTimezone": "America/Los_Angeles",
+        "reportedTimezone": "America/Los_Angeles",
+        "passed": 31,
+        "failed": 0
+      }
+    ],
+    "scenarioNotes": "Development regressions through shared app logic, including preview, confirmation, stale revision, idempotent apply and retained replies. Not an independent model accuracy benchmark."
+  },
+  "artifacts": [
+    {
+      "id": 11589028753,
+      "name": "myelin-assistant-app-scenarios",
+      "digest": "sha256:3402531b46c7d799d6f6827095403531f711995b1b345d460e433997f509e732",
+      "createdAt": "2026-10-09T01:20:57Z",
+      "expiresAt": "2027-01-07T01:19:33Z",
+      "sourceCommit": "05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd"
+    },
+    {
+      "id": 11588929572,
+      "name": "myelin-assistant-beta-update",
+      "digest": "sha256:53739b4a4b8d6a17a37f72f16a424fc87be0ab97c4e852f05e2b558898b2815b",
+      "createdAt": "2026-10-09T01:23:54Z",
+      "expiresAt": "2027-01-07T01:19:33Z",
+      "sourceCommit": "05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd"
+    }
+  ],
+  "beta": {
+    "receiptFile": "docs/beta/task-details-update-20261009.json",
+    "updateId": "01a11e42-70f1-75cf-95a7-2dc0478e1385",
+    "group": "950c9fca-525b-4dd0-8532-076259d2cf11",
+    "publishedAtUtc": "2026-10-09T01:23:53.201Z",
+    "publishedAtIst": "2026-10-09T06:53:53.201+05:30",
+    "platform": "android",
+    "branch": "preview",
+    "runtimeVersion": "0.2.13",
+    "compatibleApkBuild": "877c5749-c608-4d23-bca9-aca66fb2df06",
+    "compatibleApkSource": "137eee631edbe582da8c0e64ec89229a86a5aa9a"
+  },
+  "limitations": {
+    "modelQualityMeasured": false,
+    "cloudLiveTested": false,
+    "physicalDeviceTested": false,
+    "reactNativeScreensRendered": false,
+    "qwenPhoneWeightsReleased": false
+  },
+  "billingChanged": false,
+  "nextStep": "Implement and verify revocation-aware authentication and atomic D1 quotas for the free hosted-Qwen foundation, before deployment/live provider checks. Physical Android QA remains pending."
+}

@@ -6,7 +6,7 @@ The compatible APK is build `877c5749-c608-4d23-bca9-aca66fb2df06`, built from `
 
 Published 2026-10-08 09:34 UTC: update group `13189175-e2b7-4fee-a910-8828facfe65e`, Android update `01a11adc-d079-745b-a8bd-ea71b6da9816`, runtime `0.2.13`, branch `preview`. Full verification and publication: https://github.com/DJGaming1t/myelin-app/actions/runs/37757132256. Receipt: `docs/beta/assistant-update-20261008.json`. Source commit `fafbfeb6f223d44ea4a7538a3c3c4c62aa2d544b`. Automated checks passed; physical-device smoke test is still pending.
 
-Latest schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, Android update `01a11aee-348b-7bc9-a545-938c07316392`, runtime `0.2.13`, branch `preview`. Full verification and publication: https://github.com/DJGaming1t/myelin-app/actions/runs/37759348032. Receipt: `docs/beta/schoolwork-update-20261008.json`. Source `5c644549305790be1c005eec26a027559fa76e00`. The existing compatible APK receives this OTA; no reinstall or data clearing is required.
+Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, Android update `01a11aee-348b-7bc9-a545-938c07316392`, runtime `0.2.13`, branch `preview`. Full verification and publication: https://github.com/DJGaming1t/myelin-app/actions/runs/37759348032. Receipt: `docs/beta/schoolwork-update-20261008.json`. Source `5c644549305790be1c005eec26a027559fa76e00`. The existing compatible APK receives this OTA; no reinstall or data clearing is required.
 
 ## What is testable
 
@@ -19,9 +19,11 @@ Latest schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc
 
 Cloud AI is not connected. Model preferences are not working Qwen inference. A training adapter is not a downloadable phone model.
 
-## Task-detail update — verification/publication pending
+## Latest task-detail update — published 2026-10-09
 
-New source recognizes polite supported action requests and uses the same date/minute/priority checks for topic practice and standalone schoolwork. The beta workflow now runs 31 app-flow development regressions in `Asia/Kolkata` and `America/Los_Angeles` and uploads both reports as `myelin-assistant-app-scenarios`. It also retains full TypeScript, all existing app regression scripts and exact installed-APK compatibility checks. This section does not establish publication until a new EAS receipt is recorded.
+Published 2026-10-09 01:23:53 UTC (06:53:53 IST): group `950c9fca-525b-4dd0-8532-076259d2cf11`, Android update `01a11e42-70f1-75cf-95a7-2dc0478e1385`, runtime `0.2.13`, branch `preview`, source `05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd`. Full verification and publication succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225289. Hybrid verification also passed: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225004. This supersedes the earlier updates below.
+
+Source recognizes polite supported action requests and uses the same date/minute/priority checks for topic practice and standalone schoolwork. All 31 app-flow development regressions passed in each of `Asia/Kolkata` (reported by Intl as `Asia/Calcutta`) and `America/Los_Angeles`. Full TypeScript, existing app regression scripts and exact installed-APK compatibility checks also passed. Reports: artifact `11589028753` (`myelin-assistant-app-scenarios`). Checked EAS receipt: `docs/beta/task-details-update-20261009.json`, artifact `11588929572`. Verification evidence: `docs/beta/task-details-verification-20261009.json`. Open the existing preview APK online, allow download and fully close/reopen up to twice; no reinstall/data clearing needed. Physical-device QA is pending.
 
 After receiving the update, exercise these on Android:
 
@@ -56,16 +58,16 @@ Check actual keyboard visibility, larger text, back navigation, slow responses a
 
 Automated checks cannot replace these phone interaction tests. Do not label device QA complete until exercised and recorded.
 
-## Latest request-grounding update and QA
+## Previous request-grounding update and QA
 
-Published 2026-10-09 01:39 IST (2026-10-08 20:09 UTC): group `6452e5b5-2dc5-491e-bba5-f5003738b8a9`, Android update `01a11d22-679d-70f2-a989-b6e3b0d4e876`, preview runtime `0.2.13`, source `7680caa3726b1a865d59ac295768ea74f3d965b8`. Full verification and publisher succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37836775724. Receipt `docs/beta/grounding-update-20261009.json`, artifact `11575982497`. Existing preview APK receives this OTA; open online and fully close/reopen after downloading, up to twice. No reinstall/data clearing needed. This is the latest update and supersedes the earlier clarification beta below. Physical-device QA is still pending.
+Published 2026-10-09 01:39 IST (2026-10-08 20:09 UTC): group `6452e5b5-2dc5-491e-bba5-f5003738b8a9`, Android update `01a11d22-679d-70f2-a989-b6e3b0d4e876`, preview runtime `0.2.13`, source `7680caa3726b1a865d59ac295768ea74f3d965b8`. Full verification and publisher succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37836775724. Receipt `docs/beta/grounding-update-20261009.json`, artifact `11575982497`. Existing preview APK receives this OTA; open online and fully close/reopen after downloading, up to twice. No reinstall/data clearing needed. Superseded by the task-detail update above; retained here for earlier QA coverage. Physical-device QA is still pending.
 
 - Ask `Record a Geography viva covering Climate Zones` (use a real topic in your workspace). It should ask for the exam day without loading a model or guessing a date. Reply with `YYYY-MM-DD` or `tomorrow`. Without an installed model/cloud connection, the next step should accurately report unavailability rather than pretend to create an exam.
 - Ask `Raise it to high priority`. It should ask which topic. Reply with one existing topic name and inspect the preview when the request is supported; no changes before confirmation.
 - For an available experimental FunctionGemma session, try a new-exam request with an explicit ISO day and real topic name. Any model date mismatch or unrequested/ambiguous target must ask a question instead of becoming a preview. Model installation is separate; neither Qwen download nor cloud inference is enabled by this update.
 - Check the separate answer field, keyboard, larger text, back navigation and original-request reset. Automated model simulations do not replace this device QA.
 
-## Latest clarification update and QA
+## Previous clarification update and QA
 
 Published 2026-10-08 15:11 UTC (20:41 IST): group `8a863ce8-93b1-4188-895f-00c87283e0ac`, Android update `01a11c12-0b62-79ae-a66b-a5f752cf8924`, preview runtime `0.2.13`. Source `a28dfa6bf734208cdce08f2845bc1889f062ba64`; verification and publisher succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37798325379. Receipt `docs/beta/clarification-update-20261008.json`, artifact `11559483080`. The existing compatible APK receives this OTA; fully close/reopen after downloading, up to twice. Device interaction is not yet verified.
 

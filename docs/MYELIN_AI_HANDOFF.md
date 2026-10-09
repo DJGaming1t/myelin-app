@@ -1,6 +1,15 @@
 # MYELIN AI Handoff
 
 
+## Read-only exact-time assistant route — 2026-10-10
+
+- Branch `codex/exam-autopilot-capacity-v1`. Implemented `src/features/assistant/assistant-plan-math.ts` and wired it into `app/(app)/settings/ai-assistant.tsx` **after the recorded-plan review and before the unavailable model fallback**, excluding pending clarification. This route uses strict complete-message matching for explicit numeric study blocks plus breaks, two 24-hour clock intervals **on the same day**, and same-day planned completion relative to an explicit deadline. All arithmetic is local, read-only and labeled as a supplied-times check, NOT a full workspace availability guarantee. Compound actions, invalid/ambiguous times and unsupported utterances fall through safely.
+- Added six positive and eight negative generic cases to the existing `scripts/verify-assistant-planning-review.ts`, including source wiring. Standalone TS compilation and cases passed; verified full MYELIN TypeScript and planning tests in India/US time zones plus chat integration in CI: run `37985081308` **SUCCESS**, source `a3081779ebd86d3a3b290d57f3ace98a771e2f1e`. This is not a Qwen improvement or evaluation result.
+- Verified beta release path is existing OTA-only Android `preview` runtime `0.2.13`; no native/model dependency was changed. Updated the beta workflow's EAS message in commit `f776e97a0492f0f76630421ed50b67f750683e4b` to trigger independent full checks before Android publication. Publish run `37985197692` was still executing at documentation time: **must not claim it published until successful publish step, output and receipt have been checked**.
+- Scope deliberately narrow: this is not a universal natural-language interpreter or teaching AI. The authoritative workspace review remains `reviewAssistantPlanning`; no generated model free-form planning conclusions are trusted, and no action is applied without existing previews and confirmation. User prioritizes stronger practical planning intelligence, zero spending, small tested chunks and actual phone-visible verified changes.
+- Next: verify the final beta run/publish receipt, perform physical Android tests of all three exact-time queries, then assess whether to expand grounded availability/deadline facts from recorded data or activate any model. Do not train/tune on previously observed v6 prompts or pretend CPU runs prove phone quality.
+
+
 ## Current checkpoint: stronger 4B partial qualitative review — 2026-10-10
 
 User instruction: one focused chunk per “Next”, do not automatically approve/download/activate a model. The current Android beta is **unchanged**. Model usefulness outranks hosting; zero spending, no invented phone performance or trained-adapter claim.

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a11ffe-5531-77e9-846a-72ffc82828ec",
+    "createdAt": "2026-10-09T09:28:44.081Z",
+    "group": "0fb76097-c38b-471a-8f0a-63bc2d64ce6d",
+    "branch": "preview",
+    "message": "MYELIN weekly school hours and planner integration beta 9928c859ac2fb8224aad6b137fc18f09b84963a7",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a11ffe-5531-77e9-846a-72ffc82828ec",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "9928c859ac2fb8224aad6b137fc18f09b84963a7"
+  }
+]

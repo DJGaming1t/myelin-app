@@ -19,9 +19,13 @@ Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73b
 
 Cloud AI is not connected. Model preferences are not working Qwen inference. A training adapter is not a downloadable phone model.
 
-## Weekly school-hours fix — verification/publication pending
+## Latest weekly school-hours fix — published 2026-10-09
 
-The user's phone screenshot shows the conversational update but the exact school-hours fact is unsupported there. New source connects explicit recurring school/tuition/coaching requests to the existing Day map commitments through the same confirmation layer. Full app CI and an EAS receipt must be checked before calling this new fix published.
+The user's phone screenshot shows the previous conversational update but the exact school-hours fact was unsupported there. This fix connects explicit recurring school/tuition/coaching requests to the existing Day map commitments through the same confirmation layer.
+
+Published 2026-10-09 09:28:44 UTC (14:58:44 IST): group `0fb76097-c38b-471a-8f0a-63bc2d64ce6d`, Android update `01a11ffe-5531-77e9-846a-72ffc82828ec`, runtime `0.2.13`, branch `preview`, source `9928c859ac2fb8224aad6b137fc18f09b84963a7`. Full verification and publication succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37911040195. Hybrid verification also SUCCESS: https://github.com/DJGaming1t/myelin-app/actions/runs/37911040180. Checked EAS receipt: `docs/beta/weekly-schedule-update-20261009.json`, artifact `11606986743`. Scenario artifact `11607270573`; evidence `docs/beta/weekly-schedule-verification-20261009.json`. This supersedes all earlier updates below. Open the existing compatible APK online and fully close/reopen after download, up to twice. No reinstall/data clearing needed.
+
+Full app TypeScript, existing app regressions, eight exact schedules and 14 clarification scenarios per timezone, chat checks, 31 task scenarios per timezone, protocol isolation/parity and exact APK compatibility passed. Physical Android QA for this new path remains pending.
 
 After updating the existing preview APK, check:
 

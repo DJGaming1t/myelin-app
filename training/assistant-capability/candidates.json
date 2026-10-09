@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "runtime": "litert-lm==0.18.0",
+  "backend": "cpu",
+  "models": [
+    {
+      "id": "qwen35-lite-int8",
+      "repo": "litert-community/Qwen3.5-0.8B",
+      "revision": "10243c0a01d24e6b122a0e814f8c4d984c9c92d6",
+      "file": "Qwen3.5-0.8B_int8.litertlm",
+      "sizeBytes": 963184864,
+      "sha256": "64ed396fcdae75e5158945c77a08142b1322ce1bbf1be4d2198783119a1169e8",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "qwen35-enhanced-int8",
+      "repo": "litert-community/Qwen3.5-2B",
+      "revision": "4327b7425533c26da2aec1d7b915e9742eead2cb",
+      "file": "Qwen3.5-2B_int8.litertlm",
+      "sizeBytes": 2116592816,
+      "sha256": "8ae5027136e0b89039ed76eedfb61f0cf4b7277024d99bf765359264295b86b1",
+      "license": "Apache-2.0"
+    }
+  ]
+}

@@ -41,7 +41,7 @@ export function beginAssistantClarification(
 }
 
 function dateReply(text: string, currentDate: string): string | null {
-  const normalized = normalizeSchoolworkLanguage(text).replace(/^(?:by|on|due)\s+/, '').replace(/[.!]$/, '');
+  const normalized = normalizeSchoolworkLanguage(text).replace(/^(?:it is|it's|make it)\s+/, '').replace(/^(?:by|on|due)\s+/, '').replace(/[.!]$/, '');
   if (/^20\d{2}-\d{2}-\d{2}$/.test(normalized)) {
     const date = new Date(`${normalized}T12:00:00Z`);
     return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === normalized ? normalized : null;
@@ -55,8 +55,13 @@ function dateReply(text: string, currentDate: string): string | null {
 }
 
 function minutesReply(text: string): number | null {
-  const normalized = text.toLowerCase().trim().replace(/^(?:about|around)\s+/, '').replace(/[.!]$/, '');
+  const normalized = text.toLowerCase().trim().replace(/^(?:it is|it's|make it)\s+/, '').replace(/^(?:about|around)\s+/, '').replace(/[.!]$/, '');
   if (/^half (?:an? )?hour$/.test(normalized)) return 30;
+  const compound = /^(\d+)\s*(?:h|hr|hrs|hour|hours)\s+(\d+)\s*(?:m|min|mins|minute|minutes)$/.exec(normalized);
+  if (compound) {
+    const hours = Number(compound[1]); const minutes = Number(compound[2]); const total = hours * 60 + minutes;
+    return minutes < 60 && Number.isInteger(total) && total >= 5 && total <= 720 ? total : null;
+  }
   const match = /^(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?$/.exec(normalized);
   if (!match) return null;
   const value = Number(match[1]) * (/^(?:h|hr|hour)/.test(match[2] ?? '') ? 60 : 1);
@@ -89,7 +94,7 @@ export function answerAssistantClarification(
     if (!date) return { kind: 'retry', message: 'Reply with one valid date (YYYY-MM-DD), today or tomorrow. Time-of-day deadlines are not supported here.' };
     answers.dueDate = date;
   } else {
-    const key = topicKey(answer);
+    const key = topicKey(answer.replace(/^(?:it is|it's|the topic is)\s+/i, ''));
     const exact = workspace.topics.filter(topic => topicKey(topic.name) === key);
     const matches = exact.length ? exact : key.length >= 4 ? workspace.topics.filter(topic => topicKey(topic.name).startsWith(key)) : [];
     if (matches.length !== 1) return { kind: 'retry', message: 'Reply with the exact name of one existing topic. I will not invent a topic or choose between matching names.' };

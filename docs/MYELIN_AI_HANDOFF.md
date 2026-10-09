@@ -1,5 +1,15 @@
 # MYELIN AI Handoff
 
+## Conversational task assistant and honest availability — 2026-10-09 IST
+
+User reports weak capability, wants conversational interaction and sees the generic offline-unavailable message. Root cause: Qwen phone artifacts are unreleased and cloud remains unconnected; previous changes strengthened bounded rules, not model inference. This chunk improves the actual assistant screen while preserving that distinction.
+
+- Replaced the request/answer form with a screen-local chat thread, one bottom message composer, clarification replies in the same box, reviewable proposals, explicit confirmation and an applied receipt in the thread. New chat cancels generation and clears history; account changes clear history; workspace changes invalidate pending questions and proposals. History is bounded to 80 text messages and is not executable model context or unrestricted conversational memory.
+- Added complete-message app-help replies for greetings, thanks, capabilities and Today/Focus/Review/Progress guidance. These are deterministic app guidance, not generated tutoring. Compound messages containing commands do not get swallowed as greetings/help. Requests beyond supported actions still require a model; cloud stays off.
+- Added precise unreleased/missing-file/runtime/invalid-response explanations instead of the generic offline failure. Lite/Enhanced switching is accurately described as a preference, not activation. Conversational clarification phrases and `1 hour 30 minutes` duration answers are supported without losing the original request or previous answers.
+- New conversation regressions cover actual routing/clarification/confirmed apply, no-model operation, sanitized availability, bounded help, new-chat/account isolation, stale-result rejection, bounded history and duplicate apply. Both timezone runs and existing hybrid/clarification/grounding/31-scenario checks passed locally; available TypeScript and TSX parsing passed. Full app CI and compatible Android publication are pending; phone keyboard/large-text/navigation tests remain pending.
+- Next: supported revocation-aware auth and atomic D1 quotas for the free hosted-Qwen service, then real Worker/provider testing and connection. A stronger model and a validated conversational reply/action protocol are still required for general chat or subject explanations. No training/evaluation claims or paid activation in this chunk.
+
 ## Clearer task interpretation and app-flow testing — 2026-10-09 IST
 
 User requested stronger AI and better app testing. This bounded chunk improves the shipped local interpreter and verifies the same routing/clarification/preview/apply functions used by the screen. It does not train another model or claim stronger measured cloud quality.

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -27,12 +27,13 @@ import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
 import { localDateKeyFromTimestamp, tryBuildMyelinMiniFastDecision } from '@/src/features/assistant/myelin-mini-fast-router';
 import { answerAssistantClarification, beginAssistantClarification, type AssistantClarificationAnswers, type PendingAssistantClarification } from '@/src/features/assistant/assistant-clarification';
 import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/features/assistant/assistant-request-grounding';
+import { assistantChatReducer, assistantOfflineStatus, createAssistantChat, tryAssistantChatReply, type AssistantChatScope } from '@/src/features/assistant/assistant-conversation';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const EXAMPLES = [
-  'I have to complite bio practical nb by tomorrow.',
-  'Create a Science revision task for Magnetic Effects of Electric Current.',
-  'Make an exam plan from my upcoming exams.',
+  'I have to complete bio practical nb by tomorrow.',
+  'What can you do?',
+  'How do I use Focus?',
 ] as const;
 
 function TaskPreviewDetails({ prepared, index }: { prepared: PreparedAssistantActionBatch; index: number }) {
@@ -302,127 +303,115 @@ function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
 
 export default function LocalAiAssistantScreen() {
   const { workspace, ownerKey, commitAssistantWorkspace } = useWorkspace();
-  const {
-    ready,
-    snapshot,
-    models,
-    prepareAssistantActions,
-    prepareAssistantDecision,
-    message: modelMessage,
-    error: modelError,
-    nativeRuntimeAvailable,
-  } = useLocalAi();
+  const { ready, snapshot, models, prepareAssistantActions, prepareAssistantDecision, nativeRuntimeAvailable } = useLocalAi();
   const [request, setRequest] = useState('');
   const [prepared, setPrepared] = useState<PreparedAssistantActionBatch | null>(null);
   const [busy, setBusy] = useState<'prepare' | 'apply' | ''>('');
-  const [notice, setNotice] = useState('');
-  const [reply, setReply] = useState('');
   const [error, setError] = useState('');
   const [pendingQuestion, setPendingQuestion] = useState<PendingAssistantClarification | null>(null);
-  const [answer, setAnswer] = useState('');
+  const [chat, dispatchChat] = useReducer(assistantChatReducer, undefined,
+    () => createAssistantChat(ownerKey, workspace?.revision ?? 0));
   const controllerRef = useRef<AbortController | null>(null);
-  const lastOwnerRef = useRef(ownerKey);
+  const applyGuard = useRef(false);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const chatRef = useRef(chat);
+  chatRef.current = chat;
+  const workspaceScopeRef = useRef({ ownerKey, revision: workspace?.revision ?? 0 });
+  workspaceScopeRef.current = { ownerKey, revision: workspace?.revision ?? 0 };
 
   const selected = useMemo(
-    () => models.find((model) => model.definition.id === (snapshot.selectedModelId === 'functiongemma-270m'
+    () => models.find(model => model.definition.id === (snapshot.selectedModelId === 'functiongemma-270m'
       ? snapshot.selectedModelId : snapshot.preferences.preferredOfflineModelId ?? 'qwen3.5-0.8b')) ?? null,
     [models, snapshot.selectedModelId, snapshot.preferences.preferredOfflineModelId],
   );
-  const installed = Boolean(selected?.state.install);
-  const available = Boolean(selected && installed && selected.state.compatibility.runtimeId);
+  const offlineStatus = assistantOfflineStatus({ definition: selected?.definition,
+    installed: Boolean(selected?.state.install),
+    runtimeAvailable: Boolean(nativeRuntimeAvailable && selected?.state.compatibility.compatible && selected.state.compatibility.runtimeId) });
+  const available = offlineStatus === 'ready';
 
-  useEffect(
-    () => () => {
-      controllerRef.current?.abort();
-      controllerRef.current = null;
-    },
-    [],
-  );
-
+  useEffect(() => () => { controllerRef.current?.abort(); controllerRef.current = null; }, []);
   useEffect(() => {
-    if (lastOwnerRef.current !== ownerKey) { setRequest(''); setNotice(''); lastOwnerRef.current = ownerKey; }
-    controllerRef.current?.abort();
-    controllerRef.current = null;
-    setPendingQuestion(null);
-    setAnswer('');
-    setPrepared(null);
-    setReply('');
-    setError('');
-    setBusy('');
+    controllerRef.current?.abort(); controllerRef.current = null;
+    dispatchChat({ type: 'sync', ownerKey, revision: workspace?.revision ?? 0 });
+    setPendingQuestion(null); setPrepared(null); setRequest(''); setError('');
+    if (!applyGuard.current) setBusy('');
   }, [ownerKey, workspace?.revision]);
 
-  if (!workspace) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
-          <Text style={styles.muted}>Opening MYELIN AI…</Text>
-        </View>
-      </SafeAreaView>
-    );
+  function append(scope: AssistantChatScope, role: 'user' | 'assistant', text: string) {
+    dispatchChat({ type: 'append', scope, role, text });
+  }
+  function scopeIsCurrent(scope: AssistantChatScope) {
+    return scope.ownerKey === workspaceScopeRef.current.ownerKey &&
+      scope.revision === workspaceScopeRef.current.revision && scope.epoch === chatRef.current.epoch;
+  }
+  function startNewRequest() {
+    if (applyGuard.current) return;
+    controllerRef.current?.abort(); controllerRef.current = null;
+    setBusy(''); setRequest(''); setPendingQuestion(null); setPrepared(null); setError('');
+  }
+  function newChat() {
+    if (applyGuard.current) return;
+    startNewRequest(); dispatchChat({ type: 'reset' });
   }
 
-  const currentWorkspace = workspace;
-
-  async function prepare() {
-    const userRequest = pendingQuestion?.userRequest ?? request.trim();
-    if (!userRequest || !ready || busy || !ownerKey) return;
+  async function send() {
+    if (!workspace || !ownerKey || !ready || busy || controllerRef.current || applyGuard.current) return;
+    if (chat.ownerKey !== ownerKey || chat.revision !== workspace.revision) return;
+    const text = request.trim();
+    if (!text) return;
+    const scope: AssistantChatScope = { ownerKey, revision: workspace.revision, epoch: chat.epoch };
     const now = Date.now();
-    const scope = { ownerKey, revision: currentWorkspace.revision, now, currentDate: localDateKeyFromTimestamp(now) };
+    const clarificationScope = { ownerKey, revision: workspace.revision, now, currentDate: localDateKeyFromTimestamp(now) };
+    const userRequest = pendingQuestion?.userRequest ?? text;
     let clarificationAnswers: AssistantClarificationAnswers | undefined;
+    append(scope, 'user', text); setRequest(''); setError(''); setPrepared(null);
     if (pendingQuestion) {
-      const resolved = answerAssistantClarification(pendingQuestion, answer, currentWorkspace, scope);
+      const resolved = answerAssistantClarification(pendingQuestion, text, workspace, clarificationScope);
       if (resolved.kind !== 'resolved') {
-        setError(resolved.message);
-        if (resolved.kind === 'expired') { setPendingQuestion(null); setAnswer(''); setReply(''); }
+        append(scope, 'assistant', resolved.message);
+        if (resolved.kind === 'expired') setPendingQuestion(null);
         return;
       }
       clarificationAnswers = resolved.answers;
+    } else {
+      const reply = tryAssistantChatReply(text, offlineStatus);
+      if (reply) { append(scope, 'assistant', reply); return; }
     }
-
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    setBusy('prepare');
-    setPrepared(null);
-    setNotice('');
-    setReply('');
-    setError('');
-
+    const controller = new AbortController(); controllerRef.current = controller; setBusy('prepare');
+    const isCurrent = () => !controller.signal.aborted && controllerRef.current === controller && scopeIsCurrent(scope);
     try {
-      const args = {
-        workspace: currentWorkspace,
-        userRequest,
-        currentRoute: '/(app)/settings/ai-assistant',
-        signal: controller.signal,
-        now,
-        clarificationAnswers,
-      };
-      const hasRuleDecision = checkAssistantRequestGrounding({ workspace: currentWorkspace, userRequest, currentDate: scope.currentDate, clarificationAnswers }) !== null || tryBuildMyelinMiniFastDecision({
-        workspace: currentWorkspace, userRequest, requestId: 'screen-rule-check',
-        currentDate: scope.currentDate,
-        clarificationAnswers,
-      }) !== null;
+      const args = { workspace, userRequest, currentRoute: '/(app)/settings/ai-assistant', signal: controller.signal, now, clarificationAnswers };
+      const hasRuleDecision = checkAssistantRequestGrounding({ workspace, userRequest, currentDate: clarificationScope.currentDate, clarificationAnswers }) !== null ||
+        tryBuildMyelinMiniFastDecision({ workspace, userRequest, requestId: 'screen-rule-check', currentDate: clarificationScope.currentDate, clarificationAnswers }) !== null;
       if (snapshot.selectedModelId === 'functiongemma-270m' && available && !hasRuleDecision) {
         const next = await prepareAssistantActions(args);
-        if (!controller.signal.aborted) { setPrepared(next); setPendingQuestion(null); setAnswer(''); }
+        if (!isCurrent()) return;
+        setPrepared(next); setPendingQuestion(null);
+        append(scope, 'assistant', 'I prepared a proposal. Review the details below, then confirm if they look right.');
       } else {
         const decision = await prepareAssistantDecision(args);
-        if (controller.signal.aborted) return;
-        if (decision.route === 'actions') { setPrepared(decision.prepared); setPendingQuestion(null); setAnswer(''); }
-        else {
-          setReply(decision.route === 'clarify' ? decision.question : decision.note);
-          setPendingQuestion(beginAssistantClarification(userRequest, decision, scope, clarificationAnswers, pendingQuestion));
-          setAnswer('');
+        if (!isCurrent()) return;
+        if (decision.route === 'actions') {
+          setPrepared(decision.prepared); setPendingQuestion(null);
+          append(scope, 'assistant', 'I prepared a proposal. Review the details below, then confirm if they look right.');
+        } else {
+          const nextQuestion = beginAssistantClarification(userRequest, decision, clarificationScope, clarificationAnswers, pendingQuestion);
+          setPendingQuestion(nextQuestion);
+          const reply = decision.route === 'clarify' ? decision.question : decision.note;
+          append(scope, 'assistant', reply + (decision.route === 'clarify' && !nextQuestion ? ' Send a complete revised request to continue.' :
+            decision.route === 'escalate' && ['tutoring', 'general-knowledge', 'complex-reasoning'].includes(decision.reason)
+              ? ' A teaching model is not connected in this beta. I can help with supported app tasks and app guidance.' : ''));
         }
       }
     } catch (cause) {
-      if (!controller.signal.aborted) {
-        if (cause instanceof AssistantGroundingError) {
-          const decision = { route: 'clarify' as const, confidence: 1, ...cause.clarification, modelId: 'myelin-request-grounding-v1' };
-          setReply(decision.question);
-          setPendingQuestion(beginAssistantClarification(userRequest, decision, scope, clarificationAnswers, pendingQuestion));
-          setAnswer('');
-        } else setError(cause instanceof Error ? cause.message : 'The local assistant could not prepare these actions.');
+      if (!isCurrent()) return;
+      if (cause instanceof AssistantGroundingError) {
+        const decision = { route: 'clarify' as const, confidence: 1, ...cause.clarification, modelId: 'myelin-request-grounding-v1' };
+        const nextQuestion = beginAssistantClarification(userRequest, decision, clarificationScope, clarificationAnswers, pendingQuestion);
+        setPendingQuestion(nextQuestion);
+        append(scope, 'assistant', decision.question + (nextQuestion ? '' : ' Send a complete revised request to continue.'));
+      } else {
+        append(scope, 'assistant', 'I could not prepare this request. Nothing was changed. Try a supported task request or ask “What can you do?”');
       }
     } finally {
       if (controllerRef.current === controller) { controllerRef.current = null; setBusy(''); }
@@ -430,364 +419,137 @@ export default function LocalAiAssistantScreen() {
   }
 
   async function apply() {
-    if (!prepared || !prepared.preview.hasMutations || busy) return;
-    setBusy('apply');
-    setError('');
-    setNotice('');
-
+    if (!workspace || !ownerKey || !prepared?.preview.hasMutations || busy || applyGuard.current) return;
+    const scope: AssistantChatScope = { ownerKey, revision: workspace.revision, epoch: chat.epoch };
+    if (!scopeIsCurrent(scope)) return;
+    applyGuard.current = true; setBusy('apply'); setError('');
     try {
-      const applied = applyPreparedAssistantActionBatch(
-        currentWorkspace,
-        prepared,
-        prepared.confirmationKey,
-      );
+      const applied = applyPreparedAssistantActionBatch(workspace, prepared, prepared.confirmationKey);
       await commitAssistantWorkspace(applied.nextWorkspace, prepared.sourceRevision);
-      setPrepared(null);
-      setPendingQuestion(null);
-      setAnswer('');
-      setRequest('');
-      setNotice(
-        `Applied ${applied.results.length} ${applied.results.length === 1 ? 'change' : 'changes'} to MYELIN.`,
-      );
+      dispatchChat({ type: 'committed', scope, text: `Done — applied ${applied.results.length} ${applied.results.length === 1 ? 'change' : 'changes'} to MYELIN.` });
+      if (scope.ownerKey === workspaceScopeRef.current.ownerKey && scope.epoch === chatRef.current.epoch) {
+        setPrepared(null); setPendingQuestion(null); setRequest('');
+      }
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'MYELIN could not apply those actions. Preview them again.',
-      );
-    } finally {
-      setBusy('');
-    }
+      if (scopeIsCurrent(scope)) setError(cause instanceof Error ? cause.message : 'Could not apply these changes. Send the request again for a fresh preview.');
+    } finally { applyGuard.current = false; setBusy(''); }
   }
 
-  function useExample(value: string) {
-    if (busy) return;
-    setRequest(value);
-    setPendingQuestion(null);
-    setAnswer('');
-    setPrepared(null);
-    setNotice('');
-    setReply('');
-    setError('');
-  }
-
-  function startNewRequest() {
-    if (busy) return;
-    setRequest(''); setPendingQuestion(null); setAnswer('');
-    setPrepared(null); setReply(''); setError(''); setNotice('');
-  }
-
+  if (!workspace) return <SafeAreaView style={styles.safe}><View style={styles.center}><Text style={styles.muted}>Opening MYELIN…</Text></View></SafeAreaView>;
+  const hasMessages = chat.ownerKey === ownerKey && chat.messages.length > 0;
   return (
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
-      <KeyboardAvoidingView
-        style={styles.page}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScreenHeader
-          title="Ask local AI"
-          eyebrow="MYELIN AI"
-          onBack={() => router.back()}
-        />
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.statusCard}>
-            <View style={styles.statusCopy}>
-              <Text style={styles.statusKicker}>SELECTED MODEL</Text>
-              <Text style={styles.statusName}>{selected?.definition.shortName ?? (snapshot.preferences.preferredOfflineModelId === 'qwen3.5-2b' ? 'Qwen Enhanced' : 'Qwen Lite')}</Text>
-              <Text style={styles.statusText}>
-                {available
-                  ? 'Runs on this device. MYELIN validates every proposed action before anything can change.'
-                  : !nativeRuntimeAvailable
-                    ? 'This installed APK does not expose the native LiteRT-LM runtime. Supported simple commands can still use MYELIN rules.'
-                    : !selected
-                      ? 'Simple supported commands use MYELIN rules. Your preferred Qwen model needs a verified phone release before other offline requests can run.'
-                      : !installed
-                        ? `${selected.definition.shortName} is selected, but its verified model file is not installed yet.`
-                        : 'The selected model is installed, but its native runtime is not currently available.'}
-              </Text>
-            </View>
-            <Text style={[styles.statusBadge, available ? styles.readyBadge : styles.blockedBadge]}>
-              {available ? 'READY' : 'RULES ONLY'}
-            </Text>
+      <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScreenHeader title="MYELIN assistant" variant="compact" onBack={() => router.back()} actionLabel="New chat" onAction={newChat} />
+        <View style={styles.chatStatus}>
+          <View style={styles.statusCopy}>
+            <Text style={styles.chatStatusTitle}>Task help is ready</Text>
+            <Text style={styles.statusText}>{available ? 'Offline actions available · General chat is not connected' : 'Basic task help · Qwen and general chat are not connected'}</Text>
           </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Import a syllabus with local AI"
-            onPress={() => router.push('/(app)/settings/ai-syllabus')}
-            style={({ pressed }) => [styles.syllabusEntry, pressed && styles.pressed]}>
-            <View style={styles.syllabusEntryCopy}>
-              <Text style={styles.syllabusEntryKicker}>STRUCTURED IMPORT</Text>
-              <Text style={styles.syllabusEntryTitle}>Import a syllabus</Text>
-              <Text style={styles.syllabusEntryText}>
-                Extract subjects and topics locally, review defaults and warnings, then apply once.
-              </Text>
-            </View>
-            <Text style={styles.syllabusEntryArrow}>→</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Manage AI models" onPress={() => router.push('/(app)/settings/ai-models')} style={styles.modelLink}>
+            <Text style={styles.modelLinkText}>Models</Text>
           </Pressable>
-
-          {!available ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.replace('/(app)/settings/ai-models')}
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-              <Text style={styles.primaryButtonText}>Manage AI models</Text>
-            </Pressable>
-          ) : null}
-            <>
-              <View style={styles.requestCard}>
-                <Text style={styles.sectionTitle}>{pendingQuestion ? 'ORIGINAL REQUEST' : 'WHAT SHOULD MYELIN INTERPRET?'}</Text>
-                <TextInput
-                  accessibilityLabel="Local AI request"
-                  multiline
-                  maxLength={2000}
-                  value={request}
-                  editable={!busy}
-                  onChangeText={(value) => {
-                    setRequest(value);
-                    setPendingQuestion(null);
-                    setAnswer('');
-                    setPrepared(null);
-                    setNotice('');
-                    setReply('');
-                    setError('');
-                  }}
-                  placeholder="Example: I have to complete bio practical nb by tomorrow."
-                  placeholderTextColor={colors.subtle}
-                  style={styles.input}
-                  textAlignVertical="top"
-                />
-                {pendingQuestion ? (
-                  <View>
-                    <Text selectable accessibilityLiveRegion="polite" style={styles.modelMessage}>{pendingQuestion.question}</Text>
-                    <TextInput
-                      testID="assistant-clarification-answer"
-                      accessibilityLabel="Answer MYELIN's question"
-                      value={answer}
-                      maxLength={300}
-                      editable={!busy}
-                      onChangeText={(value) => { setAnswer(value); setError(''); }}
-                      placeholder={pendingQuestion.field === 'estimatedMinutes' ? 'Example: 45 minutes' : pendingQuestion.field === 'dueDate' ? 'Example: tomorrow or YYYY-MM-DD' : pendingQuestion.field === 'subject' ? 'Example: Biology' : 'Exact existing topic name'}
-                      placeholderTextColor={colors.subtle}
-                      style={styles.input}
-                    />
-                    <Pressable accessibilityRole="button" disabled={Boolean(busy)} onPress={startNewRequest} style={styles.example}>
-                      <Text style={styles.exampleText}>Start a new request</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-                <View style={styles.requestFooter}>
-                  <Text style={styles.counter}>{request.length}/2000</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={!ready || !request.trim() || (Boolean(pendingQuestion) && !answer.trim()) || Boolean(busy)}
-                    onPress={() => void prepare()}
-                    style={({ pressed }) => [
-                      styles.prepareButton,
-                      (!ready || !request.trim() || (Boolean(pendingQuestion) && !answer.trim()) || Boolean(busy)) && styles.disabled,
-                      pressed && !busy && styles.pressed,
-                    ]}>
-                    <Text style={styles.prepareButtonText}>
-                      {busy === 'prepare' ? 'Thinking locally…' : pendingQuestion ? 'Continue to preview' : 'Preview actions'}
-                    </Text>
-                  </Pressable>
-                </View>
+        </View>
+        <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.chatContent} keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })} showsVerticalScrollIndicator={false}>
+          {!hasMessages ? (
+            <View style={styles.chatWelcome}>
+              <Text style={styles.welcomeTitle}>What do you need to get done?</Text>
+              <Text style={styles.welcomeText}>Tell me in your own words. I can help with supported tasks, ask for details and guide you around MYELIN.</Text>
+              <View style={styles.examples}>
+                {EXAMPLES.map(example => <Pressable key={example} accessibilityRole="button" onPress={() => setRequest(example)} style={({ pressed }) => [styles.example, pressed && styles.pressed]}>
+                  <Text style={styles.exampleText}>{example}</Text><Text style={styles.arrow}>↗</Text>
+                </Pressable>)}
               </View>
-
-              {!prepared ? (
-                <View style={styles.examples}>
-                  <Text style={styles.sectionTitle}>TRY A REQUEST</Text>
-                  {EXAMPLES.map((example) => (
-                    <Pressable
-                      key={example}
-                      accessibilityRole="button"
-                      disabled={Boolean(busy)}
-                      onPress={() => useExample(example)}
-                      style={({ pressed }) => [styles.example, pressed && styles.pressed]}>
-                      <Text style={styles.exampleText}>{example}</Text>
-                      <Text style={styles.arrow}>→</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.previewCard}>
-                  <View style={styles.previewHeader}>
-                    <View style={styles.previewHeaderCopy}>
-                      <Text style={styles.previewKicker}>REVIEW BEFORE APPLYING</Text>
-                      <Text style={styles.previewTitle}>{previewLabel(prepared)}</Text>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/(app)/settings/ai-syllabus')} style={styles.example}>
+                <Text style={styles.exampleText}>Open syllabus import</Text><Text style={styles.arrow}>→</Text>
+              </Pressable>
+            </View>
+          ) : chat.messages.map(message => (
+            <View key={message.id} style={[styles.chatBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble]}>
+              <Text style={styles.bubbleLabel}>{message.role === 'user' ? 'YOU' : 'MYELIN'}</Text>
+              <Text selectable accessibilityLiveRegion={message.role === 'assistant' ? 'polite' : 'none'} style={styles.bubbleText}>{message.text}</Text>
+            </View>
+          ))}
+          {busy === 'prepare' ? <Text accessibilityLiveRegion="polite" style={styles.modelMessage}>Preparing your request…</Text> : null}
+          {prepared ? (
+            <View testID="assistant-chat-action-preview" style={styles.previewCard}>
+              <Text style={styles.previewKicker}>REVIEW BEFORE APPLYING</Text>
+              <Text style={styles.previewTitle}>{previewLabel(prepared)}</Text>
+              <View style={styles.results}>
+                {prepared.preview.results.map((result, index) => (
+                  <View key={`${result.type}:${index}`} style={styles.resultRow}>
+                    <Text style={styles.resultNumber}>{index + 1}</Text>
+                    <View style={styles.resultCopy}>
+                      <Text selectable style={styles.resultSummary}>{result.summary}</Text>
+                      <TaskPreviewDetails prepared={prepared} index={index} />
+                      {result.type === 'generate_exam_plan' && isAssistantExamPlanSummary(result.data) ? <ExamPlanPreview plan={result.data} /> : null}
                     </View>
-                    <Text style={styles.previewBadge}>PREVIEW</Text>
                   </View>
-
-                  <View style={styles.results}>
-                    {prepared.preview.results.map((result, index) => (
-                      <View key={`${result.type}:${index}`} style={styles.resultRow}>
-                        <Text style={styles.resultNumber}>{index + 1}</Text>
-                        <View style={styles.resultCopy}>
-                          <Text style={styles.resultType}>
-                            {result.type.replaceAll('_', ' ').toUpperCase()}
-                          </Text>
-                          <Text selectable style={styles.resultSummary}>{result.summary}</Text>
-                          <TaskPreviewDetails prepared={prepared} index={index} />
-                          {result.type === 'generate_exam_plan' &&
-                          isAssistantExamPlanSummary(result.data) ? (
-                            <ExamPlanPreview plan={result.data} />
-                          ) : null}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={styles.guardrail}>
-                    <Text style={styles.guardrailTitle}>MYELIN stays in control</Text>
-                    <Text style={styles.guardrailText}>
-                      The model interprets your request. MYELIN validates IDs, limits and data changes. Exam scheduling is calculated by MYELIN's deterministic planner, not by the model.
-                    </Text>
-                  </View>
-
-                  <View style={styles.previewActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={Boolean(busy)}
-                      onPress={() => {
-                        setPrepared(null);
-                        setNotice('');
-                        setError('');
-                      }}
-                      style={({ pressed }) => [styles.secondaryButton, pressed && !busy && styles.pressed]}>
-                      <Text style={styles.secondaryButtonText}>Edit request</Text>
-                    </Pressable>
-
-                    {prepared.preview.hasMutations ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Apply local AI proposed changes"
-                        disabled={Boolean(busy)}
-                        onPress={() => void apply()}
-                        style={({ pressed }) => [
-                          styles.primaryButton,
-                          Boolean(busy) && styles.disabled,
-                          pressed && !busy && styles.pressed,
-                        ]}>
-                        <Text style={styles.primaryButtonText}>
-                          {busy === 'apply' ? 'Applying…' : 'Apply changes'}
-                        </Text>
-                      </Pressable>
-                    ) : (
-                      <View style={styles.readOnlyBox}>
-                        <Text style={styles.readOnlyText}>No data changes to apply.</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              )}
-            </>
-
-          {notice ? <Text accessibilityLiveRegion="polite" style={styles.success}>{notice}</Text> : null}
-          {reply && !pendingQuestion ? <Text selectable accessibilityLiveRegion="polite" style={styles.modelMessage}>{reply}</Text> : null}
+                ))}
+              </View>
+              <Text style={styles.modelMessage}>Nothing changes until you confirm.</Text>
+              <View style={styles.previewActions}>
+                <Pressable accessibilityRole="button" disabled={Boolean(busy)} onPress={() => { setPrepared(null); setError(''); append(chat, 'assistant', 'Proposal dismissed. Send a revised request whenever you’re ready.'); }}
+                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}><Text style={styles.secondaryButtonText}>Dismiss</Text></Pressable>
+                {prepared.preview.hasMutations ? <Pressable accessibilityRole="button" accessibilityLabel="Confirm proposed changes" disabled={Boolean(busy)} onPress={() => void apply()}
+                  style={({ pressed }) => [styles.primaryButton, Boolean(busy) && styles.disabled, pressed && styles.pressed]}><Text style={styles.primaryButtonText}>{busy === 'apply' ? 'Applying…' : 'Confirm changes'}</Text></Pressable>
+                  : <View style={styles.readOnlyBox}><Text style={styles.readOnlyText}>No changes to apply</Text></View>}
+              </View>
+            </View>
+          ) : null}
           {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
-          {!error && modelError ? <Text style={styles.error}>{modelError}</Text> : null}
-          {!notice && modelMessage ? <Text style={styles.modelMessage}>{modelMessage}</Text> : null}
         </ScrollView>
+        <View style={styles.composer}>
+          {pendingQuestion ? <View style={styles.answerHint}>
+            <Text style={styles.answerHintText}>Reply to my question below</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Start a different request" disabled={Boolean(busy)} onPress={startNewRequest} style={styles.modelLink}><Text style={styles.modelLinkText}>Different request</Text></Pressable>
+          </View> : null}
+          <View style={styles.composerRow}>
+            <TextInput testID="assistant-chat-composer" accessibilityLabel={pendingQuestion ? "Answer MYELIN's question" : 'Message MYELIN'} multiline maxLength={pendingQuestion ? 300 : 2000}
+              value={request} editable={!busy} onChangeText={value => { setRequest(value); setError(''); }}
+              placeholder={pendingQuestion ? pendingQuestion.field === 'estimatedMinutes' ? 'e.g. 45 minutes' : pendingQuestion.field === 'dueDate' ? 'e.g. tomorrow or YYYY-MM-DD' : pendingQuestion.field === 'subject' ? 'e.g. Biology' : 'Exact existing topic name' : 'Message MYELIN…'}
+              placeholderTextColor={colors.subtle} style={styles.chatInput} textAlignVertical="top" />
+            <Pressable accessibilityRole="button" accessibilityLabel="Send message" disabled={!ready || !request.trim() || Boolean(busy)} onPress={() => void send()}
+              style={({ pressed }) => [styles.sendButton, (!ready || !request.trim() || Boolean(busy)) && styles.disabled, pressed && styles.pressed]}><Text style={styles.prepareButtonText}>Send</Text></Pressable>
+          </View>
+          {busy === 'prepare' ? <Pressable accessibilityRole="button" onPress={startNewRequest} style={styles.modelLink}><Text style={styles.modelLinkText}>Cancel request</Text></Pressable> :
+            <Text style={styles.composerNote}>Changes always need your confirmation · Chat stays on this screen</Text>}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  chatStatus: { marginHorizontal: spacing.lg, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  chatStatusTitle: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  modelLink: { minHeight: layout.minTouch, paddingHorizontal: 8, justifyContent: 'center' },
+  modelLinkText: { color: colors.accent, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  chatContent: { width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingVertical: 12, gap: 14 },
+  chatWelcome: { paddingVertical: 16, gap: 14 },
+  welcomeTitle: { color: colors.text, fontSize: 24, lineHeight: 31, fontWeight: '800' },
+  welcomeText: { color: colors.muted, fontSize: 14, lineHeight: 21 },
+  chatBubble: { maxWidth: '94%', borderRadius: radius.lg, padding: 14, gap: 6 },
+  userBubble: { alignSelf: 'flex-end', backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: 'rgba(255,128,91,0.22)' },
+  assistantBubble: { alignSelf: 'flex-start', backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line },
+  bubbleLabel: { color: colors.subtle, fontSize: 10, lineHeight: 14, fontWeight: '800', letterSpacing: 0.6 },
+  bubbleText: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  composer: { paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 8, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.bg, gap: 5 },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  chatInput: { flex: 1, minHeight: layout.minTouch, maxHeight: 130, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 14, lineHeight: 21, paddingHorizontal: 12, paddingVertical: 12 },
+  sendButton: { minHeight: layout.minTouch, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  composerNote: { color: colors.subtle, fontSize: 10, lineHeight: 15, paddingTop: 3 },
+  answerHint: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between', gap: 4 },
+  answerHintText: { color: colors.muted, fontSize: 12, lineHeight: 18 },
   safe: { flex: 1, backgroundColor: colors.bg },
   page: { flex: 1 },
   scroll: { flex: 1 },
-  content: {
-    width: '100%',
-    maxWidth: layout.readingMax,
-    alignSelf: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 72,
-    gap: 14,
-  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { color: colors.muted, fontSize: 13 },
-  statusCard: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
   statusCopy: { flex: 1 },
-  statusKicker: { color: colors.subtle, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.6 },
-  statusName: { color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: '800', marginTop: 4 },
   statusText: { color: colors.muted, fontSize: 11.5, lineHeight: 17, marginTop: 5 },
-  statusBadge: {
-    fontSize: 9.5,
-    lineHeight: 13,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    overflow: 'hidden',
-  },
-  readyBadge: { color: colors.success, backgroundColor: 'rgba(116,201,152,0.10)' },
-  blockedBadge: { color: colors.subtle, backgroundColor: colors.bg },
-  syllabusEntry: {
-    minHeight: 72,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  syllabusEntryCopy: { flex: 1, minWidth: 0 },
-  syllabusEntryKicker: { color: colors.accent, fontSize: 9, lineHeight: 12, fontWeight: '900', letterSpacing: 0.55 },
-  syllabusEntryTitle: { color: colors.text, fontSize: 14, lineHeight: 19, fontWeight: '800', marginTop: 2 },
-  syllabusEntryText: { color: colors.muted, fontSize: 10.5, lineHeight: 15, marginTop: 3 },
-  syllabusEntryArrow: { color: colors.accent, fontSize: 18, flexShrink: 0 },
-  requestCard: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.24)',
-    backgroundColor: colors.panel,
-    padding: spacing.md,
-  },
-  sectionTitle: { color: colors.subtle, fontSize: 10, lineHeight: 14, fontWeight: '800', letterSpacing: 0.65 },
-  input: {
-    minHeight: 118,
-    maxHeight: 230,
-    marginTop: 10,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.bg,
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 21,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-  },
-  requestFooter: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  counter: { flex: 1, color: colors.subtle, fontSize: 10.5 },
-  prepareButton: {
-    minHeight: layout.minTouch,
-    minWidth: 132,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   prepareButtonText: { color: '#150B08', fontSize: 12, fontWeight: '900' },
   examples: {
     borderRadius: radius.lg,
@@ -814,20 +576,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panel,
     padding: spacing.md,
   },
-  previewHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  previewHeaderCopy: { flex: 1 },
   previewKicker: { color: colors.accent, fontSize: 9.5, fontWeight: '900', letterSpacing: 0.55 },
   previewTitle: { color: colors.text, fontSize: 18, lineHeight: 24, fontWeight: '800', marginTop: 4 },
-  previewBadge: {
-    color: colors.accent,
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    fontSize: 9.5,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
   results: { marginTop: 13 },
   resultRow: {
     minHeight: 58,
@@ -849,7 +599,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   resultCopy: { flex: 1 },
-  resultType: { color: colors.subtle, fontSize: 9.5, lineHeight: 13, fontWeight: '800', letterSpacing: 0.45 },
   resultSummary: { color: colors.text, fontSize: 12.5, lineHeight: 18, marginTop: 3 },
   plan: {
     marginTop: 12,
@@ -973,14 +722,6 @@ const styles = StyleSheet.create({
   moreBlocks: { color: colors.subtle, fontSize: 9.5, lineHeight: 14, marginLeft: 47 },
   moreDays: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
   emptyPlanText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 7 },
-  guardrail: {
-    marginTop: 10,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg,
-    padding: 11,
-  },
-  guardrailTitle: { color: colors.text, fontSize: 11.5, lineHeight: 16, fontWeight: '800' },
-  guardrailText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4 },
   previewActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   primaryButton: {
     flex: 1,
@@ -1013,7 +754,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   readOnlyText: { color: colors.muted, fontSize: 11.5, fontWeight: '700' },
-  success: { color: colors.success, fontSize: 12, lineHeight: 17 },
   error: { color: colors.danger, fontSize: 12, lineHeight: 17 },
   modelMessage: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
   disabled: { opacity: 0.42 },

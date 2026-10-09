@@ -1,6 +1,7 @@
 import { WorkspaceState } from '@/src/data/schema';
 import type { AssistantClarificationAnswers } from './assistant-clarification';
 import { AssistantCloudError } from './cloud-assistant-adapter';
+import { assistantUnavailableReply, type AssistantOfflineStatus } from './assistant-conversation';
 import {
   MyelinMiniModelAdapter,
   MyelinMiniRouteResult,
@@ -21,6 +22,7 @@ export async function routeWithHybridAssistant(input: {
   userRequest: string;
   requestId: string;
   offline: MyelinMiniModelAdapter;
+  offlineStatus?: AssistantOfflineStatus;
   cloud?: MyelinMiniModelAdapter;
   allowCloudFallback: boolean;
   currentRoute?: string;
@@ -39,7 +41,7 @@ export async function routeWithHybridAssistant(input: {
     if (error instanceof Error && error.name === 'AbortError') throw error;
     local = {
       route: 'escalate', confidence: 0, reason: 'low-confidence',
-      note: 'The offline model is unavailable or could not prepare a valid response. Check the selected model or try a simpler request.',
+      note: assistantUnavailableReply(input.offlineStatus),
       modelId: input.offline.id,
     };
   }

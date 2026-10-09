@@ -39,6 +39,7 @@ import { MyelinMiniRouteResult } from '../myelin-mini';
 import type { AssistantClarificationAnswers } from '../assistant-clarification';
 import { AssistantGroundingError } from '../assistant-request-grounding';
 import { routeWithHybridAssistant } from '../hybrid-assistant-router';
+import { assistantOfflineStatus } from '../assistant-conversation';
 import {
   PreparedSyllabusImport,
   prepareLocalSyllabusImport,
@@ -230,11 +231,19 @@ export function LocalAiProvider({ children }: PropsWithChildren) {
   }) => {
     setError('');
     setMessage('');
-    const modelId = manager.snapshot().preferences.preferredOfflineModelId ?? 'qwen3.5-0.8b';
+    const current = manager.snapshot();
+    const modelId = current.preferences.preferredOfflineModelId ?? 'qwen3.5-0.8b';
+    const modelState = current.models.find(model => model.modelId === modelId);
+    const offlineStatus = assistantOfflineStatus({
+      definition: LOCAL_AI_MODELS.find(model => model.id === modelId),
+      installed: Boolean(modelState?.install),
+      runtimeAvailable: Boolean(modelState?.compatibility.compatible && modelState.compatibility.runtimeId),
+    });
     return routeWithHybridAssistant({
       ...request,
       requestId: request.requestId ?? `mini-${request.workspace.revision}-${Date.now().toString(36)}`,
       offline: createLocalMiniAdapter(modelId, () => manager.load(modelId)),
+      offlineStatus,
       // Cloud remains opt-in and disabled until an authenticated provider is wired.
       allowCloudFallback: false,
     });

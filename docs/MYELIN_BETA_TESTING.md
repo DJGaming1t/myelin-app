@@ -19,7 +19,23 @@ Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73b
 
 Cloud AI is not connected. Model preferences are not working Qwen inference. A training adapter is not a downloadable phone model.
 
-## Latest task-detail update — published 2026-10-09
+## Conversational assistant — verification/publication pending
+
+New source uses a chat thread and one bottom message box for both requests and follow-up answers. Local app guidance works without a model. Qwen weights and cloud are still unavailable; this does not establish general AI conversation or tutoring. Full app CI and an EAS receipt must be verified before calling this published.
+
+After the update, test on the existing Android preview:
+
+1. Send `Hello`, `What can you do?` and `How do I use Focus?`. Each should produce an app-help reply in the thread; no workspace changes.
+2. Send `Add practice tomorrow`. Reply with the exact name of one existing topic, then `Make it 1 hour 30 minutes` in the same message box. Check topic, local tomorrow and 90 minutes in the proposal. No task until confirmation; repeated confirmation must not duplicate it.
+3. Send `I have to complete practical nb by tomorrow`, then `It's Biology`. Confirm the original request is retained and the task details are correct.
+4. Send `Add Elasticity as a Physics topic` without model weights. The reply should explain that Qwen has no released phone version; changing Lite/Enhanced does not activate it. Ask for a subject explanation and verify the teaching-model limitation is visible.
+5. While awaiting a reply, use New chat or cancel. Old results must not appear. Switch accounts; previous messages/questions/proposals must disappear. Edit the workspace; pending questions/proposals must invalidate.
+6. Dismiss a proposal, send a revised request, and verify only the current proposal can be confirmed. Use Different request to leave a retained clarification instead of accidentally treating a new task as its answer.
+7. Check keyboard visibility, multiline input, larger system text, long replies/proposals, back navigation, scroll behavior and update receipt on a phone. Chat is screen-local, capped at 80 messages and clears on leaving/reopening; no permanent chat-history promise.
+
+Automated conversation regressions exercise shared routing and history logic in India and US timezones. They do not render React Native screens or establish physical-device/model quality.
+
+## Previous task-detail update — published 2026-10-09
 
 Published 2026-10-09 01:23:53 UTC (06:53:53 IST): group `950c9fca-525b-4dd0-8532-076259d2cf11`, Android update `01a11e42-70f1-75cf-95a7-2dc0478e1385`, runtime `0.2.13`, branch `preview`, source `05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd`. Full verification and publication succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225289. Hybrid verification also passed: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225004. This supersedes the earlier updates below.
 

@@ -29,6 +29,7 @@ import { answerAssistantClarification, beginAssistantClarification, type Assista
 import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/features/assistant/assistant-request-grounding';
 import { assistantChatReducer, assistantOfflineStatus, createAssistantChat, tryAssistantChatReply, type AssistantChatScope } from '@/src/features/assistant/assistant-conversation';
 import { tryAssistantPlanningReply } from '@/src/features/assistant/assistant-planning-review';
+import { tryAssistantPlanMathReply } from '@/src/features/assistant/assistant-plan-math';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const EXAMPLES = [
@@ -384,7 +385,7 @@ export default function LocalAiAssistantScreen() {
       }
       clarificationAnswers = resolved.answers;
     } else {
-      const reply = tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantChatReply(text, offlineStatus);
+      const reply = tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantPlanMathReply(text) ?? tryAssistantChatReply(text, offlineStatus);
       if (reply) { append(scope, 'assistant', reply); return; }
     }
     const controller = new AbortController(); controllerRef.current = controller; setBusy('prepare');

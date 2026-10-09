@@ -8,6 +8,21 @@ Published 2026-10-08 09:34 UTC: update group `13189175-e2b7-4fee-a910-8828facfe6
 
 Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, Android update `01a11aee-348b-7bc9-a545-938c07316392`, runtime `0.2.13`, branch `preview`. Full verification and publication: https://github.com/DJGaming1t/myelin-app/actions/runs/37759348032. Receipt: `docs/beta/schoolwork-update-20261008.json`. Source `5c644549305790be1c005eec26a027559fa76e00`. The existing compatible APK receives this OTA; no reinstall or data clearing is required.
 
+## Current saved-task deadline questions — published 2026-10-10 IST
+
+Android `preview` OTA **confirmed published** from code `d40409eaacffbef9b6afbad6a3151f0509fe8b83` at 2026-10-09T20:27:58.039Z (2026-10-10 01:57:58 IST): update `01a12259-e0d7-7d6d-a81f-f6e1040909f1`, group `53cb32ac-6da7-4ef9-baa9-127e72ec7619`, runtime `0.2.13`. GitHub [run 37986782213](https://github.com/DJGaming1t/myelin-app/actions/runs/37986782213): full verification SUCCESS, Expo **Published!**, publish job SUCCESS. EAS JSON publication receipt artifact `11643162481`, app scenario artifact `11642887704`. Independent two-timezone planning/chat/typecheck [37986639378](https://github.com/DJGaming1t/myelin-app/actions/runs/37986639378) and broader hybrid-AI safety [37986639368](https://github.com/DJGaming1t/myelin-app/actions/runs/37986639368) also SUCCESS. No native dependencies, model activation, or new APK.
+
+The already installed compatible Android preview APK can receive the OTA after opening online and fully closing/reopening. Device-level QA is still pending. In Settings → MYELIN assistant, after receiving the preview update:
+
+1. Add an open test task named `Chemistry practical notebook` with an exact due date/time and a 60-minute estimate. Record a fixed school commitment that blocks some of the pre-deadline time. Send `Can I finish my Chemistry practical notebook before its deadline?`. Verify the remaining estimate, computed upper bound and minimum shortage against Day map. The reply must say **might fit, not guaranteed** when upper bound is sufficient, never promise all tasks fit.
+2. Set the task's estimate to unknown. Send the same question. MYELIN must ask for an estimate rather than invent minutes. Set the due date to absent and check it asks for an actual deadline.
+3. Create two tasks with the same title. MYELIN must refuse to choose between them, without a proposal or mutation. Remove the extra test task afterward.
+4. After the due time, MYELIN must clearly identify the open task as overdue. Once marked complete, it must report completed instead of assuming remaining work.
+5. Send `Can I finish Chemistry practical notebook before its deadline? Also delete Maths`. It must not silently use the read-only match or apply any change. Do not confirm any unintended proposal.
+6. Ask `Review my plan`; compare with Day map and previous plan checks. Existing seven-day read-only review remains unchanged. Check accessibility, keyboard, long labels and whether the OTA actually loads on the device.
+
+This is a bounded deterministic assistant capability, not stronger Qwen general reasoning. Optimistic availability intentionally ignores competition from other unscheduled work and new breaks. Full physical-device QA is required separately.
+
 ## Current exact-time questions — published 2026-10-10 IST
 
 Published Android `preview` OTA from `f776e97a0492f0f76630421ed50b67f750683e4b` at 2026-10-09 20:14:24 UTC (2026-10-10 01:44:24 IST): update `01a1224d-75d2-7e3c-906a-d6afc3ba392b`, group `66d95760-36ff-48bc-8956-33daf88d981d`, runtime `0.2.13`. Full beta verify and publish jobs both **SUCCESS** in [run 37985197692](https://github.com/DJGaming1t/myelin-app/actions/runs/37985197692). Beta receipt artifact `11642965729`, scenario artifact `11641964736`. Dedicated no-publish compile/two-timezone/chat verification was already **SUCCESS** in [run 37985081308](https://github.com/DJGaming1t/myelin-app/actions/runs/37985081308).

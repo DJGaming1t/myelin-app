@@ -1,5 +1,5 @@
 /** Exact, read-only arithmetic on explicitly supplied times; never a schedule approval. */
-const clock = '(\d{2}:\d{2})';
+const clock = '(\\d{2}:\\d{2})';
 const clockValue = (value: string): number | null => {
   if (!/^\d{2}:\d{2}$/.test(value)) return null;
   const hour = Number(value.slice(0, 2));

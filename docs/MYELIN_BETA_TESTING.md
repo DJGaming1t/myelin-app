@@ -19,9 +19,11 @@ Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73b
 
 Cloud AI is not connected. Model preferences are not working Qwen inference. A training adapter is not a downloadable phone model.
 
-## Conversational assistant — verification/publication pending
+## Latest conversational assistant — published 2026-10-09
 
-New source uses a chat thread and one bottom message box for both requests and follow-up answers. Local app guidance works without a model. Qwen weights and cloud are still unavailable; this does not establish general AI conversation or tutoring. Full app CI and an EAS receipt must be verified before calling this published.
+Published 2026-10-09 09:01:42 UTC (14:31:42 IST): group `9a841170-04a8-4b45-94f6-fd538cdc8af6`, Android update `01a11fe5-9669-7a19-ac68-8709253bb214`, runtime `0.2.13`, branch `preview`, source `789c89e75e9cb836dd97f4aa40269d19e55ef673`. Full verification and publication succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37908290974. Hybrid run also SUCCESS: https://github.com/DJGaming1t/myelin-app/actions/runs/37908291086. Actual EAS receipt checked: `docs/beta/conversation-update-20261009.json`, artifact `11605083288`. Scenario artifact `11605607042`; evidence `docs/beta/conversation-verification-20261009.json`. This supersedes all earlier updates below. Open the existing compatible preview APK online, allow download and fully close/reopen up to twice; no reinstall/data clearing needed.
+
+Source uses a chat thread and one bottom message box for both requests and follow-up answers. Local app guidance works without a model. Qwen weights and cloud are still unavailable; this does not establish general AI conversation or tutoring. Full app TypeScript, existing app regressions, conversation checks in both timezones, 31 task scenarios per timezone and exact installed-APK compatibility passed. Physical-device QA remains pending.
 
 After the update, test on the existing Android preview:
 
@@ -37,7 +39,7 @@ Automated conversation regressions exercise shared routing and history logic in 
 
 ## Previous task-detail update — published 2026-10-09
 
-Published 2026-10-09 01:23:53 UTC (06:53:53 IST): group `950c9fca-525b-4dd0-8532-076259d2cf11`, Android update `01a11e42-70f1-75cf-95a7-2dc0478e1385`, runtime `0.2.13`, branch `preview`, source `05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd`. Full verification and publication succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225289. Hybrid verification also passed: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225004. This supersedes the earlier updates below.
+Published 2026-10-09 01:23:53 UTC (06:53:53 IST): group `950c9fca-525b-4dd0-8532-076259d2cf11`, Android update `01a11e42-70f1-75cf-95a7-2dc0478e1385`, runtime `0.2.13`, branch `preview`, source `05c0c01b1b6215ac6306d4674fd5f3dcda5fdcdd`. Full verification and publication succeeded: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225289. Hybrid verification also passed: https://github.com/DJGaming1t/myelin-app/actions/runs/37869225004. Superseded by the conversational assistant above; retained for task-detail QA coverage.
 
 Source recognizes polite supported action requests and uses the same date/minute/priority checks for topic practice and standalone schoolwork. All 31 app-flow development regressions passed in each of `Asia/Kolkata` (reported by Intl as `Asia/Calcutta`) and `America/Los_Angeles`. Full TypeScript, existing app regression scripts and exact installed-APK compatibility checks also passed. Reports: artifact `11589028753` (`myelin-assistant-app-scenarios`). Checked EAS receipt: `docs/beta/task-details-update-20261009.json`, artifact `11588929572`. Verification evidence: `docs/beta/task-details-verification-20261009.json`. Open the existing preview APK online, allow download and fully close/reopen up to twice; no reinstall/data clearing needed. Physical-device QA is pending.
 

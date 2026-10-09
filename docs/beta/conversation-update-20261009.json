@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a11fe5-9669-7a19-ac68-8709253bb214",
+    "createdAt": "2026-10-09T09:01:42.377Z",
+    "group": "9a841170-04a8-4b45-94f6-fd538cdc8af6",
+    "branch": "preview",
+    "message": "MYELIN conversational task assistant and clearer model availability beta 789c89e75e9cb836dd97f4aa40269d19e55ef673",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a11fe5-9669-7a19-ac68-8709253bb214",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "789c89e75e9cb836dd97f4aa40269d19e55ef673"
+  }
+]

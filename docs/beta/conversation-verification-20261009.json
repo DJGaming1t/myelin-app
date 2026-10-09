@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "verifiedAtUtc": "2026-10-09T09:03:00.095Z",
+  "repository": "DJGaming1t/myelin-app",
+  "branch": "codex/exam-autopilot-capacity-v1",
+  "sourceCommit": "789c89e75e9cb836dd97f4aa40269d19e55ef673",
+  "verification": {
+    "beta": {
+      "runId": 37908290974,
+      "url": "https://github.com/DJGaming1t/myelin-app/actions/runs/37908290974",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 113746997211,
+          "name": "verify",
+          "conclusion": "success"
+        },
+        {
+          "id": 113747493971,
+          "name": "publish_preview",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "hybrid": {
+      "runId": 37908291086,
+      "url": "https://github.com/DJGaming1t/myelin-app/actions/runs/37908291086",
+      "conclusion": "success",
+      "jobId": 113746998759
+    },
+    "coverage": [
+      "Full app TypeScript",
+      "All configured app regressions, including Firestore rules emulator and native/model lifecycle",
+      "Conversation/app-help/availability regression in both timezones",
+      "Retained natural clarification replies and compound duration",
+      "Confirmation and idempotent apply",
+      "Stale result, new chat, account isolation and bounded history",
+      "31 app-flow scenarios per timezone",
+      "Strict native and dependency compatibility with installed preview APK"
+    ],
+    "timezones": [
+      "Asia/Kolkata",
+      "America/Los_Angeles"
+    ],
+    "scope": "Shared app routing/state tests plus source wiring checks. React Native screens and phone keyboard/performance are not exercised."
+  },
+  "artifacts": [
+    {
+      "id": 11605607042,
+      "name": "myelin-assistant-app-scenarios",
+      "digest": "sha256:7ff173ccc9ea0dfad1f35fa85473c8fc1e497ebe1938f675b6660a6a9ee7929b",
+      "createdAt": "2026-10-09T08:59:53Z",
+      "expiresAt": "2027-01-07T08:58:30Z",
+      "sourceCommit": "789c89e75e9cb836dd97f4aa40269d19e55ef673"
+    },
+    {
+      "id": 11605083288,
+      "name": "myelin-assistant-beta-update",
+      "digest": "sha256:fc46c01cfeda985ab006c7e40fa2d2251fe4350e662688e5b62f9fb7c012442d",
+      "createdAt": "2026-10-09T09:01:43Z",
+      "expiresAt": "2027-01-07T08:58:30Z",
+      "sourceCommit": "789c89e75e9cb836dd97f4aa40269d19e55ef673"
+    }
+  ],
+  "beta": {
+    "receiptFile": "docs/beta/conversation-update-20261009.json",
+    "updateId": "01a11fe5-9669-7a19-ac68-8709253bb214",
+    "group": "9a841170-04a8-4b45-94f6-fd538cdc8af6",
+    "publishedAtUtc": "2026-10-09T09:01:42.377Z",
+    "publishedAtIst": "2026-10-09T14:31:42.377+05:30",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "branch": "preview",
+    "compatibleApkBuild": "877c5749-c608-4d23-bca9-aca66fb2df06",
+    "compatibleApkSource": "137eee631edbe582da8c0e64ec89229a86a5aa9a"
+  },
+  "priorAttempt": {
+    "sourceCommit": "c928290387415d66665785de81c3a8e5d5aa212e",
+    "betaRunId": 37908045290,
+    "hybridRunId": 37908045216,
+    "published": false,
+    "issue": "Existing source integration assertions still expected the old form argument names, separate reply field and button copy. Updated to the chat wiring; all existing behavioral/lifecycle tests retained."
+  },
+  "limitations": {
+    "cloudConnected": false,
+    "cloudLiveTested": false,
+    "generalModelChatConnected": false,
+    "modelQualityMeasured": false,
+    "qwenPhoneWeightsReleased": false,
+    "physicalDeviceTested": false,
+    "reactNativeScreensRendered": false,
+    "persistentChatHistory": false,
+    "trainingChanged": false,
+    "billingChanged": false
+  },
+  "nextStep": "Implement revocation-aware authentication and atomic D1 quotas for free hosted Qwen, then Worker/live provider checks and validated conversational reply/action protocol before app connection."
+}

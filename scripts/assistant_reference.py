@@ -10,6 +10,17 @@ from assistant_diagnostic import load_diagnostic
 ROOT = CAPABILITY_ROOT / 'reference-v3'
 
 
+def json_ready_metadata(value):
+    """Normalize SDK metadata sets only; never repair or transform model outputs."""
+    if isinstance(value, dict):
+        return {key: json_ready_metadata(item) for key, item in value.items()}
+    if isinstance(value, set):
+        return sorted(value)
+    if isinstance(value, (list, tuple)):
+        return [json_ready_metadata(item) for item in value]
+    return value
+
+
 def load_reference():
     load_suite()
     load_diagnostic()

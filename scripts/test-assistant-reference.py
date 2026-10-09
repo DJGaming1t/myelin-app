@@ -1,9 +1,15 @@
 import unittest
 
-from assistant_reference import evaluate, load_reference
+from assistant_reference import evaluate, json_ready_metadata, load_reference
 
 
 class ReferenceTests(unittest.TestCase):
+    def test_load_metadata_sets(self):
+        self.assertEqual(json_ready_metadata({'missing_keys': set(), 'unexpected_keys': {'b', 'a'}}),
+                         {'missing_keys': [], 'unexpected_keys': ['a', 'b']})
+        self.assertEqual(json_ready_metadata({'missing_keys': {'model.weight'}})['missing_keys'],
+                         ['model.weight'])
+
     def test_frozen_conditions(self):
         cases, settings, _, manifest, native = load_reference()
         self.assertEqual(sum(len(c['turns']) for c in cases) * len(settings['conditions']), 24)

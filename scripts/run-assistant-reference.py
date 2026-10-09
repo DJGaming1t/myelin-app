@@ -12,7 +12,7 @@ from pathlib import Path
 
 from assistant_capability import sha
 from assistant_diagnostic import native_response
-from assistant_reference import evaluate, git_blob_sha, load_reference
+from assistant_reference import evaluate, git_blob_sha, json_ready_metadata, load_reference
 
 
 def save(output, name, value):
@@ -114,6 +114,7 @@ def main():
              local_files_only=True, trust_remote_code=False, dtype=torch.bfloat16,
              attn_implementation='eager', output_loading_info=True)
         model.eval()
+        loading = json_ready_metadata(loading)
         if any(loading.get(key) for key in ['missing_keys', 'mismatched_keys', 'error_msgs']):
             save(args.output, 'loading-error.json', loading)
             raise ValueError('Original text weights not fully loaded')

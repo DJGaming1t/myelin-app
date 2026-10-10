@@ -34,7 +34,7 @@ import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const EXAMPLES = [
   'I have to complete bio practical nb by tomorrow.',
-  'What can you do?',
+  'What should I start next?',
   'Review my plan',
 ] as const;
 

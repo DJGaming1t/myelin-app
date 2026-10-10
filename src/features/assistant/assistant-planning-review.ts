@@ -1,6 +1,6 @@
 import type { WorkspaceState } from '@/src/data/schema';
 import { sleepWindows } from '@/src/features/adaptive/sleep-engine';
-import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, startOfLocalDay } from '@/src/features/planning/day-engine';
+import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, scheduledTasksForDay, startOfLocalDay, taskPlanningScore } from '@/src/features/planning/day-engine';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
 export type PlanningIssueCode = 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'deadline-capacity' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
@@ -179,6 +179,95 @@ export function tryAssistantTaskDeadlineReply(request: string, workspace: Worksp
     ['after-deadline', 'commitment-overlap', 'sleep-overlap', 'task-overlap', 'short-slot'].includes(issue.code));
   const warnings = related.length ? `\n\nOther recorded conflicts: ${related.slice(0, 2).map(issue => issue.message).join(' ')}${related.length > 2 ? ` (${related.length - 2} additional checks in Review my plan.)` : ''}` : '';
   return `“${taskName}” has ${remaining} estimated min left before its recorded deadline (${localDayKey(task.dueAt)}). MYELIN estimates at most ${upperBound} min of individually usable time before then, after fixed commitments, sleep and your remaining daily study budget. ${verdict}${warnings}\n\n${endNote}`;
+}
+
+// Read-only first-step suggestion using the same priority and calendar engine
+// as Today/Day map. No new scheduling, invisible model, or guaranteed completion.
+export function tryAssistantNextTaskReply(request: string, workspace: WorkspaceState, now = Date.now()): string | null {
+  const text = request.toLowerCase().trim().replace(/[.!?]+$/, '').replace(/\s+/g, ' ');
+  if (!/^(?:what should i (?:study|start|do|work on) next|what (?:task|work) should i (?:start|do) next|which task should i (?:start|do) (?:now|next)|what should i focus on (?:now|next)|suggest (?:my )?next (?:study )?task)$/.test(text)) return null;
+
+  const today = startOfLocalDay(now);
+  const nextDay = addLocalDays(today, 1);
+  const note = 'This is a read-only next step from recorded data, not a guarantee that all work fits. Nothing was changed.';
+  const nameOf = (task: WorkspaceState['tasks'][number]) => '“' + label(task.title) + '”';
+  const clock = (at: number) => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const dueLabel = (task: WorkspaceState['tasks'][number]) =>
+    task.dueAt > 0 ? (task.dueAt < now ? 'Its recorded deadline has passed' :
+      task.dueAt < nextDay ? 'It is due today' :
+      task.dueAt < addLocalDays(today, 2) ? 'It is due tomorrow' : 'A future deadline is recorded') :
+      'No deadline is recorded';
+  const open = workspace.tasks.filter(task => task.status === 'open');
+  if (!open.length) return 'You have no open MYELIN tasks. Add work in Today first. ' + note;
+
+  const budget = Math.max(0, Math.floor(remainingDailyBudget(workspace, today)));
+  if (budget < 5)
+    return 'Your recorded daily study budget has fewer than five minutes left. I will not suggest extra study beyond that setting. ' + note;
+
+  // Current planned session outranks an inbox suggestion. Never recommend
+  // studying over recorded school, sleep, or another active scheduled task.
+  const active = open.filter(task => task.planState === 'scheduled' && task.postponedUntil <= now &&
+    task.scheduledStart <= now && task.scheduledEnd > now);
+  if (active.length > 1) return 'Several saved study blocks overlap now. Resolve them in Day map before starting. ' + note;
+  if (active.length === 1) {
+    const task = active[0]!;
+    const safe = freeStudyWindows(workspace, today, { from: now, minMinutes: 1, includeScheduledTasks: false })
+      .find(window => window.start <= now && window.end > now);
+    if (!safe) return nameOf(task) + ' is scheduled now but conflicts with sleep or a fixed commitment. Check Day map. ' + note;
+    const remaining = taskRemainingMinutes(task);
+    if (task.estimatedMinutes <= 0 || remaining <= 0)
+      return nameOf(task) + ' is scheduled now but its remaining estimate needs review. Check completion or duration. ' + note;
+    const end = Math.min(task.scheduledEnd, safe.end,
+      task.dueAt > now ? task.dueAt : Number.POSITIVE_INFINITY);
+    const block = Math.min(Math.max(5, workspace.settings.focusMinutes), remaining,
+      budget, Math.floor((end - now) / 60000));
+    if (block < 5) return 'Fewer than five safe minutes remain in the current block for ' + nameOf(task) + '. Review Day map. ' + note;
+    return nameOf(task) + ' is already scheduled now. Start a ' + block +
+      '-minute Focus session. ' + dueLabel(task) +
+      '. This block may only complete part of the task.\n\n' + note;
+  }
+
+  // Future scheduled study must retain its protected daily budget.
+  const reserved = scheduledTasksForDay(workspace.tasks, today)
+    .reduce((sum, task) => sum + Math.max(0,
+      Math.floor((Math.min(nextDay, task.scheduledEnd) - Math.max(now, task.scheduledStart)) / 60000)), 0);
+  const spareBudget = Math.max(0, budget - reserved);
+  if (spareBudget < 5)
+    return 'Your upcoming recorded study blocks already use the remaining daily budget. Keep those blocks or review Today. ' + note;
+
+  const candidates = open.filter(task =>
+    task.planState !== 'scheduled' && task.postponedUntil <= now &&
+    task.estimatedMinutes > 0 && taskRemainingMinutes(task) > 0)
+    .sort((a, b) => taskPlanningScore(workspace, b, now) - taskPlanningScore(workspace, a, now) ||
+      (a.dueAt || Number.POSITIVE_INFINITY) - (b.dueAt || Number.POSITIVE_INFINITY) ||
+      a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+  const windows = freeStudyWindows(workspace, today, { from: now, minMinutes: 5 });
+  for (const window of windows) {
+    const capacity = Math.min(spareBudget, window.minutes);
+    if (capacity < 5) break;
+    for (const task of candidates) {
+      const beforeDeadline = Math.floor((Math.min(window.end,
+        task.dueAt > now ? task.dueAt : Number.POSITIVE_INFINITY) - window.start) / 60000);
+      const block = Math.min(Math.max(5, workspace.settings.focusMinutes),
+        taskRemainingMinutes(task), capacity, beforeDeadline);
+      if (block < 5) continue;
+      const start = window.start <= now ? 'A recorded free study window is available now' :
+        'The next suitable recorded study window begins at ' + clock(window.start);
+      const reason = task.planState === 'today' ? 'It is marked for Today' :
+        'It ranks highest among eligible open work using MYELIN priorities and deadlines';
+      return start + '. Try ' + nameOf(task) + ' for a ' + block + '-minute Focus block. ' +
+        reason + '. ' + dueLabel(task) +
+        '. This is a useful first step, not a promise the whole task fits today.\n\n' + note;
+    }
+  }
+  const scheduled = open.filter(task => task.planState === 'scheduled' && task.scheduledStart > now)
+    .sort((a, b) => a.scheduledStart - b.scheduledStart)[0];
+  if (scheduled && !candidates.length)
+    return 'Your next recorded scheduled task is ' + nameOf(scheduled) + ' at ' + clock(scheduled.scheduledStart) +
+      '. Nothing was started or moved. ' + note;
+  if (!candidates.length)
+    return 'No eligible unscheduled task has a known remaining estimate right now. Review missing estimates, postponements and scheduled tasks in Today. ' + note;
+  return 'No safe five-minute window for the eligible tasks remains in today’s recorded free time before their deadlines. Check Day map rather than forcing study through commitments. ' + note;
 }
 
 export function planningReviewReply(review: AssistantPlanningReview): string {

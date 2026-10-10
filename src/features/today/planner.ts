@@ -294,6 +294,13 @@ function taskCandidate(
   autopilot: TodayAutopilotAllocation | null,
 ): Candidate | null {
   if (task.status !== 'open' || task.postponedUntil > now) return null;
+  // Some restored/legacy tasks can remain open after their logged time meets
+  // the estimate. Do not recommend a new full Focus block for zero work.
+  // Keep the record open so completion or estimate changes remain a user action.
+  const remainingMinutes = task.estimatedMinutes > 0
+    ? taskRemainingMinutes(task)
+    : 25; // Existing provisional estimate only when no estimate was supplied.
+  if (remainingMinutes <= 0) return null;
   const endToday = nextLocalDayStart(now);
   if (
     task.planState === 'scheduled' &&
@@ -379,7 +386,7 @@ function taskCandidate(
     dueQuestionCount: questionCount,
     examDays,
     mode,
-    remainingMinutes: taskRemainingMinutes(task) || task.estimatedMinutes || 25,
+    remainingMinutes,
     autopilotMinutes: autopilot?.minutes ?? 0,
     autopilotKind: autopilot
       ? autopilot.revisionMinutes > autopilot.preparationMinutes

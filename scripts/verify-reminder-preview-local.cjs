@@ -78,20 +78,77 @@ if (!expectedBuild) {
 check('Preview APK baseline is in Git history', 'git', ['cat-file', '-e', expectedBuild + '^{commit}'], { quiet: true });
 const env = { ...process.env, BETA_BUILD_SHA: expectedBuild };
 
+// --full mirrors the CI verify job before the owner performs an optional
+// explicit local EAS publication. Default stays fast and read-only.
+const full = process.argv.includes('--full');
+if (process.argv.slice(2).some((arg) => arg !== '--full')) {
+  console.error('Usage: node scripts/verify-reminder-preview-local.cjs [--full]');
+  process.exit(1);
+}
+if (full) {
+  const java = spawnSync('java', ['-version'], { encoding: 'utf8' });
+  const javaVersion = (String(java.stdout || '') + String(java.stderr || ''))
+    .match(/(?:version\s+"|openjdk\s+)(\d+)/i);
+  if (java.error || java.status !== 0 || !javaVersion || Number(javaVersion[1]) < 21) {
+    console.error('Full CI parity requires Java 21+ for Firestore emulator tests.');
+    process.exit(1);
+  }
+}
+
 const tasks = [
   ['Android OTA compatibility self-test', node, ['scripts/check-beta-ota-compatibility.cjs', '--self-test']],
   ['Check installed Android APK matches this source', node, ['scripts/check-beta-ota-compatibility.cjs'], { env }],
   ['TypeScript', npx, ['tsc', '--noEmit']],
   ['Hosted conversation Worker protocol/security tests', node, ['--test', 'workers/assistant/test/conversation.test.mjs']],
-  ['Focus timer and foreground regressions', npm, ['run', 'verify:focus']],
-  ['Notification and Reminder Studio regressions', npm, ['run', 'verify:notifications']],
-  ['Visual and accessibility source regressions', npm, ['run', 'verify:visual']],
-  ['UI polish and screen integration regressions', npm, ['run', 'verify:polish']],
 ];
+
+if (full) {
+  const os = require('node:os');
+  const fs = require('node:fs');
+  const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'myelin-verify-'));
+  const scripts = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).scripts;
+  for (const name of Object.keys(scripts).filter((name) => name.startsWith('verify:'))) {
+    tasks.push(['CI app regression ' + name, npm, ['run', name]]);
+  }
+
+  const scenario = (name, timezone, reportFile) => {
+    const reportEnv = {
+      ...process.env,
+      TZ: timezone,
+      ...(reportFile ? { MYELIN_ASSISTANT_SCENARIO_REPORT: path.join(reportDir, reportFile) } : {}),
+    };
+    tasks.push([name + ' in ' + timezone, npx, ['tsx', 'scripts/' + name + '.ts'], { env: reportEnv }]);
+  };
+  scenario('verify-assistant-planning-review', 'Asia/Kolkata');
+  scenario('verify-assistant-planning-review', 'America/Los_Angeles');
+  for (const name of [
+    'verify-hybrid-assistant',
+    'verify-assistant-clarification',
+    'verify-assistant-grounding',
+  ]) tasks.push([name, npx, ['tsx', 'scripts/' + name + '.ts']]);
+  for (const timezone of ['Asia/Kolkata', 'America/Los_Angeles']) {
+    scenario('verify-assistant-conversation', timezone);
+    scenario('verify-assistant-schedules', timezone);
+  }
+  scenario('verify-assistant-app-scenarios', 'Asia/Kolkata', 'assistant-scenarios-india.json');
+  scenario('verify-assistant-app-scenarios', 'America/Los_Angeles', 'assistant-scenarios-us.json');
+  for (const name of ['verify-adaptive', 'verify-transition']) {
+    tasks.push([name, npx, ['tsx', 'scripts/' + name + '.ts']]);
+  }
+  tasks.push(['Expo prebuild configuration', npx, ['expo', 'config', '--type', 'prebuild']]);
+} else {
+  tasks.push(
+    ['Focus timer and foreground regressions', npm, ['run', 'verify:focus']],
+    ['Notification and Reminder Studio regressions', npm, ['run', 'verify:notifications']],
+    ['Visual and accessibility source regressions', npm, ['run', 'verify:visual']],
+    ['UI polish and screen integration regressions', npm, ['run', 'verify:polish']],
+  );
+}
 
 for (const [label, command, args, options] of tasks) {
   console.log('\n== ' + label + ' ==');
   check(label, command, args, options);
 }
 
-console.log('\nLocal Reminder Studio checks PASSED. This is not full GitHub CI, a device test, or an Expo publication.');
+console.log('\n' + (full ? 'Full local release verification' : 'Local Focus/Reminder preflight') +
+  ' PASSED. This is not an Android device test or an Expo publication.');

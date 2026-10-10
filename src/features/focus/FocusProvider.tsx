@@ -234,7 +234,13 @@ export function FocusProvider({ children }: PropsWithChildren) {
       pause: () => transform((current) => pauseFocusTimer(current)),
       resume: () => transform((current) => resumeFocusTimer(current)),
       extendLaunch: () => transform((current) => extendFiveMinuteLaunch(current)),
-      park: (text) => transform((current) => addParkedDistraction(current, text)),
+      park: async (text) => {
+        const current = sessionRef.current;
+        if (!current) return;
+        // The distraction input is cleared only after this write succeeds.
+        // If device storage fails, its text stays available for a retry.
+        await commitSession(addParkedDistraction(current, text));
+      },
       removeParked: (id) =>
         transform((current) => removeParkedDistraction(current, id)),
 

@@ -33,7 +33,8 @@ import { answerAssistantClarification, beginAssistantClarification, type Assista
 import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/features/assistant/assistant-request-grounding';
 import { assistantChatReducer, assistantOfflineStatus, createAssistantChat, tryAssistantChatReply, type AssistantChatScope } from '@/src/features/assistant/assistant-conversation';
 import { tryAssistantNextTaskReply, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply } from '@/src/features/assistant/assistant-planning-review';
-import { tryAssistantWorkflowAnalysisReply } from '@/src/features/assistant/assistant-workflow-analysis';
+import { isAssistantWorkflowAnalysisRequest, tryAssistantWorkflowAnalysisReply } from '@/src/features/assistant/assistant-workflow-analysis';
+import { attachCloudStudySnapshot } from '@/src/features/assistant/cloud-study-snapshot';
 import { CloudChatError, chatMessagesForCloud, createCloudChatClient, validCloudChatEndpoint } from '@/src/features/assistant/cloud-conversation';
 import { tryAssistantPlanMathReply } from '@/src/features/assistant/assistant-plan-math';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -400,7 +401,8 @@ export default function LocalAiAssistantScreen() {
       }
       clarificationAnswers = resolved.answers;
     } else {
-      const reply = tryAssistantWorkflowAnalysisReply(text, workspace, now) ?? tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantTaskDeadlineReply(text, workspace, now) ?? tryAssistantNextTaskReply(text, workspace, now) ?? tryAssistantPlanMathReply(text) ?? tryAssistantChatReply(text, offlineStatus);
+      const hostedWorkflow = cloudEligible && cloudConsent && isAssistantWorkflowAnalysisRequest(text);
+      const reply = (hostedWorkflow ? null : tryAssistantWorkflowAnalysisReply(text, workspace, now)) ?? tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantTaskDeadlineReply(text, workspace, now) ?? tryAssistantNextTaskReply(text, workspace, now) ?? tryAssistantPlanMathReply(text) ?? tryAssistantChatReply(text, offlineStatus);
       if (reply) { append(scope, 'assistant', reply); return; }
     }
     const controller = new AbortController(); controllerRef.current = controller; setBusy('prepare');
@@ -425,7 +427,9 @@ export default function LocalAiAssistantScreen() {
             },
           });
           const prior = chat.messages.map(message => ({ role: message.role, content: message.text }));
-          const messages = chatMessagesForCloud(prior, text);
+          // In consented cloud mode share an aggregate-only snapshot on each
+          // request, including follow-ups; never upload the complete workspace.
+          const messages = chatMessagesForCloud(prior, attachCloudStudySnapshot(text, workspace, now));
           const cloudReply = await client.generate({
             requestId: 'myelin-chat-' + now.toString(36) + '-' + Math.random().toString(36).slice(2, 12),
             messages,
@@ -526,7 +530,7 @@ export default function LocalAiAssistantScreen() {
             <Text style={styles.cloudChatHint}>
               {cloudConfigured
                 ? cloudEligible
-                  ? 'Opt in to send this message and recent chat turns to hosted Qwen. No full workspace upload.'
+                  ? 'Send chat turns and aggregate workload counts to hosted Qwen. No automatic task titles, notes or study answers.'
                   : 'Sign in and verify your email to enable hosted conversation.'
                 : 'Not connected to a deployed model. Local tasks and workflow analysis still work.'}
             </Text>
@@ -536,7 +540,7 @@ export default function LocalAiAssistantScreen() {
             onValueChange={allow => {
               if (!allow) { setCloudConsent(false); controllerRef.current?.abort(); return; }
               Alert.alert('Use hosted conversation?',
-                'Your chat message and a few previous chat turns will be sent to the hosted model. Saved task records and notes are not automatically uploaded. You can switch this off anytime. The model cannot change your plan.',
+                'Your message, a few previous chat turns, and summary counts (workload, deadlines, recorded study and exams) will be sent to hosted Qwen. Task titles, notes and study answers are not automatically included, but messages you wrote may contain personal details. Turn this off anytime. The model cannot change your plan.',
                 [
                   { text: 'Keep local', style: 'cancel' },
                   { text: 'Allow for this chat', onPress: () => setCloudConsent(true) },

@@ -113,7 +113,10 @@ export async function generateConversation({ authorization, body, signal }, deps
     try {
       raw = await bounded(signal, () => deps.ai.run(MODEL, {
         messages: [{ role: 'system', content: SYSTEM }, ...request.messages],
-        stream: false, max_tokens: 1100, temperature: 0.6,
+        // Qwen3 may use part of this bound for private reasoning before the
+        // user-visible final answer. Preserve the existing 25-second deadline
+        // and the same per-user/shared Free quota; never auto-retry.
+        stream: false, max_tokens: 1800, temperature: 0.6,
       }));
       checkAbort(signal);
     } catch (error) {

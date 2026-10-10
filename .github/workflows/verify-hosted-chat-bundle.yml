@@ -1,0 +1,42 @@
+name: Verify hosted conversation Worker bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/exam-autopilot-capacity-v1
+    paths:
+      - 'workers/assistant/**'
+      - 'scripts/check-assistant-worker-config.cjs'
+      - '.gitignore'
+      - '.github/workflows/verify-hosted-chat-bundle.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Validate nondeployable AI + dedicated D1 template
+        run: node scripts/check-assistant-worker-config.cjs
+      - name: Verify real Worker authentication, quotas and text protocol
+        run: node --test workers/assistant/test/assistant.test.mjs workers/assistant/test/conversation.test.mjs
+      - name: Bundle the actual Worker entrypoint without deploying
+        run: >-
+          npx --yes wrangler@4 deploy
+          --config workers/assistant/wrangler.example.jsonc
+          --dry-run
+          --outdir "$RUNNER_TEMP/myelin-worker-bundle"
+      - name: Confirm a bundle was created
+        run: |
+          if ! find "$RUNNER_TEMP/myelin-worker-bundle" -type f -name '*.js' | grep -q .; then
+            echo "::error::The Worker failed to produce JavaScript output."
+            exit 1
+          fi
+          echo "Wrangler dry-run completed. No Cloudflare account was accessed, no D1 migration ran, and no inference occurred."

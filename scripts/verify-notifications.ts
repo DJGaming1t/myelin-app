@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { createEmptyWorkspace } from '../src/data/schema';
+import { cancelScheduledReminderIds } from '../src/features/notifications/reminder-cancellation';
 import {
   MAX_REMINDERS_PER_DAY,
   MAX_SCHEDULED_REMINDERS,
@@ -2004,6 +2005,82 @@ function main() {
 }
 
 main();
+
+// Simulate Android refusing to cancel one previously registered reminder.
+// Failure must never be swallowed even when other cancellation requests finish.
+async function verifyCancellationFailureRecovery() {
+  let releaseSecond!: () => void;
+  let signalSecondStarted!: () => void;
+  const secondStarted = new Promise<void>(resolve => { signalSecondStarted = resolve; });
+  const release = new Promise<void>(resolve => { releaseSecond = resolve; });
+  const attempts: string[] = [];
+  let completed = false;
+  const pending = cancelScheduledReminderIds(['old-1', 'old-2', 'old-1'], async id => {
+    attempts.push(id);
+    if (id === 'old-1') throw new Error('sensitive operating system diagnostic');
+    signalSecondStarted();
+    await release;
+  });
+  void pending.then(() => { completed = true; }, () => { completed = true; });
+  await secondStarted;
+  assert.equal(completed, false, 'Cancellation must await all device calls before declaring failure');
+  releaseSecond();
+  await assert.rejects(pending, error => error instanceof Error &&
+    /Could not cancel 1 of 2 device reminders/.test(error.message) &&
+    !error.message.includes('sensitive operating system diagnostic'));
+  assert.deepEqual(attempts, ['old-1', 'old-2'],
+    'Duplicate old IDs should be cancelled only once each');
+
+  const recovered: string[] = [];
+  await cancelScheduledReminderIds(['old-1', 'old-2', 'old-2'], async id => {
+    recovered.push(id);
+  });
+  assert.deepEqual(recovered, ['old-1', 'old-2'],
+    'A retry should succeed once Android cancellations work again');
+  let emptyCalls = 0;
+  await cancelScheduledReminderIds([], async () => { emptyCalls += 1; });
+  assert.equal(emptyCalls, 0);
+
+  const provider = fs.readFileSync(
+    path.join(process.cwd(), 'src/features/notifications/ReminderProvider.tsx'), 'utf8');
+  const doReschedule = provider.slice(provider.indexOf('const doReschedule = useCallback'),
+    provider.indexOf('const reschedule = useCallback'));
+  const cancellation = doReschedule.indexOf('await cancelReminderIds(');
+  const newScheduling = doReschedule.indexOf('const ids = await scheduleReminderPlan(');
+  assert.ok(cancellation >= 0 && newScheduling > cancellation,
+    'The old device reminders must be cancelled before replacements are requested');
+  assert.ok(doReschedule.includes('setDeviceScheduleChecked(false)') &&
+    doReschedule.includes('Saved reminders were left unchanged') &&
+    doReschedule.includes('readback != null &&') &&
+    doReschedule.includes('setMessage(runtimeError(error))'),
+    'No readback or cancelled-old failure may be reported as verified delivery');
+  assert.ok(doReschedule.includes('Existing alerts may still fire') === false,
+    'No artificial success message should be substituted for native cancellation errors');
+  const disable = provider.slice(provider.indexOf('const disable = useCallback'),
+    provider.indexOf('const sendPreview = useCallback'));
+  assert.ok(disable.includes('Could not turn reminders off safely') &&
+    disable.includes("setStatus('error')") &&
+    disable.includes('await cancelCurrentSchedule(owner, current)') &&
+    disable.includes('enabled: false'),
+    'A failed disable must keep the old settings/IDs while reporting a retry warning');
+  const runtime = fs.readFileSync(
+    path.join(process.cwd(), 'src/features/notifications/notification-runtime.ts'), 'utf8');
+  assert.ok(runtime.includes('await cancelScheduledReminderIds(') &&
+    !runtime.includes('cancelScheduledNotificationAsync(id).catch(() => undefined)'),
+    'Native cancellation cannot swallow individual failures');
+  const studio = fs.readFileSync(
+    path.join(process.cwd(), 'app/(app)/settings/reminders.tsx'), 'utf8');
+  assert.ok(studio.includes('SCHEDULE NEEDS CHECK') &&
+    studio.includes('Reminder delivery is not verified'),
+    'Reminder Studio must not label a failed or unaudited schedule as active');
+  console.log('✓ failed device cancellation is visible, retryable and cannot silently duplicate reminders');
+}
+
+void verifyCancellationFailureRecovery().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
 
 
 const notificationRuntimeSource = fs.readFileSync(

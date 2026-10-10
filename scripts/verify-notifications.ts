@@ -2321,8 +2321,8 @@ for (const styleName of readableCompactStyles) {
   assert.ok(start !== -1, `Missing Reminder Studio text style ${styleName}`);
   const end = reminderStudioStyles.indexOf('\n  ', start + 3);
   const block = reminderStudioStyles.slice(start, end < 0 ? undefined : end);
-  const font = /fontSize:\\s*([\\d.]+)/.exec(block);
-  const line = /lineHeight:\\s*([\\d.]+)/.exec(block);
+  const font = /fontSize:\s*([\d.]+)/.exec(block);
+  const line = /lineHeight:\s*([\d.]+)/.exec(block);
   assert.ok(font && line && Number(line[1]) >= Number(font[1]) * 1.25,
     `Readable ${styleName} must have sufficient line height for increased text size`);
 }

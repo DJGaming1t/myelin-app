@@ -17,6 +17,11 @@ yarn-error.log*
 assets/generated/
 gha-creds-*.json
 
+# Real Cloudflare deployment binding IDs and local config; only the safe template is tracked.
+workers/assistant/wrangler.jsonc
+workers/assistant/.dev.vars*
+workers/assistant/.wrangler/
+
 # Generated MYELIN Mini training artifacts
 training/myelin-mini/failure-curriculum-v1.jsonl
 training/myelin-mini/compiled/

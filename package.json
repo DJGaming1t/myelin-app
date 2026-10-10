@@ -20,6 +20,7 @@
     "verify:settings": "tsx scripts/verify-settings.ts",
     "verify:transfer": "tsx scripts/verify-transfer.ts",
     "verify:cloud": "tsx scripts/verify-cloud.ts",
+    "verify:cloud-conversation": "tsx scripts/verify-cloud-conversation.ts",
     "test:firestore-rules": "tsx scripts/test-firestore-rules.ts",
     "verify:firestore-rules": "firebase emulators:exec --project demo-myelin-sync --only firestore \"npm run test:firestore-rules\"",
     "verify:notifications": "tsx scripts/verify-notifications.ts",

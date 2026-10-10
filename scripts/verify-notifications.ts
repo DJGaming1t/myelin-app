@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { createEmptyWorkspace } from '../src/data/schema';
 import { cancelScheduledReminderIds } from '../src/features/notifications/reminder-cancellation';
+import { pendingDeliveryTestIds } from '../src/features/notifications/reminder-audit';
 import {
   MAX_REMINDERS_PER_DAY,
   MAX_SCHEDULED_REMINDERS,
@@ -2177,6 +2178,55 @@ assert.ok(
     notificationRuntimeSource.includes('exactPreview: true'),
   'Runtime should support one-off exact-copy previews without altering the real reminder schedule.',
 );
+// OS-level pending requests are not automatically part of the normal study
+// audit. Select only this owner's opted-in delayed diagnostic tests.
+const pendingRequests = [
+  { identifier: 'owner-a-test-1', content: { data: { myelin: true, preview: true, deliveryTest: true, ownerKey: 'a' } } },
+  { identifier: 'owner-a-test-2', content: { data: { myelin: true, preview: true, deliveryTest: true, ownerKey: 'a' } } },
+  { identifier: 'owner-b-test', content: { data: { myelin: true, preview: true, deliveryTest: true, ownerKey: 'b' } } },
+  { identifier: 'ordinary-reminder', content: { data: { myelin: true, ownerKey: 'a' } } },
+  { identifier: 'instant-preview', content: { data: { myelin: true, preview: true, ownerKey: 'a' } } },
+  { identifier: 'other-app', content: { data: { myelin: false, preview: true, deliveryTest: true, ownerKey: 'a' } } },
+  { identifier: 'old-format', content: { data: { myelin: true, preview: 1, deliveryTest: true, ownerKey: 'a' } } },
+  { identifier: 'unowned', content: { data: { myelin: true, preview: true, deliveryTest: true } } },
+  { identifier: 'no-data', content: {} },
+];
+assert.deepEqual(
+  pendingDeliveryTestIds(pendingRequests, 'a'),
+  ['owner-a-test-1', 'owner-a-test-2'],
+  'Disabling an owner must cancel only that owner\'s delayed test notifications.',
+);
+assert.deepEqual(pendingDeliveryTestIds(pendingRequests, 'b'), ['owner-b-test']);
+assert.deepEqual(pendingDeliveryTestIds(pendingRequests, 'c'), []);
+const cleanupProviderSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/notifications/ReminderProvider.tsx'), 'utf8',
+);
+const cleanupCurrentSchedule = cleanupProviderSource.slice(
+  cleanupProviderSource.indexOf('const cancelCurrentSchedule = useCallback('),
+  cleanupProviderSource.indexOf('useEffect(() => {', cleanupProviderSource.indexOf('const cancelCurrentSchedule = useCallback(')),
+);
+assert.ok(
+  cleanupCurrentSchedule.includes('await getScheduledReminderAudit(owner)') &&
+  cleanupCurrentSchedule.includes('...(audit?.deliveryTestIds ?? [])') &&
+  cleanupCurrentSchedule.includes('...(audit?.registeredIds ?? [])') &&
+  cleanupCurrentSchedule.includes('await cancelReminderIds(idsToCancel)') &&
+  cleanupCurrentSchedule.indexOf('await cancelReminderIds(idsToCancel)') < cleanupCurrentSchedule.indexOf('await reminderStorage.clearSchedule(owner)') &&
+  !cleanupCurrentSchedule.includes('.catch(() => null)'),
+  'Disable/sign-out must cancel normal and test reminders before clearing state; unreadable device audits cannot mean success.',
+);
+const cleanupDeliveryTestAction = cleanupProviderSource.slice(
+  cleanupProviderSource.indexOf('const sendDeliveryTest = useCallback('),
+  cleanupProviderSource.indexOf('const refreshPermission = useCallback('),
+);
+assert.ok(
+  cleanupDeliveryTestAction.includes('await getScheduledReminderAudit(owner)') &&
+  cleanupDeliveryTestAction.includes('await cancelReminderIds(existing.deliveryTestIds)') &&
+  cleanupDeliveryTestAction.indexOf('await cancelReminderIds(existing.deliveryTestIds)') < cleanupDeliveryTestAction.indexOf('await scheduleReminderDeliveryTest(') &&
+  cleanupDeliveryTestAction.includes('if (!isCurrentReminderAction(action)) return false;'),
+  'A repeated diagnostic must replace, not accumulate, previous owner-owned tests, without cross-account mutation.',
+);
+console.log('✓ disabling or switching owner cancels pending delivery diagnostics without touching another account');
+
 // One-shot diagnostic must never be confused with planned reminders or
 // reported as delivered merely because the native scheduler returned an ID.
 const deliveryTestRuntime = notificationRuntimeSource.slice(

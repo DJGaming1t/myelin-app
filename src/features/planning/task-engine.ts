@@ -54,6 +54,23 @@ export function taskRemainingMinutes(task: StudyTask) {
   return Math.max(0, task.estimatedMinutes - task.actualMinutes);
 }
 
+// A legacy/synced task may still be open after its recorded time meets its
+// estimate. Only an explicit user choice should add more work to such a task.
+// Never alter the saved schedule, logged minutes, or completion state.
+export function extendMetTaskEstimate(task: StudyTask, extraMinutes: number, now = Date.now()) {
+  if (task.status !== 'open' || task.estimatedMinutes <= 0 ||
+      taskRemainingMinutes(task) > 0 || !Number.isFinite(extraMinutes) ||
+      extraMinutes <= 0 || task.actualMinutes >= 720) return false;
+  const target = Math.min(720, Math.max(
+    task.estimatedMinutes + Math.round(extraMinutes),
+    task.actualMinutes + Math.round(extraMinutes),
+  ));
+  if (target <= task.actualMinutes || target <= task.estimatedMinutes) return false;
+  task.estimatedMinutes = target;
+  task.updatedAt = now;
+  return true;
+}
+
 export function scheduleTask(task: StudyTask, start: number, end: number, now = Date.now()) {
   if (end <= start) return;
   task.planState = 'scheduled';

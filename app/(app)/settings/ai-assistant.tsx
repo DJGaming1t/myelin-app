@@ -29,6 +29,7 @@ import { answerAssistantClarification, beginAssistantClarification, type Assista
 import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/features/assistant/assistant-request-grounding';
 import { assistantChatReducer, assistantOfflineStatus, createAssistantChat, tryAssistantChatReply, type AssistantChatScope } from '@/src/features/assistant/assistant-conversation';
 import { tryAssistantNextTaskReply, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply } from '@/src/features/assistant/assistant-planning-review';
+import { tryAssistantWorkflowAnalysisReply } from '@/src/features/assistant/assistant-workflow-analysis';
 import { tryAssistantPlanMathReply } from '@/src/features/assistant/assistant-plan-math';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
@@ -36,6 +37,7 @@ const EXAMPLES = [
   'I have to complete bio practical nb by tomorrow.',
   'What should I start next?',
   'Review my plan',
+  'Analyse my current workflow',
 ] as const;
 
 function TaskPreviewDetails({ prepared, index }: { prepared: PreparedAssistantActionBatch; index: number }) {
@@ -385,7 +387,7 @@ export default function LocalAiAssistantScreen() {
       }
       clarificationAnswers = resolved.answers;
     } else {
-      const reply = tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantTaskDeadlineReply(text, workspace, now) ?? tryAssistantNextTaskReply(text, workspace, now) ?? tryAssistantPlanMathReply(text) ?? tryAssistantChatReply(text, offlineStatus);
+      const reply = tryAssistantWorkflowAnalysisReply(text, workspace, now) ?? tryAssistantPlanningReply(text, workspace, now) ?? tryAssistantTaskDeadlineReply(text, workspace, now) ?? tryAssistantNextTaskReply(text, workspace, now) ?? tryAssistantPlanMathReply(text) ?? tryAssistantChatReply(text, offlineStatus);
       if (reply) { append(scope, 'assistant', reply); return; }
     }
     const controller = new AbortController(); controllerRef.current = controller; setBusy('prepare');
@@ -456,7 +458,7 @@ export default function LocalAiAssistantScreen() {
         <View style={styles.chatStatus}>
           <View style={styles.statusCopy}>
             <Text style={styles.chatStatusTitle}>Tasks, routines and plan checks</Text>
-            <Text style={styles.statusText}>{available ? 'Offline actions available · General chat is not connected' : 'Basic task help · Qwen and general chat are not connected'}</Text>
+            <Text style={styles.statusText}>{available ? 'Workspace analysis and offline actions · General chat not connected' : 'Workflow analysis and task help work locally · General chat needs a connected model'}</Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Manage AI models" onPress={() => router.push('/(app)/settings/ai-models')} style={styles.modelLink}>
             <Text style={styles.modelLinkText}>Models</Text>
@@ -467,7 +469,7 @@ export default function LocalAiAssistantScreen() {
           {!hasMessages ? (
             <View style={styles.chatWelcome}>
               <Text style={styles.welcomeTitle}>What do you need to get done?</Text>
-              <Text style={styles.welcomeText}>Tell me about work to finish or your weekly routine. Ask “Review my plan” to check recorded deadlines, overlaps and workload. I’ll show a preview before changing anything.</Text>
+              <Text style={styles.welcomeText}>Tell me about work to finish or your weekly routine. Ask “Analyse my current workflow” for a read-only review of recorded tasks, study and exams. I’ll show a preview before changing anything.</Text>
               <View style={styles.examples}>
                 {EXAMPLES.map(example => <Pressable key={example} accessibilityRole="button" onPress={() => setRequest(example)} style={({ pressed }) => [styles.example, pressed && styles.pressed]}>
                   <Text style={styles.exampleText}>{example}</Text><Text style={styles.arrow}>↗</Text>

@@ -6,6 +6,7 @@ import {
   createCloudChatClient, validCloudChatEndpoint,
 } from '../src/features/assistant/cloud-conversation';
 
+async function run() {
 const endpoint = 'https://myelin-dev.example.workers.dev/chat';
 assert.equal(validCloudChatEndpoint(endpoint), true);
 for (const invalid of [
@@ -123,3 +124,6 @@ assert.match(worker, /pathname === '\/chat'/);
 assert.match(worker, /generateConversation/);
 assert.match(worker, /pathname === '\/chat' \? \{ version: 1, reply: result \}/);
 console.log('Cloud conversation client, consent, multi-turn and UI routing checks passed.');
+}
+
+void run().catch(error => { console.error(error); process.exitCode = 1; });

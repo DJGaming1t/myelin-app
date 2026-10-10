@@ -147,6 +147,38 @@ assert(
   'Manual preview native baseline should not be required.',
 );
 
+// GitHub Actions may be unavailable before runner assignment. A local release
+// fallback must duplicate verification and require an explicit publish command,
+// never silently publish after a failed or partial check.
+const localPreflight = read('scripts/verify-reminder-preview-local.cjs');
+const localPreviewRelease = read('scripts/publish-verified-preview-local.cjs');
+assert(
+  localPreflight.includes("process.argv.includes('--full')") &&
+    localPreflight.includes("name.startsWith('verify:')") &&
+    localPreflight.includes("'verify-assistant-app-scenarios'") &&
+    localPreflight.includes("'Expo prebuild configuration'") &&
+    localPreflight.includes("'java', ['-version']"),
+  'Local full preflight must cover the complete preview validation and Java-dependent test path.',
+);
+assert(
+  localPreviewRelease.includes("args.length !== 1") &&
+    localPreviewRelease.includes("['--check', '--publish'].includes(args[0])") &&
+    localPreviewRelease.includes("command(npm, ['ci', '--no-audit', '--no-fund'])") &&
+    localPreviewRelease.includes("command(node, ['scripts/verify-reminder-preview-local.cjs', '--full'])") &&
+    localPreviewRelease.includes("if (!publishing)") &&
+    localPreviewRelease.includes("command('git', ['status', '--porcelain', '--untracked-files=no'], true)") &&
+    localPreviewRelease.includes("item.gitCommitHash === before") &&
+    localPreviewRelease.includes("item.branch === 'preview'") &&
+    localPreviewRelease.includes("item.runtimeVersion === '0.2.13'") &&
+    localPreviewRelease.includes("'--platform', 'android'"),
+  'Local publisher must require an explicit action, full successful tests, clean unchanged Git state, and a matching Android EAS receipt.',
+);
+assert(
+  localPreviewRelease.indexOf("command(node, ['scripts/verify-reminder-preview-local.cjs', '--full'])") <
+    localPreviewRelease.indexOf("console.log('Publishing verified commit '"),
+  'An EAS update cannot start before successful full local verification.',
+);
+
 const androidGoogleClient = (googleServices.client ?? []).some((client: any) =>
   (client.oauth_client ?? []).some((oauth: any) => oauth.client_type === 1),
 );

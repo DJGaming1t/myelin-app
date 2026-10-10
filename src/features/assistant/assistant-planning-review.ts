@@ -1,6 +1,6 @@
 import type { WorkspaceState } from '@/src/data/schema';
 import { sleepWindows } from '@/src/features/adaptive/sleep-engine';
-import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, scheduledTasksForDay, startOfLocalDay, taskPlanningScoreEvidence } from '@/src/features/planning/day-engine';
+import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, scheduledWorkTasksForDay, startOfLocalDay, taskPlanningScoreEvidence } from '@/src/features/planning/day-engine';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
 export type PlanningIssueCode = 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'deadline-capacity' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
@@ -244,7 +244,7 @@ export function tryAssistantNextTaskReply(request: string, workspace: WorkspaceS
   }
 
   // Future scheduled study must retain its protected daily budget.
-  const reserved = scheduledTasksForDay(workspace.tasks, today)
+  const reserved = scheduledWorkTasksForDay(workspace.tasks, today)
     .reduce((sum, task) => sum + Math.max(0,
       Math.floor((Math.min(nextDay, task.scheduledEnd) - Math.max(now, task.scheduledStart)) / 60000)), 0);
   const spareBudget = Math.max(0, budget - reserved);

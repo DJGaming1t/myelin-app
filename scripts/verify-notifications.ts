@@ -1715,16 +1715,16 @@ function main() {
         'cancelCurrentSchedule(\n        previousOwner,\n        previousState',
       ) &&
       reminderProviderSource.includes(
-        "if (currentPermission !== 'granted') {\n      const cleared =\n        await cancelCurrentSchedule(owner, current);",
+        "if (currentPermission !== 'granted') {\n      try {\n        const cleared = await cancelCurrentSchedule(owner, current);",
       ),
     'Owner switches and permission loss should cancel the union of remembered IDs and actual current-owner device registrations, including orphaned reminders.',
   );
   assert.ok(
     reminderProviderSource.includes(
-      'const cleared =\n      await cancelCurrentSchedule(owner, current);',
+      'const cleared = await cancelCurrentSchedule(owner, current);',
     ) &&
       reminderProviderSource.includes(
-        'settings: {\n        ...cleared.settings,\n        enabled: false',
+        'settings: {\n          ...cleared.settings,\n          enabled: false',
       ),
     'Turning reminders off should use the same owner-aware orphan cleanup instead of cancelling only stored IDs.',
   );

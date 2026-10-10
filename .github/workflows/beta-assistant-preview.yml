@@ -103,7 +103,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN reliable recoverable Focus storage beta $GITHUB_SHA"
+          --message "MYELIN verified Focus persistence recovery beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

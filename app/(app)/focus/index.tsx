@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,6 +50,9 @@ export default function FocusScreen() {
     breakMinutes?: string | string[];
   }>();
 
+  const { width: windowWidth } = useWindowDimensions();
+  // Reserve content padding and the outer-ring overshoot on small screens.
+  const timerDialSize = Math.max(144, Math.min(228, Math.floor(windowWidth - spacing.lg * 2 - 24)));
   const { workspace } = useWorkspace();
   const {
     ready,
@@ -438,6 +442,7 @@ export default function FocusScreen() {
               label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
               complete={timerDone}
               progress={phaseProgress}
+              size={timerDialSize}
             />
             <View style={styles.phaseProgress}>
               <AnimatedProgress
@@ -610,6 +615,7 @@ export default function FocusScreen() {
             }
             complete={timerDone}
             progress={phaseProgress}
+            size={timerDialSize}
           />
           <View style={styles.phaseProgress}>
             <AnimatedProgress
@@ -835,29 +841,53 @@ function TimerDial({
   label,
   complete,
   progress,
+  size,
 }: {
   value: string;
   label: string;
   complete?: boolean;
   progress: number;
+  size: number;
 }) {
+  const innerSize = size - 40;
+  const markRadius = size / 2 - 11;
   return (
     <Reveal distance={8} style={{ alignSelf: 'center' }}>
-      <View style={[styles.dial, complete && styles.dialComplete]}>
+      <View
+        style={[
+          styles.dial,
+          { width: size, height: size, borderRadius: size / 2 },
+          complete && styles.dialComplete,
+        ]}>
         <View style={styles.dialOuterRing} />
         <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
           {Array.from({ length: 40 }, (_, index) => {
             const angle = index * Math.PI * 2 / 40;
             const lit = index / 40 < progress;
             return <View key={index} style={{ position: 'absolute', width: 3, height: 9,
-              left: 112 + Math.sin(angle) * 103, top: 108 - Math.cos(angle) * 103,
-              borderRadius: 2, transform: [{ rotate: `${index * 9}deg` }],
+              left: size / 2 - 1.5 + Math.sin(angle) * markRadius,
+              top: size / 2 - 4.5 - Math.cos(angle) * markRadius,
+              borderRadius: 2, transform: [{ rotate: (index * 9) + 'deg' }],
               backgroundColor: lit ? (complete ? colors.success : colors.accent) : colors.lineStrong }} />;
           })}
         </View>
-        <View style={styles.dialInner}>
-          <Text style={[styles.timerValue, complete && styles.timerValueComplete]}>{value}</Text>
-          <Text style={styles.timerLabel}>{label}</Text>
+        <View
+          style={[
+            styles.dialInner,
+            { width: innerSize, height: innerSize, borderRadius: innerSize / 2 },
+          ]}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.64}
+            style={[
+              styles.timerValue,
+              size < 196 && styles.timerValueCompact,
+              complete && styles.timerValueComplete,
+            ]}>
+            {value}
+          </Text>
+          <Text numberOfLines={2} style={styles.timerLabel}>{label}</Text>
         </View>
       </View>
     </Reveal>
@@ -950,9 +980,6 @@ const styles = StyleSheet.create({
   dial: {
     position: 'relative',
     overflow: 'visible',
-    width: 228,
-    height: 228,
-    borderRadius: 228,
     marginTop: spacing.xl,
     borderWidth: 1,
     borderColor: colors.accentLine,
@@ -978,10 +1005,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 18,
   },
-  dialInner: { width: 188, height: 188, borderRadius: 188, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
+  dialInner: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   timerValue: { color: colors.text, fontSize: 48, lineHeight: 56, fontWeight: '600', letterSpacing: -2 },
+  timerValueCompact: { fontSize: 38, lineHeight: 46 },
   timerValueComplete: { color: colors.success },
-  timerLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, marginTop: 4 },
+  timerLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, marginTop: 4, textAlign: 'center', paddingHorizontal: 4 },
   timerActions: { flexDirection: 'row', gap: 9, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
   secondary: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
@@ -989,7 +1017,7 @@ const styles = StyleSheet.create({
   finishTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   finishText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 5 },
   effortRow: { flexDirection: 'row', gap: 7, marginTop: spacing.md },
-  effort: { flex: 1, height: 42, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
+  effort: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   effortActive: { borderColor: 'rgba(255,128,91,0.5)', backgroundColor: colors.accentSoft },
   effortText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   effortTextActive: { color: colors.accent },

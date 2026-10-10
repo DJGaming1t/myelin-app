@@ -2319,8 +2319,9 @@ const readableCompactStyles = [
 for (const styleName of readableCompactStyles) {
   const start = reminderStudioStyles.indexOf(`  ${styleName}: {`);
   assert.ok(start !== -1, `Missing Reminder Studio text style ${styleName}`);
-  const end = reminderStudioStyles.indexOf('\n  ', start + 3);
-  const block = reminderStudioStyles.slice(start, end < 0 ? undefined : end);
+  const tail = reminderStudioStyles.slice(start + 3);
+  const end = tail.search(/\n  [A-Za-z]\w*:|\n\}\);/);
+  const block = reminderStudioStyles.slice(start, end < 0 ? undefined : start + 3 + end);
   const font = /fontSize:\s*([\d.]+)/.exec(block);
   const line = /lineHeight:\s*([\d.]+)/.exec(block);
   assert.ok(font && line && Number(line[1]) >= Number(font[1]) * 1.25,

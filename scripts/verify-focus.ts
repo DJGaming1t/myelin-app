@@ -5,6 +5,10 @@ import path from 'node:path';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createFocusWriteQueue } from '../src/features/focus/focus-write-queue';
+import {
+  focusDialMarkPosition,
+  focusDialSize,
+} from '../src/features/focus/focus-dial-layout';
 import { createEmptyWorkspace } from '../src/data/schema';
 import {
   addParkedDistraction,
@@ -172,6 +176,22 @@ async function main() {
 
   assert.equal(formatTimer(65_000), '01:05');
   assert.equal(formatTimer(0), '00:00');
+
+  // Compact layouts must not crop progress marks, while standard phones
+  // retain the existing 228dp dial. Both stages use the same sizing.
+  assert.equal(focusDialSize(360, 24), 228);
+  assert.equal(focusDialSize(280, 24), 208);
+  assert.equal(focusDialSize(240, 24), 168);
+  assert.equal(focusDialSize(200, 24), 128);
+  for (const width of [200, 216, 240, 280, 360, 480]) {
+    const size = focusDialSize(width, 24);
+    assert.ok(size + 20 <= width - 48, 'Dial and outer ring must fit inside screen padding.');
+    for (const index of [0, 10, 20, 30, 39]) {
+      const { left, top } = focusDialMarkPosition(size, index);
+      assert.ok(left >= 0 && top >= 0 && left + 3 <= size && top + 9 <= size,
+        'Circular progress marks must fit within the measured dial.');
+    }
+  }
 
   const memory = new MemoryStore();
   const storage = createFocusStorage(memory);
@@ -583,6 +603,33 @@ assert.ok(
   'All break exits should share one busy/error/navigation flow, without the prior separate handlers.',
 );
 console.log('✓ Focus-to-Break confirms saved work and break exits are single-flight, retryable transitions');
+
+// Focus/Break timer UI should respond to narrower devices, including the
+// circular marks and the main time label. Effort chips need usable tap height.
+assert.ok(
+  focusScreenSource.includes('useWindowDimensions') &&
+    focusScreenSource.includes('focusDialSize(windowWidth, spacing.lg)') &&
+    focusScreenSource.includes('focusDialMarkPosition(size, index)') &&
+    (focusScreenSource.match(/size={timerDialSize}/g) ?? []).length === 2 &&
+    focusScreenSource.includes('width: size, height: size, borderRadius: size / 2') &&
+    focusScreenSource.includes('width: innerSize, height: innerSize, borderRadius: innerSize / 2'),
+  'Focus and Break dial must size both the ring and tick marks from available screen width.',
+);
+assert.ok(
+  focusScreenSource.includes('adjustsFontSizeToFit') &&
+    focusScreenSource.includes('minimumFontScale={0.64}') &&
+    focusScreenSource.includes('size < 196 && styles.timerValueCompact') &&
+    focusScreenSource.includes('numberOfLines={2} style={styles.timerLabel}'),
+  'Timer value and caption should remain legible in the smaller dial.',
+);
+const effortStyleStart = focusScreenSource.indexOf('  effort: {');
+const effortStyleEnd = focusScreenSource.indexOf('\n  effortActive:', effortStyleStart);
+assert.ok(
+  effortStyleStart > 0 &&
+    focusScreenSource.slice(effortStyleStart, effortStyleEnd).includes('minHeight: layout.minTouch'),
+  'Focus effort rating chips must meet MYELIN minimum touch target height.',
+);
+console.log('✓ Focus dial adapts to narrow screens with accessible effort controls');
 
 const reviewScreenSource = fs.readFileSync(
   path.join(process.cwd(), 'app/(app)/review/index.tsx'),

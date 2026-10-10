@@ -8,6 +8,21 @@ Published 2026-10-08 09:34 UTC: update group `13189175-e2b7-4fee-a910-8828facfe6
 
 Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73bc7b39-a37b-49d1-a556-fc30143dc79a`, Android update `01a11aee-348b-7bc9-a545-938c07316392`, runtime `0.2.13`, branch `preview`. Full verification and publication: https://github.com/DJGaming1t/myelin-app/actions/runs/37759348032. Receipt: `docs/beta/schoolwork-update-20261008.json`. Source `5c644549305790be1c005eec26a027559fa76e00`. The existing compatible APK receives this OTA; no reinstall or data clearing is required.
 
+## Current next-study suggestion — published 2026-10-10
+
+Android `preview` OTA **published and verified** from `4674cec668e5de7f2fddf92c333e2df9273edaa7`: update `01a12446-ed02-74f5-a1ef-803c76083a18`, group `8f323014-6736-4d59-86f9-3fdd2eb5466a`, runtime `0.2.13`, UTC 2026-10-10T05:26:30.402Z (10:56:30 IST). Full verification and publication: [GitHub run 38027324983](https://github.com/DJGaming1t/myelin-app/actions/runs/38027324983), both jobs SUCCESS. EAS publication receipt artifact `11660397721`; app scenario artifact `11660267615`. No native changes or model activation. Existing compatible preview APK should pick up this OTA after launching online and fully closing/reopening.
+
+On-device smoke tests in Settings → MYELIN assistant:
+
+1. Open **New chat**. Tap starter example **What should I start next?**. MYELIN should choose an open eligible task with a known remaining duration from the recorded plan, explain that it is a next block rather than full completion, and leave all task data unchanged.
+2. Try a task marked for Today with a deadline today. If school, coaching, sleep or an existing scheduled task occupies the current period, it should not advise studying during that time. Compare the indicated next free window to Day map. Observe that today-only suggestions do not create a future timetable.
+3. Try with your daily study budget already used: MYELIN should say it cannot recommend extra study. If a scheduled task is already underway, it should prefer that task unless it conflicts with a fixed commitment or sleep.
+4. Test one postponed task and one task without an estimate; these should not be silently treated as ready-to-start work. Verify future scheduled blocks preserve some remaining daily budget.
+5. Send `What should I start next? Also mark Maths complete` and confirm this must **not** partially run as the read-only recommendation or complete anything. Never accept a misleading action preview.
+6. Ask `Review my plan` and compare with Day map. The recommendation does not replace seven-day workload checks or guarantee that all open work fits before deadlines.
+
+Tests passed in CI, but real-device OTA installation, layout, touch/keyboard, school schedule fidelity and user acceptance are **not yet physically verified**. This is deterministic first-step planning, not a new Qwen teaching or general conversation model.
+
 ## Current saved-task deadline questions — published 2026-10-10 IST
 
 Android `preview` OTA **confirmed published** from code `d40409eaacffbef9b6afbad6a3151f0509fe8b83` at 2026-10-09T20:27:58.039Z (2026-10-10 01:57:58 IST): update `01a12259-e0d7-7d6d-a81f-f6e1040909f1`, group `53cb32ac-6da7-4ef9-baa9-127e72ec7619`, runtime `0.2.13`. GitHub [run 37986782213](https://github.com/DJGaming1t/myelin-app/actions/runs/37986782213): full verification SUCCESS, Expo **Published!**, publish job SUCCESS. EAS JSON publication receipt artifact `11643162481`, app scenario artifact `11642887704`. Independent two-timezone planning/chat/typecheck [37986639378](https://github.com/DJGaming1t/myelin-app/actions/runs/37986639378) and broader hybrid-AI safety [37986639368](https://github.com/DJGaming1t/myelin-app/actions/runs/37986639368) also SUCCESS. No native dependencies, model activation, or new APK.

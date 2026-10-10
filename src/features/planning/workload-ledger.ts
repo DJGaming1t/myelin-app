@@ -1,5 +1,5 @@
 import { StudyTask, WorkspaceState } from '@/src/data/schema';
-import { examAppliesToTopic } from '@/src/features/exams/exam-engine';
+import { examAppliesToTopic, examCalendarDaysUntil } from '@/src/features/exams/exam-engine';
 import {
   CapacityDemandPriority,
   CapacityFeasibilityAnalysis,
@@ -111,27 +111,23 @@ function actualStudyMinutesForDay(workspace: WorkspaceState, day: number) {
   return Math.round(topicSessions + standaloneTaskSessions);
 }
 
+// One shared-topic task may support several exams. Its recorded direct exam
+// link is not permission to ignore an EARLIER exam covering the same topic.
+// Exam dates are local calendar days, not a noon-time appointment.
 function taskAssociatedExams(
   workspace: WorkspaceState,
   task: StudyTask,
   now: number,
 ) {
-  const direct = task.examId
-    ? workspace.exams.find((exam) => exam.id === task.examId && exam.date > now)
+  const topic = task.topicId
+    ? workspace.topics.find((item) => item.id === task.topicId)
     : null;
-  if (direct) return [direct];
-
-  if (!task.topicId) return [];
-  const topic = workspace.topics.find((item) => item.id === task.topicId);
-  if (!topic) return [];
-
   return workspace.exams
-    .filter(
-      (exam) =>
-        exam.date > now &&
-        examAppliesToTopic(exam, topic),
+    .filter((exam) =>
+      examCalendarDaysUntil(exam.date, now) >= 0 &&
+      (exam.id === task.examId || (topic != null && examAppliesToTopic(exam, topic))),
     )
-    .sort((a, b) => a.date - b.date);
+    .sort((a, b) => a.date - b.date || a.id.localeCompare(b.id));
 }
 
 function taskHardDeadline(

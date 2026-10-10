@@ -383,6 +383,40 @@ export async function sendReminderPreview(
   });
 }
 
+// Diagnostic only: requested by a deliberate tap in Reminder Studio.
+// The marker 'preview' keeps this test out of normal plan audits and caps.
+// Device acceptance is not proof that Android ultimately displayed it.
+export async function scheduleReminderDeliveryTest(
+  settings: ReminderSettings,
+  ownerKey?: string | null,
+) {
+  if (Platform.OS === 'web') return null;
+
+  await configureNotificationRuntime();
+  const Notifications = await module();
+  return Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'MYELIN delivery check',
+      body: 'Your test reminder arrived. Your normal study schedule was not changed.',
+      subtitle: reminderSubtitleText(settings, 'study'),
+      sound: settings.sound ? 'default' : undefined,
+      color: reminderColorValue(settings),
+      data: {
+        myelin: true,
+        kind: 'study',
+        preview: true,
+        deliveryTest: true,
+        ...(ownerKey ? { ownerKey } : {}),
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(Date.now() + 30_000),
+      channelId: settings.sound ? SOUND_CHANNEL : GENTLE_CHANNEL,
+    },
+  });
+}
+
 export async function removeReminderPreview(
   id: string | null | undefined,
 ) {
@@ -401,6 +435,7 @@ export async function removeReminderPreview(
 
 export type ReminderOpenPayload = {
   kind: 'review' | 'exam' | 'study';
+  deliveryTest?: boolean;
   href?: string;
   recovered?: boolean;
   commitmentId?: string;
@@ -445,6 +480,7 @@ function reminderPayloadFromResponse(
 
   return {
     kind: data.kind,
+    deliveryTest: data.deliveryTest === true,
     href:
       typeof data.href === 'string'
         ? data.href

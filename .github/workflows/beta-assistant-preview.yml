@@ -101,7 +101,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN zero-work scheduled slot capacity fix beta $GITHUB_SHA"
+          --message "MYELIN zero-work saved-slot capacity checked beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

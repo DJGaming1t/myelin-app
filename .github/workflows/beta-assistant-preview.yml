@@ -101,7 +101,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN remaining scheduled capacity regression beta $GITHUB_SHA"
+          --message "MYELIN fully logged task remaining-work fix beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

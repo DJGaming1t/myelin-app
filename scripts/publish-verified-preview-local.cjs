@@ -11,7 +11,7 @@
 
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
-const fs = require('node:fs');
+const npm = windows ? 'npm.cmd' : 'npm';
 
 const root = path.resolve(__dirname, '..');
 const windows = process.platform === 'win32';
@@ -44,7 +44,9 @@ try {
   const before = command('git', ['rev-parse', 'HEAD'], true);
   console.log('MYELIN local Android preview ' + (publishing ? 'PUBLISH' : 'CHECK ONLY'));
   console.log('Git commit: ' + before);
-  // The full mode mirrors every verification step of beta-assistant-preview.yml,
+  // Reinstall exactly from package-lock before running checks, as GitHub CI does.
+  command(npm, ['ci', '--no-audit', '--no-fund']);
+  // The full mode mirrors the verification job of beta-assistant-preview.yml,
   // including all verify:* scripts, timezone scenarios and native APK compatibility.
   command(node, ['scripts/verify-reminder-preview-local.cjs', '--full']);
   const after = command('git', ['rev-parse', 'HEAD'], true);
@@ -80,9 +82,12 @@ try {
     Array.isArray(receipt?.updates) ? receipt.updates : [receipt];
   const android = items.filter((item) => item &&
     String(item.platform || '').toLowerCase() === 'android' &&
-    (item.id || item.updateId || item.group));
+    item.branch === 'preview' &&
+    item.runtimeVersion === '0.2.13' &&
+    item.gitCommitHash === before &&
+    item.id && item.group);
   if (!android.length) {
-    throw new Error('Could not prove Android publication from the EAS receipt. Check Expo updates BEFORE retrying.');
+    throw new Error('Receipt does not confirm Android preview runtime 0.2.13 for verified Git commit. Check Expo updates BEFORE retrying.');
   }
   for (const item of android) {
     console.log(JSON.stringify({

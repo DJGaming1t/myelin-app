@@ -96,6 +96,7 @@ if (full) {
 }
 
 const tasks = [
+  ['Offline local publisher safety regression', node, ['scripts/verify-local-publisher.cjs']],
   ['Android OTA compatibility self-test', node, ['scripts/check-beta-ota-compatibility.cjs', '--self-test']],
   ['Check installed Android APK matches this source', node, ['scripts/check-beta-ota-compatibility.cjs'], { env }],
   ['TypeScript', npx, ['tsc', '--noEmit']],

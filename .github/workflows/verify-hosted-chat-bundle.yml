@@ -9,6 +9,8 @@ on:
       - 'workers/assistant/**'
       - 'scripts/check-assistant-worker-config.cjs'
       - 'scripts/smoke-hosted-chat.cjs'
+      - 'scripts/prepare-hosted-chat-deployment.cjs'
+      - '.github/workflows/deploy-hosted-chat-preview.yml'
       - '.gitignore'
       - '.github/workflows/verify-hosted-chat-bundle.yml'
 
@@ -25,7 +27,9 @@ jobs:
         with:
           node-version: '24'
       - name: Validate nondeployable AI + dedicated D1 template
-        run: node scripts/check-assistant-worker-config.cjs
+        run: |
+          node scripts/check-assistant-worker-config.cjs
+          node scripts/prepare-hosted-chat-deployment.cjs --self-test
       - name: Verify real Worker authentication, quotas and text protocol
         run: node --test workers/assistant/test/assistant.test.mjs workers/assistant/test/conversation.test.mjs
       - name: Check manual live-chat smoke script syntax without network use

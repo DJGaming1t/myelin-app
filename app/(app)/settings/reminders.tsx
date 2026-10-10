@@ -1055,12 +1055,16 @@ export default function RemindersScreen() {
         <Reveal key={`activation:${settings.enabled ? 'on' : 'off'}`} distance={6}>
         <View style={styles.activationCard}>
           <Text style={styles.activationEyebrow}>
-            {settings.enabled ? 'REMINDERS ACTIVE' : 'YOUR CHOICE'}
+            {!settings.enabled ? 'YOUR CHOICE' :
+              status === 'error' || !deviceScheduleChecked
+                ? 'SCHEDULE NEEDS CHECK' : 'REMINDERS ACTIVE'}
           </Text>
           <Text style={styles.activationTitle}>
-            {settings.enabled
-              ? 'Useful nudges, capped and quiet-hour aware.'
-              : 'Nothing is scheduled until you choose to enable it.'}
+            {!settings.enabled
+              ? 'Nothing is scheduled until you choose to enable it.'
+              : status === 'error' || !deviceScheduleChecked
+                ? 'Reminder delivery is not verified. Check the warning and refresh your schedule.'
+                : 'Useful nudges, capped and quiet-hour aware.'}
           </Text>
           <Text style={styles.activationText}>
             Permission is requested only when you press Enable. MYELIN does not

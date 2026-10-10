@@ -191,6 +191,15 @@ export function scheduledTasksForDay(tasks: StudyTask[], dayTimestamp: number) {
   );
 }
 
+// Preserve the saved Day Map slot for review, but a task whose logged time
+// meets its known estimate must not reserve more study capacity. Missing
+// estimates remain provisional and can still occupy their scheduled window.
+export function scheduledWorkTasksForDay(tasks: StudyTask[], dayTimestamp: number) {
+  return scheduledTasksForDay(tasks, dayTimestamp).filter(
+    (task) => task.estimatedMinutes <= 0 || taskRemainingMinutes(task) > 0,
+  );
+}
+
 function mergeBusy(intervals: Array<{ start: number; end: number }>) {
   const ordered = intervals
     .filter((item) => item.end > item.start)
@@ -219,7 +228,7 @@ export function freeStudyWindows(
   }));
   const scheduled = options.includeScheduledTasks === false
     ? []
-    : scheduledTasksForDay(workspace.tasks, day).map((task) => ({
+    : scheduledWorkTasksForDay(workspace.tasks, day).map((task) => ({
         start: task.scheduledStart,
         end: task.scheduledEnd,
       }));
@@ -320,7 +329,10 @@ export function suggestTaskSlots(
   now = Date.now(),
   limit = 4,
 ): TaskSlot[] {
-  const needed = Math.max(5, Math.min(workspace.settings.focusMinutes, taskRemainingMinutes(task) || task.estimatedMinutes || 25));
+  // Do not propose another slot for a task whose recorded estimate is met.
+  if (task.estimatedMinutes > 0 && taskRemainingMinutes(task) <= 0) return [];
+  const needed = Math.max(5, Math.min(workspace.settings.focusMinutes,
+    task.estimatedMinutes > 0 ? taskRemainingMinutes(task) : 25));
   const slots: TaskSlot[] = [];
   const shadow: WorkspaceState = JSON.parse(JSON.stringify(workspace));
   const current = shadow.tasks.find((item) => item.id === task.id);
@@ -337,7 +349,7 @@ export function suggestTaskSlots(
     const recorded = workspace.history.filter(h => h.at >= day && h.at < end).reduce((sum, h) => sum + h.minutes, 0)
       + workspace.breaks.filter(b => b.at >= day && b.at < end).reduce((sum, b) => sum + b.minutes, 0)
       + (workspace.focusOutcomes ?? []).filter(o => o.taskOnly && o.status === 'finished' && o.endedAt >= day && o.endedAt < end).reduce((sum, o) => sum + o.minutes, 0);
-    const scheduled = scheduledTasksForDay(shadow.tasks, day).reduce((sum, t) => sum + Math.max(0, (Math.min(end, t.scheduledEnd) - Math.max(day, t.scheduledStart, from)) / 60000) + workspace.settings.breakMinutes, 0);
+    const scheduled = scheduledWorkTasksForDay(shadow.tasks, day).reduce((sum, t) => sum + Math.max(0, (Math.min(end, t.scheduledEnd) - Math.max(day, t.scheduledStart, from)) / 60000) + workspace.settings.breakMinutes, 0);
     const capacity = Math.max(0, workspace.settings.dailyMinutes - recorded - scheduled);
     const blockMinutes = Math.min(needed, Math.floor(capacity - workspace.settings.breakMinutes));
     if (blockMinutes < 5) continue;
@@ -374,7 +386,8 @@ export function buildDayMap(workspace: WorkspaceState, now = Date.now()) {
     start: Math.max(day, task.scheduledStart),
     end: Math.min(nextDay, task.scheduledEnd),
     title: task.title,
-    label: task.subject || task.type,
+    label: task.estimatedMinutes > 0 && taskRemainingMinutes(task) <= 0
+      ? 'Estimate met · review task' : task.subject || task.type,
     taskId: task.id,
     missed: task.scheduledEnd < now,
   }));
@@ -389,9 +402,9 @@ export function buildDayMap(workspace: WorkspaceState, now = Date.now()) {
       return task.scheduledStart >= day && task.scheduledStart < addLocalDays(day, 1);
     })
     .reduce((sum, task) => {
-      const remaining = taskRemainingMinutes(task);
-      if (remaining > 0) return sum + remaining;
-      if (task.estimatedMinutes > 0) return sum + task.estimatedMinutes;
+      // Zero outstanding work is not a missing estimate. Keep the saved
+      // timeline entry, but exclude it from planned workload totals.
+      if (task.estimatedMinutes > 0) return sum + taskRemainingMinutes(task);
       if (task.scheduledEnd > task.scheduledStart) {
         return sum + Math.round((task.scheduledEnd - task.scheduledStart) / 60000);
       }

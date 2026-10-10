@@ -85,7 +85,7 @@ function simulate({
     if (!String(error.message).startsWith('Simulated process.exit(')) throw error;
   }
   const published = calls.filter(({ args }) => args.includes('eas-cli@latest') && args.includes('update'));
-  const verified = calls.filter(({ args }) => args.includes('verify-reminder-preview-local.cjs'));
+  const verified = calls.filter(({ args }) => args.includes('scripts/verify-reminder-preview-local.cjs'));
   return { calls, messages, exitCodes, published, verified };
 }
 

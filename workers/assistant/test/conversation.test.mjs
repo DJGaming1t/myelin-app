@@ -75,7 +75,9 @@ test('chat validation refuses arbitrary model roles, hidden tool actions, contex
     { ...payload, messages: messages.slice(0, 2) },
     { ...payload, messages: [{ role: 'user', content: 'x', function_call: {} }] },
     { ...payload, messages: [{ role: 'user', content: 'a'.repeat(2100) }] },
-    { ...payload, messages: [{ role: 'user', content: '界'.repeat(1900) }] },
+    { ...payload, messages: [{ role: 'user', content: '界'.repeat(1500) },
+      { role: 'assistant', content: '界'.repeat(1500) },
+      { role: 'user', content: '界'.repeat(1500) }] },
     { ...payload, requestId: 'weak' },
     { ...payload, messages: [] },
     { ...payload, messages: Array.from({ length: 11 }, (_, i) => ({
@@ -159,7 +161,7 @@ test('chat never surfaces a model response completed after request cancellation'
   let started;
   const active = new Promise(resolve => { started = resolve; });
   let finish;
-  deps.ai.run = async () => { started(); return new Promise(resolve => { finish = resolve; }); };
+  deps.ai.run = async () => { state.calls++; started(); return new Promise(resolve => { finish = resolve; }); };
   const controller = new AbortController();
   const req = new Request('https://myelin-test.invalid/chat', {
     method: 'POST',

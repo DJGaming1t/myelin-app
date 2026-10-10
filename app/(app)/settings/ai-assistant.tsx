@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -15,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useAuth } from '@/src/features/auth/AuthProvider';
+import { auth } from '@/src/lib/firebase';
 import {
   PreparedAssistantActionBatch,
   applyPreparedAssistantActionBatch,
@@ -30,6 +34,7 @@ import { AssistantGroundingError, checkAssistantRequestGrounding } from '@/src/f
 import { assistantChatReducer, assistantOfflineStatus, createAssistantChat, tryAssistantChatReply, type AssistantChatScope } from '@/src/features/assistant/assistant-conversation';
 import { tryAssistantNextTaskReply, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply } from '@/src/features/assistant/assistant-planning-review';
 import { tryAssistantWorkflowAnalysisReply } from '@/src/features/assistant/assistant-workflow-analysis';
+import { CloudChatError, chatMessagesForCloud, createCloudChatClient, validCloudChatEndpoint } from '@/src/features/assistant/cloud-conversation';
 import { tryAssistantPlanMathReply } from '@/src/features/assistant/assistant-plan-math';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
@@ -316,8 +321,15 @@ function ExamPlanPreview({ plan }: { plan: AssistantExamPlanSummary }) {
 
 export default function LocalAiAssistantScreen() {
   const { workspace, ownerKey, commitAssistantWorkspace } = useWorkspace();
+  const { user } = useAuth();
   const { ready, snapshot, models, prepareAssistantActions, prepareAssistantDecision, nativeRuntimeAvailable } = useLocalAi();
   const [request, setRequest] = useState('');
+  const [cloudConsent, setCloudConsent] = useState(false);
+  // Set only to the HTTPS /chat endpoint AFTER a real Worker/model smoke test.
+  // Empty by default, so no private text leaves the device unexpectedly.
+  const chatEndpoint = (process.env.EXPO_PUBLIC_MYELIN_CHAT_ENDPOINT ?? '').trim();
+  const cloudConfigured = validCloudChatEndpoint(chatEndpoint);
+  const cloudEligible = cloudConfigured && Boolean(user?.emailVerified);
   const [prepared, setPrepared] = useState<PreparedAssistantActionBatch | null>(null);
   const [busy, setBusy] = useState<'prepare' | 'apply' | ''>('');
   const [error, setError] = useState('');
@@ -343,6 +355,7 @@ export default function LocalAiAssistantScreen() {
   const available = offlineStatus === 'ready';
 
   useEffect(() => () => { controllerRef.current?.abort(); controllerRef.current = null; }, []);
+  useEffect(() => { setCloudConsent(false); }, [ownerKey]);
   useEffect(() => {
     controllerRef.current?.abort(); controllerRef.current = null;
     dispatchChat({ type: 'sync', ownerKey, revision: workspace?.revision ?? 0 });
@@ -396,6 +409,42 @@ export default function LocalAiAssistantScreen() {
       const args = { workspace, userRequest, currentRoute: '/(app)/settings/ai-assistant', signal: controller.signal, now, clarificationAnswers };
       const hasRuleDecision = checkAssistantRequestGrounding({ workspace, userRequest, currentDate: clarificationScope.currentDate, clarificationAnswers }) !== null ||
         tryBuildMyelinMiniFastDecision({ workspace, userRequest, requestId: 'screen-rule-check', currentDate: clarificationScope.currentDate, clarificationAnswers }) !== null;
+      if (!pendingQuestion && !hasRuleDecision) {
+        if (cloudEligible && cloudConsent && user) {
+          const client = createCloudChatClient({
+            endpoint: chatEndpoint,
+            ownerId: user.uid,
+            getCurrentOwnerId: () => auth.currentUser?.uid ?? null,
+            hasConsent: () => cloudConsent,
+            getIdToken: async () => {
+              if (!auth.currentUser) throw new CloudChatError('sign-in-required');
+              return auth.currentUser.getIdToken();
+            },
+          });
+          const prior = chat.messages.map(message => ({ role: message.role, content: message.text }));
+          const messages = chatMessagesForCloud(prior, text);
+          const cloudReply = await client.generate({
+            requestId: 'myelin-chat-' + now.toString(36) + '-' + Math.random().toString(36).slice(2, 12),
+            messages,
+            signal: controller.signal,
+          });
+          if (!isCurrent()) return;
+          append(scope, 'assistant', cloudReply);
+          return;
+        }
+        if (cloudConfigured && !cloudConsent) {
+          append(scope, 'assistant', 'Real conversation needs your permission to send chat messages to a hosted Qwen model. Turn on Cloud conversation above, then send your question again. MYELIN’s local plan tools are still available.');
+          return;
+        }
+        if (cloudConfigured && !cloudEligible) {
+          append(scope, 'assistant', 'Hosted conversation requires a signed-in, email-verified account. Local planning and workflow analysis still work without uploading your messages.');
+          return;
+        }
+        // Do not misleadingly route normal conversation into an unavailable
+        // phone Qwen model and return the old instantaneous model warning.
+        append(scope, 'assistant', 'A conversational model is not connected to this app preview yet. The hosted Qwen chat backend is prepared, but needs a verified deployment. I can still analyse the saved workflow locally—try “Analyse my current workflow”—and handle recorded tasks.');
+        return;
+      }
       if (snapshot.selectedModelId === 'functiongemma-270m' && available && !hasRuleDecision) {
         const next = await prepareAssistantActions(args);
         if (!isCurrent()) return;
@@ -423,6 +472,10 @@ export default function LocalAiAssistantScreen() {
         const nextQuestion = beginAssistantClarification(userRequest, decision, clarificationScope, clarificationAnswers, pendingQuestion);
         setPendingQuestion(nextQuestion);
         append(scope, 'assistant', decision.question + (nextQuestion ? '' : ' Send a complete revised request to continue.'));
+      } else if (cause instanceof CloudChatError) {
+        append(scope, 'assistant', cause.message + ' Nothing in your workspace was changed.');
+      } else if (cause instanceof Error && cause.name === 'AbortError') {
+        // User cancelled the request; no late model answer is displayed.
       } else {
         append(scope, 'assistant', 'I could not prepare this request. Nothing was changed. Try a supported task request or ask “What can you do?”');
       }
@@ -458,11 +511,34 @@ export default function LocalAiAssistantScreen() {
         <View style={styles.chatStatus}>
           <View style={styles.statusCopy}>
             <Text style={styles.chatStatusTitle}>Tasks, routines and plan checks</Text>
-            <Text style={styles.statusText}>{available ? 'Workspace analysis and offline actions · General chat not connected' : 'Workflow analysis and task help work locally · General chat needs a connected model'}</Text>
+            <Text style={styles.statusText}>{cloudConfigured ? 'Hosted Qwen conversation option · Tasks stay confirmation-only' : available ? 'Local workflow analysis and actions · Hosted chat not deployed' : 'Local workflow analysis works · Conversation server not connected'}</Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Manage AI models" onPress={() => router.push('/(app)/settings/ai-models')} style={styles.modelLink}>
             <Text style={styles.modelLinkText}>Models</Text>
           </Pressable>
+        </View>
+        <View style={styles.cloudChatRow}>
+          <View style={styles.cloudChatCopy}>
+            <Text style={styles.cloudChatTitle}>Cloud conversation</Text>
+            <Text style={styles.cloudChatHint}>
+              {cloudConfigured
+                ? cloudEligible
+                  ? 'Opt in to send this message and recent chat turns to hosted Qwen. No full workspace upload.'
+                  : 'Sign in and verify your email to enable hosted conversation.'
+                : 'Not connected to a deployed model. Local tasks and workflow analysis still work.'}
+            </Text>
+          </View>
+          {cloudConfigured ? <Switch accessibilityLabel="Allow hosted Qwen conversation for this chat"
+            value={cloudConsent && cloudEligible} disabled={!cloudEligible || Boolean(busy)}
+            onValueChange={allow => {
+              if (!allow) { setCloudConsent(false); controllerRef.current?.abort(); return; }
+              Alert.alert('Use hosted conversation?',
+                'Your chat message and a few previous chat turns will be sent to the hosted model. Saved task records and notes are not automatically uploaded. You can switch this off anytime. The model cannot change your plan.',
+                [
+                  { text: 'Keep local', style: 'cancel' },
+                  { text: 'Allow for this chat', onPress: () => setCloudConsent(true) },
+                ]);
+            }} /> : null}
         </View>
         <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.chatContent} keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })} showsVerticalScrollIndicator={false}>
@@ -537,6 +613,12 @@ export default function LocalAiAssistantScreen() {
 
 const styles = StyleSheet.create({
   chatStatus: { marginHorizontal: spacing.lg, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cloudChatRow: { marginHorizontal: spacing.lg, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 7,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.line,
+    backgroundColor: colors.panel, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cloudChatCopy: { flex: 1, gap: 4 },
+  cloudChatTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', lineHeight: 18 },
+  cloudChatHint: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   chatStatusTitle: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   modelLink: { minHeight: layout.minTouch, paddingHorizontal: 8, justifyContent: 'center' },
   modelLinkText: { color: colors.accent, fontSize: 12, lineHeight: 18, fontWeight: '700' },

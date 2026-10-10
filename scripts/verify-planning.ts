@@ -82,6 +82,32 @@ function main() {
     topicIds: [],
   });
 
+  // Exams are date-only. A noon timestamp is still "today" at 15:00,
+  // but yesterday's test must not keep boosting the same task.
+  const examDayWorkspace = createEmptyWorkspace(now);
+  examDayWorkspace.settings.sleepEnabled = false;
+  const dateOnlyExam = { id: 'date-only-exam', name: 'Science unit test',
+    date: local(2026, 10, 1, 12), subjects: ['Science'],
+    scope: 'subjects' as const, topicIds: [] as string[] };
+  examDayWorkspace.exams.push(dateOnlyExam);
+  const linkedWork = createStudyTask({ title: 'Science test prep', type: 'practice',
+    planState: 'today', estimatedMinutes: 25, examId: dateOnlyExam.id, now });
+  examDayWorkspace.tasks.push(linkedWork);
+  const todayExamBlock = buildTodayPlan(examDayWorkspace, now).blocks.find(block => block.taskId === linkedWork.id);
+  assert.equal(todayExamBlock?.examDays, 0,
+    'Today planner must keep a date-only exam relevant after its stored noon timestamp');
+  assert.ok(todayExamBlock?.reasons.some(reason => reason.includes('Science unit test')),
+    'Today planner should explain the still-relevant exam date');
+  examDayWorkspace.exams[0]!.date = local(2026, 9, 30, 12);
+  const oldExamBlock = buildTodayPlan(examDayWorkspace, now).blocks.find(block => block.taskId === linkedWork.id);
+  assert.equal(oldExamBlock?.examDays, null,
+    'Past exam must no longer contribute to Today task candidate exam pressure');
+  assert.ok(!oldExamBlock?.reasons.some(reason => reason.includes('Science unit test')),
+    'Today must not describe a past exam as upcoming');
+  examDayWorkspace.exams[0]!.date = local(2026, 10, 2, 12);
+  assert.equal(buildTodayPlan(examDayWorkspace, now).blocks.find(block => block.taskId === linkedWork.id)?.examDays, 1,
+    'Tomorrow exam remains an upcoming same-calendar-day target');
+
   const homework = createStudyTask({
     title: 'Finish Maths Exercise 5.2',
     subject: 'Mathematics',

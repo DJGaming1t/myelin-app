@@ -5,6 +5,7 @@ import { cloneWorkspace, createEmptyWorkspace } from '../src/data/schema';
 import { createStudyTask, scheduleTask } from '../src/features/planning/task-engine';
 import { planningModelContext, reviewAssistantPlanning, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply, tryAssistantNextTaskReply } from '../src/features/assistant/assistant-planning-review';
 import { tryAssistantPlanMathReply } from '../src/features/assistant/assistant-plan-math';
+import { isAssistantWorkflowAnalysisRequest, tryAssistantWorkflowAnalysisReply } from '../src/features/assistant/assistant-workflow-analysis';
 import { addLocalDays, startOfLocalDay, taskPlanningScore, taskPlanningScoreEvidence } from '../src/features/planning/day-engine';
 
 const at = (day: number, hour: number, minute = 0) => { const d = new Date(day); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute).getTime(); };
@@ -398,7 +399,87 @@ for (const unsafe of [
 ]) assert.equal(tryAssistantNextTaskReply(unsafe, recommend, now), null,
   'Read-only recommendation must reject compound or executable commands: ' + unsafe);
 
+// Natural language workflow audit must use actual saved data, not the
+// unavailable-phone-model fallback. It is explicitly NOT model-generated chat.
+for (const natural of [
+  'Analyse my current workflow',
+  'Analyze my study routine',
+  'Please review my current study plan',
+  'Can you assess my weekly study habits?',
+  'What can I improve in my study workflow?',
+  'How am I doing?',
+]) {
+  assert.equal(isAssistantWorkflowAnalysisRequest(natural), true, natural);
+}
+for (const unsafe of [
+  'Analyse my workflow and delete all my tasks',
+  'Review my plan and move everything tomorrow',
+  'Set a new exam date and analyse my study schedule',
+  'Review my maths questions and send answers',
+  'Analyse my current workflow then delete Biology',
+  'hello',
+]) {
+  assert.equal(isAssistantWorkflowAnalysisRequest(unsafe), false, unsafe);
+}
+
+const workflow = createEmptyWorkspace(now);
+workflow.settings.sleepEnabled = false;
+workflow.settings.dailyMinutes = 90;
+const dueWorkflow = createStudyTask({
+  title: 'Physics practical notebook', estimatedMinutes: 80,
+  dueAt: at(addLocalDays(day, -1), 18), now,
+});
+dueWorkflow.actualMinutes = 25;
+const nearWorkflow = createStudyTask({
+  title: 'Chemistry record book', estimatedMinutes: 40,
+  dueAt: at(addLocalDays(day, 1), 18), now,
+});
+nearWorkflow.postponements = 3;
+workflow.tasks.push(dueWorkflow, nearWorkflow);
+workflow.exams.push({
+  id: 'workflow-exam', name: 'Term science exam',
+  date: at(addLocalDays(day, 3), 12), scope: 'subjects',
+  subjects: ['Science'], topicIds: [],
+});
+workflow.history.push({
+  id: 'workflow-study', topicId: 'my-workflow-topic',
+  at: at(day, 9), kind: 'study', minutes: 35,
+  grade: 2, effort: 3, prompt: 'private prompt',
+  response: 'private answer', confidence: 'partial',
+});
+const beforeWorkflow = cloneWorkspace(workflow);
+const workflowAnswer = tryAssistantWorkflowAnalysisReply('Analyse my current workflow', workflow, now)!;
+assert.match(workflowAnswer, /2 open tasks/);
+assert.match(workflowAnswer, /95 min known work remaining/);
+assert.match(workflowAnswer, /35 min logged across 1 day/);
+assert.match(workflowAnswer, /Physics practical notebook/);
+assert.match(workflowAnswer, /Chemistry record book/);
+assert.match(workflowAnswer, /Term science exam/);
+assert.match(workflowAnswer, /3 day/);
+assert.match(workflowAnswer, /postponed at least twice/);
+assert.match(workflowAnswer, /First change I would make/);
+assert.match(workflowAnswer, /read-only analysis/);
+assert.match(workflowAnswer, /not a Qwen or Gemini-generated answer/);
+assert.doesNotMatch(workflowAnswer, /Your selected Qwen model has no released phone version yet/);
+assert.doesNotMatch(workflowAnswer, /private prompt|private answer/);
+assert.deepEqual(workflow, beforeWorkflow, 'Workflow analysis may not mutate tasks, exams or study history');
+
+const moreCompleted = cloneWorkspace(workflow);
+moreCompleted.tasks[0]!.actualMinutes = 80;
+const updatedWorkflowAnswer = tryAssistantWorkflowAnalysisReply('Analyse my current workflow', moreCompleted, now)!;
+assert.match(updatedWorkflowAnswer, /40 min known work remaining/);
+assert.doesNotMatch(updatedWorkflowAnswer, /past their recorded deadline/,
+  'An estimate-met open task is not phantom overdue work');
+const sparseWorkflow = createEmptyWorkspace(now);
+const sparseReply = tryAssistantWorkflowAnalysisReply('Can you analyze my overall routine?', sparseWorkflow, now)!;
+assert.match(sparseReply, /0 open tasks/);
+assert.match(sparseReply, /No study minutes were recorded/);
+assert.match(sparseReply, /missing tracking, not a lack of real studying/);
+assert.equal(tryAssistantWorkflowAnalysisReply('Review my plan and delete Maths', workflow, now), null);
+
 const screen = fs.readFileSync('app/(app)/settings/ai-assistant.tsx', 'utf8');
+assert.match(screen, /tryAssistantWorkflowAnalysisReply\(text, workspace, now\)/);
+assert.match(screen, /Analyse my current workflow/);
 assert.match(screen, /tryAssistantPlanningReply\(text, workspace, now\)/);
 assert.match(screen, /tryAssistantPlanMathReply\(text\)/);
 assert.match(screen, /tryAssistantTaskDeadlineReply\(text, workspace, now\)/);

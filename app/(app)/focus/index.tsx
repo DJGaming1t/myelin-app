@@ -1,8 +1,9 @@
 import { FocusSupport, DistractionShield } from '@/src/features/adaptive/FocusSupport';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  AppState,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -87,14 +88,36 @@ export default function FocusScreen() {
   const [distraction, setDistraction] = useState('');
   const [showParking, setShowParking] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [appIsActive, setAppIsActive] = useState(
+    AppState.currentState !== 'background' && AppState.currentState !== 'inactive',
+  );
   const [finishing, setFinishing] = useState(false);
   const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
 
+  // Android suspends JS intervals while the app is backgrounded. The timer
+  // itself stays anchored to persisted timestamps, never to interval ticks.
+  // Snap the display to wall-clock time as soon as MYELIN is foregrounded.
   useEffect(() => {
-    if (!session?.runningSince) return;
+    const listener = AppState.addEventListener('change', (nextState) => {
+      const active = nextState === 'active';
+      setAppIsActive(active);
+      if (active) setNow(Date.now());
+    });
+    return () => listener.remove();
+  }, []);
+
+  // The screen may stay mounted while the user visits another in-app route.
+  // Refresh on navigation focus too, without changing the running session.
+  useFocusEffect(useCallback(() => {
+    setNow(Date.now());
+  }, []));
+
+  useEffect(() => {
+    if (session?.runningSince == null || !appIsActive) return;
+    setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [session?.runningSince, session?.phase]);
+  }, [appIsActive, session?.runningSince, session?.phase]);
 
   useEffect(() => {
     setNow(Date.now());

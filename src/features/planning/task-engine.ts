@@ -58,14 +58,12 @@ export function taskRemainingMinutes(task: StudyTask) {
 // estimate. Only an explicit user choice should add more work to such a task.
 // Never alter the saved schedule, logged minutes, or completion state.
 export function extendMetTaskEstimate(task: StudyTask, extraMinutes: number, now = Date.now()) {
+  const increment = Math.round(extraMinutes);
   if (task.status !== 'open' || task.estimatedMinutes <= 0 ||
-      taskRemainingMinutes(task) > 0 || !Number.isFinite(extraMinutes) ||
-      extraMinutes <= 0 || task.actualMinutes >= 720) return false;
-  const target = Math.min(720, Math.max(
-    task.estimatedMinutes + Math.round(extraMinutes),
-    task.actualMinutes + Math.round(extraMinutes),
-  ));
-  if (target <= task.actualMinutes || target <= task.estimatedMinutes) return false;
+      taskRemainingMinutes(task) > 0 || !Number.isFinite(increment) ||
+      increment <= 0) return false;
+  const target = Math.max(task.estimatedMinutes, task.actualMinutes) + increment;
+  if (target > 720) return false;
   task.estimatedMinutes = target;
   task.updatedAt = now;
   return true;

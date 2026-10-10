@@ -262,6 +262,53 @@ function main() {
     'A task must appear only once in Timeline mode.',
   );
 
+
+  // An open task whose estimate is fully logged keeps its saved timeline
+  // entry for review, but must not occupy study-capacity windows or regenerate
+  // 30 phantom planned minutes.
+  const noWorkSchedule = createEmptyWorkspace(now);
+  noWorkSchedule.settings.sleepEnabled = false;
+  noWorkSchedule.settings.dailyMinutes = 120;
+  const recordedTask = createStudyTask({
+    title: 'Already logged practice', estimatedMinutes: 30, planState: 'today', now,
+  });
+  scheduleTask(recordedTask, local(2026, 10, 1, 16), local(2026, 10, 1, 17), now);
+  recordedTask.actualMinutes = 30;
+  noWorkSchedule.tasks.push(recordedTask);
+  const pristine = JSON.stringify(noWorkSchedule);
+  const reviewMap = buildDayMap(noWorkSchedule, now);
+  const retained = reviewMap.entries.find(entry => entry.taskId === recordedTask.id);
+  assert.ok(retained, 'Saved scheduled slot must remain visible in Day Map');
+  assert.match(retained!.label, /Estimate met.*review task/);
+  assert.equal(reviewMap.plannedStudyMinutes, 0,
+    'Zero-remaining task must not recreate its entire original planned estimate');
+  assert.ok(reviewMap.free.some(window =>
+    window.start <= local(2026, 10, 1, 16) &&
+    window.end >= local(2026, 10, 1, 17)),
+    'Saved zero-work slot must no longer block valid free study time');
+  assert.deepEqual(suggestTaskSlots(noWorkSchedule, recordedTask, now), [],
+    'Do not propose a fresh scheduled block for an already fully logged task');
+  assert.equal(JSON.stringify(noWorkSchedule), pristine,
+    'Timeline projections must never unschedule, complete, or edit saved tasks');
+
+  const stillNeedsWork = createEmptyWorkspace(now);
+  stillNeedsWork.settings.sleepEnabled = false;
+  const partialSlot = createStudyTask({
+    title: 'Almost finished task', estimatedMinutes: 30, now,
+  });
+  scheduleTask(partialSlot, local(2026, 10, 1, 16), local(2026, 10, 1, 17), now);
+  partialSlot.actualMinutes = 29;
+  stillNeedsWork.tasks.push(partialSlot);
+  const activeMap = buildDayMap(stillNeedsWork, now);
+  assert.equal(activeMap.plannedStudyMinutes, 1);
+  assert.ok(!activeMap.free.some(window =>
+    window.start <= local(2026, 10, 1, 16) && window.end >= local(2026, 10, 1, 17)),
+    'Even one real minute remaining keeps the existing scheduled reservation intact');
+  partialSlot.estimatedMinutes = 0;
+  assert.ok(!buildDayMap(stillNeedsWork, now).free.some(window =>
+    window.start <= local(2026, 10, 1, 16) && window.end >= local(2026, 10, 1, 17)),
+    'Unknown estimate must not be treated as a fully completed task');
+
   const extra = createStudyTask({
     title: 'Biology recall',
     subject: 'Biology',

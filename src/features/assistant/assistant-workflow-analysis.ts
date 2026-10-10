@@ -21,6 +21,10 @@ export function isAssistantWorkflowAnalysisRequest(request: string) {
   return patterns.some(pattern => pattern.test(text));
 }
 
+function counted(count: number, one: string, many = one + 's') {
+  return count + ' ' + (count === 1 ? one : many);
+}
+
 function shown(value: string) {
   return value.replace(/[\r\n\t]/g, ' ').trim().slice(0, 90);
 }
@@ -72,37 +76,37 @@ export function tryAssistantWorkflowAnalysisReply(
 
   const findings: string[] = [];
   if (overdue.length) findings.push(
-    overdue.length + ' task(s) are past their recorded deadline, including “' +
+    counted(overdue.length, 'task is', 'tasks are') + ' past their recorded deadline, including “' +
     shown(overdue[0]!.title) + '”. Check the remaining work rather than assuming a past due date is still achievable.',
   );
   if (soon.length) findings.push(
-    soon.length + ' open task(s) are due in the next three local dates. “' +
+    counted(soon.length, 'open task is', 'open tasks are') + ' due in the next three local dates. “' +
     shown(soon[0]!.title) + '” is due ' + localDayKey(soon[0]!.dueAt) + '.',
   );
   const capacityIssues = review.issues.filter(issue =>
     issue.code === 'daily-overload' || issue.code === 'deadline-capacity');
   if (capacityIssues.length) findings.push(
-    'The schedule has ' + capacityIssues.length + ' capacity/deadline warning(s). ' +
+    'The schedule has ' + counted(capacityIssues.length, 'capacity/deadline warning') + '. ' +
     shown(capacityIssues[0]!.message).slice(0, 150) +
     ' Review the detailed plan before adding work.',
   );
   if (unestimated.length) findings.push(
-    unestimated.length + ' open task(s) have no recorded duration; the known workload total is incomplete.',
+    counted(unestimated.length, 'open task has', 'open tasks have') + ' no recorded duration; the known workload total is incomplete.',
   );
   if (postponed.length) findings.push(
-    postponed.length + ' task(s) have been postponed at least twice. Try a smaller first step rather than repeatedly moving a full session.',
+    counted(postponed.length, 'task has', 'tasks have') + ' been postponed at least twice. Try a smaller first step rather than repeatedly moving a full session.',
   );
   if (stale.length) findings.push(
-    stale.length + ' open task(s) have already met their estimate. Review whether to complete or extend them instead of counting them as new work.',
+    counted(stale.length, 'open task has', 'open tasks have') + ' already met the estimate. Review whether to complete or extend the work instead of counting it again.',
   );
   if (dueCards || dueMistakes) findings.push(
-    dueCards + ' recall card(s) and ' + dueMistakes +
-    ' unresolved mistake(s) are due. Retrieval quality matters alongside minutes studied.',
+    counted(dueCards, 'recall card') + ' and ' + counted(dueMistakes, 'unresolved mistake') +
+    ' are due for review. Retrieval quality matters alongside minutes studied.',
   );
   if (exams.length) {
     const first = exams[0]!;
     findings.push('Your nearest recorded exam, “' + shown(first.exam.name) + '”, is ' +
-      (first.days === 0 ? 'today' : 'in ' + first.days + ' day(s)') + '.');
+      (first.days === 0 ? 'today' : 'in ' + counted(first.days, 'day')) + '.');
     const joint = buildJointExamPreparationPlan(workspace, now, { maxDays: 14 });
     const uncovered = joint.unallocatedPreparationMinutes + joint.unallocatedRevisionMinutes;
     if (uncovered > 0) findings.push(
@@ -128,11 +132,11 @@ export function tryAssistantWorkflowAnalysisReply(
           ? 'Add a realistic duration to “' + shown(unestimated[0]!.title) + '”.'
           : 'Record your next concrete task and actual study so future recommendations have better evidence.';
 
-  const overview = open.length + ' open tasks (' + displayMinutes(remaining) +
+  const overview = counted(open.length, 'open task') + ' (' + displayMinutes(remaining) +
     ' known work remaining' + (unestimated.length ? ', excluding unestimated tasks' : '') +
-    '); ' + exams.length + ' upcoming exam(s) within 14 days; ' +
-    displayMinutes(recorded) + ' logged across ' + recordedDays +
-    ' day(s) in the last seven local dates.';
+    '); ' + counted(exams.length, 'upcoming exam') + ' within 14 days; ' +
+    displayMinutes(recorded) + ' logged on ' + counted(recordedDays, 'day') +
+    ' in the last seven local dates.';
 
   return [
     'I checked your saved MYELIN workflow as of ' + localDayKey(now) +

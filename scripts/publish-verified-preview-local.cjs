@@ -14,8 +14,10 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const windows = process.platform === 'win32';
-const npm = windows ? 'npm.cmd' : 'npm';
-const npx = windows ? 'npx.cmd' : 'npx';
+const npm = windows ? process.execPath : 'npm';
+const npmPrefix = windows ? [path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')] : [];
+const npx = windows ? process.execPath : 'npx';
+const npxPrefix = windows ? [path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js')] : [];
 const node = process.execPath;
 const args = process.argv.slice(2);
 if (args.length !== 1 || !['--check', '--publish'].includes(args[0])) {
@@ -25,10 +27,12 @@ if (args.length !== 1 || !['--check', '--publish'].includes(args[0])) {
 const publishing = args[0] === '--publish';
 
 function command(bin, argv, capture = false) {
-  const result = spawnSync(bin, argv, {
+  const prefix = windows && bin === node && argv[0] === 'ci' ? npmPrefix :
+    windows && bin === node && argv[0] === '--yes' ? npxPrefix : [];
+  const result = spawnSync(bin, [...prefix, ...argv], {
     cwd: root,
     env: process.env,
-    shell: windows && bin !== node && bin !== 'git',
+    shell: false,
     stdio: capture ? 'pipe' : 'inherit',
     encoding: capture ? 'utf8' : undefined,
     maxBuffer: 20 * 1024 * 1024,

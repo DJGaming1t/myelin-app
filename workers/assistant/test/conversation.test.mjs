@@ -58,7 +58,7 @@ test('chat returns actual provider text and bounded multi-turn history; cannot a
   assert.equal(state.calls, 1);
   assert.equal(state.input.model, MODEL);
   assert.equal(state.input.input.stream, false);
-  assert.equal(state.input.input.max_tokens, 1100);
+  assert.equal(state.input.input.max_tokens, 1800);
   assert.deepEqual(state.input.input.messages.slice(1), messages);
   assert.match(state.input.input.messages[0].content, /never|Never/);
   assert.equal(state.input.input.response_format, undefined);

@@ -337,7 +337,8 @@ function taskCandidate(
   const exam = nearestExamForTask(workspace, task, now);
   const examDays = exam ? Math.max(0, examCalendarDaysUntil(exam.date, now)) : null;
   if (exam && examDays !== null && examDays <= 7) {
-    reasons.push(examDays === 1 ? `${exam.name} tomorrow` : `${exam.name} in ${examDays} days`);
+    reasons.push(examDays === 0 ? `${exam.name} is today` :
+      examDays === 1 ? `${exam.name} tomorrow` : `${exam.name} in ${examDays} days`);
   }
 
   if (autopilot) {

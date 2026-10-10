@@ -56,9 +56,7 @@ try {
 
   if (!publishing) {
     console.log('Full verification passed. CHECK ONLY: no Android update was published.');
-    process.exit(0);
-  }
-
+  } else {
   // Validate the owner is authenticated before beginning a network publication.
   // Authentication is handled by EAS; this script never prints or stores tokens.
   console.log('Checking Expo account (local login or EXPO_TOKEN required)…');
@@ -99,6 +97,7 @@ try {
   }
   console.log('Expo Android preview publish command succeeded for Git commit ' + before + '.');
   console.log('Phone-side OTA installation and actual notification delivery are NOT verified by this script.');
+  }
 } catch (error) {
   console.error('Preview release stopped: ' + (error?.message || String(error)));
   process.exit(1);

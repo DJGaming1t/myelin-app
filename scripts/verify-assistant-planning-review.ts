@@ -346,6 +346,43 @@ scheduledReserve.settings.dailyMinutes = 69;
 assert.match(tryAssistantNextTaskReply('What should I start next?', scheduledReserve, now)!, /upcoming recorded study blocks already use/,
   'Fewer than five unreserved minutes must never be offered as a Focus block');
 
+
+const staleOnly = createEmptyWorkspace(now);
+staleOnly.settings.sleepEnabled = false;
+staleOnly.settings.dailyMinutes = 90;
+const staleSlot = createStudyTask({ title: 'Already logged Maths', estimatedMinutes: 30, now });
+scheduleTask(staleSlot, at(day, 15), at(day, 16), now);
+staleSlot.actualMinutes = 30;
+staleOnly.tasks.push(staleSlot);
+const staleBefore = cloneWorkspace(staleOnly);
+const staleReview = reviewAssistantPlanning(staleOnly, now);
+assert.ok(staleReview.issues.some(issue => issue.code === 'estimate-met' &&
+  issue.taskIds.includes(staleSlot.id)));
+assert.ok(!staleReview.issues.some(issue => issue.code === 'daily-overload' ||
+  issue.code === 'commitment-overlap' || issue.code === 'task-overlap'));
+assert.match(tryAssistantNextTaskReply('What should I start next?', staleOnly, now)!,
+  /saved study slot.*recorded time already meets the estimate/s);
+assert.deepEqual(staleOnly, staleBefore,
+  'Assistant must not clear fully logged scheduled records when explaining stale slots');
+
+const staleNext = cloneWorkspace(scheduledReserve);
+staleNext.tasks.find(task => task.title === 'English revision')!.actualMinutes = 65;
+const stillUseful = tryAssistantNextTaskReply('What should I start next?', staleNext, now)!;
+assert.match(stillUseful, /Try “Maths practice”/,
+  'A stale future reservation must not consume the remaining daily budget');
+assert.doesNotMatch(stillUseful, /upcoming recorded study blocks already use/);
+const staleOverlap = cloneWorkspace(scheduledNow);
+const obsolete = createStudyTask({ title: 'Finished scheduled work', estimatedMinutes: 20, now });
+scheduleTask(obsolete, at(day, 12), at(day, 12, 30), now);
+obsolete.actualMinutes = 20;
+staleOverlap.tasks.push(obsolete);
+assert.match(tryAssistantNextTaskReply('What should I start next?', staleOverlap, now)!,
+  /Maths practice.*already scheduled now/,
+  'A stale overlap cannot block a legitimate ongoing Focus block');
+assert.ok(!reviewAssistantPlanning(staleOverlap, now).issues.some(issue =>
+  issue.code === 'task-overlap' && issue.taskIds.includes(obsolete.id)),
+  'Planning review must report a completed-estimate slot for review, not false overlapping study');
+
 const unknownOnly = cloneWorkspace(recommend);
 unknownOnly.tasks = [createStudyTask({ title: 'Unknown work', planState: 'today', now })];
 assert.match(tryAssistantNextTaskReply('What task should I do next?', unknownOnly, now)!, /known remaining estimate/);

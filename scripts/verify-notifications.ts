@@ -2177,6 +2177,53 @@ assert.ok(
     notificationRuntimeSource.includes('exactPreview: true'),
   'Runtime should support one-off exact-copy previews without altering the real reminder schedule.',
 );
+// One-shot diagnostic must never be confused with planned reminders or
+// reported as delivered merely because the native scheduler returned an ID.
+const deliveryTestRuntime = notificationRuntimeSource.slice(
+  notificationRuntimeSource.indexOf('export async function scheduleReminderDeliveryTest('),
+  notificationRuntimeSource.indexOf('export async function removeReminderPreview('),
+);
+assert.ok(
+  deliveryTestRuntime.includes('scheduleNotificationAsync(') &&
+    deliveryTestRuntime.includes('Date.now() + 30_000') &&
+    deliveryTestRuntime.includes('SchedulableTriggerInputTypes.DATE') &&
+    deliveryTestRuntime.includes('preview: true') &&
+    deliveryTestRuntime.includes('deliveryTest: true') &&
+    deliveryTestRuntime.includes('ownerKey') &&
+    !deliveryTestRuntime.includes('scheduleReminderPlan('),
+  'The 30-second manual device test must remain an isolated preview owned by the active user.',
+);
+assert.ok(
+  notificationRuntimeSource.includes('deliveryTest: data.deliveryTest === true'),
+  'A tapped delivery test must be identified separately from real study reminders.',
+);
+const reminderProviderSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/notifications/ReminderProvider.tsx'), 'utf8',
+);
+const deliveryTestAction = reminderProviderSource.slice(
+  reminderProviderSource.indexOf('const sendDeliveryTest = useCallback('),
+  reminderProviderSource.indexOf('const refreshPermission = useCallback('),
+);
+assert.ok(
+  deliveryTestAction.includes("nextPermission !== 'granted'") &&
+    deliveryTestAction.includes('scheduleReminderDeliveryTest(') &&
+    deliveryTestAction.includes('removeReminderPreview(testId)') &&
+    deliveryTestAction.includes('isCurrentReminderAction(action)') &&
+    deliveryTestAction.includes('Scheduling is not delivery confirmation') &&
+    !deliveryTestAction.includes('persist('),
+  'Permission failure, user switching and unverified OS delivery must be handled without changing reminder settings.',
+);
+assert.ok(
+  reminderProviderSource.includes('if (payload.deliveryTest)') &&
+    reminderProviderSource.includes("router.push('/(app)/settings/reminders')") &&
+    reminderStudioSource.includes('Test in 30 seconds') &&
+    reminderStudioSource.includes('Schedule test') &&
+    reminderStudioSource.includes('testRequested') &&
+    reminderStudioSource.includes('Android may deliver later'),
+  'Reminder Studio needs an explicit test action, owner-safe tap routing and honest device-delivery guidance.',
+);
+console.log('✓ opt-in delivery diagnostic is isolated from actual reminder plans');
+
 assert.equal(reminderStudioSource.includes('notificationDim'), true);
 assert.ok(
   reminderStudioSource.includes("quietGrid: { gap: 1 }"),

@@ -27,6 +27,7 @@ import {
   resumeFocusTimer,
 } from './focus-engine';
 import { focusStorage } from './focus-storage';
+import { createFocusWriteQueue } from './focus-write-queue';
 import { FocusLaunchMode, FocusSessionState } from './types';
 
 type StartInput = {
@@ -41,6 +42,7 @@ type StartInput = {
 type FocusContextValue = {
   ready: boolean;
   session: FocusSessionState | null;
+  saveError: string | null;
   start: (input: StartInput) => Promise<FocusSessionState | null>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
@@ -64,25 +66,38 @@ export function FocusProvider({ children }: PropsWithChildren) {
   const celebrate = useAchievement();
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<FocusSessionState | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const sessionRef = useRef<FocusSessionState | null>(null);
   const ownerRef = useRef<string | null>(null);
-  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const saveQueue = useRef(createFocusWriteQueue<FocusSessionState>(async (owner, next) => {
+    if (next) await focusStorage.save(owner, next);
+    else await focusStorage.clear(owner);
+  }));
 
   const commitSession = useCallback(
     async (next: FocusSessionState | null) => {
       const owner = ownerRef.current;
+      const previous = sessionRef.current;
       sessionRef.current = next;
       setSession(next);
       if (!owner) return;
 
-      saveQueue.current = saveQueue.current
-        .then(async () => {
-          if (next) await focusStorage.save(owner, next);
-          else await focusStorage.clear(owner);
-        })
-        .catch(() => undefined);
-
-      await saveQueue.current;
+      try {
+        // Keep optimistic timer feedback while saving, but never treat a
+        // rejected storage write as durable. Restore the last known state so
+        // the user can retry the action after storage recovers.
+        await saveQueue.current.write(owner, next);
+        if (ownerRef.current === owner && sessionRef.current === next) {
+          setSaveError(null);
+        }
+      } catch (error) {
+        if (ownerRef.current === owner && sessionRef.current === next) {
+          sessionRef.current = previous;
+          setSession(previous);
+          setSaveError('Focus changes could not be saved. The last change was reversed. Try again.');
+        }
+        throw error;
+      }
     },
     [],
   );
@@ -94,6 +109,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
     ownerRef.current = ownerKey;
     sessionRef.current = null;
     setSession(null);
+    setSaveError(null);
 
     if (!ownerKey || !workspace) {
       setReady(false);
@@ -197,7 +213,12 @@ export function FocusProvider({ children }: PropsWithChildren) {
     async (change: (current: FocusSessionState) => FocusSessionState) => {
       const current = sessionRef.current;
       if (!current) return;
-      await commitSession(change(current));
+      try {
+        await commitSession(change(current));
+      } catch {
+        // Focus controls are often fire-and-forget presses. commitSession
+        // restores the last known session and surfaces its saveError.
+      }
     },
     [commitSession],
   );
@@ -206,6 +227,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
     () => ({
       ready,
       session,
+      saveError,
 
       start,
 
@@ -355,7 +377,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
         await commitSession(null);
       },
     }),
-    [celebrate, commitSession, ready, session, start, transform, updateWorkspace, waitForSaves],
+    [celebrate, commitSession, ready, saveError, session, start, transform, updateWorkspace, waitForSaves],
   );
 
   return <FocusContext.Provider value={value}>{children}</FocusContext.Provider>;

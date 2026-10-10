@@ -881,6 +881,7 @@ function TimerDial({
             style={[
               styles.timerValue,
               size < 196 && styles.timerValueCompact,
+              size < 160 && styles.timerValueTiny,
               complete && styles.timerValueComplete,
             ]}>
             {value}
@@ -1006,6 +1007,7 @@ const styles = StyleSheet.create({
   dialInner: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   timerValue: { color: colors.text, fontSize: 48, lineHeight: 56, fontWeight: '600', letterSpacing: -2 },
   timerValueCompact: { fontSize: 38, lineHeight: 46 },
+  timerValueTiny: { fontSize: 27, lineHeight: 34, letterSpacing: -1.2 },
   timerValueComplete: { color: colors.success },
   timerLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, marginTop: 4, textAlign: 'center', paddingHorizontal: 4 },
   timerActions: { flexDirection: 'row', gap: 9, marginTop: spacing.lg, width: '100%', maxWidth: 430 },

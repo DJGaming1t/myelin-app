@@ -101,7 +101,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN past-exam calendar priority fix beta $GITHUB_SHA"
+          --message "MYELIN exam-day Autopilot priority alignment beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

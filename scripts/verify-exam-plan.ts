@@ -1044,6 +1044,91 @@ const now = local(2026, 10, 5, 15, 0);
 }
 
 {
+  // A partly elapsed scheduled block is not two separate commitments:
+  // completed Focus/history uses the elapsed time, and only its future
+  // portion remains reserved. Single and joint plans must agree.
+  const capacityWorkspace = createEmptyWorkspace(now);
+  capacityWorkspace.settings.sleepEnabled = false;
+  capacityWorkspace.settings.dailyMinutes = 180;
+  capacityWorkspace.settings.focusMinutes = 45;
+  const capacityTopic = makeTopic(
+    'capacity-study', 'Electricity', 'Physics', 'learning', 180, 2,
+  );
+  capacityTopic.createdAt = addLocalDays(startOfLocalDay(now), -10);
+  capacityWorkspace.topics.push(capacityTopic);
+  capacityWorkspace.exams.push(
+    createExam({
+      name: 'Electricity test',
+      date: addLocalDays(startOfLocalDay(now), 3) + 12 * 60 * 60 * 1000,
+      scope: 'topics',
+      subjects: [],
+      topicIds: [capacityTopic.id],
+    }, now, 'capacity-exam'),
+  );
+  const reservedTask = createStudyTask({
+    title: 'Separate scheduled work',
+    subject: 'English',
+    estimatedMinutes: 120,
+    now,
+  });
+  capacityWorkspace.tasks.push(reservedTask);
+  scheduleTask(reservedTask, local(2026, 10, 5, 14), local(2026, 10, 5, 16), now);
+  capacityWorkspace.history.push({
+    id: 'capacity-completed-focus',
+    topicId: capacityTopic.id,
+    at: local(2026, 10, 5, 14, 30),
+    kind: 'study',
+    minutes: 30,
+    grade: 0,
+    effort: 3,
+    prompt: '',
+    response: '',
+    confidence: 'partial',
+  });
+  const unchanged = cloneWorkspace(capacityWorkspace);
+  const single = buildExamPreparationPlan(capacityWorkspace, 'capacity-exam', now)!;
+  const joint = buildJointExamPreparationPlan(capacityWorkspace, now);
+  assert.equal(single.days[0]!.existingStudyMinutes, 30);
+  assert.equal(joint.days[0]!.existingStudyMinutes, 30);
+  assert.equal(single.days[0]!.scheduledStudyMinutes, 60,
+    'Single exam plan must reserve only 15:00–16:00, not the 14:00–16:00 original block');
+  assert.equal(joint.days[0]!.scheduledStudyMinutes, 60,
+    'Joint exam plan must use the same remaining scheduled time');
+  assert.equal(single.topics[0]!.completedPreparationMinutes, 30,
+    'Finished study counts as preparation progress');
+  assert.equal(single.days[0]!.totalStudyLoadMinutes,
+    single.days[0]!.existingStudyMinutes + single.days[0]!.scheduledStudyMinutes +
+      single.days[0]!.plannedMinutes,
+    'Single plan cannot account for elapsed scheduled minutes twice');
+  assert.deepEqual(capacityWorkspace, unchanged,
+    'Read-only exam planning must not mutate recorded work or schedules');
+
+  const pastSchedule = cloneWorkspace(capacityWorkspace);
+  scheduleTask(pastSchedule.tasks[0]!,
+    local(2026, 10, 5, 13), local(2026, 10, 5, 14), now);
+  const pastSingle = buildExamPreparationPlan(pastSchedule, 'capacity-exam', now)!;
+  const pastJoint = buildJointExamPreparationPlan(pastSchedule, now);
+  assert.equal(pastSingle.days[0]!.scheduledStudyMinutes, 0,
+    'Expired study reservations are not future commitments');
+  assert.equal(pastJoint.days[0]!.scheduledStudyMinutes, 0);
+  assert.equal(pastSingle.days[0]!.existingStudyMinutes, 30,
+    'An expired reservation must not erase actual completed study');
+
+  const futureSchedule = cloneWorkspace(capacityWorkspace);
+  scheduleTask(futureSchedule.tasks[0]!,
+    local(2026, 10, 6, 17), local(2026, 10, 6, 18), now);
+  const futureSingle = buildExamPreparationPlan(futureSchedule, 'capacity-exam', now)!;
+  const futureJoint = buildJointExamPreparationPlan(futureSchedule, now);
+  assert.equal(futureSingle.days[0]!.scheduledStudyMinutes, 0);
+  assert.equal(futureJoint.days[0]!.scheduledStudyMinutes, 0);
+  assert.equal(futureSingle.days[1]!.scheduledStudyMinutes, 60,
+    'Tomorrow retains all 60 scheduled minutes');
+  assert.equal(futureJoint.days[1]!.scheduledStudyMinutes, 60);
+  assert.equal(futureSingle.days[1]!.existingStudyMinutes, 0,
+    'A future scheduled session must not be credited as completed preparation');
+}
+
+{
   const before = createEmptyWorkspace(now);
   before.settings.dailyMinutes = 60;
   before.settings.focusMinutes = 45;

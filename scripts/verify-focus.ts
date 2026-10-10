@@ -619,6 +619,8 @@ assert.ok(
   focusScreenSource.includes('adjustsFontSizeToFit') &&
     focusScreenSource.includes('minimumFontScale={0.64}') &&
     focusScreenSource.includes('size < 196 && styles.timerValueCompact') &&
+    focusScreenSource.includes('size < 160 && styles.timerValueTiny') &&
+    focusScreenSource.includes('timerValueTiny: { fontSize: 27, lineHeight: 34') &&
     focusScreenSource.includes('numberOfLines={2} style={styles.timerLabel}'),
   'Timer value and caption should remain legible in the smaller dial.',
 );

@@ -2310,6 +2310,22 @@ assert.ok(
   !reminderStudioSource.includes('REMINDERS ACTIVE'),
   'Reminder Studio must distinguish permission, in-progress/failed audit, registration and real delivery.',
 );
+const reminderStudioStyles = reminderStudioSource.slice(reminderStudioSource.indexOf('const styles = StyleSheet.create({'));
+const readableCompactStyles = [
+  'timelineSource', 'timelineTime', 'timelineTitle', 'timelineDecisionText',
+  'timelineRecoveredTag', 'timelineUsefulnessScore',
+  'timelineUsefulnessReason', 'recoveredInsightStatusText',
+];
+for (const styleName of readableCompactStyles) {
+  const start = reminderStudioStyles.indexOf(`  ${styleName}: {`);
+  assert.ok(start !== -1, `Missing Reminder Studio text style ${styleName}`);
+  const end = reminderStudioStyles.indexOf('\n  ', start + 3);
+  const block = reminderStudioStyles.slice(start, end < 0 ? undefined : end);
+  const font = /fontSize:\\s*([\\d.]+)/.exec(block);
+  const line = /lineHeight:\\s*([\\d.]+)/.exec(block);
+  assert.ok(font && line && Number(line[1]) >= Number(font[1]) * 1.25,
+    `Readable ${styleName} must have sufficient line height for increased text size`);
+}
 console.log('✓ small-screen Studio shows accessible actions first and separates registration from delivery');
 
 assert.equal(reminderStudioSource.includes('notificationDim'), true);

@@ -34,10 +34,14 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: Reject requests targeting a different branch
+      - name: Accept only reviewed default or MYELIN preview workflow ref
         env:
           BRANCH_REF: ${{ github.ref }}
-        run: test "$BRANCH_REF" = 'refs/heads/codex/exam-autopilot-capacity-v1'
+        run: |
+          case "$BRANCH_REF" in
+            refs/heads/main|refs/heads/codex/exam-autopilot-capacity-v1) ;;
+            *) echo '::error::Unsupported workflow ref.'; exit 1 ;;
+          esac
       - name: Offline owner-gate and binding checks
         run: |
           node scripts/prepare-hosted-chat-deployment.cjs --self-test

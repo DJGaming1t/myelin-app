@@ -156,6 +156,9 @@ export type ScheduledReminderAudit = {
   registeredCount: number;
   registeredIds: string[];
   reminderKeys: string[];
+  // One-off delivery checks are excluded from normal reminder counts, but
+  // must still be discoverable so Disable and sign-out can cancel them.
+  deliveryTestIds: string[];
 };
 
 type ScheduledReminderRequestLike = {
@@ -180,6 +183,17 @@ export function summarizeScheduledReminderRequests(
     );
   });
 
+  const deliveryTests = requests.filter((request) => {
+    const data = request.content.data;
+    return Boolean(
+      data &&
+        data.myelin === true &&
+        data.preview === true &&
+        data.deliveryTest === true &&
+        data.ownerKey === ownerKey,
+    );
+  });
+
   return {
     registeredCount: currentOwner.length,
     registeredIds: currentOwner.map(
@@ -191,6 +205,9 @@ export function summarizeScheduledReminderRequests(
         (key): key is string =>
           typeof key === 'string' && key.length > 0,
       ),
+    deliveryTestIds: deliveryTests.map(
+      (request) => request.identifier,
+    ),
   };
 }
 
@@ -232,6 +249,7 @@ export async function getScheduledReminderAudit(
       registeredCount: 0,
       registeredIds: [],
       reminderKeys: [],
+      deliveryTestIds: [],
     };
   }
 

@@ -1,5 +1,16 @@
 # MYELIN assistant beta
 
+## Reminders Studio device cancellation safety — 2026-10-10
+
+**Scenario:** MYELIN previously swallowed Android cancellation errors, so rescheduling could add a new alert while the old one remained, and switching reminders off could incorrectly claim the old alerts were gone. The new cancellation helper deduplicates IDs and reports a failure if **any** OS cancellation fails, preserving known prior IDs/plan signature for retry. There is no automatic replacement when cancellation fails. The provider also requires an actual owner-specific OS notification audit to claim "verified" and the Studio shows **SCHEDULE NEEDS CHECK** on failed or unknown confirmation.
+
+**Automated verification:** `scripts/verify-notifications.ts` now simulates one failed cancellation and another still running, asserts it waits for both without exposing internal OS diagnostics, verifies subsequent retry succeeds with no duplicate IDs, and checks provider/Studio error paths. Full TypeScript, app regressions, owner-switch routing and hybrid safety checks succeeded in [run 38046581004](https://github.com/DJGaming1t/myelin-app/actions/runs/38046581004). Initial checks failed on outdated source assertions only; no initial failed run published.
+
+**Physical Android QA pending:** with compatible preview installed, enable reminders and schedule a due review / exam / Day Map study block, then verify device-delivered copy matches Studio. Move or complete the task and confirm its old alert disappears. Turn reminders off and confirm no prior MYELIN alert fires. Under controlled fault injection or device notification service failure, verify Studio shows a warning rather than claiming success, preserves settings and previous device registrations, and allows a safe Refresh schedule retry. With notification permissions denied, no falsely verified alerts should show. Check owner switching and local mode; do not send stale private owner notifications to a different user. No actual on-phone OS notification-fire/fault-injection validation was performed during this code chunk.
+
+[Android beta release gate 38046581004](https://github.com/DJGaming1t/myelin-app/actions/runs/38046581004), source `dc978a0736b2b804a1fa57150c23008843a69237`, runtime `0.2.13`; **publication receipt pending at initial checkpoint**.
+
+
 ## Focus timer save-error recovery — verified 2026-10-10
 
 This one-chunk product improvement addresses **silent Focus session persistence failures**. The old provider swallowed AsyncStorage errors and could show an active, paused or completed session that would disappear on an app restart. Its parked-distraction input was cleared before its text was actually saved. MYELIN now reports session-storage errors, reverts unpersisted timer changes to the previous in-memory state when still current, and allows a later storage write to retry. Parking preserves text until the save succeeds, and failed break/discard storage operations keep the user on Focus instead of navigating away.

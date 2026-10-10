@@ -140,10 +140,30 @@ for (const receipt of [
   assert.match(failed.messages.join('\n'), /Check Expo updates BEFORE retrying/);
 }
 
-// Windows requires cmd wrappers, selected only after evaluating platform.
+// Windows invokes the JS CLIs through the current Node executable rather
+// than a command shell, keeping the EAS update message as one argv string.
 const windows = simulate({ mode: '--publish', platform: 'win32' });
 assert.deepEqual(windows.exitCodes, []);
-assert.ok(windows.calls.some((call) => call.bin === 'npm.cmd' && call.shell));
-assert.ok(windows.calls.some((call) => call.bin === 'npx.cmd' && call.shell));
+const windowsNpm = windows.calls.find((call) => call.args[0]?.endsWith('npm-cli.js'));
+const windowsNpx = windows.calls.filter((call) => call.args[0]?.endsWith('npx-cli.js'));
+assert.ok(windowsNpm && windowsNpm.bin === '/usr/local/bin/node' && windowsNpm.shell === false);
+assert.ok(windowsNpx.length === 2 && windowsNpx.every((call) => call.bin === '/usr/local/bin/node' && call.shell === false));
+const publishArgs = windows.published[0].args;
+assert.equal(
+  publishArgs[publishArgs.indexOf('--message') + 1],
+  'MYELIN locally verified Android preview ' + HEAD,
+  'Multi-word EAS message must remain a single untouched argument on Windows.',
+);
+assert.ok(!windows.calls.some((call) => call.bin.endsWith('.cmd') || call.shell),
+  'Windows release must not invoke a shell or cmd shim.');
 
-console.log('✓ Local Android preview publisher check/publish, Windows, failure gates and receipt tests passed');
+const verifier = fs.readFileSync(path.join(__dirname, 'verify-reminder-preview-local.cjs'), 'utf8');
+assert.ok(
+  verifier.includes("const npmPrefix = windows ? [path.join(path.dirname(node), 'node_modules', 'npm', 'bin', 'npm-cli.js')]") &&
+  verifier.includes("const npxPrefix = windows ? [path.join(path.dirname(node), 'node_modules', 'npm', 'bin', 'npx-cli.js')]") &&
+  verifier.includes("['tsc', 'tsx', 'expo'].includes(args[0])") &&
+  verifier.includes('shell: false,'),
+  'Local verifier must run npm/npx without a Windows shell as well.',
+);
+
+console.log('✓ Local Android preview publisher check/publish, shell-free Windows, failure gates and receipt tests passed');

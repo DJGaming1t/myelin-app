@@ -248,7 +248,13 @@ export function freeStudyWindows(
 
 function taskExamDays(workspace: WorkspaceState, task: StudyTask, now: number) {
   const direct = task.examId ? workspace.exams.find((exam) => exam.id === task.examId) : null;
-  if (direct) return examCalendarDaysUntil(direct.date, now);
+  // Exams are date-only calendar events (stored at local noon), not timestamped
+  // appointments. Keep today's exam relevant all day, but give past dates zero
+  // urgency. If a direct link is old, a relevant future topic exam can still count.
+  if (direct) {
+    const days = examCalendarDaysUntil(direct.date, now);
+    if (days >= 0) return days;
+  }
   if (!task.topicId) return null;
   const topic = workspace.topics.find((item) => item.id === task.topicId);
   if (!topic) return null;
@@ -258,7 +264,7 @@ function taskExamDays(workspace: WorkspaceState, task: StudyTask, now: number) {
         ? item.topicIds.includes(topic.id)
         : item.subjects.includes(topic.subject),
     )
-    .filter((item) => item.date >= now)
+    .filter((item) => examCalendarDaysUntil(item.date, now) >= 0)
     .sort((a, b) => a.date - b.date)[0];
   return exam ? examCalendarDaysUntil(exam.date, now) : null;
 }

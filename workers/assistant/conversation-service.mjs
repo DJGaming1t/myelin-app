@@ -63,12 +63,23 @@ export function parseConversationOutput(raw) {
   if (msg?.role !== 'assistant' || msg.refusal ||
       msg.function_call || (msg.tool_calls != null &&
         (!Array.isArray(msg.tool_calls) || msg.tool_calls.length > 0)) ||
-      typeof msg.content !== 'string' || !msg.content.trim() ||
-      encoder.encode(msg.content).length > MAX_REPLY_BYTES)
+      typeof msg.content !== 'string' || !msg.content.trim())
     throw new CloudError(502, 'invalid-provider-response');
-  const text = msg.content.trim();
-  // Reject leaked model-thought tokens rather than exposing internal traces.
-  if (/<\/?think\b|<\|im_(?:start|end)\|>/.test(text))
+  // Qwen3 can emit a complete private reasoning segment before its final
+  // answer. Strip that segment server-side; NEVER send it to the phone.
+  // Missing closing tags, nested thoughts, trailing thoughts and outputs
+  // consisting only of reasoning are not usable completed answers.
+  let text = msg.content.trim();
+  if (text.startsWith('<think>')) {
+    const ending = text.indexOf('</think>');
+    if (ending < 0) throw new CloudError(502, 'invalid-provider-response');
+    const privatePart = text.slice('<think>'.length, ending);
+    if (/<\/?think\b|<\|im_(?:start|end)\|>/.test(privatePart))
+      throw new CloudError(502, 'invalid-provider-response');
+    text = text.slice(ending + '</think>'.length).trim();
+  }
+  if (!text || encoder.encode(text).length > MAX_REPLY_BYTES ||
+      /<\/?think\b|<\|im_(?:start|end)\|>/.test(text))
     throw new CloudError(502, 'invalid-provider-response');
   return text;
 }

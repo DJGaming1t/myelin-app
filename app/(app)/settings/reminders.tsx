@@ -9,6 +9,7 @@ import {
   Switch,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -140,6 +141,8 @@ export default function RemindersScreen() {
   const { workspace } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const now = useScreenClock();
+  const { width, fontScale } = useWindowDimensions();
+  const isCompactLayout = width < 370 || fontScale >= 1.25;
   const {
     ready,
     status,
@@ -272,6 +275,10 @@ export default function RemindersScreen() {
     permission === 'granted' &&
     deviceScheduleChecked &&
     trackedScheduledCount !== scheduledCount;
+  const scheduleNeedsCheck = status === 'error' || !deviceScheduleChecked || deviceScheduleMismatch || trackedDeviceMismatch;
+  const permissionNeeded = settings.enabled && permission !== 'granted';
+  const activationHeading = !settings.enabled ? 'YOUR CHOICE' : permissionNeeded ? 'DEVICE PERMISSION NEEDED' : scheduleNeedsCheck ? 'SCHEDULE NEEDS CHECK' : scheduledCount > 0 ? 'REGISTERED ON DEVICE' : 'READY · NO REMINDERS DUE';
+  const activationDescription = !settings.enabled ? 'Nothing is scheduled until you choose to enable it.' : permissionNeeded ? 'Android is not allowing reminders. Check device permissions before relying on notifications.' : scheduleNeedsCheck ? 'Reminder delivery is not verified. Check the warning and refresh your schedule.' : scheduledCount > 0 ? `${scheduledCount} reminder${scheduledCount === 1 ? '' : 's'} registered on this device. Actual delivery still depends on Android settings and timing.` : 'Your reminders are enabled. Nothing currently needs a notification.';
 
   async function run(name: string, action: () => Promise<unknown>) {
     setBusy(name);
@@ -320,11 +327,11 @@ export default function RemindersScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <View style={styles.heroOrb}>
+        <View style={[styles.hero, isCompactLayout && styles.heroCompact]}>
+          <View style={[styles.heroOrb, isCompactLayout && styles.heroOrbCompact]}>
             <Text style={styles.heroOrbText}>{voice.mark}</Text>
           </View>
-          <View style={styles.heroCopy}>
+          <View style={[styles.heroCopy, isCompactLayout && styles.heroCopyCompact]}>
             <Text style={styles.heroEyebrow}>CURRENT STYLE</Text>
             <Text style={styles.heroTitle}>
               {voice.name} · {detail.name}
@@ -344,9 +351,142 @@ export default function RemindersScreen() {
           </View>
         </View>
 
+        <AnimatedDisclosure
+          visible={Boolean(message)}
+          style={[
+            styles.message,
+            status === 'error' || status === 'blocked'
+              ? styles.messageDanger
+              : null,
+          ]}>
+          <Text
+            style={[
+              styles.messageText,
+              status === 'error' || status === 'blocked'
+                ? styles.messageDangerText
+                : null,
+            ]}>
+            {message}
+          </Text>
+        </AnimatedDisclosure>
+
+        <Reveal key={`activation:${settings.enabled ? 'on' : 'off'}`} distance={6}>
+        <View style={styles.activationCard}>
+          <Text style={styles.activationEyebrow}>{activationHeading}</Text>
+          <Text style={styles.activationTitle}>{activationDescription}</Text>
+          <Text style={styles.activationText}>
+            Permission is requested only when you press Enable. MYELIN does not
+            register for push tokens or send notification data to a reminder
+            server in this feature.
+          </Text>
+
+          {!settings.enabled ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled || permission === 'unsupported'}
+              onPress={() => void run('enable', enable)}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                (disabled || permission === 'unsupported') && styles.disabled,
+                pressed && !disabled && styles.pressed,
+              ]}>
+              <Text style={styles.primaryButtonText}>
+                {busy === 'enable' ? 'Enabling…' : 'Enable my reminders'}
+              </Text>
+              <Text style={styles.primaryArrow}>→</Text>
+            </Pressable>
+          ) : (
+            <View style={[styles.activeActions, isCompactLayout && styles.activeActionsCompact]}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={disabled}
+                onPress={() => void run('refresh', reschedule)}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  styles.flexButton,
+                  disabled && styles.disabled,
+                  pressed && !disabled && styles.pressed,
+                ]}>
+                <Text style={styles.secondaryButtonText}>
+                  {busy === 'refresh' ? 'Refreshing…' : 'Refresh schedule'}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={disabled}
+                onPress={confirmDisable}
+                style={({ pressed }) => [
+                  styles.offButton,
+                  styles.flexButton,
+                  disabled && styles.disabled,
+                  pressed && !disabled && styles.pressed,
+                ]}>
+                <Text style={styles.offButtonText}>Turn off</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {settings.enabled && permission === 'granted' ? (
+            <View style={styles.diagnosticCard}>
+              <Text style={styles.diagnosticTitle}>Check notification delivery</Text>
+              <Text style={styles.activationText}>
+                Send one manual test in about 30 seconds. This does not affect your regular schedule, quiet hours or daily reminder cap.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Schedule a test notification for about 30 seconds from now"
+                disabled={disabled}
+                onPress={() => Alert.alert(
+                  'Test device notification?',
+                  'MYELIN will schedule one test notification for about 30 seconds from now. You can lock your phone to check background delivery.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Schedule test',
+                      onPress: () => void run('delivery-test', async () => {
+                        setTestRequested(false);
+                        setTestRequested(await sendDeliveryTest());
+                      }),
+                    },
+                  ],
+                )}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  disabled && styles.disabled,
+                  pressed && !disabled && styles.pressed,
+                ]}>
+                <Text style={styles.secondaryButtonText}>
+                  {busy === 'delivery-test' ? 'Scheduling test…' : 'Test in 30 seconds'}
+                </Text>
+              </Pressable>
+              {testRequested ? (
+                <Text style={styles.diagnosticNote} accessibilityRole="text">
+                  Test requested, not yet confirmed delivered. Lock your screen and check in around 30 seconds. If nothing appears, inspect notification channels, Do Not Disturb and battery restrictions. Android may deliver later.
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          {settings.enabled ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled}
+              onPress={() => void run('permission', refreshPermission)}
+              style={({ pressed }) => [
+                styles.permissionRefresh,
+                pressed && !disabled && styles.pressed,
+              ]}>
+              <Text style={styles.permissionRefreshText}>
+                Refresh device permission
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        </Reveal>
+
         <View style={styles.previewShell}>
-          <View style={styles.previewHeader}>
-            <View>
+          <View style={[styles.previewHeader, isCompactLayout && styles.wrapRow]}>
+            <View style={styles.previewHeaderCopy}>
               <Text style={styles.sectionEyebrow}>LIVE PREVIEW</Text>
               <Text style={styles.previewMeta}>
                 {previewPlan.length
@@ -354,7 +494,7 @@ export default function RemindersScreen() {
                   : 'Uses sample study data'}
               </Text>
             </View>
-            <View style={styles.previewBadge}>
+            <View style={[styles.previewBadge, isCompactLayout && styles.previewBadgeCompact]}>
               <Text style={styles.previewBadgeText}>
                 {voice.name.toUpperCase()} · {detail.name.toUpperCase()}
               </Text>
@@ -425,7 +565,7 @@ export default function RemindersScreen() {
         </View>
 
         <View style={styles.recoveredInsight}>
-          <View style={styles.recoveredInsightHeader}>
+          <View style={[styles.recoveredInsightHeader, isCompactLayout && styles.wrapRow]}>
             <View style={styles.recoveredInsightHeaderCopy}>
               <Text style={styles.sectionEyebrow}>
                 NEXT RECOVERED REMINDER
@@ -595,7 +735,7 @@ export default function RemindersScreen() {
         </View>
 
         <View style={styles.timelineCard}>
-          <View style={styles.timelineHeader}>
+          <View style={[styles.timelineHeader, isCompactLayout && styles.wrapRow]}>
             <View style={styles.timelineHeaderCopy}>
               <Text style={styles.sectionEyebrow}>
                 NEXT REMINDERS
@@ -642,7 +782,7 @@ export default function RemindersScreen() {
                       ]}
                     />
                     <View style={styles.timelineRowBody}>
-                      <View style={styles.timelineRowTop}>
+                      <View style={[styles.timelineRowTop, isCompactLayout && styles.wrapRow]}>
                         <Text style={styles.timelineSource}>
                           {timelineSourceLabel(
                             entry.source,
@@ -668,7 +808,7 @@ export default function RemindersScreen() {
                         {entry.reminder.title}
                       </Text>
 
-                      <View style={styles.timelineDecisionRow}>
+                      <View style={[styles.timelineDecisionRow, isCompactLayout && styles.wrapRow]}>
                         <View
                           style={[
                             styles.timelineDecision,
@@ -1035,149 +1175,6 @@ export default function RemindersScreen() {
 
         </Section>
 
-        <AnimatedDisclosure
-          visible={Boolean(message)}
-          style={[
-            styles.message,
-            status === 'error' || status === 'blocked'
-              ? styles.messageDanger
-              : null,
-          ]}>
-          <Text
-            style={[
-              styles.messageText,
-              status === 'error' || status === 'blocked'
-                ? styles.messageDangerText
-                : null,
-            ]}>
-            {message}
-          </Text>
-        </AnimatedDisclosure>
-
-        <Reveal key={`activation:${settings.enabled ? 'on' : 'off'}`} distance={6}>
-        <View style={styles.activationCard}>
-          <Text style={styles.activationEyebrow}>
-            {!settings.enabled ? 'YOUR CHOICE' :
-              status === 'error' || !deviceScheduleChecked
-                ? 'SCHEDULE NEEDS CHECK' : 'REMINDERS ACTIVE'}
-          </Text>
-          <Text style={styles.activationTitle}>
-            {!settings.enabled
-              ? 'Nothing is scheduled until you choose to enable it.'
-              : status === 'error' || !deviceScheduleChecked
-                ? 'Reminder delivery is not verified. Check the warning and refresh your schedule.'
-                : 'Useful nudges, capped and quiet-hour aware.'}
-          </Text>
-          <Text style={styles.activationText}>
-            Permission is requested only when you press Enable. MYELIN does not
-            register for push tokens or send notification data to a reminder
-            server in this feature.
-          </Text>
-
-          {!settings.enabled ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={disabled || permission === 'unsupported'}
-              onPress={() => void run('enable', enable)}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                (disabled || permission === 'unsupported') && styles.disabled,
-                pressed && !disabled && styles.pressed,
-              ]}>
-              <Text style={styles.primaryButtonText}>
-                {busy === 'enable' ? 'Enabling…' : 'Enable my reminders'}
-              </Text>
-              <Text style={styles.primaryArrow}>→</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.activeActions}>
-              <Pressable
-                accessibilityRole="button"
-                disabled={disabled}
-                onPress={() => void run('refresh', reschedule)}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  styles.flexButton,
-                  disabled && styles.disabled,
-                  pressed && !disabled && styles.pressed,
-                ]}>
-                <Text style={styles.secondaryButtonText}>
-                  {busy === 'refresh' ? 'Refreshing…' : 'Refresh schedule'}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                disabled={disabled}
-                onPress={confirmDisable}
-                style={({ pressed }) => [
-                  styles.offButton,
-                  styles.flexButton,
-                  disabled && styles.disabled,
-                  pressed && !disabled && styles.pressed,
-                ]}>
-                <Text style={styles.offButtonText}>Turn off</Text>
-              </Pressable>
-            </View>
-          )}
-
-          {settings.enabled && permission === 'granted' ? (
-            <View style={styles.diagnosticCard}>
-              <Text style={styles.diagnosticTitle}>Check notification delivery</Text>
-              <Text style={styles.activationText}>
-                Send one manual test in about 30 seconds. This does not affect your regular schedule, quiet hours or daily reminder cap.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Schedule a test notification for about 30 seconds from now"
-                disabled={disabled}
-                onPress={() => Alert.alert(
-                  'Test device notification?',
-                  'MYELIN will schedule one test notification for about 30 seconds from now. You can lock your phone to check background delivery.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Schedule test',
-                      onPress: () => void run('delivery-test', async () => {
-                        setTestRequested(false);
-                        setTestRequested(await sendDeliveryTest());
-                      }),
-                    },
-                  ],
-                )}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  disabled && styles.disabled,
-                  pressed && !disabled && styles.pressed,
-                ]}>
-                <Text style={styles.secondaryButtonText}>
-                  {busy === 'delivery-test' ? 'Scheduling test…' : 'Test in 30 seconds'}
-                </Text>
-              </Pressable>
-              {testRequested ? (
-                <Text style={styles.diagnosticNote} accessibilityRole="text">
-                  Test requested, not yet confirmed delivered. Lock your screen and check in around 30 seconds. If nothing appears, inspect notification channels, Do Not Disturb and battery restrictions. Android may deliver later.
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-
-          {settings.enabled ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={disabled}
-              onPress={() => void run('permission', refreshPermission)}
-              style={({ pressed }) => [
-                styles.permissionRefresh,
-                pressed && !disabled && styles.pressed,
-              ]}>
-              <Text style={styles.permissionRefreshText}>
-                Refresh device permission
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-        </Reveal>
-
         <View style={styles.ethics}>
           <Text style={styles.ethicsTitle}>What MYELIN will not do</Text>
           <Rule text="No streak-loss threats, guilt, fake urgency or “you are falling behind” messages." />
@@ -1409,7 +1406,14 @@ function Rule({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 60 },
+  content: { paddingHorizontal: spacing.md, paddingBottom: 60 },
+  wrapRow: { flexWrap: 'wrap' },
+  heroCompact: { flexWrap: 'wrap', gap: 9 },
+  heroOrbCompact: { width: 36, height: 36, borderRadius: 18 },
+  heroCopyCompact: { flexBasis: '70%', minWidth: 0 },
+  previewHeaderCopy: { flex: 1, minWidth: 0 },
+  previewBadgeCompact: { alignSelf: 'flex-start' },
+  activeActionsCompact: { flexDirection: 'column' },
   hero: {
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -1431,7 +1435,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroOrbText: { color: colors.accent, fontSize: 20, fontWeight: '700' },
-  heroCopy: { flex: 1 },
+  heroCopy: { flex: 1, minWidth: 0 },
   heroEyebrow: {
     color: colors.accent,
     fontSize: 10,
@@ -1439,8 +1443,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
   },
   heroTitle: { color: colors.text, fontSize: 17, fontWeight: '700', marginTop: 3 },
-  heroText: { color: colors.muted, fontSize: 11.3, lineHeight: 16, marginTop: 4 },
+  heroText: { color: colors.muted, fontSize: 12.2, lineHeight: 18, marginTop: 4 },
   statusPill: {
+    alignSelf: 'flex-start',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
@@ -1541,19 +1546,19 @@ const styles = StyleSheet.create({
   },
   timelineSource: {
     color: colors.subtle,
-    fontSize: 8.5,
+    fontSize: 10.5,
     lineHeight: 11,
     fontWeight: '900',
     letterSpacing: 0.7,
   },
   timelineTime: {
     color: colors.muted,
-    fontSize: 9.5,
+    fontSize: 11.5,
     lineHeight: 13,
   },
   timelineTitle: {
     color: colors.text,
-    fontSize: 11.5,
+    fontSize: 13.2,
     lineHeight: 16,
     fontWeight: '800',
     marginTop: 4,
@@ -1581,7 +1586,7 @@ const styles = StyleSheet.create({
   },
   timelineDecisionText: {
     color: colors.muted,
-    fontSize: 7.8,
+    fontSize: 10,
     lineHeight: 10,
     fontWeight: '900',
     letterSpacing: 0.65,
@@ -1591,14 +1596,14 @@ const styles = StyleSheet.create({
   },
   timelineRecoveredTag: {
     color: colors.accent,
-    fontSize: 7.8,
+    fontSize: 10,
     lineHeight: 10,
     fontWeight: '900',
     letterSpacing: 0.65,
   },
   timelineReason: {
     color: colors.textDim,
-    fontSize: 10,
+    fontSize: 12,
     lineHeight: 15,
     marginTop: 6,
   },
@@ -1611,14 +1616,14 @@ const styles = StyleSheet.create({
   },
   timelineUsefulnessScore: {
     color: colors.accent,
-    fontSize: 7.8,
+    fontSize: 10,
     lineHeight: 10,
     fontWeight: '900',
     letterSpacing: 0.7,
   },
   timelineUsefulnessReason: {
     color: colors.subtle,
-    fontSize: 9.4,
+    fontSize: 11.5,
     lineHeight: 13,
     marginTop: 3,
   },
@@ -1689,7 +1694,7 @@ const styles = StyleSheet.create({
   },
   recoveredInsightStatusText: {
     color: colors.textDim,
-    fontSize: 8.5,
+    fontSize: 10.5,
     lineHeight: 11,
     fontWeight: '900',
     letterSpacing: 0.7,
@@ -1751,7 +1756,7 @@ const styles = StyleSheet.create({
   },
   recoveredPreviewButtonTitle: {
     color: colors.text,
-    fontSize: 12.2,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   recoveredPreviewButtonText: {
@@ -1822,6 +1827,7 @@ const styles = StyleSheet.create({
   },
   previewMeta: { color: colors.muted, fontSize: 10.5, marginTop: 3 },
   previewBadge: {
+    flexShrink: 1,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.24)',
@@ -1831,7 +1837,7 @@ const styles = StyleSheet.create({
   },
   previewBadgeText: {
     color: colors.accent,
-    fontSize: 7.4,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.7,
   },
@@ -1856,7 +1862,7 @@ const styles = StyleSheet.create({
   },
   previewTabText: {
     color: colors.muted,
-    fontSize: 10.4,
+    fontSize: 12,
     fontWeight: '700',
   },
   previewTabTextActive: { color: colors.accent },
@@ -1894,15 +1900,17 @@ const styles = StyleSheet.create({
   },
   notificationTime: { color: colors.subtle, fontSize: 10, marginLeft: 'auto' },
   notificationSubtitle: {
-    fontSize: 8.8,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 1,
     marginTop: 10,
   },
-  notificationTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 5 },
-  notificationBody: { color: colors.muted, fontSize: 11.2, lineHeight: 16, marginTop: 3 },
+  notificationTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: 5 },
+  notificationBody: { color: colors.muted, fontSize: 12.5, lineHeight: 16, marginTop: 3 },
   notificationBottom: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 10,
@@ -1916,7 +1924,7 @@ const styles = StyleSheet.create({
   notificationAction: { color: colors.subtle, fontSize: 10.3, fontWeight: '600' },
   section: { marginTop: spacing.xl },
   sectionTitle: { color: colors.text, fontSize: 14.5, fontWeight: '700' },
-  sectionSubtitle: { color: colors.subtle, fontSize: 11.3, lineHeight: 16.5, marginTop: 4 },
+  sectionSubtitle: { color: colors.subtle, fontSize: 12.5, lineHeight: 16.5, marginTop: 4 },
   sectionBody: {
     marginTop: 10,
     borderRadius: radius.lg,
@@ -1944,11 +1952,11 @@ const styles = StyleSheet.create({
   voiceMarkActive: { color: colors.accent },
   selected: {
     color: colors.accent,
-    fontSize: 6.7,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  voiceName: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 5 },
+  voiceName: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 5 },
   voiceNameActive: { color: colors.accent },
   choiceDescription: {
     color: colors.subtle,
@@ -1977,12 +1985,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 5,
   },
-  detailName: { color: colors.text, fontSize: 10.7, fontWeight: '700' },
+  detailName: { color: colors.text, fontSize: 12, fontWeight: '700' },
   detailNameActive: { color: colors.accent },
   toggleRow: { minHeight: 69, flexDirection: 'row', alignItems: 'center', gap: 12 },
   toggleCopy: { flex: 1 },
-  toggleLabel: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  toggleHelper: { color: colors.subtle, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  toggleLabel: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  toggleHelper: { color: colors.subtle, fontSize: 12, lineHeight: 16, marginTop: 3 },
   presetRow: { gap: 7, paddingVertical: 7 },
   preset: {
     minWidth: 98,
@@ -1996,9 +2004,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,128,91,0.34)',
     backgroundColor: colors.accentSoft,
   },
-  presetLabel: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
+  presetLabel: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   presetLabelActive: { color: colors.text },
-  presetTime: { color: colors.subtle, fontSize: 10, marginTop: 3 },
+  presetTime: { color: colors.subtle, fontSize: 11.5, marginTop: 3 },
   presetTimeActive: { color: colors.accent },
   timeRow: {
     minHeight: 58,
@@ -2009,12 +2017,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 10,
   },
   timeRowCompact: { flex: 1, borderTopWidth: 0, marginTop: 0, paddingTop: 0 },
-  timeLabel: { color: colors.subtle, fontSize: 10.5, fontWeight: '700' },
-  timeValue: { color: colors.text, fontSize: 11.5, fontWeight: '700', marginTop: 3 },
-  stepper: { flexDirection: 'row', gap: 5 },
+  timeLabel: { color: colors.subtle, fontSize: 12, fontWeight: '700' },
+  timeValue: { color: colors.text, fontSize: 13, fontWeight: '700', marginTop: 3 },
+  stepper: { flexDirection: 'row', gap: 5, flexShrink: 0 },
   stepButton: {
     minWidth: layout.minTouch,
     minHeight: layout.minTouch,
@@ -2025,10 +2034,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 7,
   },
-  stepButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
+  stepButtonText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   microLabel: {
     color: colors.subtle,
-    fontSize: 7.2,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
     marginTop: 12,
@@ -2052,7 +2061,7 @@ const styles = StyleSheet.create({
   offsetTextActive: { color: colors.accent },
   quietGrid: { gap: 1 },
   statusLine: {
-    minHeight: 39,
+    minHeight: 48,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     flexDirection: 'row',
@@ -2061,12 +2070,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   statusLineLabel: {
+    flexShrink: 0,
     color: colors.subtle,
-    fontSize: 7.2,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  statusLineValue: { flex: 1, minWidth: 0, color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'right' },
+  statusLineValue: { flex: 1, minWidth: 0, color: colors.text, fontSize: 12.5, fontWeight: '700', textAlign: 'right' },
   previewButton: {
     minHeight: 57,
     marginTop: 10,
@@ -2080,7 +2090,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
-  previewButtonTitle: { color: colors.text, fontSize: 12.2, fontWeight: '700' },
+  previewButtonTitle: { color: colors.text, fontSize: 13.5, fontWeight: '700' },
   previewButtonText: { color: colors.subtle, fontSize: 10.8, lineHeight: 15, marginTop: 3 },
   previewButtonCopy: { flex: 1, minWidth: 0 },
   previewGlyph: { color: colors.accent, fontSize: 17, flexShrink: 0 },
@@ -2095,7 +2105,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,161,145,0.25)',
     backgroundColor: 'rgba(255,161,145,0.04)',
   },
-  messageText: { color: colors.muted, fontSize: 11.2, lineHeight: 16.5 },
+  messageText: { color: colors.muted, fontSize: 12.5, lineHeight: 16.5 },
   messageDangerText: { color: colors.danger },
   activationCard: {
     marginTop: spacing.xl,
@@ -2107,12 +2117,12 @@ const styles = StyleSheet.create({
   },
   activationEyebrow: {
     color: colors.accent,
-    fontSize: 7.5,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.1,
   },
-  activationTitle: { color: colors.text, fontSize: 13.5, fontWeight: '700', marginTop: 5 },
-  activationText: { color: colors.muted, fontSize: 11.2, lineHeight: 16.5, marginTop: 5 },
+  activationTitle: { color: colors.text, fontSize: 15, fontWeight: '700', marginTop: 5 },
+  activationText: { color: colors.muted, fontSize: 12.2, lineHeight: 16.5, marginTop: 5 },
   primaryButton: {
     minHeight: 49,
     marginTop: 13,
@@ -2135,7 +2145,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  secondaryButtonText: { color: colors.text, fontSize: 11.2, fontWeight: '700' },
+  secondaryButtonText: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
   arrow: { color: colors.accent, fontSize: 16, position: 'absolute', right: 11 },
   activeActions: { flexDirection: 'row', gap: 8, marginTop: 5 },
   flexButton: { flex: 1 },
@@ -2149,27 +2159,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  offButtonText: { color: colors.danger, fontSize: 11.2, fontWeight: '700' },
+  offButtonText: { color: colors.danger, fontSize: 12.5, fontWeight: '700' },
   diagnosticCard: {
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.line,
   },
-  diagnosticTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
-  diagnosticNote: { color: colors.subtle, fontSize: 11, lineHeight: 17, marginTop: 10 },
+  diagnosticTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  diagnosticNote: { color: colors.subtle, fontSize: 12.2, lineHeight: 17, marginTop: 10 },
   permissionRefresh: { minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center', marginTop: 3 },
-  permissionRefreshText: { color: colors.subtle, fontSize: 10.8, fontWeight: '600' },
+  permissionRefreshText: { color: colors.subtle, fontSize: 12, fontWeight: '600' },
   ethics: {
     marginTop: 31,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     paddingTop: spacing.md,
   },
-  ethicsTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700', marginBottom: 8 },
+  ethicsTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginBottom: 8 },
   rule: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 7 },
   ruleMark: { color: colors.success, fontSize: 10 },
-  ruleText: { flex: 1, color: colors.subtle, fontSize: 11, lineHeight: 16 },
+  ruleText: { flex: 1, color: colors.subtle, fontSize: 12, lineHeight: 16 },
   disabled: { opacity: 0.42 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

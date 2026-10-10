@@ -450,8 +450,8 @@ workflow.history.push({
 const beforeWorkflow = cloneWorkspace(workflow);
 const workflowAnswer = tryAssistantWorkflowAnalysisReply('Analyse my current workflow', workflow, now)!;
 assert.match(workflowAnswer, /2 open tasks/);
-assert.match(workflowAnswer, /95 min known work remaining/);
-assert.match(workflowAnswer, /35 min logged across 1 day/);
+assert.match(workflowAnswer, /1 h 35 min known work remaining/);
+assert.match(workflowAnswer, /35 min logged on 1 day/);
 assert.match(workflowAnswer, /Physics practical notebook/);
 assert.match(workflowAnswer, /Chemistry record book/);
 assert.match(workflowAnswer, /Term science exam/);

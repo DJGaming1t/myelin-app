@@ -631,16 +631,17 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   const cancelCurrentSchedule = useCallback(
     async (owner: string, current: ReminderDeviceState) => {
+      // Do not claim that reminders are disabled if Android cannot read its
+      // registered notifications. Untracked delivery tests also need removal.
       const audit =
         Platform.OS === 'web'
           ? null
-          : await getScheduledReminderAudit(owner).catch(
-              () => null,
-            );
+          : await getScheduledReminderAudit(owner);
       const idsToCancel = Array.from(
         new Set([
           ...current.scheduledIds,
           ...(audit?.registeredIds ?? []),
+          ...(audit?.deliveryTestIds ?? []),
         ]),
       );
 
@@ -1321,6 +1322,13 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         setMessage('Allow notifications in the device settings before sending a delivery test.');
         return false;
       }
+
+      // Only one pending diagnostic per owner: otherwise repeated taps can
+      // create a burst of extra notifications unrelated to the study plan.
+      const existing = await getScheduledReminderAudit(owner);
+      if (!isCurrentReminderAction(action)) return false;
+      await cancelReminderIds(existing.deliveryTestIds);
+      if (!isCurrentReminderAction(action)) return false;
 
       testId = await scheduleReminderDeliveryTest(
         stateRef.current.settings,

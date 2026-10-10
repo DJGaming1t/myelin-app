@@ -254,7 +254,7 @@ export default function FocusScreen() {
       <SafeAreaView style={styles.safe}>
         <AmbientBackdrop />
         <View style={styles.setupPage}>
-          <TopBar label="Focus" onBack={() => router.replace('/(app)/review')} />
+          <TopBar label="Focus" backLabel="Review" onBack={() => router.replace('/(app)/review')} />
           <View style={styles.missing}>
             <Text style={styles.missingTitle}>A review queue is already active.</Text>
             <Text style={styles.missingText}>
@@ -301,7 +301,7 @@ export default function FocusScreen() {
       <SafeAreaView style={styles.safe}>
         <AmbientBackdrop />
         <View style={styles.setupPage}>
-          <TopBar label="Focus" onBack={() => router.back()} />
+          <TopBar label="Focus" backLabel="Back" onBack={() => router.back()} />
 
           <ScrollView
             keyboardShouldPersistTaps="handled"
@@ -726,18 +726,27 @@ function TopBar({
   label,
   onBack,
   helper,
+  backLabel = 'Today',
 }: {
   label: string;
   onBack: () => void;
   helper?: string;
+  backLabel?: string;
 }) {
   return (
     <View style={styles.topBar}>
-      <Pressable accessibilityRole="button" onPress={onBack} hitSlop={10}>
-        <Text style={styles.back}>← {label === 'Focus' ? 'Today' : 'Today'}</Text>
-      </Pressable>
-      <Text style={styles.modeTitle}>{label}</Text>
-      <Text style={styles.topHelper}>{helper ?? ''}</Text>
+      <View style={styles.topBarMain}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={backLabel === 'Back' ? 'Go back' : 'Back to ' + backLabel}
+          onPress={onBack}
+          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+          <Text style={styles.back}>← {backLabel}</Text>
+        </Pressable>
+        <Text style={styles.modeTitle} numberOfLines={1}>{label}</Text>
+        <View style={styles.topBarSpacer} accessible={false} />
+      </View>
+      {helper ? <Text style={styles.topHelper}>{helper}</Text> : null}
     </View>
   );
 }
@@ -793,25 +802,40 @@ const styles = StyleSheet.create({
   loading: { color: colors.muted, fontSize: 12 },
   storageWarning: { color: colors.danger, fontSize: 12.5, lineHeight: 19, paddingVertical: 9, paddingHorizontal: 12, marginTop: 10, borderWidth: 1, borderColor: colors.danger, borderRadius: radius.md, alignSelf: 'stretch' },
   topBar: {
-    minHeight: 58,
-    paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
   },
-  back: { color: colors.muted, fontSize: 11.5, fontWeight: '600' },
+  topBarMain: {
+    minHeight: layout.minTouch + 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    width: 96,
+    minHeight: layout.minTouch,
+    justifyContent: 'center',
+  },
+  back: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '600' },
   modeTitle: {
-    position: 'absolute',
-    left: '50%',
-    transform: [{ translateX: -24 }],
-    color: colors.textDim,
-    fontSize: 11.5,
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'center',
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  topHelper: { color: colors.subtle, fontSize: 11 },
+  topBarSpacer: { width: 96 },
+  topHelper: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+    paddingBottom: 9,
+  },
   setupContent: { padding: spacing.lg, paddingBottom: 48 },
   eyebrow: { color: colors.accent, fontSize: 11, lineHeight: 15, fontWeight: '800', letterSpacing: 1.2 },
   setupTitle: { color: colors.text, fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.2, marginTop: 8 },

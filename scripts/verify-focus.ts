@@ -454,6 +454,34 @@ assert.ok(
   'Focus must keep unsaved thought text and show actionable storage errors without navigating away.',
 );
 
+// A single hard-coded title offset makes Focus/Break headers overlap status
+// labels on narrow Android screens. Keep navigation truthful by destination.
+assert.ok(
+  focusScreenSource.includes("backLabel = 'Today'") &&
+    focusScreenSource.includes('backLabel="Review"') &&
+    focusScreenSource.includes('backLabel="Back"') &&
+    focusScreenSource.includes("accessibilityLabel={backLabel === 'Back' ? 'Go back' : 'Back to ' + backLabel}"),
+  'Focus back actions must accurately describe Today, Review, and previous-screen destinations.',
+);
+assert.ok(
+  focusScreenSource.includes('<View style={styles.topBarMain}>') &&
+    focusScreenSource.includes('styles.backButton') &&
+    focusScreenSource.includes('<View style={styles.topBarSpacer} accessible={false} />') &&
+    focusScreenSource.includes('{helper ? <Text style={styles.topHelper}>{helper}</Text> : null}') &&
+    focusScreenSource.includes('numberOfLines={1}>{label}</Text>') &&
+    !focusScreenSource.includes('translateX: -24') &&
+    !focusScreenSource.includes("position: 'absolute',\n    left: '50%'"),
+  'Focus navigation must use symmetric flexible header columns instead of an absolute title offset.',
+);
+const headerStyleStart = focusScreenSource.indexOf('  backButton: {');
+const headerStyleEnd = focusScreenSource.indexOf('\n  back:', headerStyleStart);
+assert.ok(
+  headerStyleStart > 0 &&
+    focusScreenSource.slice(headerStyleStart, headerStyleEnd).includes('minHeight: layout.minTouch'),
+  'Focus back control must meet the minimum touch target height.',
+);
+console.log('✓ Focus header is responsive with accurate back labels and accessible touch targets');
+
 const reviewScreenSource = fs.readFileSync(
   path.join(process.cwd(), 'app/(app)/review/index.tsx'),
   'utf8',

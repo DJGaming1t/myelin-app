@@ -3,7 +3,7 @@ import { sleepWindows } from '@/src/features/adaptive/sleep-engine';
 import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, scheduledWorkTasksForDay, startOfLocalDay, taskPlanningScoreEvidence } from '@/src/features/planning/day-engine';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
-export type PlanningIssueCode = 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'deadline-capacity' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
+export type PlanningIssueCode = 'estimate-met' | 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'deadline-capacity' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
 export type PlanningIssue = {
   code: PlanningIssueCode;
   taskIds: string[];
@@ -68,6 +68,13 @@ export function reviewAssistantPlanning(workspace: WorkspaceState, now = Date.no
       issues.push({ code: 'missing-estimate', taskIds: [task.id], day,
         message: `“${name}” needs a duration estimate before I can judge whether all the work fits.` });
     }
+    // Keep the saved slot visible, but don't label it as conflicting or
+    // overbooking time when the known task estimate was already met.
+    if (scheduled && task.estimatedMinutes > 0 && taskRemainingMinutes(task) <= 0) {
+      issues.push({ code: 'estimate-met', taskIds: [task.id], day,
+        message: `“${name}” still has a saved study slot, but its recorded work meets its estimate. The slot remains on Day map for review and does not reserve future study capacity. Mark complete or extend the estimate if more work is needed.` });
+      continue;
+    }
     if (task.dueAt > 0 && task.dueAt < now) issues.push({ code: 'overdue', taskIds: [task.id], day: localDayKey(task.dueAt),
       message: `“${name}” is still open after its recorded deadline (${localDayKey(task.dueAt)}). Check what remains.` });
     if (task.dueAt > now && task.dueAt < end && taskRemainingMinutes(task) > 0) {
@@ -94,7 +101,8 @@ export function reviewAssistantPlanning(workspace: WorkspaceState, now = Date.no
     const from = offset === 0 ? now : day;
     const dayKey = localDayKey(day);
     const scheduled = open.filter(task => task.planState === 'scheduled' && task.scheduledStart > 0 &&
-      task.scheduledEnd > task.scheduledStart && task.scheduledStart < next && task.scheduledEnd > from)
+      task.scheduledEnd > task.scheduledStart && task.scheduledStart < next && task.scheduledEnd > from &&
+      (task.estimatedMinutes <= 0 || taskRemainingMinutes(task) > 0))
       .sort((a, b) => a.scheduledStart - b.scheduledStart);
     const fixed = commitmentOccurrencesForDay(workspace.commitments, day);
     for (let i = 0; i < scheduled.length; i++) {
@@ -223,7 +231,8 @@ export function tryAssistantNextTaskReply(request: string, workspace: WorkspaceS
   // Current planned session outranks an inbox suggestion. Never recommend
   // studying over recorded school, sleep, or another active scheduled task.
   const active = open.filter(task => task.planState === 'scheduled' && task.postponedUntil <= now &&
-    task.scheduledStart <= now && task.scheduledEnd > now);
+    task.scheduledStart <= now && task.scheduledEnd > now &&
+    (task.estimatedMinutes <= 0 || taskRemainingMinutes(task) > 0));
   if (active.length > 1) return 'Several saved study blocks overlap now. Resolve them in Day map before starting. ' + note;
   if (active.length === 1) {
     const task = active[0]!;
@@ -294,13 +303,19 @@ export function tryAssistantNextTaskReply(request: string, workspace: WorkspaceS
         ' This is a useful first step, not a promise the whole task fits today.\n\n' + note;
     }
   }
-  const scheduled = open.filter(task => task.planState === 'scheduled' && task.scheduledStart > now)
+  const scheduled = open.filter(task => task.planState === 'scheduled' && task.scheduledStart > now &&
+    (task.estimatedMinutes <= 0 || taskRemainingMinutes(task) > 0))
     .sort((a, b) => a.scheduledStart - b.scheduledStart)[0];
   if (scheduled && !candidates.length)
     return 'Your next recorded scheduled task is ' + nameOf(scheduled) + ' at ' + clock(scheduled.scheduledStart) +
       '. Nothing was started or moved. ' + note;
-  if (!candidates.length)
+  if (!candidates.length) {
+    const staleSlot = open.find(task => task.planState === 'scheduled' &&
+      task.estimatedMinutes > 0 && taskRemainingMinutes(task) <= 0);
+    if (staleSlot) return nameOf(staleSlot) +
+      ' has a saved study slot, but its recorded time already meets the estimate. The slot remains visible on Day map and does not reserve study time. Review completion or extend the estimate. ' + note;
     return 'No eligible unscheduled task has a known remaining estimate right now. Review missing estimates, postponements and scheduled tasks in Today. ' + note;
+  }
   return 'No safe five-minute window for the eligible tasks remains in today’s recorded free time before their deadlines. Check Day map rather than forcing study through commitments. ' + note;
 }
 

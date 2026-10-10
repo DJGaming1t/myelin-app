@@ -1224,6 +1224,38 @@ const now = local(2026, 10, 5, 15, 0);
   assert.equal(withOutcome.days[0]!.existingStudyMinutes, 50);
   assert.equal(withOutcome.days[0]!.scheduledStudyMinutes, 30);
   assert.equal(withOutcome.days[0]!.sustainableRemainingMinutes, 40);
+
+  // Stored future slot stays on the task, but once 90/90 minutes were
+  // logged, neither exam planner can reserve an extra 30-minute session.
+  const fullyLoggedSchedule = cloneWorkspace(partial);
+  fullyLoggedSchedule.tasks[0]!.actualMinutes = 90;
+  const loggedSnapshot = cloneWorkspace(fullyLoggedSchedule);
+  const soloLogged = buildExamPreparationPlan(fullyLoggedSchedule, 'time-credit-exam', now)!;
+  const jointLogged = buildJointExamPreparationPlan(fullyLoggedSchedule, now);
+  assert.equal(soloLogged.days[0]!.scheduledStudyMinutes, 0);
+  assert.equal(jointLogged.days[0]!.scheduledStudyMinutes, 0);
+  assert.equal(soloLogged.days[0]!.existingStudyMinutes, 30,
+    'Real recorded topic history remains completed study even when no task work remains');
+  assert.equal(jointLogged.workloadLedger.taskRemainingMinutes, 0);
+  assert.equal(soloLogged.days[0]!.freeClockMinutes,
+    solo.days[0]!.freeClockMinutes + 30,
+    'The no-work reservation must release its 30-minute blocked future window');
+  assert.equal(jointLogged.days[0]!.freeClockMinutes,
+    jointPart.days[0]!.freeClockMinutes + 30);
+  assert.equal(fullyLoggedSchedule.tasks[0]!.planState, 'scheduled');
+  assert.deepEqual(fullyLoggedSchedule, loggedSnapshot,
+    'Exam capacity projection is read-only and must preserve the original slot');
+
+  const almostDoneSchedule = cloneWorkspace(partial);
+  almostDoneSchedule.tasks[0]!.actualMinutes = 89;
+  assert.equal(buildJointExamPreparationPlan(almostDoneSchedule, now)
+    .days[0]!.scheduledStudyMinutes, 30,
+    'A partial task must retain its planned block until explicitly updated');
+  const unestimatedSchedule = cloneWorkspace(partial);
+  unestimatedSchedule.tasks[0]!.estimatedMinutes = 0;
+  assert.equal(buildJointExamPreparationPlan(unestimatedSchedule, now)
+    .days[0]!.scheduledStudyMinutes, 30,
+    'Unknown estimates are not evidence that the task is complete');
 }
 
 {

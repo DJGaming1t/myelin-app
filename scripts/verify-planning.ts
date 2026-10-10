@@ -17,6 +17,7 @@ import {
 import {
   completeTask,
   createStudyTask,
+  extendMetTaskEstimate,
   postponeTask,
   recordTaskMinutes,
   reopenTask,
@@ -309,6 +310,37 @@ function main() {
     window.start <= local(2026, 10, 1, 16) && window.end >= local(2026, 10, 1, 17)),
     'Unknown estimate must not be treated as a fully completed task');
 
+
+  // Day Map asks first; the pure extension engine must only mutate after a
+  // user-confirmed choice, preserving the saved slot and time already done.
+  const extension = createStudyTask({
+    title: 'Check extra examples', estimatedMinutes: 30, now,
+  });
+  scheduleTask(extension, local(2026, 10, 1, 16), local(2026, 10, 1, 17), now);
+  extension.actualMinutes = 30;
+  const beforeExt = { ...extension };
+  assert.equal(extendMetTaskEstimate(extension, 0, now), false);
+  assert.equal(extendMetTaskEstimate(extension, -25, now), false);
+  assert.equal(extendMetTaskEstimate(extension, Number.NaN, now), false);
+  assert.deepEqual(extension, beforeExt, 'Cancel/invalid extension cannot edit a task');
+  assert.equal(extendMetTaskEstimate(extension, 25, now), true);
+  assert.equal(extension.estimatedMinutes, 55);
+  assert.equal(taskRemainingMinutes(extension), 25);
+  assert.equal(extension.actualMinutes, 30);
+  assert.equal(extension.planState, 'scheduled');
+  assert.equal(extension.scheduledStart, beforeExt.scheduledStart);
+  assert.equal(extension.scheduledEnd, beforeExt.scheduledEnd);
+  assert.equal(extension.status, 'open');
+  assert.equal(extendMetTaskEstimate(extension, 25, now), false,
+    'A new extension requires the estimate to be met again');
+  const completedExtension = { ...beforeExt, status: 'completed' as const };
+  assert.equal(extendMetTaskEstimate(completedExtension, 25, now), false);
+  const maxExtension = { ...beforeExt, actualMinutes: 710, estimatedMinutes: 710 };
+  assert.equal(extendMetTaskEstimate(maxExtension, 25, now), false);
+  assert.equal(maxExtension.estimatedMinutes, 710, 'Never claim +25 when the cap is less');
+  const unknownExtension = { ...beforeExt, estimatedMinutes: 0 };
+  assert.equal(extendMetTaskEstimate(unknownExtension, 25, now), false);
+
   const extra = createStudyTask({
     title: 'Biology recall',
     subject: 'Biology',
@@ -435,6 +467,38 @@ console.log('✓ skipped dates survive reload, free time is reclaimed, overnight
     path.join(process.cwd(), 'app/(app)/today/day-map.tsx'),
     'utf8',
   );
+
+  // Fully logged scheduled tasks get accessible, explicit choices. The
+  // existing TaskForm is the custom-minute path and requires a Save task tap.
+  assert.ok(
+    dayMapSource.includes('ESTIMATE MET · REVIEW TASK') &&
+      dayMapSource.includes('label="Mark complete"') &&
+      dayMapSource.includes('label="Extend estimate"'),
+    'Day Map must surface both choices on the estimate-met card',
+  );
+  assert.ok(
+    dayMapSource.includes('confirmLoggedTaskCompletion(task.id)') &&
+      dayMapSource.includes("Alert.alert(") &&
+      dayMapSource.includes("text: 'Keep open'") &&
+      dayMapSource.includes('completeTaskWithUndo(taskId)'),
+    'Mark complete needs confirmation and the existing reversible completion path',
+  );
+  assert.ok(
+    dayMapSource.includes('extendLoggedTask(task.id)') &&
+      dayMapSource.includes("text: 'Cancel'") &&
+      dayMapSource.includes("text: 'Edit minutes'") &&
+      dayMapSource.includes("text: 'Add 25 min'") &&
+      dayMapSource.includes('extendMetTaskEstimate(current, 25)'),
+    'Extending an estimate must offer cancel, custom edit and explicit +25-minute consent',
+  );
+  const taskFormSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/features/planning/TaskForm.tsx'), 'utf8',
+  );
+  assert.ok(taskFormSource.includes('<Label>Estimated time</Label>') &&
+    taskFormSource.includes("target.estimatedMinutes = minutes;") &&
+    taskFormSource.includes("Save task"),
+    'Custom estimate edits must still require the existing Save task control');
+
   assert.ok(
     dayMapSource.includes('buildAppliedReclaimedWindows') &&
       dayMapSource.includes('RECOVERED AUTOPILOT WINDOW'),

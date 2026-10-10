@@ -167,12 +167,15 @@ function actualStudyMinutesForDay(workspace: WorkspaceState, day: number) {
   return Math.round(topicSessions + standaloneTaskSessions);
 }
 
-function scheduledStudyMinutesForDay(workspace: WorkspaceState, day: number) {
+function scheduledStudyMinutesForDay(workspace: WorkspaceState, day: number, now: number) {
   const start = startOfLocalDay(day);
   const end = dayEnd(day);
+  // Finished work is tracked separately. Reserve only the part of a planned
+  // session that can still happen; elapsed time must never be counted twice.
+  const from = Math.max(start, now);
   return Math.round(
     scheduledTasksForDay(workspace.tasks, day).reduce((sum, task) => {
-      const overlapStart = Math.max(start, task.scheduledStart);
+      const overlapStart = Math.max(from, task.scheduledStart);
       const overlapEnd = Math.min(end, task.scheduledEnd);
       return sum + Math.max(0, overlapEnd - overlapStart) / 60_000;
     }, 0),
@@ -725,7 +728,7 @@ export function buildExamPreparationPlan(
       minMinutes: 10,
     }).reduce((sum, window) => sum + window.minutes, 0);
     const existingStudyMinutes = actualStudyMinutesForDay(workspace, day);
-    const scheduledStudyMinutes = scheduledStudyMinutesForDay(workspace, day);
+    const scheduledStudyMinutes = scheduledStudyMinutesForDay(workspace, day, now);
     const sustainableRemainingMinutes = Math.max(
       0,
       capacityProfile.sustainableDailyMinutes -
@@ -1286,7 +1289,7 @@ export function buildJointExamPreparationPlan(
       minMinutes: 10,
     }).reduce((sum, window) => sum + window.minutes, 0);
     const existingStudyMinutes = actualStudyMinutesForDay(workspace, day);
-    const scheduledStudyMinutes = scheduledStudyMinutesForDay(workspace, day);
+    const scheduledStudyMinutes = scheduledStudyMinutesForDay(workspace, day, now);
     const sustainableRemainingMinutes = Math.max(
       0,
       profile.sustainableDailyMinutes -

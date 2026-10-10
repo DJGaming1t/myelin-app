@@ -16,7 +16,7 @@ Earlier schoolwork update published 2026-10-08 09:53 UTC (15:23 IST): group `73b
 
 **Physical Android QA pending:** Confirm local/offline workflow analysis without cloud; after a real owner-authorized HTTPS deployment, verify the explicit cloud consent dialog shows workload-count sharing, inspect outbound request locally for absence of raw saved notes or study answers, check multi-turn hosted analysis changes with workspace data, and confirm that declining consent never sends a request. Never interpret successful Expo OTA publication as proof hosted inference has been deployed or tested.
 
-[Android beta publication run 38037012724](https://github.com/DJGaming1t/myelin-app/actions/runs/38037012724) initiated for compatible runtime `0.2.13`. **At the first checkpoint the publish receipt remains to be confirmed.** The deployed Cloudflare Worker/D1 and real-model smoke test are still unavailable.
+[Android beta publication run 38037012724](https://github.com/DJGaming1t/myelin-app/actions/runs/38037012724) initiated for compatible runtime `0.2.13`. **Verified and published**: [run 38037012724](https://github.com/DJGaming1t/myelin-app/actions/runs/38037012724) both verify/publish SUCCESS, Expo `✔ Published!`, Android update `01a124e1-1be6-7f42-b922-4d4d9e75627d`, group `6c4f8f7d-a926-4d76-894d-d6cdca05538c`, runtime `0.2.13`, source `e1beae6ff6c07f5a95bafbcbc12851e2909948c0`, created UTC `2026-10-10T08:14:54.950Z` (13:44:54 IST), EAS receipt artifact `11664004147` and app scenario artifact `11663669046`. Real hosted Cloudflare Qwen inference remains undeployed and unverified. The deployed Cloudflare Worker/D1 and real-model smoke test are still unavailable.
 
 ## Hosted Qwen chat bridge — published 2026-10-10
 

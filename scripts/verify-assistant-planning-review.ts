@@ -5,7 +5,7 @@ import { cloneWorkspace, createEmptyWorkspace } from '../src/data/schema';
 import { createStudyTask, scheduleTask } from '../src/features/planning/task-engine';
 import { planningModelContext, reviewAssistantPlanning, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply, tryAssistantNextTaskReply } from '../src/features/assistant/assistant-planning-review';
 import { tryAssistantPlanMathReply } from '../src/features/assistant/assistant-plan-math';
-import { addLocalDays, startOfLocalDay } from '../src/features/planning/day-engine';
+import { addLocalDays, startOfLocalDay, taskPlanningScore, taskPlanningScoreEvidence } from '../src/features/planning/day-engine';
 
 const at = (day: number, hour: number, minute = 0) => { const d = new Date(day); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute).getTime(); };
 const now = new Date(2026, 9, 9, 12, 0).getTime();
@@ -214,14 +214,58 @@ assert.match(nextAnswer, /window begins at/);
 assert.match(nextAnswer, /Maths practice/);
 assert.match(nextAnswer, /25-minute Focus/);
 assert.match(nextAnswer, /due today/i);
-assert.doesNotMatch(nextAnswer, /History essay/);
+assert.match(nextAnswer, /Why this task: MYELIN score 122 points/);
+assert.match(nextAnswer, /saved priority \+36/);
+assert.match(nextAnswer, /marked for Today \+28/);
+assert.match(nextAnswer, /deadline urgency \+58/);
+assert.match(nextAnswer, /Next eligible alternative: “History essay” — 58 points/);
+assert.match(nextAnswer, /higher total planning weight/);
+assert.equal(taskPlanningScore(recommend, urgentMaths, now), taskPlanningScoreEvidence(recommend, urgentMaths, now).score);
+assert.equal(taskPlanningScoreEvidence(recommend, urgentMaths, now).score, 122);
+assert.equal(taskPlanningScoreEvidence(recommend, laterHistory, now).score, 58);
+
 assert.match(nextAnswer, /Nothing was changed/);
 assert.deepEqual(recommend, recommendBefore, 'Next-task recommendation must be read-only');
+
+// Explanations must account for real exam linkage and recorded postponements,
+// without altering the score that the main Day map already uses.
+const withExam = cloneWorkspace(recommend);
+withExam.exams.push({ id: 'history-exam', name: 'History test', date: at(day, 17),
+  subjects: ['History'], scope: 'subjects', topicIds: [] });
+withExam.tasks[1]!.examId = 'history-exam';
+withExam.tasks[1]!.priority = 3;
+const examEvidence = taskPlanningScoreEvidence(withExam, withExam.tasks[1]!, now);
+assert.ok(examEvidence.factors.exam > 0);
+assert.equal(examEvidence.score, taskPlanningScore(withExam, withExam.tasks[1]!, now));
+const examAnswer = tryAssistantNextTaskReply('What should I start next?', withExam, now)!;
+assert.match(examAnswer, /Try “History essay”/);
+assert.match(examAnswer, /linked exam \+/);
+assert.match(examAnswer, /Next eligible alternative: “Maths practice”/);
+
+const pressure = cloneWorkspace(recommend);
+pressure.tasks[1]!.postponements = 4;
+const pressureEvidence = taskPlanningScoreEvidence(pressure, pressure.tasks[1]!, now);
+assert.equal(pressureEvidence.factors.postponement, 24);
+assert.equal(taskPlanningScore(pressure, pressure.tasks[1]!, now), pressureEvidence.score);
+const pressureAnswer = tryAssistantNextTaskReply('What should I start next?', pressure, now)!;
+assert.match(pressureAnswer, /past postponements \+24/);
+assert.deepEqual(pressure.tasks[1]!.postponements, 4);
+
+const tied = cloneWorkspace(recommend);
+tied.tasks = [
+  createStudyTask({ title: 'Alpha topic', estimatedMinutes: 25, priority: 2, now }),
+  createStudyTask({ title: 'Beta topic', estimatedMinutes: 25, priority: 2, now }),
+];
+const tieAnswer = tryAssistantNextTaskReply('What should I start next?', tied, now)!;
+assert.match(tieAnswer, /Try “Alpha topic”/);
+assert.match(tieAnswer, /Next eligible alternative: “Beta topic”/);
+assert.match(tieAnswer, /totals tie/);
 
 const earlierDue = cloneWorkspace(recommend);
 earlierDue.tasks[0]!.dueAt = at(day, 13);
 const withinDeadline = tryAssistantNextTaskReply('What should I focus on now?', earlierDue, now)!;
 assert.match(withinDeadline, /History essay/, 'Do not recommend a 14:00 start for a task due 13:00');
+assert.match(withinDeadline, /1 higher-ranked task was passed over/);
 assert.doesNotMatch(withinDeadline, /Try “Maths practice”/);
 
 const postponedNext = cloneWorkspace(recommend);

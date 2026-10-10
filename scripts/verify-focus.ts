@@ -64,6 +64,30 @@ async function main() {
   assert.equal(timerRemainingMs(session, now), 45 * MINUTE);
   assert.equal(timerRemainingMs(session, now + 10 * MINUTE), 35 * MINUTE);
 
+  // Simulate 90 minutes spent outside the app while Android suspends the
+  // JavaScript interval. The persisted start time, not tick count, determines
+  // the completed display when the screen becomes active again.
+  const backgroundSession = createFocusSession({
+    topicId: 'topic_background',
+    topicName: 'Background timer check',
+    subject: 'Mathematics',
+    plannedMinutes: 25,
+    breakMinutes: 5,
+    launchMode: 'full',
+    tinyStep: '',
+    now,
+    id: 'focus_background',
+  });
+  assert.equal(timerRemainingMs(backgroundSession, now + 90 * MINUTE), 0);
+  assert.equal(timerIsComplete(backgroundSession, now + 90 * MINUTE), true);
+  assert.equal(backgroundSession.runningSince, now, 'Recomputing must not restart or mutate the timer.');
+  const backgroundPaused = pauseFocusTimer(backgroundSession, now + 4 * MINUTE);
+  assert.equal(
+    timerRemainingMs(backgroundPaused, now + 90 * MINUTE),
+    21 * MINUTE,
+    'An intentionally paused timer stays paused even after a long background period.',
+  );
+
   session = pauseFocusTimer(session, now + 10 * MINUTE);
   assert.equal(session.runningSince, null);
   assert.equal(timerRemainingMs(session, now + 25 * MINUTE), 35 * MINUTE);
@@ -481,6 +505,30 @@ assert.ok(
   'Focus back control must meet the minimum touch target height.',
 );
 console.log('✓ Focus header is responsive with accurate back labels and accessible touch targets');
+
+// Resume after background and navigation returns must refresh only the
+// displayed clock. Never auto-resume a paused session or change saved minutes.
+assert.ok(
+  focusScreenSource.includes('AppState.addEventListener(\'change\'') &&
+    focusScreenSource.includes("nextState === 'active'") &&
+    focusScreenSource.includes('if (active) setNow(Date.now())') &&
+    focusScreenSource.includes('return () => listener.remove();'),
+  'Android foreground must update the Focus clock immediately and clean its listener.',
+);
+assert.ok(
+  focusScreenSource.includes('useFocusEffect(useCallback(() => {') &&
+    focusScreenSource.includes('setNow(Date.now());') &&
+    focusScreenSource.includes('if (session?.runningSince == null || !appIsActive) return;') &&
+    focusScreenSource.includes('clearInterval(timer)'),
+  'Navigation focus must recompute wall time and backgrounded screens must stop interval updates.',
+);
+assert.ok(
+  !focusScreenSource.includes('resumeFocusTimer(') &&
+    !focusScreenSource.includes('beginBreak(session,') &&
+    !focusScreenSource.includes("AppState.addEventListener('change', resume"),
+  'App foreground should never silently resume a paused focus session or advance to break.',
+);
+console.log('✓ Focus foreground/route return refreshes the display without mutating the session');
 
 const reviewScreenSource = fs.readFileSync(
   path.join(process.cwd(), 'app/(app)/review/index.tsx'),

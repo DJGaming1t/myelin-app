@@ -1,0 +1,23 @@
+{
+  // Compile-only template. DO NOT DEPLOY with the placeholder D1 database ID.
+  // An eligible account owner must provision a dedicated D1 database and
+  // replace the database_id in a local, untracked wrangler.jsonc.
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "myelin-assistant",
+  "main": "./index.mjs",
+  "compatibility_date": "2026-10-10",
+  "ai": {
+    "binding": "AI"
+  },
+  "d1_databases": [
+    {
+      "binding": "ASSISTANT_DB",
+      "database_name": "myelin-assistant-quota",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "vars": {
+    "FIREBASE_PROJECT_ID": "myelin-a0ba7"
+  }
+}

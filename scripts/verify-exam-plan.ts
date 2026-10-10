@@ -684,6 +684,62 @@ const now = local(2026, 10, 5, 15, 0);
     joint.warnings.some((warning) => /shared topics are planned once/i.test(warning)),
     'The joint planner should explain deduplication instead of hiding it.',
   );
+
+  // A task explicitly linked to the LATER shared-topic exam must not hide the
+  // EARLIER exam. Both the joint schedule and unified workload ledger need the
+  // same earliest hard cutoff, without counting task minutes twice.
+  const linkedLater = cloneWorkspace(workspace);
+  const coverShared = createStudyTask({
+    title: 'Trigonometry exercise for both exams',
+    topicId: 'shared',
+    examId: 'joint_physics',
+    estimatedMinutes: 30,
+    type: 'homework',
+    now,
+  });
+  linkedLater.tasks.push(coverShared);
+  const linkedBefore = cloneWorkspace(linkedLater);
+  const linkedJoint = buildJointExamPreparationPlan(linkedLater, now, {
+    revisionRatio: 0.2,
+    revisionLeadDays: 2,
+  });
+  const sharedTaskDemand = linkedJoint.workloadLedger.demands.find(d =>
+    d.taskId === coverShared.id && d.segment === 'remaining');
+  assert.equal(sharedTaskDemand?.capacityUntil, startOfLocalDay(mathsExamDate),
+    'A task linked to later Physics must also respect the earlier shared Maths exam');
+  assert.equal(sharedTaskDemand?.deadlineAt, mathsExamDate);
+  const coverage = linkedJoint.workloadLedger.coverage.filter(c =>
+    c.taskId === coverShared.id && c.examDemandId === 'joint-prep:shared');
+  assert.equal(coverage.length, 1, 'One shared task must cover the joint preparation demand only once');
+  assert.equal(coverage[0]!.minutes, 30,
+    'Recorded shared-task minutes should reduce the outstanding joint exam demand exactly once');
+  assert.ok(linkedJoint.workloadLedger.deduplicatedMinutes >= 30);
+  assert.equal(linkedJoint.uniqueTopicCount, 3);
+  assert.equal(linkedJoint.totalPreparationRequiredMinutes, joint.totalPreparationRequiredMinutes,
+    'Linking an existing task must not synthesize a second topic estimate');
+  assert.ok(linkedJoint.days.flatMap(day => day.blocks)
+    .filter(block => block.kind === 'preparation' && block.topicId === 'shared')
+    .every(block => block.day < startOfLocalDay(mathsExamDate)));
+  assert.deepEqual(linkedLater, linkedBefore, 'Read-only planning must never modify task or exam records');
+
+  // Multiple same-day exams stored at different clock times must be associated
+  // by calendar date; a past exam must stop setting the hard deadline.
+  const sameDayWorkspace = cloneWorkspace(linkedLater);
+  sameDayWorkspace.exams.find(exam => exam.id === 'joint_math')!.date =
+    new Date(now).setHours(8, 0, 0, 0);
+  const sameDayJoint = buildJointExamPreparationPlan(sameDayWorkspace, now);
+  assert.equal(sameDayJoint.workloadLedger.demands.find(d =>
+    d.taskId === coverShared.id && d.segment === 'remaining')?.capacityUntil,
+    startOfLocalDay(now),
+    'An earlier-today shared exam cannot be ignored after its stored clock timestamp');
+  sameDayWorkspace.exams.find(exam => exam.id === 'joint_math')!.date =
+    addLocalDays(startOfLocalDay(now), -1) + 12 * 60 * 60 * 1000;
+  const pastSameDayJoint = buildJointExamPreparationPlan(sameDayWorkspace, now);
+  assert.equal(pastSameDayJoint.workloadLedger.demands.find(d =>
+    d.taskId === coverShared.id && d.segment === 'remaining')?.capacityUntil,
+    startOfLocalDay(physicsExamDate),
+    'Past shared exams must not impose a future task deadline');
+
 }
 
 {

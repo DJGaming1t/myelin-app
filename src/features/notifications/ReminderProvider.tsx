@@ -928,12 +928,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       const registered =
         readback?.registeredCount ?? ids.length;
       const readbackMatches =
-        readback == null ||
-        (readback.registeredIds.length ===
+        readback != null &&
+        readback.registeredIds.length ===
           ids.length &&
-          ids.every((id) =>
-            readback.registeredIds.includes(id),
-          ));
+        ids.every((id) =>
+          readback.registeredIds.includes(id),
+        );
 
       const next = {
         ...current,
@@ -961,11 +961,13 @@ export function ReminderProvider({ children }: PropsWithChildren) {
           : 'error',
       );
       setMessage(
-        !readbackMatches
-          ? `MYELIN planned ${plan.length}, but the device reports ${registered} registered. Refresh schedule to repair the difference.`
-          : ids.length
-            ? `${ids.length} reminder${ids.length === 1 ? '' : 's'} scheduled and verified on this device.`
-            : 'Reminders are on, but nothing currently needs a notification.',
+        readback == null
+          ? 'Android did not confirm the new reminder registrations. Saved IDs are kept; tap Refresh schedule to check again.'
+          : !readbackMatches
+            ? `MYELIN planned ${plan.length}, but the device reports ${registered} registered. Refresh schedule to repair the difference.`
+            : ids.length
+              ? `${ids.length} reminder${ids.length === 1 ? '' : 's'} scheduled and verified on this device.`
+              : 'Reminders are on, but nothing currently needs a notification.',
       );
     } catch (error) {
       if (!isCurrentScheduleWork()) return;

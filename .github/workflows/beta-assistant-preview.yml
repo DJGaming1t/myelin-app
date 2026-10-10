@@ -39,6 +39,8 @@ jobs:
           node scripts/check-beta-ota-compatibility.cjs
       - run: npm ci --no-audit --no-fund
       - run: npx tsc --noEmit
+      - name: Hosted conversation Worker security and protocol tests
+        run: node --test workers/assistant/test/conversation.test.mjs
       - name: App regressions, including chat screen integration
         run: |
           node <<'NODE'

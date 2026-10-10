@@ -202,15 +202,20 @@ async function main() {
 
   let settle!: () => void;
   const gate = new Promise<void>(resolve => { settle = resolve; });
+  let markStarted!: () => void;
+  const started = new Promise<void>(resolve => { markStarted = resolve; });
   const order: string[] = [];
   const serial = createFocusWriteQueue<typeof five>(async (owner, next) => {
     order.push('start-' + (next?.id ?? 'clear'));
-    if (next) await gate;
+    if (next) {
+      markStarted();
+      await gate;
+    }
     order.push('finish-' + (next?.id ?? 'clear'));
   });
   const pendingSave = serial.write('user:A', five);
   const pendingClear = serial.write('user:A', null);
-  await Promise.resolve();
+  await started;
   assert.deepEqual(order, ['start-focus_five'], 'Queued clear cannot overtake active save');
   settle();
   await Promise.all([pendingSave, pendingClear]);

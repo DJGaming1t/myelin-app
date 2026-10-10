@@ -806,14 +806,20 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     setPermission(currentPermission);
 
     if (currentPermission !== 'granted') {
-      const cleared =
-        await cancelCurrentSchedule(owner, current);
-      if (!isCurrentScheduleWork()) return;
-      await persist(cleared, owner);
-      if (!isCurrentScheduleWork()) return;
-      setRegisteredCount(0);
-      setDeviceScheduleChecked(true);
-      setStatus(currentPermission === 'denied' ? 'blocked' : 'ready');
+      try {
+        const cleared = await cancelCurrentSchedule(owner, current);
+        if (!isCurrentScheduleWork()) return;
+        await persist(cleared, owner);
+        if (!isCurrentScheduleWork()) return;
+        setRegisteredCount(0);
+        setDeviceScheduleChecked(true);
+        setStatus(currentPermission === 'denied' ? 'blocked' : 'ready');
+      } catch (error) {
+        if (!isCurrentScheduleWork()) return;
+        setDeviceScheduleChecked(false);
+        setStatus('error');
+        setMessage(runtimeError(error));
+      }
       return;
     }
 
@@ -852,7 +858,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       );
       setDeviceScheduleChecked(true);
     } else {
+      // Without a device readback, do not assume a cached signature means
+      // notifications exist or blindly create replacements that may duplicate.
       setDeviceScheduleChecked(false);
+      setStatus('error');
+      setMessage('Could not verify reminders on this device. Saved reminders were left unchanged. Tap Refresh schedule to retry.');
+      return;
     }
 
     const trackedIdsMatchDevice =
@@ -866,7 +877,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     if (
       signature === current.planSignature &&
       current.scheduledIds.length === plan.length &&
-      (deviceAudit == null || trackedIdsMatchDevice)
+      trackedIdsMatchDevice
     ) {
       setStatus(plan.length ? 'active' : 'ready');
       return;
@@ -875,14 +886,24 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     setStatus('scheduling');
     setMessage('');
 
-    await cancelReminderIds(
-      Array.from(
-        new Set([
-          ...current.scheduledIds,
-          ...(deviceAudit?.registeredIds ?? []),
-        ]),
-      ),
-    );
+    try {
+      await cancelReminderIds(
+        Array.from(
+          new Set([
+            ...current.scheduledIds,
+            ...deviceAudit.registeredIds,
+          ]),
+        ),
+      );
+    } catch (error) {
+      if (!isCurrentScheduleWork()) return;
+      // The existing registration IDs and plan signature are still valid
+      // recovery evidence. Never schedule replacements over stale alerts.
+      setDeviceScheduleChecked(false);
+      setStatus('error');
+      setMessage(runtimeError(error));
+      return;
+    }
     if (!isCurrentScheduleWork()) return;
 
     try {
@@ -1128,24 +1149,31 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
     scheduleGenerationRef.current += 1;
     const current = stateRef.current;
-    const cleared =
-      await cancelCurrentSchedule(owner, current);
-    if (!isCurrentReminderAction(action)) return;
+    try {
+      const cleared = await cancelCurrentSchedule(owner, current);
+      if (!isCurrentReminderAction(action)) return;
 
-    const next = {
-      ...cleared,
-      settings: {
-        ...cleared.settings,
-        enabled: false,
-      },
-    };
+      const next = {
+        ...cleared,
+        settings: {
+          ...cleared.settings,
+          enabled: false,
+        },
+      };
 
-    await persist(next, owner);
-    if (!isCurrentReminderAction(action)) return;
-    setRegisteredCount(0);
-    setDeviceScheduleChecked(true);
-    setStatus('off');
-    setMessage('Reminders are off. Your reminder style and times are still saved.');
+      await persist(next, owner);
+      if (!isCurrentReminderAction(action)) return;
+      setRegisteredCount(0);
+      setDeviceScheduleChecked(true);
+      setStatus('off');
+      setMessage('Reminders are off. Your reminder style and times are still saved.');
+    } catch (error) {
+      if (!isCurrentReminderAction(action)) return;
+      // Keep enabled and retain saved IDs: the old alerts may still exist.
+      setDeviceScheduleChecked(false);
+      setStatus('error');
+      setMessage('Could not turn reminders off safely. ' + runtimeError(error));
+    }
   }, [
     beginReminderAction,
     cancelCurrentSchedule,

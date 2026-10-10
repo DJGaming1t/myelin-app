@@ -8,6 +8,7 @@ on:
     paths:
       - 'workers/assistant/**'
       - 'scripts/check-assistant-worker-config.cjs'
+      - 'scripts/smoke-hosted-chat.cjs'
       - '.gitignore'
       - '.github/workflows/verify-hosted-chat-bundle.yml'
 
@@ -27,6 +28,8 @@ jobs:
         run: node scripts/check-assistant-worker-config.cjs
       - name: Verify real Worker authentication, quotas and text protocol
         run: node --test workers/assistant/test/assistant.test.mjs workers/assistant/test/conversation.test.mjs
+      - name: Check manual live-chat smoke script syntax without network use
+        run: node --check scripts/smoke-hosted-chat.cjs
       - name: Bundle the actual Worker entrypoint without deploying
         run: >-
           npx --yes wrangler@4 deploy

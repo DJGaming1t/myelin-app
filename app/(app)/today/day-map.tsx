@@ -1,10 +1,11 @@
 import { localDateKey } from '@/src/features/planning/commitment-dates';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
-import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
+import { TaskQuickActions, TaskDueLabel, useTaskCompletion } from '@/src/features/planning/TaskQuickActions';
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,6 +29,7 @@ import {
   suggestTaskSlots,
 } from '@/src/features/planning/day-engine';
 import {
+  extendMetTaskEstimate,
   postponeTask,
   scheduleTask,
   taskRemainingMinutes,
@@ -88,6 +90,7 @@ export default function DayMapScreen() {
     recoveredHandoff?: string | string[];
   }>();
   const { workspace, updateWorkspace } = useWorkspace();
+  const completeTaskWithUndo = useTaskCompletion();
   const { session: focusSession } = useFocus();
   const scrollRef = useRef<ScrollView | null>(null);
   const handoffConsumedRef = useRef(false);
@@ -428,6 +431,63 @@ export default function DayMapScreen() {
       if (target) scheduleTask(target, slot.start, slot.end);
     });
     setNow(Date.now());
+  }
+
+  // A fully logged task can remain open after a sync or manual edit. Its
+  // saved slot is informational and the student chooses what happens next.
+  function confirmLoggedTaskCompletion(taskId: string) {
+    const task = workspace?.tasks.find((item) => item.id === taskId);
+    if (!task || task.status !== 'open' || task.estimatedMinutes <= 0 ||
+        taskRemainingMinutes(task) > 0) return;
+    Alert.alert(
+      'Mark this task complete?',
+      `“${task.title}” has ${task.actualMinutes} minutes recorded against a ${task.estimatedMinutes}-minute estimate. This marks the task complete; you can undo it from the achievement message.`,
+      [
+        { text: 'Keep open', style: 'cancel' },
+        {
+          text: 'Mark complete',
+          onPress: () => {
+            completeTaskWithUndo(taskId);
+            setNow(Date.now());
+          },
+        },
+      ],
+    );
+  }
+
+  function extendLoggedTask(taskId: string) {
+    const task = workspace?.tasks.find((item) => item.id === taskId);
+    if (!task || task.status !== 'open' || task.estimatedMinutes <= 0 ||
+        taskRemainingMinutes(task) > 0) return;
+    const base = Math.max(task.actualMinutes, task.estimatedMinutes);
+    Alert.alert(
+      'Extend this estimate?',
+      `“${task.title}” has ${task.actualMinutes} minutes recorded. Add 25 minutes of work or choose your own new total in Edit task. Nothing changes until you choose.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Edit minutes',
+          onPress: () => router.push({
+            pathname: '/(app)/today/task/[taskId]',
+            params: { taskId },
+          }),
+        },
+        {
+          text: 'Add 25 min',
+          onPress: () => {
+            if (base + 25 > 720) {
+              Alert.alert('Estimate limit', 'The total estimate cannot exceed 720 minutes. Review the estimate in Edit task instead.');
+              return;
+            }
+            updateWithReflow((draft) => {
+              const current = draft.tasks.find((item) => item.id === taskId);
+              if (current) extendMetTaskEstimate(current, 25);
+            });
+            setNow(Date.now());
+          },
+        },
+      ],
+    );
   }
 
   function skipToday(taskId: string) {
@@ -1019,6 +1079,8 @@ export default function DayMapScreen() {
 
               const task = workspace.tasks.find((item) => item.id === entry.taskId);
               if (!task) return null;
+              const estimateMet = task.status === 'open' && task.estimatedMinutes > 0 &&
+                taskRemainingMinutes(task) <= 0;
               return (
                 <MotionItem key={entry.id}>
                 <View style={[styles.timelineRow, passed && !entry.missed && styles.passed]}>
@@ -1049,9 +1111,21 @@ export default function DayMapScreen() {
                     </Pressable>
 
                     <TaskDueLabel task={task} now={now} />
-                    <TaskQuickActions task={task} />
+                    {estimateMet ? (
+                      <View style={styles.estimateReview}>
+                        <Text style={styles.estimateReviewTitle}>ESTIMATE MET · REVIEW TASK</Text>
+                        <Text style={styles.estimateReviewCopy}>
+                          The recorded ${task.actualMinutes} min meets the ${task.estimatedMinutes}-min estimate.
+                          This saved slot no longer blocks study time. Choose whether the work is finished or needs more time.
+                        </Text>
+                        <View style={styles.estimateReviewActions}>
+                          <Action label="Mark complete" onPress={() => confirmLoggedTaskCompletion(task.id)} accent />
+                          <Action label="Extend estimate" onPress={() => extendLoggedTask(task.id)} />
+                        </View>
+                      </View>
+                    ) : <TaskQuickActions task={task} />}
 
-                    {entry.missed ? (
+                    {entry.missed && !estimateMet ? (
                       <View style={styles.missedActions}>
                         <Mini label="Move" onPress={() => moveTask(task.id)} />
                         <Mini
@@ -1603,6 +1677,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16,16,19,0.56)',
   },
   missedBlock: { borderStyle: 'dashed' },
+  estimateReview: {
+    marginTop: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.panel,
+    padding: 10,
+  },
+  estimateReviewTitle: {
+    color: colors.accent,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  estimateReviewCopy: {
+    color: colors.textDim,
+    fontSize: 11.5,
+    lineHeight: 17,
+    marginTop: 5,
+  },
+  estimateReviewActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+
   blockCopy: { minHeight: 48 },
   blockKicker: { color: colors.subtle, fontSize: 10.5, lineHeight: 14, fontWeight: '700', letterSpacing: 0.45 },
   blockTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: 4 },

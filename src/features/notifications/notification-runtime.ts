@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { cancelScheduledReminderIds } from './reminder-cancellation';
+import { pendingDeliveryTestIds } from './reminder-audit';
 
 import {
   PlannedReminder,
@@ -183,16 +184,7 @@ export function summarizeScheduledReminderRequests(
     );
   });
 
-  const deliveryTests = requests.filter((request) => {
-    const data = request.content.data;
-    return Boolean(
-      data &&
-        data.myelin === true &&
-        data.preview === true &&
-        data.deliveryTest === true &&
-        data.ownerKey === ownerKey,
-    );
-  });
+  const diagnosticIds = pendingDeliveryTestIds(requests, ownerKey);
 
   return {
     registeredCount: currentOwner.length,
@@ -205,9 +197,7 @@ export function summarizeScheduledReminderRequests(
         (key): key is string =>
           typeof key === 'string' && key.length > 0,
       ),
-    deliveryTestIds: deliveryTests.map(
-      (request) => request.identifier,
-    ),
+    deliveryTestIds: diagnosticIds,
   };
 }
 

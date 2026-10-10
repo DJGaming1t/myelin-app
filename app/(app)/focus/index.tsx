@@ -128,19 +128,18 @@ export default function FocusScreen() {
     if (!topic && !task) return;
     setFocusError('');
     try {
-    const next = await start({
-      ...(topic ? { topicId: topic.id } : {}),
-      ...(task ? { taskId: task.id } : {}),
-      plannedMinutes,
-      breakMinutes,
-      launchMode,
-      tinyStep: firstStep,
-    });
-
-    if (next) {
-      setNow(Date.now());
-      setFinishing(false);
-    }
+      const next = await start({
+        ...(topic ? { topicId: topic.id } : {}),
+        ...(task ? { taskId: task.id } : {}),
+        plannedMinutes,
+        breakMinutes,
+        launchMode,
+        tinyStep: firstStep,
+      });
+      if (next) {
+        setNow(Date.now());
+        setFinishing(false);
+      }
     } catch {
       setFocusError('Could not save the Focus session. Check device storage and try starting again.');
     }
@@ -149,8 +148,13 @@ export default function FocusScreen() {
   async function addDistraction() {
     const value = distraction.trim();
     if (!value) return;
-    setDistraction('');
-    await park(value);
+    setFocusError('');
+    try {
+      await park(value);
+      setDistraction('');
+    } catch {
+      setFocusError('The thought could not be saved. Your text is still here; try again.');
+    }
   }
 
   function requestFinishEarly() {
@@ -168,8 +172,13 @@ export default function FocusScreen() {
           text: 'Discard',
           style: 'destructive',
           onPress: async () => {
-            await discard();
-            router.replace('/(app)/today');
+            try {
+              setFocusError('');
+              await discard();
+              router.replace('/(app)/today');
+            } catch {
+              setFocusError('Could not clear this session. Stay here and retry.');
+            }
           },
         },
       ],
@@ -204,17 +213,17 @@ export default function FocusScreen() {
     }
 
     try {
-    setFocusError('');
-    await completeBreak(Date.now());
-    router.replace({
-      pathname: '/(app)/review',
-      params: {
-        topicId: suggestion.topicId,
-        autoStart: '1',
-        limit: String(suggestion.count),
-        source: 'focus',
-      },
-    });
+      setFocusError('');
+      await completeBreak(Date.now());
+      router.replace({
+        pathname: '/(app)/review',
+        params: {
+          topicId: suggestion.topicId,
+          autoStart: '1',
+          limit: String(suggestion.count),
+          source: 'focus',
+        },
+      });
     } catch {
       setFocusError('Break progress could not be saved. Stay here and retry.');
     }

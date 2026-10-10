@@ -1636,7 +1636,7 @@ function main() {
         'await persist(next, owner);\n      if (!isCurrentReminderAction(action))',
       ) &&
       reminderProviderSource.includes(
-        'await cancelCurrentSchedule(owner, current);\n    if (!isCurrentReminderAction(action)) return;',
+        'await cancelCurrentSchedule(owner, current);\n      if (!isCurrentReminderAction(action)) return;',
       ) &&
       reminderProviderSource.includes(
         'const next = await getReminderPermission();\n    if (!isCurrentReminderAction(action))',

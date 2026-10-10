@@ -552,7 +552,7 @@ function earliestTopicExamDeadline(
   const earliest = workspace.exams
     .filter(
       (exam) =>
-        exam.date > now &&
+        examCalendarDaysUntil(exam.date, now) >= 0 &&
         examAppliesToTopic(exam, topic),
     )
     .sort((a, b) => a.date - b.date)[0];
@@ -585,8 +585,8 @@ function competingExamDemands(
     .filter(
       (exam) =>
         exam.id !== targetExamId &&
-        exam.date > now &&
-        exam.date <= horizonEnd,
+        examCalendarDaysUntil(exam.date, now) >= 0 &&
+        startOfLocalDay(exam.date) < horizonEnd,
     )
     .sort((a, b) => a.date - b.date);
 
@@ -642,7 +642,9 @@ function reserveForCompetingExams(
   let reserved = 0;
 
   for (const demand of demands) {
-    if (availableReserve <= 0 || demand.remainingMinutes <= 0 || day >= demand.examDate) continue;
+    // Preparation is only scheduled on days BEFORE the exam calendar date.
+    // A date-only exam has no clock time, so noon is not a study deadline.
+    if (availableReserve <= 0 || demand.remainingMinutes <= 0 || day >= startOfLocalDay(demand.examDate)) continue;
 
     const daysLeft = Math.max(1, examCalendarDaysUntil(demand.examDate, day));
     const dailyNeed = Math.ceil(demand.remainingMinutes / daysLeft);
@@ -925,7 +927,7 @@ export function buildExamPreparationPlan(
       0,
     );
     warnings.push(
-      `${competingExams.length} other upcoming ${competingExams.length === 1 ? 'exam is' : 'exams are'} reserving about ${reserved} minutes of study capacity.`,
+      `${competingExams.length} other current or upcoming ${competingExams.length === 1 ? 'exam is' : 'exams are'} counted; about ${reserved} minutes of study capacity are reserved before their dates.`,
     );
   }
   if (fatigueLimited) {

@@ -263,29 +263,49 @@ function taskExamDays(workspace: WorkspaceState, task: StudyTask, now: number) {
   return exam ? examCalendarDaysUntil(exam.date, now) : null;
 }
 
-export function taskPlanningScore(workspace: WorkspaceState, task: StudyTask, now = Date.now()) {
-  let score = task.priority * 12 + Math.min(24, (task.postponements ?? 0) * 6);
-  if (task.planState === 'today') score += 28;
-  if (task.planState === 'scheduled') score += 34;
+// One source of truth for ranking and the explanations shown by MYELIN.
+// These are heuristic priority weights, not probabilities or a fit guarantee.
+export type TaskPlanningFactors = {
+  priority: number;
+  postponement: number;
+  today: number;
+  scheduled: number;
+  deadline: number;
+  exam: number;
+};
+export type TaskPlanningScoreEvidence = { score: number; factors: TaskPlanningFactors; examDays: number | null };
 
+export function taskPlanningScoreEvidence(
+  workspace: WorkspaceState, task: StudyTask, now = Date.now(),
+): TaskPlanningScoreEvidence {
+  const factors: TaskPlanningFactors = {
+    priority: task.priority * 12,
+    postponement: Math.min(24, (task.postponements ?? 0) * 6),
+    today: task.planState === 'today' ? 28 : 0,
+    scheduled: task.planState === 'scheduled' ? 34 : 0,
+    deadline: 0,
+    exam: 0,
+  };
   if (task.dueAt > 0) {
-    const dueDay = startOfLocalDay(task.dueAt);
-    const today = startOfLocalDay(now);
-    const days = calendarDayDistance(today, dueDay);
-    if (task.dueAt < now) score += 70;
-    else if (days === 0) score += 58;
-    else if (days === 1) score += 46;
-    else if (days <= 3) score += 30;
-    else if (days <= 7) score += 14;
+    const days = calendarDayDistance(startOfLocalDay(now), startOfLocalDay(task.dueAt));
+    if (task.dueAt < now) factors.deadline = 70;
+    else if (days === 0) factors.deadline = 58;
+    else if (days === 1) factors.deadline = 46;
+    else if (days <= 3) factors.deadline = 30;
+    else if (days <= 7) factors.deadline = 14;
   }
-
   const examDays = taskExamDays(workspace, task, now);
   if (examDays !== null) {
-    if (examDays <= 1) score += 45;
-    else if (examDays <= 3) score += 34;
-    else if (examDays <= 7) score += 22;
+    if (examDays <= 1) factors.exam = 45;
+    else if (examDays <= 3) factors.exam = 34;
+    else if (examDays <= 7) factors.exam = 22;
   }
-  return score;
+  const score = Object.values(factors).reduce((sum, weight) => sum + weight, 0);
+  return { score, factors, examDays };
+}
+
+export function taskPlanningScore(workspace: WorkspaceState, task: StudyTask, now = Date.now()) {
+  return taskPlanningScoreEvidence(workspace, task, now).score;
 }
 
 export function suggestTaskSlots(

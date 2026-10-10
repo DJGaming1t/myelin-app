@@ -2274,6 +2274,44 @@ assert.ok(
 );
 console.log('✓ opt-in delivery diagnostic is isolated from actual reminder plans');
 
+// Small-screen source contract: the only critical reminder controls need to
+// remain above decorative preview/timeline sections. Neither registration
+// nor a scheduled diagnostic proves the phone displayed a notification.
+const studioActivationStart = reminderStudioSource.indexOf('<AnimatedDisclosure');
+const studioLivePreviewStart = reminderStudioSource.indexOf('<View style={styles.previewShell}>');
+const studioTimelineStart = reminderStudioSource.indexOf('<View style={styles.timelineCard}>');
+assert.ok(
+  studioActivationStart > 0 &&
+  studioLivePreviewStart > studioActivationStart &&
+  studioTimelineStart > studioLivePreviewStart &&
+  reminderStudioSource.indexOf('Enable my reminders') < studioLivePreviewStart &&
+  reminderStudioSource.indexOf('Refresh schedule') < studioLivePreviewStart &&
+  reminderStudioSource.indexOf('Turn off') < studioLivePreviewStart &&
+  reminderStudioSource.indexOf('Test in 30 seconds') < studioLivePreviewStart,
+  'Activation, device warnings and essential actions should precede previews and the long timeline.',
+);
+assert.ok(
+  reminderStudioSource.includes('useWindowDimensions') &&
+  reminderStudioSource.includes('width < 370 || fontScale >= 1.25') &&
+  reminderStudioSource.includes('styles.heroCompact') &&
+  reminderStudioSource.includes('styles.activeActionsCompact') &&
+  reminderStudioSource.includes('styles.wrapRow') &&
+  reminderStudioSource.includes('flexWrap: \'wrap\'') &&
+  reminderStudioSource.includes('minHeight: layout.minTouch'),
+  'Narrow screens and larger accessibility fonts must permit wrapping while preserving touch targets.',
+);
+assert.ok(
+  reminderStudioSource.includes('DEVICE PERMISSION NEEDED') &&
+  reminderStudioSource.includes('SCHEDULE NEEDS CHECK') &&
+  reminderStudioSource.includes('REGISTERED ON DEVICE') &&
+  reminderStudioSource.includes('READY · NO REMINDERS DUE') &&
+  reminderStudioSource.includes('Actual delivery still depends on Android settings and timing') &&
+  reminderStudioSource.includes('status === \'scheduling\'') &&
+  !reminderStudioSource.includes('REMINDERS ACTIVE'),
+  'Reminder Studio must distinguish permission, in-progress/failed audit, registration and real delivery.',
+);
+console.log('✓ small-screen Studio shows accessible actions first and separates registration from delivery');
+
 assert.equal(reminderStudioSource.includes('notificationDim'), true);
 assert.ok(
   reminderStudioSource.includes("quietGrid: { gap: 1 }"),

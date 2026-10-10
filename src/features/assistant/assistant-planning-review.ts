@@ -1,6 +1,6 @@
 import type { WorkspaceState } from '@/src/data/schema';
 import { sleepWindows } from '@/src/features/adaptive/sleep-engine';
-import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, scheduledTasksForDay, startOfLocalDay, taskPlanningScore } from '@/src/features/planning/day-engine';
+import { addLocalDays, commitmentOccurrencesForDay, freeStudyWindows, localDayKey, scheduledTasksForDay, startOfLocalDay, taskPlanningScoreEvidence } from '@/src/features/planning/day-engine';
 import { taskRemainingMinutes } from '@/src/features/planning/task-engine';
 
 export type PlanningIssueCode = 'missing-estimate' | 'overdue' | 'past-slot' | 'after-deadline' | 'deadline-capacity' | 'short-slot' | 'commitment-overlap' | 'task-overlap' | 'sleep-overlap' | 'daily-overload';
@@ -197,6 +197,22 @@ export function tryAssistantNextTaskReply(request: string, workspace: WorkspaceS
       task.dueAt < nextDay ? 'It is due today' :
       task.dueAt < addLocalDays(today, 2) ? 'It is due tomorrow' : 'A future deadline is recorded') :
       'No deadline is recorded';
+  // The same factors used for sorting appear in the explanation: never
+  // manufacture a separate notion of urgency, or call a score a probability.
+  const evidence = (task: WorkspaceState['tasks'][number]) => taskPlanningScoreEvidence(workspace, task, now);
+  const evidenceLabel = (task: WorkspaceState['tasks'][number]) => {
+    const { factors, score, examDays } = evidence(task);
+    const parts = [
+      'saved priority +' + factors.priority,
+      factors.today ? 'marked for Today +' + factors.today : '',
+      factors.scheduled ? 'scheduled +' + factors.scheduled : '',
+      factors.deadline ? 'deadline urgency +' + factors.deadline : '',
+      factors.exam ? 'linked exam +' + factors.exam +
+        (examDays !== null && examDays < 0 ? ' (the linked exam date has passed; review it)' : '') : '',
+      factors.postponement ? 'past postponements +' + factors.postponement : '',
+    ].filter(Boolean);
+    return score + ' points (' + parts.join(', ') + ')';
+  };
   const open = workspace.tasks.filter(task => task.status === 'open');
   if (!open.length) return 'You have no open MYELIN tasks. Add work in Today first. ' + note;
 
@@ -238,14 +254,14 @@ export function tryAssistantNextTaskReply(request: string, workspace: WorkspaceS
   const candidates = open.filter(task =>
     task.planState !== 'scheduled' && task.postponedUntil <= now &&
     task.estimatedMinutes > 0 && taskRemainingMinutes(task) > 0)
-    .sort((a, b) => taskPlanningScore(workspace, b, now) - taskPlanningScore(workspace, a, now) ||
+    .sort((a, b) => evidence(b).score - evidence(a).score ||
       (a.dueAt || Number.POSITIVE_INFINITY) - (b.dueAt || Number.POSITIVE_INFINITY) ||
       a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
   const windows = freeStudyWindows(workspace, today, { from: now, minMinutes: 5 });
   for (const window of windows) {
     const capacity = Math.min(spareBudget, window.minutes);
     if (capacity < 5) break;
-    for (const task of candidates) {
+    for (const [index, task] of candidates.entries()) {
       const beforeDeadline = Math.floor((Math.min(window.end,
         task.dueAt > now ? task.dueAt : Number.POSITIVE_INFINITY) - window.start) / 60000);
       const block = Math.min(Math.max(5, workspace.settings.focusMinutes),
@@ -253,11 +269,29 @@ export function tryAssistantNextTaskReply(request: string, workspace: WorkspaceS
       if (block < 5) continue;
       const start = window.start <= now ? 'A recorded free study window is available now' :
         'The next suitable recorded study window begins at ' + clock(window.start);
-      const reason = task.planState === 'today' ? 'It is marked for Today' :
-        'It ranks highest among eligible open work using MYELIN priorities and deadlines';
+      // Compare only with an alternative that could fit in this SAME window.
+      // Ranking scores alone do not make an unavailable task a usable option.
+      const nextEligible = candidates.slice(index + 1).find(other =>
+        Math.floor((Math.min(window.end,
+          other.dueAt > now ? other.dueAt : Number.POSITIVE_INFINITY) - window.start) / 60000) >= 5 &&
+        taskRemainingMinutes(other) >= 5);
+      const selectedEvidence = evidence(task);
+      const alternativeEvidence = nextEligible ? evidence(nextEligible) : null;
+      const comparison = nextEligible && alternativeEvidence
+        ? ' Next eligible alternative: ' + nameOf(nextEligible) + ' — ' +
+          evidenceLabel(nextEligible) + '. ' +
+          (selectedEvidence.score > alternativeEvidence.score
+            ? 'This task has the higher total planning weight.'
+            : 'The totals tie; MYELIN uses the earlier recorded due date and then a stable title order.')
+        : ' No other eligible task fits a five-minute start in the same window.';
+      const skipped = index > 0
+        ? ' ' + index + ' higher-ranked ' + (index === 1 ? 'task was' : 'tasks were') +
+          ' passed over because a five-minute start did not fit before its deadline in this window.'
+        : '';
       return start + '. Try ' + nameOf(task) + ' for a ' + block + '-minute Focus block. ' +
-        reason + '. ' + dueLabel(task) +
-        '. This is a useful first step, not a promise the whole task fits today.\n\n' + note;
+        dueLabel(task) + '. Why this task: MYELIN score ' + evidenceLabel(task) + '.' +
+        comparison + skipped +
+        ' This is a useful first step, not a promise the whole task fits today.\n\n' + note;
     }
   }
   const scheduled = open.filter(task => task.planState === 'scheduled' && task.scheduledStart > now)

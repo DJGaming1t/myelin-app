@@ -114,6 +114,22 @@ test('chat requires verified, nonanonymous account; revocations fail closed', as
   assert.equal(state.reserves.length, 0);
 });
 
+test('chat strips complete private Qwen3 thinking and returns only the final text', async () => {
+  const raw = [
+    '<think>Compare study priorities privately, without exposing intermediate thoughts.</think>',
+    '',
+    'Start with the nearest exam, then protect time for sleep.',
+  ].join('\n');
+  const { deps, state } = setup();
+  deps.ai.run = async () => wrap(raw);
+  const response = await createHandler(deps)(request());
+  assert.equal(response.status, 200);
+  const reply = await response.json();
+  assert.equal(reply.reply, 'Start with the nearest exam, then protect time for sleep.');
+  assert.doesNotMatch(JSON.stringify(reply), /Compare study priorities privately|<think>/);
+  assert.equal(state.releases, 1);
+});
+
 test('chat rejects model refusals, thought markers, tool output and truncation', async () => {
   const bad = [
     null,
@@ -123,7 +139,13 @@ test('chat rejects model refusals, thought markers, tool output and truncation',
       finish_reason: 'length', message: { role: 'assistant', content: 'unfinished' },
     }] },
     wrap(''),
-    wrap('<think>hidden</think> Actual answer'),
+    wrap('<think>hidden and never closed'),
+    wrap('<think>only private reasoning</think>'),
+    wrap('<think>nested <think>thought</think> final answer'),
+    wrap('<think>hidden</think> Actual answer with <think>more reasoning</think>'),
+    wrap('Public answer <think>hidden after answer</think>'),
+    wrap('</think> Public answer'),
+    wrap('<|im_start|>assistant Public answer'),
     wrap('a'.repeat(7100)),
     { object: 'chat.completion', choices: [{
       finish_reason: 'stop', message: { role: 'assistant', content: 'okay', tool_calls: [{}] },

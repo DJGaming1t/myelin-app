@@ -31,6 +31,7 @@ import {
   requestReminderPermission,
   removeReminderPreview,
   scheduleReminderPlan,
+  scheduleReminderDeliveryTest,
   sendExactReminderPreview,
   sendReminderPreview,
   subscribeToReminderResponses,
@@ -75,6 +76,7 @@ type ReminderContextValue = {
   reschedule: () => Promise<void>;
   sendPreview: (kind?: ReminderKind) => Promise<void>;
   sendExactPreview: (preview: ExactReminderPreview) => Promise<void>;
+  sendDeliveryTest: () => Promise<boolean>;
   refreshPermission: () => Promise<ReminderPermission>;
 };
 
@@ -273,6 +275,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
         payload.responseId,
       );
 
+      if (payload.deliveryTest) {
+        router.push('/(app)/settings/reminders');
+        return;
+      }
       if (payload.kind === 'review') {
         router.push('/(app)/review');
         return;
@@ -1298,6 +1304,46 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     ],
   );
 
+  const sendDeliveryTest = useCallback(async (): Promise<boolean> => {
+    if (Platform.OS === 'web') return false;
+    const action = beginReminderAction();
+    if (!action) return false;
+    const { owner } = action;
+    let testId: string | null = null;
+
+    try {
+      // A test never silently asks for notification permission or enables
+      // normal reminders. The user must explicitly enable them first.
+      const nextPermission = await getReminderPermission();
+      if (!isCurrentReminderAction(action)) return false;
+      setPermission(nextPermission);
+      if (nextPermission !== 'granted') {
+        setMessage('Allow notifications in the device settings before sending a delivery test.');
+        return false;
+      }
+
+      testId = await scheduleReminderDeliveryTest(
+        stateRef.current.settings,
+        owner,
+      );
+      if (!isCurrentReminderAction(action)) {
+        await removeReminderPreview(testId);
+        return false;
+      }
+
+      setMessage('One test requested for about 30 seconds from now. Scheduling is not delivery confirmation. Your regular reminders were not changed.');
+      return Boolean(testId);
+    } catch (error) {
+      if (testId && !isCurrentReminderAction(action)) {
+        await removeReminderPreview(testId);
+        return false;
+      }
+      if (!isCurrentReminderAction(action)) return false;
+      setMessage('Could not schedule the device test. ' + runtimeError(error));
+      return false;
+    }
+  }, [beginReminderAction, isCurrentReminderAction]);
+
   const refreshPermission = useCallback(async () => {
     const action = beginReminderAction();
     if (!action) {
@@ -1382,6 +1428,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       reschedule,
       sendPreview,
       sendExactPreview,
+      sendDeliveryTest,
       refreshPermission,
     }),
     [
@@ -1397,6 +1444,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       reschedule,
       sendExactPreview,
       sendPreview,
+      sendDeliveryTest,
       state.scheduledIds.length,
       state.settings,
       status,

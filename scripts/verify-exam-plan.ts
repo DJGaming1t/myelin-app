@@ -1137,6 +1137,7 @@ const now = local(2026, 10, 5, 15, 0);
   partial.settings.dailyMinutes = 120;
   partial.settings.focusMinutes = 30;
   const subjectTopic = makeTopic('time-credit-topic', 'Circles', 'Mathematics', 'learning', 120, 2);
+  subjectTopic.createdAt = addLocalDays(startOfLocalDay(now), -10);
   partial.topics.push(subjectTopic);
   partial.exams.push(createExam({
     name: 'Maths test', date: local(2026, 10, 9, 12),

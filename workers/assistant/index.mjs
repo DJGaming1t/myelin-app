@@ -1,5 +1,6 @@
 import { bounded, checkAbort, CloudError } from './errors.mjs';
 import { generateDecision } from './decision-service.mjs';
+import { generateConversation } from './conversation-service.mjs';
 import { createFirebaseVerifier } from './firebase-auth.mjs';
 import { createD1Quota } from './d1-quota.mjs';
 
@@ -39,7 +40,8 @@ export function createHandler(deps = {}, { releaseCommit = '', timeoutMs = 25_00
     const headers = { 'Cache-Control': 'no-store', 'X-Myelin-Protocol': '1', 'Content-Type': 'application/json' };
     if (/^[a-f0-9]{40}$/.test(releaseCommit)) headers['X-Myelin-Release'] = releaseCommit;
     const respond = (status, value, extra = {}) => new Response(JSON.stringify(value), { status, headers: { ...headers, ...extra } });
-    if (new URL(request.url).pathname !== '/assistant') return respond(404, { error: 'not-found' });
+    const pathname = new URL(request.url).pathname;
+    if (pathname !== '/assistant' && pathname !== '/chat') return respond(404, { error: 'not-found' });
     if (request.method !== 'POST') return respond(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
     const controller = new AbortController();
     const disconnected = () => controller.abort(new CloudError(499, 'cancelled'));
@@ -48,13 +50,15 @@ export function createHandler(deps = {}, { releaseCommit = '', timeoutMs = 25_00
     const timer = setTimeout(() => controller.abort(new CloudError(504, 'cloud-timeout')), deadline);
     try {
       const body = await readBody(request, controller.signal);
-      const pending = generateDecision({ authorization: request.headers.get('authorization'), body, signal: controller.signal }, deps);
+      const pending = pathname === '/chat'
+        ? generateConversation({ authorization: request.headers.get('authorization'), body, signal: controller.signal }, deps)
+        : generateDecision({ authorization: request.headers.get('authorization'), body, signal: controller.signal }, deps);
       // Preserve late-reservation cleanup when the runtime permits background work.
       context?.waitUntil?.(pending.then(() => undefined, () => undefined));
-      const decision = await bounded(controller.signal, () => pending);
+      const result = await bounded(controller.signal, () => pending);
       checkAbort(controller.signal);
-      if (encoder.encode(JSON.stringify(decision)).length > 64_000) throw new CloudError(502, 'invalid-provider-response');
-      return respond(200, { version: 1, decision });
+      if (encoder.encode(JSON.stringify(result)).length > 64_000) throw new CloudError(502, 'invalid-provider-response');
+      return respond(200, pathname === '/chat' ? { version: 1, reply: result } : { version: 1, decision: result });
     } catch (error) {
       const known = error instanceof CloudError ? error : new CloudError(503, 'cloud-unavailable');
       const extra = known.retryAfter ? { 'Retry-After': String(known.retryAfter) } : {};

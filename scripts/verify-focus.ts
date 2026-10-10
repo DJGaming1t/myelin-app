@@ -530,6 +530,60 @@ assert.ok(
 );
 console.log('✓ Focus foreground/route return refreshes the display without mutating the session');
 
+// Break completion must be a single durable save-and-navigate operation.
+// Rapid taps on Retrieve/Finish/End may otherwise trigger two saves and two
+// different router replacements before React disables either button.
+const breakExitStart = focusScreenSource.indexOf("  async function runBreakTransition(");
+const breakExitEnd = focusScreenSource.indexOf("\n  if (!ready || !workspace)", breakExitStart);
+assert.ok(breakExitStart > 0 && breakExitEnd > breakExitStart, 'Expected shared break completion handler.');
+const breakExit = focusScreenSource.slice(breakExitStart, breakExitEnd);
+assert.ok(
+  breakExit.includes("if (breakTransitionLock.current || session?.phase !== 'break') return;") &&
+    breakExit.includes('breakTransitionLock.current = true;') &&
+    breakExit.includes('setBreakTransition(action);') &&
+    breakExit.indexOf('breakTransitionLock.current = true;') < breakExit.indexOf('await completeBreak(Date.now());'),
+  'Break transition must synchronously block repeat presses before awaiting storage.',
+);
+assert.ok(
+  breakExit.includes("const suggestion = action === 'retrieve' ? retrievalSuggestion : null;") &&
+    breakExit.includes("if (action === 'skip')") &&
+    breakExit.includes('await skipBreak(Date.now());') &&
+    breakExit.includes('await completeBreak(Date.now());') &&
+    breakExit.indexOf('await completeBreak(Date.now());') < breakExit.indexOf("router.replace({") &&
+    breakExit.indexOf('await skipBreak(Date.now());') < breakExit.indexOf("router.replace('/(app)/today');"),
+  'Break completion must save before routing and only retrieve when a matching queue exists.',
+);
+assert.ok(
+  breakExit.includes('breakTransitionLock.current = false;') &&
+    breakExit.includes('setBreakTransition(null);') &&
+    breakExit.includes('Break progress could not be saved. Stay here and retry.'),
+  'Break transition failure must re-enable actions, preserve screen, and report a retryable error.',
+);
+const breakUi = focusScreenSource.slice(
+  focusScreenSource.indexOf("  if (session.phase === 'break') {"),
+  focusScreenSource.indexOf("  const canExtend =", focusScreenSource.indexOf("  if (session.phase === 'break') {")),
+);
+assert.ok(
+  breakUi.includes('session.focusLogged ? (') &&
+    breakUi.includes('Focus logged · {session.focusActualMinutes} min') &&
+    breakUi.includes('styles.focusSavedCue'),
+  'After a successful durable completion, the Break stage should confirm logged minutes.',
+);
+assert.equal(
+  (breakUi.match(/disabled={Boolean\(breakTransition\)}/g) ?? []).length,
+  4,
+  'Retrieve, finish-without-recall, finish, and end-break controls must all disable during save.',
+);
+assert.ok(
+  breakUi.includes("runBreakTransition('retrieve')") &&
+    breakUi.includes("runBreakTransition('finish')") &&
+    breakUi.includes("runBreakTransition('skip')") &&
+    breakUi.includes('Saving break…') &&
+    !focusScreenSource.includes('async function finishBreakAndRetrieve()'),
+  'All break exits should share one busy/error/navigation flow, without the prior separate handlers.',
+);
+console.log('✓ Focus-to-Break confirms saved work and break exits are single-flight, retryable transitions');
+
 const reviewScreenSource = fs.readFileSync(
   path.join(process.cwd(), 'app/(app)/review/index.tsx'),
   'utf8',

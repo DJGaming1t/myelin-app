@@ -1115,7 +1115,7 @@ export default function DayMapScreen() {
                       <View style={styles.estimateReview}>
                         <Text style={styles.estimateReviewTitle}>ESTIMATE MET · REVIEW TASK</Text>
                         <Text style={styles.estimateReviewCopy}>
-                          The recorded ${task.actualMinutes} min meets the ${task.estimatedMinutes}-min estimate.
+                          {`The recorded ${task.actualMinutes} min meets the ${task.estimatedMinutes}-min estimate.`}
                           This saved slot no longer blocks study time. Choose whether the work is finished or needs more time.
                         </Text>
                         <View style={styles.estimateReviewActions}>

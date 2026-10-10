@@ -26,6 +26,7 @@ import {
   timerRemainingMs,
 } from '@/src/features/focus/focus-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { focusDialMarkPosition, focusDialSize } from '@/src/features/focus/focus-dial-layout';
 import { buildPostFocusRetrievalSuggestion } from '@/src/features/focus/post-focus-retrieval';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
@@ -52,7 +53,7 @@ export default function FocusScreen() {
 
   const { width: windowWidth } = useWindowDimensions();
   // Reserve content padding and the outer-ring overshoot on small screens.
-  const timerDialSize = Math.max(144, Math.min(228, Math.floor(windowWidth - spacing.lg * 2 - 24)));
+  const timerDialSize = focusDialSize(windowWidth, spacing.lg);
   const { workspace } = useWorkspace();
   const {
     ready,
@@ -850,7 +851,6 @@ function TimerDial({
   size: number;
 }) {
   const innerSize = size - 40;
-  const markRadius = size / 2 - 11;
   return (
     <Reveal distance={8} style={{ alignSelf: 'center' }}>
       <View
@@ -862,11 +862,9 @@ function TimerDial({
         <View style={styles.dialOuterRing} />
         <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
           {Array.from({ length: 40 }, (_, index) => {
-            const angle = index * Math.PI * 2 / 40;
             const lit = index / 40 < progress;
             return <View key={index} style={{ position: 'absolute', width: 3, height: 9,
-              left: size / 2 - 1.5 + Math.sin(angle) * markRadius,
-              top: size / 2 - 4.5 - Math.cos(angle) * markRadius,
+              ...focusDialMarkPosition(size, index),
               borderRadius: 2, transform: [{ rotate: (index * 9) + 'deg' }],
               backgroundColor: lit ? (complete ? colors.success : colors.accent) : colors.lineStrong }} />;
           })}

@@ -1,5 +1,16 @@
 # MYELIN assistant beta
 
+## Focus timer save-error recovery — verified 2026-10-10
+
+This one-chunk product improvement addresses **silent Focus session persistence failures**. The old provider swallowed AsyncStorage errors and could show an active, paused or completed session that would disappear on an app restart. Its parked-distraction input was cleared before its text was actually saved. MYELIN now reports session-storage errors, reverts unpersisted timer changes to the previous in-memory state when still current, and allows a later storage write to retry. Parking preserves text until the save succeeds, and failed break/discard storage operations keep the user on Focus instead of navigating away.
+
+**Verified in automated app tests:** failed Focus writes reject rather than silently resolving; a subsequent retry and clear succeed; concurrent writes retain their order; source checks confirm visible error banners, preserved distraction text, and break/discard navigation only following successful persistence. No schema migration or native dependency changes.
+
+**Physical Android QA still pending:** with a compatible preview APK, start and resume Focus, park a thought, finish early, finish a full session, complete/skip a break and discard a session. Confirm ordinary successful behavior remains smooth across force close and reopen. On a test device or controlled fault-injection harness, simulate AsyncStorage save failure at each transition: confirm the app shows an accessible warning, does not claim the failed state was persisted, preserves an uncommitted parked-thought input, does not leave the break/finish screen on unsuccessful save/clear, and lets users retry after storage recovers. Check that recorded study/history is not duplicated after retry. The app screen cannot practically simulate storage failure via ordinary tapping alone; automated regression is not a substitute for this fault-injection QA.
+
+[Full verification and Android preview publication run 38038542122](https://github.com/DJGaming1t/myelin-app/actions/runs/38038542122) verifies `preview` runtime `0.2.13` at commit `85861d006a9c868f35468ac6bc742f9fbe24fbd8`. At initial checkpoint `verify` was successful and Expo publication receipt was pending confirmation; update receipt after publication.
+
+
 Target: Android internal preview, EAS project `2171936c-83f9-459f-9bb6-dddc4768484e`, channel/environment `preview`, runtime `0.2.13`. Production is not changed.
 
 The compatible APK is build `877c5749-c608-4d23-bca9-aca66fb2df06`, built from `137eee631edbe582da8c0e64ec89229a86a5aa9a`. The publishing workflow compares native inputs and dependency metadata with this exact commit before publishing. It runs full TypeScript and all existing app regression scripts, then publishes from a fresh checkout of the verified commit. A receipt is uploaded as `myelin-assistant-beta-update` only after EAS succeeds.

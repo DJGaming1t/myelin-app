@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { cancelScheduledReminderIds } from './reminder-cancellation';
 
 import {
   PlannedReminder,
@@ -248,10 +249,9 @@ export async function cancelReminderIds(ids: string[]) {
   if (Platform.OS === 'web' || !ids.length) return;
 
   const Notifications = await module();
-  await Promise.all(
-    ids.map((id) =>
-      Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined),
-    ),
+  await cancelScheduledReminderIds(
+    ids,
+    (id) => Notifications.cancelScheduledNotificationAsync(id),
   );
 }
 

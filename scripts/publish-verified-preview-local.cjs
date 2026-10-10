@@ -11,10 +11,10 @@
 
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
-const npm = windows ? 'npm.cmd' : 'npm';
 
 const root = path.resolve(__dirname, '..');
 const windows = process.platform === 'win32';
+const npm = windows ? 'npm.cmd' : 'npm';
 const npx = windows ? 'npx.cmd' : 'npx';
 const node = process.execPath;
 const args = process.argv.slice(2);

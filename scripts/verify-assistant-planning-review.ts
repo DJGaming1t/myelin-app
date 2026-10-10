@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { cloneWorkspace, createEmptyWorkspace } from '../src/data/schema';
 import { createStudyTask, scheduleTask } from '../src/features/planning/task-engine';
-import { planningModelContext, reviewAssistantPlanning, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply } from '../src/features/assistant/assistant-planning-review';
+import { planningModelContext, reviewAssistantPlanning, tryAssistantPlanningReply, tryAssistantTaskDeadlineReply, tryAssistantNextTaskReply } from '../src/features/assistant/assistant-planning-review';
 import { tryAssistantPlanMathReply } from '../src/features/assistant/assistant-plan-math';
 import { addLocalDays, startOfLocalDay } from '../src/features/planning/day-engine';
 
@@ -195,8 +195,87 @@ for (const query of [
 ]) assert.equal(tryAssistantTaskDeadlineReply(query, targetTask, now), null,
   'Unsupported request must not be partially interpreted: ' + query);
 
+// "What should I start next?" must use real constraints, never mutate the plan.
+const recommend = createEmptyWorkspace(now);
+recommend.settings.sleepEnabled = false;
+recommend.settings.dailyMinutes = 120;
+recommend.settings.focusMinutes = 25;
+recommend.commitments.push({ id: 'school-today', title: 'School', kind: 'school',
+  recurrenceDays: [1, 2, 3, 4, 5], startAt: 0, endAt: 0,
+  startMinutes: 330, endMinutes: 840, createdAt: now, updatedAt: now });
+const urgentMaths = createStudyTask({ title: 'Maths practice', planState: 'today',
+  estimatedMinutes: 40, dueAt: at(day, 16), priority: 3, now });
+const laterHistory = createStudyTask({ title: 'History essay', estimatedMinutes: 30,
+  dueAt: at(addLocalDays(day, 1), 18), priority: 1, now });
+recommend.tasks.push(urgentMaths, laterHistory);
+const recommendBefore = cloneWorkspace(recommend);
+const nextAnswer = tryAssistantNextTaskReply('What should I start next?', recommend, now)!;
+assert.match(nextAnswer, /window begins at/);
+assert.match(nextAnswer, /Maths practice/);
+assert.match(nextAnswer, /25-minute Focus/);
+assert.match(nextAnswer, /due today/i);
+assert.doesNotMatch(nextAnswer, /History essay/);
+assert.match(nextAnswer, /Nothing was changed/);
+assert.deepEqual(recommend, recommendBefore, 'Next-task recommendation must be read-only');
+
+const earlierDue = cloneWorkspace(recommend);
+earlierDue.tasks[0]!.dueAt = at(day, 13);
+const withinDeadline = tryAssistantNextTaskReply('What should I focus on now?', earlierDue, now)!;
+assert.match(withinDeadline, /History essay/, 'Do not recommend a 14:00 start for a task due 13:00');
+assert.doesNotMatch(withinDeadline, /Try “Maths practice”/);
+
+const postponedNext = cloneWorkspace(recommend);
+postponedNext.tasks[0]!.postponedUntil = at(addLocalDays(day, 1), 10);
+const postponedReply = tryAssistantNextTaskReply('What should I study next?', postponedNext, now)!;
+assert.match(postponedReply, /History essay/);
+assert.doesNotMatch(postponedReply, /Try “Maths practice”/);
+
+const scheduledNow = cloneWorkspace(recommend);
+scheduledNow.commitments = [];
+scheduleTask(scheduledNow.tasks[0]!, at(day, 12), at(day, 13), now);
+const activeReply = tryAssistantNextTaskReply('What should I start next?', scheduledNow, now)!;
+assert.match(activeReply, /already scheduled now/);
+assert.match(activeReply, /Maths practice/);
+assert.match(activeReply, /25-minute Focus/);
+
+const activeConflict = cloneWorkspace(scheduledNow);
+activeConflict.commitments = cloneWorkspace(recommend).commitments;
+assert.match(tryAssistantNextTaskReply('What should I start next?', activeConflict, now)!, /conflicts with sleep or a fixed commitment/);
+const duplicateActive = cloneWorkspace(scheduledNow);
+const second = createStudyTask({ title: 'Second task', estimatedMinutes: 20, now });
+scheduleTask(second, at(day, 12), at(day, 12, 30), now);
+duplicateActive.tasks.push(second);
+assert.match(tryAssistantNextTaskReply('What should I start next?', duplicateActive, now)!, /Several saved study blocks overlap/);
+
+const recordedLimit = cloneWorkspace(recommend);
+recordedLimit.history.push({ ...recorded.history[0]!, minutes: 119, at: at(day, 10) });
+assert.match(tryAssistantNextTaskReply('What should I start next?', recordedLimit, now)!, /fewer than five minutes left/);
+
+const scheduledReserve = cloneWorkspace(recommend);
+scheduledReserve.settings.dailyMinutes = 70;
+const future = createStudyTask({ title: 'English revision', estimatedMinutes: 65, now });
+scheduleTask(future, at(day, 15), at(day, 16, 5), now);
+scheduledReserve.tasks.push(future);
+assert.match(tryAssistantNextTaskReply('What should I start next?', scheduledReserve, now)!, /upcoming recorded study blocks already use/);
+
+const unknownOnly = cloneWorkspace(recommend);
+unknownOnly.tasks = [createStudyTask({ title: 'Unknown work', planState: 'today', now })];
+assert.match(tryAssistantNextTaskReply('What task should I do next?', unknownOnly, now)!, /known remaining estimate/);
+const noneOpen = cloneWorkspace(recommend);
+noneOpen.tasks = [];
+assert.match(tryAssistantNextTaskReply('Suggest my next study task', noneOpen, now)!, /no open MYELIN tasks/);
+for (const unsafe of [
+  'What should I start next? Also delete Maths',
+  'What should I study next and schedule it for tomorrow',
+  'Suggest my next study task and mark it done',
+  'Please start my next task',
+  'What should I study next if I cancel school?',
+]) assert.equal(tryAssistantNextTaskReply(unsafe, recommend, now), null,
+  'Read-only recommendation must reject compound or executable commands: ' + unsafe);
+
 const screen = fs.readFileSync('app/(app)/settings/ai-assistant.tsx', 'utf8');
 assert.match(screen, /tryAssistantPlanningReply\(text, workspace, now\)/);
 assert.match(screen, /tryAssistantPlanMathReply\(text\)/);
 assert.match(screen, /tryAssistantTaskDeadlineReply\(text, workspace, now\)/);
+assert.match(screen, /tryAssistantNextTaskReply\(text, workspace, now\)/);
 console.log('Planning review: real task deadlines,30min school conflict,break budget,weekends,skips,overnight,sleep,read-only matching and bounded context passed.');

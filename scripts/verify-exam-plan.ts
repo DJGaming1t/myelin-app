@@ -1129,6 +1129,45 @@ const now = local(2026, 10, 5, 15, 0);
 }
 
 {
+
+  // Regression: elapsed scheduled minutes should not be counted again as
+  // reserved study when completed work has already consumed daily capacity.
+  const partial = createEmptyWorkspace(now);
+  partial.settings.sleepEnabled = false;
+  partial.settings.dailyMinutes = 120;
+  partial.settings.focusMinutes = 30;
+  const subjectTopic = makeTopic('time-credit-topic', 'Circles', 'Mathematics', 'learning', 120, 2);
+  partial.topics.push(subjectTopic);
+  partial.exams.push(createExam({
+    name: 'Maths test', date: local(2026, 10, 9, 12),
+    scope: 'topics', subjects: [], topicIds: [subjectTopic.id],
+  }, now, 'time-credit-exam'));
+  const scheduledTask = createStudyTask({
+    title: 'Circles practice', topicId: subjectTopic.id,
+    examId: 'time-credit-exam', estimatedMinutes: 90, now,
+  });
+  scheduleTask(scheduledTask, local(2026, 10, 5, 14, 30), local(2026, 10, 5, 15, 30), now);
+  scheduledTask.actualMinutes = 30;
+  partial.tasks.push(scheduledTask);
+  partial.history.push({
+    id: 'completed-study-30', topicId: subjectTopic.id,
+    at: local(2026, 10, 5, 14, 55), kind: 'study',
+    minutes: 30, grade: 0, effort: 3, prompt: '', response: '',
+    confidence: 'partial', plannedMinutes: 30,
+  });
+  const snapshot = cloneWorkspace(partial);
+  const solo = buildExamPreparationPlan(partial, 'time-credit-exam', now)!;
+  const jointPart = buildJointExamPreparationPlan(partial, now);
+  assert.equal(solo.days[0]!.scheduledStudyMinutes, 30);
+  assert.equal(jointPart.days[0]!.scheduledStudyMinutes, 30);
+  assert.equal(solo.days[0]!.existingStudyMinutes, 30);
+  assert.equal(jointPart.days[0]!.existingStudyMinutes, 30);
+  assert.equal(solo.days[0]!.sustainableRemainingMinutes, 60);
+  assert.equal(jointPart.days[0]!.sustainableRemainingMinutes, 60);
+  assert.equal(solo.topics[0]!.completedPreparationMinutes, 30);
+  assert.equal(solo.topics[0]!.totalRequiredMinutes, jointPart.totalPreparationRequiredMinutes);
+  assert.deepEqual(partial, snapshot);
+
   const before = createEmptyWorkspace(now);
   before.settings.dailyMinutes = 60;
   before.settings.focusMinutes = 45;

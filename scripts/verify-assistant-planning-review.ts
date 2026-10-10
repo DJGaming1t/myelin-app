@@ -256,7 +256,11 @@ scheduledReserve.settings.dailyMinutes = 70;
 const future = createStudyTask({ title: 'English revision', estimatedMinutes: 65, now });
 scheduleTask(future, at(day, 15), at(day, 16, 5), now);
 scheduledReserve.tasks.push(future);
-assert.match(tryAssistantNextTaskReply('What should I start next?', scheduledReserve, now)!, /upcoming recorded study blocks already use/);
+assert.match(tryAssistantNextTaskReply('What should I start next?', scheduledReserve, now)!, /5-minute Focus block/,
+  'Exactly five unreserved minutes may be used for a short launch');
+scheduledReserve.settings.dailyMinutes = 69;
+assert.match(tryAssistantNextTaskReply('What should I start next?', scheduledReserve, now)!, /upcoming recorded study blocks already use/,
+  'Fewer than five unreserved minutes must never be offered as a Focus block');
 
 const unknownOnly = cloneWorkspace(recommend);
 unknownOnly.tasks = [createStudyTask({ title: 'Unknown work', planState: 'today', now })];

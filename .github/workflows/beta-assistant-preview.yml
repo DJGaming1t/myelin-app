@@ -103,7 +103,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN verified hosted Qwen conversation bridge beta $GITHUB_SHA"
+          --message "MYELIN privacy-safe cloud workflow context beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

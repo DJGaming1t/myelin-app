@@ -52,6 +52,7 @@ export default function FocusScreen() {
   const {
     ready,
     session,
+    saveError,
     start,
     pause,
     resume,
@@ -125,7 +126,8 @@ export default function FocusScreen() {
 
   async function begin(launchMode: 'full' | 'five-minute', firstStep = tinyStep) {
     if (!topic && !task) return;
-
+    setFocusError('');
+    try {
     const next = await start({
       ...(topic ? { topicId: topic.id } : {}),
       ...(task ? { taskId: task.id } : {}),
@@ -138,6 +140,9 @@ export default function FocusScreen() {
     if (next) {
       setNow(Date.now());
       setFinishing(false);
+    }
+    } catch {
+      setFocusError('Could not save the Focus session. Check device storage and try starting again.');
     }
   }
 
@@ -182,8 +187,13 @@ export default function FocusScreen() {
   }
 
   async function finishBreak() {
-    await completeBreak(Date.now());
-    router.replace('/(app)/today');
+    try {
+      setFocusError('');
+      await completeBreak(Date.now());
+      router.replace('/(app)/today');
+    } catch {
+      setFocusError('Break progress could not be saved. Stay here and retry.');
+    }
   }
 
   async function finishBreakAndRetrieve() {
@@ -193,6 +203,8 @@ export default function FocusScreen() {
       return;
     }
 
+    try {
+    setFocusError('');
     await completeBreak(Date.now());
     router.replace({
       pathname: '/(app)/review',
@@ -203,11 +215,19 @@ export default function FocusScreen() {
         source: 'focus',
       },
     });
+    } catch {
+      setFocusError('Break progress could not be saved. Stay here and retry.');
+    }
   }
 
   async function leaveBreak() {
-    await skipBreak(Date.now());
-    router.replace('/(app)/today');
+    try {
+      setFocusError('');
+      await skipBreak(Date.now());
+      router.replace('/(app)/today');
+    } catch {
+      setFocusError('Break progress could not be saved. Stay here and retry.');
+    }
   }
 
   if (!ready || !workspace) {
@@ -341,6 +361,9 @@ export default function FocusScreen() {
             </Pressable>
 
             <DistractionShield />
+            {focusError || saveError ? (
+              <Text accessibilityRole="alert" style={styles.storageWarning}>{focusError || saveError}</Text>
+            ) : null}
             <Text style={styles.recoveryNote}>
               The timer survives leaving or closing MYELIN.
             </Text>
@@ -380,6 +403,9 @@ export default function FocusScreen() {
               />
             </View>
 
+            {focusError || saveError ? (
+              <Text accessibilityRole="alert" style={styles.storageWarning}>{focusError || saveError}</Text>
+            ) : null}
             <Text style={styles.breakPrompt}>
               {session.focusActualMinutes >= 25 ? 'Step away from the screen. Walk a little, stretch gently, or get water.' : 'Let your eyes rest on something far away. Take a few unhurried breaths.'}
               {session.distractions.length ? ` You parked ${session.distractions.length} thought${session.distractions.length === 1 ? '' : 's'}. Check them before leaving this break.` : ' You do not need to earn the break.'}
@@ -491,6 +517,7 @@ export default function FocusScreen() {
             ) : null}
           </View>
 
+          {saveError ? <Text accessibilityRole="alert" style={styles.storageWarning}>{saveError}</Text> : null}
           <TimerDial
             value={formatTimer(remaining)}
             label={
@@ -755,6 +782,7 @@ const styles = StyleSheet.create({
   sessionPage: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 12 },
+  storageWarning: { color: colors.danger, fontSize: 12.5, lineHeight: 19, paddingVertical: 9, paddingHorizontal: 12, marginTop: 10, borderWidth: 1, borderColor: colors.danger, borderRadius: radius.md, alignSelf: 'stretch' },
   topBar: {
     minHeight: 58,
     paddingHorizontal: spacing.lg,

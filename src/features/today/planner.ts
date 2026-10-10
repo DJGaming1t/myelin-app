@@ -130,7 +130,7 @@ function nearestExamForTopic(workspace: WorkspaceState, topic: Topic, now: numbe
 
 function nearestExamForTask(workspace: WorkspaceState, task: StudyTask, now: number) {
   if (task.examId) {
-    const direct = workspace.exams.find((exam) => exam.id === task.examId && exam.date >= now);
+    const direct = workspace.exams.find((exam) => exam.id === task.examId && examCalendarDaysUntil(exam.date, now) >= 0);
     if (direct) return direct;
   }
   if (!task.topicId) return null;

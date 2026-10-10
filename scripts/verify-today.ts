@@ -98,6 +98,37 @@ function main() {
     'Breaks must be explicitly budgeted.',
   );
 
+
+  // Legacy/synced tasks sometimes remain open after reaching their estimate.
+  // Do not recommend a fresh Focus block or auto-complete the saved record.
+  const fullyLoggedToday = createEmptyWorkspace(now - DAY);
+  fullyLoggedToday.settings.sleepEnabled = false;
+  fullyLoggedToday.settings.dailyMinutes = 90;
+  const logged = createStudyTask({ title: 'Completed practice waiting for review',
+    estimatedMinutes: 30, priority: 3, now });
+  logged.actualMinutes = 30;
+  fullyLoggedToday.tasks.push(logged);
+  const completedPending = buildTodayPlan(fullyLoggedToday, now);
+  assert.ok(!completedPending.blocks.some(block => block.taskId === logged.id),
+    'Zero-remaining open task must not get a brand new Today Focus block');
+  assert.equal(fullyLoggedToday.tasks[0]!.status, 'open',
+    'Generating Today must not silently complete the task');
+
+  const stillPartial = createStudyTask({ title: 'One minute remaining',
+    estimatedMinutes: 30, now });
+  stillPartial.actualMinutes = 29;
+  fullyLoggedToday.tasks.push(stillPartial);
+  const partialPlan = buildTodayPlan(fullyLoggedToday, now);
+  assert.ok(!partialPlan.blocks.some(block => block.taskId === logged.id));
+  assert.equal(fullyLoggedToday.tasks[1]!.actualMinutes, 29);
+  assert.equal(fullyLoggedToday.tasks[1]!.status, 'open');
+  const noEstimateYet = createStudyTask({ title: 'Unestimated practice',
+    estimatedMinutes: 0, now });
+  fullyLoggedToday.tasks.push(noEstimateYet);
+  const provisionalPlan = buildTodayPlan(fullyLoggedToday, now);
+  assert.ok(!provisionalPlan.blocks.some(block => block.taskId === logged.id),
+    'Unknown estimates are different from tasks with a recorded zero remainder');
+
   const autopilotToday = createEmptyWorkspace(now - DAY);
   autopilotToday.settings.dailyMinutes = 60;
   autopilotToday.settings.focusMinutes = 45;

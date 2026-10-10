@@ -1188,8 +1188,9 @@ const now = local(2026, 10, 5, 15, 0);
   assert.equal(withOutcome.days[0]!.existingStudyMinutes, 50);
   assert.equal(withOutcome.days[0]!.scheduledStudyMinutes, 30);
   assert.equal(withOutcome.days[0]!.sustainableRemainingMinutes, 40);
+}
 
-
+{
   const before = createEmptyWorkspace(now);
   before.settings.dailyMinutes = 60;
   before.settings.focusMinutes = 45;

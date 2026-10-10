@@ -1168,6 +1168,27 @@ const now = local(2026, 10, 5, 15, 0);
   assert.equal(solo.topics[0]!.totalRequiredMinutes, jointPart.totalPreparationRequiredMinutes);
   assert.deepEqual(partial, snapshot);
 
+  const futureOnly = cloneWorkspace(partial);
+  futureOnly.history = [];
+  futureOnly.tasks[0]!.actualMinutes = 0;
+  assert.equal(buildExamPreparationPlan(futureOnly, 'time-credit-exam', local(2026, 10, 5, 14))!
+    .days[0]!.scheduledStudyMinutes, 60, 'Future planned work remains fully reserved');
+  assert.equal(buildJointExamPreparationPlan(partial, local(2026, 10, 5, 16))
+    .days[0]!.scheduledStudyMinutes, 0, 'Past scheduled work must not reserve future time');
+
+  const finishedTaskFocus = cloneWorkspace(partial);
+  finishedTaskFocus.focusOutcomes!.push({
+    id: 'finished-standalone', startedAt: local(2026, 10, 5, 13),
+    endedAt: local(2026, 10, 5, 13, 20), status: 'finished',
+    plannedMinutes: 20, minutes: 20, launchMode: 'full',
+    taskOnly: true, overdue: false,
+  });
+  const withOutcome = buildJointExamPreparationPlan(finishedTaskFocus, now);
+  assert.equal(withOutcome.days[0]!.existingStudyMinutes, 50);
+  assert.equal(withOutcome.days[0]!.scheduledStudyMinutes, 30);
+  assert.equal(withOutcome.days[0]!.sustainableRemainingMinutes, 40);
+
+
   const before = createEmptyWorkspace(now);
   before.settings.dailyMinutes = 60;
   before.settings.focusMinutes = 45;

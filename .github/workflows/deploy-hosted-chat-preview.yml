@@ -1,0 +1,120 @@
+name: Owner-approved hosted Qwen preview deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Safe dry run or deploy to an authorised Free Cloudflare account'
+        type: choice
+        required: true
+        default: dry-run
+        options:
+          - dry-run
+          - deploy
+      confirmation:
+        description: 'For deployment only, type YES_FREE_PREVIEW_ONLY after account eligibility and privacy review'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: myelin-hosted-chat-preview-deploy
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: codex/exam-autopilot-capacity-v1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Accept only reviewed default or MYELIN preview workflow ref
+        env:
+          BRANCH_REF: ${{ github.ref }}
+        run: |
+          case "$BRANCH_REF" in
+            refs/heads/main|refs/heads/codex/exam-autopilot-capacity-v1) ;;
+            *) echo '::error::Unsupported workflow ref.'; exit 1 ;;
+          esac
+      - name: Offline owner-gate and binding checks
+        run: |
+          node scripts/prepare-hosted-chat-deployment.cjs --self-test
+          node scripts/check-assistant-worker-config.cjs
+          node --check scripts/smoke-hosted-chat.cjs
+      - name: Firebase, D1 quota, concurrency and conversation security regressions
+        run: node --test workers/assistant/test/*.test.mjs
+      - name: Compile Worker without connecting to Cloudflare
+        run: >-
+          npx --yes wrangler@4 deploy
+          --config workers/assistant/wrangler.example.jsonc
+          --dry-run
+          --outdir "$RUNNER_TEMP/myelin-hosted-chat-bundle"
+      - name: Verify generated Worker JavaScript
+        run: |
+          find "$RUNNER_TEMP/myelin-hosted-chat-bundle" -type f -name '*.js' | grep -q .
+          echo 'Bundle ready. No account was accessed and no inference was run.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_preview:
+    needs: verify
+    if: ${{ inputs.mode == 'deploy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    # The repository owner should protect this environment with required
+    # reviewers before allowing live provider changes.
+    environment: myelin-cloud-preview
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      FIREBASE_WEB_API_KEY: ${{ secrets.MYELIN_FIREBASE_WEB_API_KEY }}
+      CLOUDFLARE_ASSISTANT_D1_ID: ${{ vars.CLOUDFLARE_ASSISTANT_D1_ID }}
+      MYELIN_OWNER_DEPLOY_APPROVED: ${{ inputs.confirmation }}
+      MYELIN_CHAT_SMOKE_URL: ${{ vars.MYELIN_CHAT_SMOKE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: codex/exam-autopilot-capacity-v1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Require explicit owner approval and provisioned Free resources
+        run: |
+          if [ "$MYELIN_OWNER_DEPLOY_APPROVED" != 'YES_FREE_PREVIEW_ONLY' ]; then
+            echo '::error::Owner approval is missing; no remote operation performed.'
+            exit 1
+          fi
+          if [ -z "$MYELIN_CHAT_SMOKE_URL" ]; then
+            echo '::error::Expected HTTPS /chat smoke URL is missing; no remote operation performed.'
+            exit 1
+          fi
+      - name: Generate ignored D1 config only on this runner
+        run: |
+          node scripts/prepare-hosted-chat-deployment.cjs --write
+          node scripts/check-assistant-worker-config.cjs --ready
+      - name: Apply checked-in quotas schema to the dedicated remote D1 database
+        run: >-
+          npx --yes wrangler@4 d1 migrations apply ASSISTANT_DB
+          --remote
+          --config workers/assistant/wrangler.jsonc
+      - name: Deploy preview Worker from verified source
+        run: npx --yes wrangler@4 deploy --config workers/assistant/wrangler.jsonc
+      - name: Install Firebase web configuration only as a Worker secret
+        run: |
+          printf '%s' "$FIREBASE_WEB_API_KEY" | npx --yes wrangler@4 secret put FIREBASE_WEB_API_KEY --config workers/assistant/wrangler.jsonc
+      - name: Verify anonymous requests fail closed; zero inference calls
+        run: node scripts/smoke-hosted-chat.cjs
+      - name: Report remaining manual real-inference gate
+        run: |
+          {
+            echo 'Worker deployment completed and unauthenticated /chat requests were rejected.'
+            echo 'NO live text generation, Firebase verified-user chat, or Android device test has been performed by this workflow.'
+            echo 'Do NOT set EXPO_PUBLIC_MYELIN_CHAT_ENDPOINT or enable hosted conversation until the authorised owner passes the manual two-turn synthetic inference smoke test and privacy review.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Delete runner-generated deployment binding file
+        if: always()
+        run: rm -f workers/assistant/wrangler.jsonc

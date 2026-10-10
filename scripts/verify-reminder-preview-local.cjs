@@ -10,16 +10,20 @@ const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const windows = process.platform === 'win32';
-const npm = windows ? 'npm.cmd' : 'npm';
-const npx = windows ? 'npx.cmd' : 'npx';
 const node = process.execPath;
+const npm = windows ? node : 'npm';
+const npx = windows ? node : 'npx';
+const npmPrefix = windows ? [path.join(path.dirname(node), 'node_modules', 'npm', 'bin', 'npm-cli.js')] : [];
+const npxPrefix = windows ? [path.join(path.dirname(node), 'node_modules', 'npm', 'bin', 'npx-cli.js')] : [];
 const branch = 'codex/exam-autopilot-capacity-v1';
 
 function run(command, args, { env = process.env, quiet = false } = {}) {
-  const result = spawnSync(command, args, {
+  const prefix = windows && command === node && args[0] === 'run' ? npmPrefix :
+    windows && command === node && ['tsc', 'tsx', 'expo'].includes(args[0]) ? npxPrefix : [];
+  const result = spawnSync(command, [...prefix, ...args], {
     cwd: root,
     env,
-    shell: windows && command !== node && command !== 'git',
+    shell: false,
     encoding: quiet ? 'utf8' : undefined,
     stdio: quiet ? 'pipe' : 'inherit',
   });

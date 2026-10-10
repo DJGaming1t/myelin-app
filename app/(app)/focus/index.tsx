@@ -1,6 +1,6 @@
 import { FocusSupport, DistractionShield } from '@/src/features/adaptive/FocusSupport';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   AppState,
@@ -93,6 +93,8 @@ export default function FocusScreen() {
   );
   const [finishing, setFinishing] = useState(false);
   const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [breakTransition, setBreakTransition] = useState<'finish' | 'retrieve' | 'skip' | null>(null);
+  const breakTransitionLock = useRef(false);
 
   // Android suspends JS intervals while the app is backgrounded. The timer
   // itself stays anchored to persisted timestamps, never to interval ticks.
@@ -122,6 +124,14 @@ export default function FocusScreen() {
   useEffect(() => {
     setNow(Date.now());
   }, [session?.id, session?.phase, session?.plannedFocusMinutes]);
+
+  // Release a completed break's interaction lock when the persisted session
+  // changes phase or a different focus session begins.
+  useEffect(() => {
+    if (session?.phase === 'break') return;
+    breakTransitionLock.current = false;
+    setBreakTransition(null);
+  }, [session?.id, session?.phase]);
 
   const remaining = useMemo(
     () => (session ? timerRemainingMs(session, now) : 0),
@@ -218,46 +228,40 @@ export default function FocusScreen() {
     finally { setSavingFocus(false); }
   }
 
-  async function finishBreak() {
-    try {
-      setFocusError('');
-      await completeBreak(Date.now());
-      router.replace('/(app)/today');
-    } catch {
-      setFocusError('Break progress could not be saved. Stay here and retry.');
-    }
-  }
-
-  async function finishBreakAndRetrieve() {
-    const suggestion = retrievalSuggestion;
-    if (!suggestion) {
-      await finishBreak();
-      return;
-    }
+  async function runBreakTransition(action: 'finish' | 'retrieve' | 'skip') {
+    // Use an immediate ref guard: state-only disabling does not stop two
+    // rapid presses before React has rendered the disabled button.
+    if (breakTransitionLock.current || session?.phase !== 'break') return;
+    breakTransitionLock.current = true;
+    setBreakTransition(action);
+    setFocusError('');
 
     try {
-      setFocusError('');
-      await completeBreak(Date.now());
-      router.replace({
-        pathname: '/(app)/review',
-        params: {
-          topicId: suggestion.topicId,
-          autoStart: '1',
-          limit: String(suggestion.count),
-          source: 'focus',
-        },
-      });
-    } catch {
-      setFocusError('Break progress could not be saved. Stay here and retry.');
-    }
-  }
+      // Snapshot the optional retrieval destination before clearing the break.
+      const suggestion = action === 'retrieve' ? retrievalSuggestion : null;
+      if (action === 'skip') {
+        await skipBreak(Date.now());
+      } else {
+        await completeBreak(Date.now());
+      }
 
-  async function leaveBreak() {
-    try {
-      setFocusError('');
-      await skipBreak(Date.now());
-      router.replace('/(app)/today');
+      if (suggestion) {
+        router.replace({
+          pathname: '/(app)/review',
+          params: {
+            topicId: suggestion.topicId,
+            autoStart: '1',
+            limit: String(suggestion.count),
+            source: 'focus',
+          },
+        });
+      } else {
+        router.replace('/(app)/today');
+      }
+      // Keep the action disabled through navigation, not just the save.
     } catch {
+      breakTransitionLock.current = false;
+      setBreakTransition(null);
       setFocusError('Break progress could not be saved. Stay here and retry.');
     }
   }
@@ -421,6 +425,13 @@ export default function FocusScreen() {
             showsVerticalScrollIndicator={false}>
             <Text style={styles.eyebrow}>RECOVERY</Text>
             <Text style={styles.sessionTitle}>Leave the work alone.</Text>
+            {session.focusLogged ? (
+              <Reveal key={`focus-saved:${session.id}`} distance={5}>
+                <Text style={styles.focusSavedCue}>
+                  ✓ Focus logged · {session.focusActualMinutes} min
+                </Text>
+              </Reveal>
+            ) : null}
 
             <TimerDial
               value={formatTimer(remaining)}
@@ -466,12 +477,23 @@ export default function FocusScreen() {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Finish break and retrieve ${retrievalSuggestion.count} recall prompts`}
-                      onPress={() => void finishBreakAndRetrieve()}
-                      style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                      accessibilityState={{ disabled: Boolean(breakTransition), busy: Boolean(breakTransition) }}
+                      disabled={Boolean(breakTransition)}
+                      onPress={() => void runBreakTransition('retrieve')}
+                      style={({ pressed }) => [
+                        styles.primary,
+                        styles.wideButton,
+                        breakTransition && styles.disabled,
+                        pressed && !breakTransition && styles.pressed,
+                      ]}>
                       <View style={styles.retrieveActionCopy}>
                         <Text style={styles.primaryText}>
-                          Retrieve {retrievalSuggestion.count}{' '}
-                          {retrievalSuggestion.count === 1 ? 'prompt' : 'prompts'}
+                          {breakTransition === 'retrieve' ? 'Saving break…' : (
+                            <>
+                              Retrieve {retrievalSuggestion.count}{' '}
+                              {retrievalSuggestion.count === 1 ? 'prompt' : 'prompts'}
+                            </>
+                          )}
                         </Text>
                         <Text style={styles.primarySubtext}>
                           Short recall, then back to Today
@@ -481,17 +503,34 @@ export default function FocusScreen() {
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
-                      onPress={finishBreak}
-                      style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
-                      <Text style={styles.textButtonText}>Finish break without recall</Text>
+                      accessibilityState={{ disabled: Boolean(breakTransition), busy: Boolean(breakTransition) }}
+                      disabled={Boolean(breakTransition)}
+                      onPress={() => void runBreakTransition('finish')}
+                      style={({ pressed }) => [
+                        styles.textButton,
+                        breakTransition && styles.disabled,
+                        pressed && !breakTransition && styles.pressed,
+                      ]}>
+                      <Text style={styles.textButtonText}>
+                        {breakTransition === 'finish' ? 'Saving break…' : 'Finish break without recall'}
+                      </Text>
                     </Pressable>
                   </View>
                 ) : (
                   <Pressable
                     accessibilityRole="button"
-                    onPress={finishBreak}
-                    style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
-                    <Text style={styles.primaryText}>Finish break</Text>
+                    accessibilityState={{ disabled: Boolean(breakTransition), busy: Boolean(breakTransition) }}
+                    disabled={Boolean(breakTransition)}
+                    onPress={() => void runBreakTransition('finish')}
+                    style={({ pressed }) => [
+                      styles.primary,
+                      styles.wideButton,
+                      breakTransition && styles.disabled,
+                      pressed && !breakTransition && styles.pressed,
+                    ]}>
+                    <Text style={styles.primaryText}>
+                      {breakTransition === 'finish' ? 'Saving break…' : 'Finish break'}
+                    </Text>
                     <Text style={styles.buttonArrow}>→</Text>
                   </Pressable>
                 )
@@ -505,9 +544,17 @@ export default function FocusScreen() {
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={leaveBreak}
-                    style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-                    <Text style={styles.secondaryText}>End break</Text>
+                    accessibilityState={{ disabled: Boolean(breakTransition), busy: Boolean(breakTransition) }}
+                    disabled={Boolean(breakTransition)}
+                    onPress={() => void runBreakTransition('skip')}
+                    style={({ pressed }) => [
+                      styles.secondary,
+                      breakTransition && styles.disabled,
+                      pressed && !breakTransition && styles.pressed,
+                    ]}>
+                    <Text style={styles.secondaryText}>
+                      {breakTransition === 'skip' ? 'Saving…' : 'End break'}
+                    </Text>
                   </Pressable>
                 </View>
               )}
@@ -967,6 +1014,14 @@ const styles = StyleSheet.create({
   discard: { alignSelf: 'center', marginTop: spacing.xl, padding: 9 },
   discardText: { color: colors.danger, fontSize: 12, lineHeight: 16, fontWeight: '600' },
   breakPrompt: { color: colors.muted, fontSize: 13.5, lineHeight: 20, textAlign: 'center', maxWidth: 380, marginTop: spacing.lg },
+  focusSavedCue: {
+    alignSelf: 'center',
+    color: colors.success,
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontWeight: '700',
+    marginTop: 9,
+  },
   retrieveCue: {
     width: '100%',
     maxWidth: 430,

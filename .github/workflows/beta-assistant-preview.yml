@@ -103,7 +103,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN verified 30-second reminder delivery diagnostic $GITHUB_SHA"
+          --message "MYELIN verified diagnostic cancellation and owner safety $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

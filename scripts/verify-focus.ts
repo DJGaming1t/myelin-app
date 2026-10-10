@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
+import { createFocusWriteQueue } from '../src/features/focus/focus-write-queue';
 import { createEmptyWorkspace } from '../src/data/schema';
 import {
   addParkedDistraction,
@@ -175,6 +176,47 @@ async function main() {
     JSON.stringify({ format: 'wrong', version: 1 }),
   );
   assert.equal(await storage.load('user:A'), null, 'Invalid active-session data should be discarded safely.');
+
+  // Storage write errors must reach the caller, but must never poison
+  // future recovery saves or allow later writes to race ahead.
+  const persisted: Array<{ owner: string; id: string | null }> = [];
+  let failNext = true;
+  const durableQueue = createFocusWriteQueue<typeof five>(async (owner, next) => {
+    if (failNext) {
+      failNext = false;
+      throw new Error('simulated AsyncStorage disk write failure');
+    }
+    persisted.push({ owner, id: next?.id ?? null });
+  });
+  await assert.rejects(
+    durableQueue.write('user:retry', five),
+    /simulated AsyncStorage disk write failure/,
+    'Focus writes must not silently swallow device storage errors',
+  );
+  await durableQueue.write('user:retry', five);
+  await durableQueue.write('user:retry', null);
+  assert.deepEqual(persisted, [
+    { owner: 'user:retry', id: 'focus_five' },
+    { owner: 'user:retry', id: null },
+  ], 'Retry and clear must both succeed after a previous write failure');
+
+  let settle!: () => void;
+  const gate = new Promise<void>(resolve => { settle = resolve; });
+  const order: string[] = [];
+  const serial = createFocusWriteQueue<typeof five>(async (owner, next) => {
+    order.push('start-' + (next?.id ?? 'clear'));
+    if (next) await gate;
+    order.push('finish-' + (next?.id ?? 'clear'));
+  });
+  const pendingSave = serial.write('user:A', five);
+  const pendingClear = serial.write('user:A', null);
+  await Promise.resolve();
+  assert.deepEqual(order, ['start-focus_five'], 'Queued clear cannot overtake active save');
+  settle();
+  await Promise.all([pendingSave, pendingClear]);
+  assert.deepEqual(order, [
+    'start-focus_five', 'finish-focus_five', 'start-clear', 'finish-clear',
+  ], 'Focus persistence must retain queued write ordering');
 
   const workspace = createEmptyWorkspace(now);
   workspace.topics.push({
@@ -385,6 +427,28 @@ const focusScreenSource = fs.readFileSync(
   path.join(process.cwd(), 'app/(app)/focus/index.tsx'),
   'utf8',
 );
+
+assert.ok(
+  focusProviderSource.includes('await saveQueue.current.write(owner, next)') &&
+    focusProviderSource.includes('sessionRef.current = previous') &&
+    focusProviderSource.includes('setSaveError(') &&
+    focusProviderSource.includes('throw error;'),
+  'A focus state should roll back and show a warning rather than claim an unsaved timer is durable.',
+);
+assert.ok(
+  focusProviderSource.includes('await commitSession(addParkedDistraction(current, text))'),
+  'Parking a distraction must report save failure before the input text is removed.',
+);
+assert.ok(
+  focusScreenSource.includes('The thought could not be saved. Your text is still here') &&
+    focusScreenSource.indexOf('await park(value)') < focusScreenSource.indexOf("setDistraction('');") &&
+    focusScreenSource.includes('Could not save the Focus session.') &&
+    focusScreenSource.includes('Break progress could not be saved.') &&
+    focusScreenSource.includes('Could not clear this session.') &&
+    focusScreenSource.includes('accessibilityRole="alert"'),
+  'Focus must keep unsaved thought text and show actionable storage errors without navigating away.',
+);
+
 const reviewScreenSource = fs.readFileSync(
   path.join(process.cwd(), 'app/(app)/review/index.tsx'),
   'utf8',

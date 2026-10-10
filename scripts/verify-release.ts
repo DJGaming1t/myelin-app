@@ -180,6 +180,15 @@ assert(
   'Local publisher must initialize Windows detection before selecting the npm executable.',
 );
 assert(
+  localPreflight.includes("const npmPrefix = windows ? [path.join(path.dirname(node), 'node_modules', 'npm', 'bin', 'npm-cli.js')]") &&
+    localPreflight.includes("const npxPrefix = windows ? [path.join(path.dirname(node), 'node_modules', 'npm', 'bin', 'npx-cli.js')]") &&
+    localPreflight.includes('shell: false,') &&
+    localPreviewRelease.includes("const npmPrefix = windows ? [path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')]") &&
+    localPreviewRelease.includes("const npxPrefix = windows ? [path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js')]") &&
+    localPreviewRelease.includes('shell: false,'),
+  'Windows local verification and publication must invoke bundled npm/npx JavaScript entry points without a command shell.',
+);
+assert(
   fs.existsSync(path.join(process.cwd(), 'scripts/verify-local-publisher.cjs')),
   'Offline local publisher behavior regression suite must exist.',
 );

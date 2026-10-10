@@ -83,6 +83,7 @@ const tasks = [
   ['Check installed Android APK matches this source', node, ['scripts/check-beta-ota-compatibility.cjs'], { env }],
   ['TypeScript', npx, ['tsc', '--noEmit']],
   ['Hosted conversation Worker protocol/security tests', node, ['--test', 'workers/assistant/test/conversation.test.mjs']],
+  ['Focus timer and foreground regressions', npm, ['run', 'verify:focus']],
   ['Notification and Reminder Studio regressions', npm, ['run', 'verify:notifications']],
   ['Visual and accessibility source regressions', npm, ['run', 'verify:visual']],
   ['UI polish and screen integration regressions', npm, ['run', 'verify:polish']],

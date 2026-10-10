@@ -154,6 +154,7 @@ const localPreflight = read('scripts/verify-reminder-preview-local.cjs');
 const localPreviewRelease = read('scripts/publish-verified-preview-local.cjs');
 assert(
   localPreflight.includes("process.argv.includes('--full')") &&
+    localPreflight.includes("scripts/verify-local-publisher.cjs") &&
     localPreflight.includes("name.startsWith('verify:')") &&
     localPreflight.includes("'verify-assistant-app-scenarios'") &&
     localPreflight.includes("'Expo prebuild configuration'") &&
@@ -172,6 +173,15 @@ assert(
     localPreviewRelease.includes("item.runtimeVersion === '0.2.13'") &&
     localPreviewRelease.includes("'--platform', 'android'"),
   'Local publisher must require an explicit action, full successful tests, clean unchanged Git state, and a matching Android EAS receipt.',
+);
+assert(
+  localPreviewRelease.indexOf("const windows = process.platform === 'win32';") <
+    localPreviewRelease.indexOf("const npm = windows ? 'npm.cmd' : 'npm';"),
+  'Local publisher must initialize Windows detection before selecting the npm executable.',
+);
+assert(
+  fs.existsSync(path.join(process.cwd(), 'scripts/verify-local-publisher.cjs')),
+  'Offline local publisher behavior regression suite must exist.',
 );
 assert(
   localPreviewRelease.indexOf("command(node, ['scripts/verify-reminder-preview-local.cjs', '--full'])") <

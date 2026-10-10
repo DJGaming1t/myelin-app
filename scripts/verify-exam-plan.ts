@@ -558,9 +558,41 @@ const now = local(2026, 10, 5, 15, 0);
     'A topic shared with an earlier exam must be scheduled before that earlier exam, not the later target exam.',
   );
   assert.ok(
-    plan.warnings.some((warning) => /other upcoming exam/i.test(warning)),
+    plan.warnings.some((warning) => /other current or upcoming exam/i.test(warning)),
     'Competing exam capacity should be explained to the user.',
   );
+
+  // Competing exams use calendar dates, not a noon timestamp. The summary
+  // must include today's exam after noon but MUST NOT allocate study on its
+  // exam day. Past exams are excluded; tomorrow's exam still reserves time.
+  const currentCompeting = cloneWorkspace(workspace);
+  const competing = currentCompeting.exams.find((exam) => exam.id === 'exam_competitor')!;
+  competing.date = local(2026, 10, 5, 8, 0);
+  const todayCompetition = buildExamPreparationPlan(currentCompeting, 'exam_target', now)!;
+  assert.equal(todayCompetition.competingExams.length, 1,
+    'Current-day exam cannot disappear merely because its stored time has passed');
+  assert.equal(todayCompetition.competingExams[0]!.examId, 'exam_competitor');
+  assert.equal(todayCompetition.days.reduce((sum, day) => sum + day.competingExamReserveMinutes, 0), 0,
+    'Never reserve afternoon work for an exam whose date is today');
+  assert.match(todayCompetition.warnings.join(' '), /current or upcoming/);
+
+  competing.date = local(2026, 10, 4, 12, 0);
+  assert.equal(buildExamPreparationPlan(currentCompeting, 'exam_target', now)!.competingExams.length, 0,
+    'A genuinely past competing exam cannot consume today/future prep capacity');
+  competing.date = local(2026, 10, 6, 12, 0);
+  const tomorrowCompetition = buildExamPreparationPlan(currentCompeting, 'exam_target', now)!;
+  assert.equal(tomorrowCompetition.competingExams.length, 1);
+  assert.ok(tomorrowCompetition.days.some(day => day.competingExamReserveMinutes > 0),
+    'An upcoming competing exam still reduces available study capacity before its date');
+
+  // Horizon uses the local start of each exam date, not the arbitrary clock
+  // time in an exam record (the stored time is typically local noon).
+  competing.date = local(2026, 10, 15, 12, 0);
+  assert.equal(buildExamPreparationPlan(currentCompeting, 'exam_target', now)!.competingExams.length, 1,
+    'Include exams inside the seven-local-day competition horizon');
+  competing.date = local(2026, 10, 16, 12, 0);
+  assert.equal(buildExamPreparationPlan(currentCompeting, 'exam_target', now)!.competingExams.length, 0,
+    'The horizon end is exclusive, even when exam time is noon');
 }
 
 

@@ -5,7 +5,7 @@ import { examAppliesToTopic, examCalendarDaysUntil } from '@/src/features/exams/
 import {
   addLocalDays,
   freeStudyWindows,
-  scheduledTasksForDay,
+  scheduledWorkTasksForDay,
   startOfLocalDay,
 } from '@/src/features/planning/day-engine';
 import { CapacityFeasibilityAnalysis } from '@/src/features/planning/capacity-feasibility';
@@ -174,7 +174,7 @@ function scheduledStudyMinutesForDay(workspace: WorkspaceState, day: number, now
   // session that can still happen; elapsed time must never be counted twice.
   const from = Math.max(start, now);
   return Math.round(
-    scheduledTasksForDay(workspace.tasks, day).reduce((sum, task) => {
+    scheduledWorkTasksForDay(workspace.tasks, day).reduce((sum, task) => {
       const overlapStart = Math.max(from, task.scheduledStart);
       const overlapEnd = Math.min(end, task.scheduledEnd);
       return sum + Math.max(0, overlapEnd - overlapStart) / 60_000;

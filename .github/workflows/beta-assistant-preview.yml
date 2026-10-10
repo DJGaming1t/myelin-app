@@ -101,7 +101,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN saved-task deadline check beta $GITHUB_SHA"
+          --message "MYELIN next-study Focus recommendation beta $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

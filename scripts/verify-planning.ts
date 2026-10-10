@@ -98,6 +98,9 @@ function main() {
     'Today planner must keep a date-only exam relevant after its stored noon timestamp');
   assert.ok(todayExamBlock?.reasons.some(reason => reason.includes('Science unit test')),
     'Today planner should explain the still-relevant exam date');
+  assert.ok(todayExamBlock?.reasons.includes('Science unit test is today'),
+    'Today should say exam is today, not show the confusing phrase in 0 days');
+  assert.ok(!todayExamBlock?.reasons.some(reason => /in 0 days/.test(reason)));
   examDayWorkspace.exams[0]!.date = local(2026, 9, 30, 12);
   const oldExamBlock = buildTodayPlan(examDayWorkspace, now).blocks.find(block => block.taskId === linkedWork.id);
   assert.equal(oldExamBlock?.examDays, null,

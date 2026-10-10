@@ -409,7 +409,10 @@ export default function LocalAiAssistantScreen() {
       const args = { workspace, userRequest, currentRoute: '/(app)/settings/ai-assistant', signal: controller.signal, now, clarificationAnswers };
       const hasRuleDecision = checkAssistantRequestGrounding({ workspace, userRequest, currentDate: clarificationScope.currentDate, clarificationAnswers }) !== null ||
         tryBuildMyelinMiniFastDecision({ workspace, userRequest, requestId: 'screen-rule-check', currentDate: clarificationScope.currentDate, clarificationAnswers }) !== null;
-      if (!pendingQuestion && !hasRuleDecision) {
+      // Preserve already installed FunctionGemma's action router when cloud
+      // conversation is not opted in. A hosted chat choice takes precedence.
+      if (!pendingQuestion && !hasRuleDecision &&
+          (cloudConsent || snapshot.selectedModelId !== 'functiongemma-270m' || !available)) {
         if (cloudEligible && cloudConsent && user) {
           const client = createCloudChatClient({
             endpoint: chatEndpoint,

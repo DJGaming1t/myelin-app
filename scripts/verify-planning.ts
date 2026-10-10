@@ -277,7 +277,7 @@ function main() {
   noWorkSchedule.tasks.push(recordedTask);
   const pristine = JSON.stringify(noWorkSchedule);
   const reviewMap = buildDayMap(noWorkSchedule, now);
-  const retained = reviewMap.entries.find(entry => entry.taskId === recordedTask.id);
+  const retained = reviewMap.entries.find(entry => entry.kind === 'task' && entry.taskId === recordedTask.id);
   assert.ok(retained, 'Saved scheduled slot must remain visible in Day Map');
   assert.match(retained!.label, /Estimate met.*review task/);
   assert.equal(reviewMap.plannedStudyMinutes, 0,

@@ -212,8 +212,13 @@ function taskWork(
   now: number,
 ): TaskWork | null {
   if (task.status !== 'open') return null;
-  const remainingMinutes =
-    taskRemainingMinutes(task) || task.estimatedMinutes || 25;
+  // A saved estimate that has already been met is ZERO outstanding work,
+  // even if this legacy/open task has not been marked complete. Do not turn
+  // that zero into the full estimate again. An absent estimate is different:
+  // retain the existing provisional 25-minute capacity assumption for it.
+  const remainingMinutes = task.estimatedMinutes > 0
+    ? taskRemainingMinutes(task)
+    : 25;
   if (remainingMinutes <= 0) return null;
 
   const { exams, deadline } = taskHardDeadline(workspace, task, now);

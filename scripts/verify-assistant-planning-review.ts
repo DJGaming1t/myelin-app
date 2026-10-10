@@ -242,6 +242,46 @@ assert.match(examAnswer, /Try “History essay”/);
 assert.match(examAnswer, /linked exam \+/);
 assert.match(examAnswer, /Next eligible alternative: “Maths practice”/);
 
+// Exam dates are calendar days, not a noon deadline. Past direct links must
+// never produce urgency; same-day and genuine upcoming links still must.
+const pastExam = cloneWorkspace(withExam);
+pastExam.exams[0]!.date = at(addLocalDays(day, -1), 12);
+const pastTask = pastExam.tasks[1]!;
+const pastEvidence = taskPlanningScoreEvidence(pastExam, pastTask, now);
+assert.equal(pastEvidence.examDays, null);
+assert.equal(pastEvidence.factors.exam, 0, 'Past direct exam cannot add urgency');
+assert.equal(pastEvidence.score, taskPlanningScore(pastExam, pastTask, now));
+assert.match(tryAssistantNextTaskReply('What should I start next?', pastExam, now)!, /Try “Maths practice”/,
+  'An outdated linked History exam must not outrank due-today Maths');
+assert.doesNotMatch(tryAssistantNextTaskReply('What should I start next?', pastExam, now)!, /linked exam \+/);
+
+const todayExamEarly = cloneWorkspace(withExam);
+todayExamEarly.exams[0]!.date = at(day, 8);
+const todayExamEvidence = taskPlanningScoreEvidence(todayExamEarly, todayExamEarly.tasks[1]!, now);
+assert.equal(todayExamEvidence.examDays, 0,
+  'An exam recorded earlier today remains relevant for the full calendar date');
+assert.equal(todayExamEvidence.factors.exam, 45);
+const tomorrowExam = cloneWorkspace(withExam);
+tomorrowExam.exams[0]!.date = at(addLocalDays(day, 1), 12);
+assert.equal(taskPlanningScoreEvidence(tomorrowExam, tomorrowExam.tasks[1]!, now).examDays, 1);
+assert.equal(taskPlanningScoreEvidence(tomorrowExam, tomorrowExam.tasks[1]!, now).factors.exam, 45);
+
+const indirectlyLinked = cloneWorkspace(pastExam);
+const historyTopic = { ...bounds.topics[0]!, id: 'hist-topic', name: 'History', subject: 'History' };
+indirectlyLinked.topics.push(historyTopic);
+indirectlyLinked.tasks[1]!.topicId = historyTopic.id;
+indirectlyLinked.exams.push({ id: 'next-history-exam', name: 'Next History Test',
+  date: at(addLocalDays(day, 3), 12), subjects: ['History'],
+  scope: 'subjects', topicIds: [] });
+const fallbackEvidence = taskPlanningScoreEvidence(indirectlyLinked, indirectlyLinked.tasks[1]!, now);
+assert.equal(fallbackEvidence.examDays, 3,
+  'Outdated explicitly linked exam should not mask an applicable future topic exam');
+assert.equal(fallbackEvidence.factors.exam, 34);
+const onlyOldTopicExam = cloneWorkspace(indirectlyLinked);
+onlyOldTopicExam.exams.pop();
+assert.equal(taskPlanningScoreEvidence(onlyOldTopicExam, onlyOldTopicExam.tasks[1]!, now).factors.exam, 0);
+assert.deepEqual(pastExam.exams.length, 1, 'Exam filters must not mutate recorded exam rows');
+
 const pressure = cloneWorkspace(recommend);
 pressure.tasks[1]!.postponements = 4;
 const pressureEvidence = taskPlanningScoreEvidence(pressure, pressure.tasks[1]!, now);

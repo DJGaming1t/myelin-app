@@ -275,10 +275,10 @@ export default function RemindersScreen() {
     permission === 'granted' &&
     deviceScheduleChecked &&
     trackedScheduledCount !== scheduledCount;
-  const scheduleNeedsCheck = status === 'error' || !deviceScheduleChecked || deviceScheduleMismatch || trackedDeviceMismatch;
+  const scheduleNeedsCheck = !ready || status === 'loading' || status === 'scheduling' || status === 'blocked' || status === 'error' || !deviceScheduleChecked || deviceScheduleMismatch || trackedDeviceMismatch;
   const permissionNeeded = settings.enabled && permission !== 'granted';
   const activationHeading = !settings.enabled ? 'YOUR CHOICE' : permissionNeeded ? 'DEVICE PERMISSION NEEDED' : scheduleNeedsCheck ? 'SCHEDULE NEEDS CHECK' : scheduledCount > 0 ? 'REGISTERED ON DEVICE' : 'READY · NO REMINDERS DUE';
-  const activationDescription = !settings.enabled ? 'Nothing is scheduled until you choose to enable it.' : permissionNeeded ? 'Android is not allowing reminders. Check device permissions before relying on notifications.' : scheduleNeedsCheck ? 'Reminder delivery is not verified. Check the warning and refresh your schedule.' : scheduledCount > 0 ? `${scheduledCount} reminder${scheduledCount === 1 ? '' : 's'} registered on this device. Actual delivery still depends on Android settings and timing.` : 'Your reminders are enabled. Nothing currently needs a notification.';
+  const activationDescription = !settings.enabled ? 'Nothing is scheduled until you choose to enable it.' : permissionNeeded ? 'Device notification access is not granted. Check permission settings before relying on reminders.' : scheduleNeedsCheck ? 'Reminder delivery is not verified. Check the warning and refresh your schedule.' : scheduledCount > 0 ? `${scheduledCount} reminder${scheduledCount === 1 ? '' : 's'} registered on this device. Actual delivery still depends on Android settings and timing.` : 'Your reminders are enabled. Nothing currently needs a notification.';
 
   async function run(name: string, action: () => Promise<unknown>) {
     setBusy(name);

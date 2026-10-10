@@ -722,6 +722,42 @@ const now = local(2026, 10, 5, 15, 0);
     .every(block => block.day < startOfLocalDay(mathsExamDate)));
   assert.deepEqual(linkedLater, linkedBefore, 'Read-only planning must never modify task or exam records');
 
+  // Old/restored tasks can be open even when logged time reaches the estimate.
+  // Their true outstanding work is zero, not the original full estimate.
+  const fullyLoggedTask = cloneWorkspace(linkedLater);
+  fullyLoggedTask.tasks[0]!.actualMinutes = 30;
+  const fullSnapshot = cloneWorkspace(fullyLoggedTask);
+  const fullyLoggedJoint = buildJointExamPreparationPlan(fullyLoggedTask, now);
+  assert.equal(fullyLoggedJoint.workloadLedger.taskRemainingMinutes, 0);
+  assert.equal(fullyLoggedJoint.workloadLedger.scheduledTaskMinutes, 0);
+  assert.equal(fullyLoggedJoint.workloadLedger.unscheduledTaskMinutes, 0);
+  assert.equal(fullyLoggedJoint.workloadLedger.coverage.length, 0,
+    'Already logged time cannot be credited a second time as future task coverage');
+  assert.ok(!fullyLoggedJoint.workloadLedger.demands.some(demand =>
+    demand.taskId === coverShared.id),
+    'A zero-remaining open task cannot generate a new capacity demand');
+  assert.ok(fullyLoggedJoint.workloadLedger.demands.some(demand =>
+    demand.id === 'joint-prep:shared'),
+    'Removing stale task work must not erase legitimate remaining topic preparation');
+  assert.deepEqual(fullyLoggedTask, fullSnapshot,
+    'Checking zero-remaining tasks is read-only and must not mark them complete');
+
+  const partialTask = cloneWorkspace(linkedLater);
+  partialTask.tasks[0]!.actualMinutes = 29;
+  const partialJoint = buildJointExamPreparationPlan(partialTask, now);
+  assert.equal(partialJoint.workloadLedger.taskRemainingMinutes, 1,
+    'Partially logged task retains only the minute genuinely remaining');
+  assert.equal(partialJoint.workloadLedger.coverage.reduce((sum, item) => sum + item.minutes, 0), 1,
+    'Only the remaining minute, not all 30 estimated minutes, covers exam preparation');
+  assert.equal(partialJoint.workloadLedger.demands.find(demand =>
+    demand.taskId === coverShared.id && demand.segment === 'remaining')?.requiredMinutes, 1);
+  const unknownEstimate = cloneWorkspace(linkedLater);
+  unknownEstimate.tasks[0]!.estimatedMinutes = 0;
+  const unknownJoint = buildJointExamPreparationPlan(unknownEstimate, now);
+  assert.equal(unknownJoint.workloadLedger.taskRemainingMinutes, 25,
+    'A missing estimate retains the existing provisional work assumption; it is not zero remaining');
+
+
   // Multiple same-day exams stored at different clock times must be associated
   // by calendar date; a past exam must stop setting the hard deadline.
   const sameDayWorkspace = cloneWorkspace(linkedLater);

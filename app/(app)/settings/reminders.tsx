@@ -1547,19 +1547,19 @@ const styles = StyleSheet.create({
   timelineSource: {
     color: colors.subtle,
     fontSize: 10.5,
-    lineHeight: 11,
+    lineHeight: 15,
     fontWeight: '900',
     letterSpacing: 0.7,
   },
   timelineTime: {
     color: colors.muted,
     fontSize: 11.5,
-    lineHeight: 13,
+    lineHeight: 16,
   },
   timelineTitle: {
     color: colors.text,
     fontSize: 13.2,
-    lineHeight: 16,
+    lineHeight: 18,
     fontWeight: '800',
     marginTop: 4,
   },
@@ -1587,7 +1587,7 @@ const styles = StyleSheet.create({
   timelineDecisionText: {
     color: colors.muted,
     fontSize: 10,
-    lineHeight: 10,
+    lineHeight: 14,
     fontWeight: '900',
     letterSpacing: 0.65,
   },
@@ -1597,7 +1597,7 @@ const styles = StyleSheet.create({
   timelineRecoveredTag: {
     color: colors.accent,
     fontSize: 10,
-    lineHeight: 10,
+    lineHeight: 14,
     fontWeight: '900',
     letterSpacing: 0.65,
   },
@@ -1617,14 +1617,14 @@ const styles = StyleSheet.create({
   timelineUsefulnessScore: {
     color: colors.accent,
     fontSize: 10,
-    lineHeight: 10,
+    lineHeight: 14,
     fontWeight: '900',
     letterSpacing: 0.7,
   },
   timelineUsefulnessReason: {
     color: colors.subtle,
     fontSize: 11.5,
-    lineHeight: 13,
+    lineHeight: 16,
     marginTop: 3,
   },
   timelineWinner: {
@@ -1695,7 +1695,7 @@ const styles = StyleSheet.create({
   recoveredInsightStatusText: {
     color: colors.textDim,
     fontSize: 10.5,
-    lineHeight: 11,
+    lineHeight: 15,
     fontWeight: '900',
     letterSpacing: 0.7,
   },

@@ -156,11 +156,13 @@ export default function RemindersScreen() {
     reschedule,
     sendPreview,
     sendExactPreview,
+    sendDeliveryTest,
     refreshPermission,
   } = useReminders();
 
   const [busy, setBusy] = useState('');
   const [previewKind, setPreviewKind] = useState<ReminderKind>('review');
+  const [testRequested, setTestRequested] = useState(false);
 
   const normalizedSettings = useMemo(
     () =>
@@ -1117,6 +1119,47 @@ export default function RemindersScreen() {
               </Pressable>
             </View>
           )}
+
+          {settings.enabled && permission === 'granted' ? (
+            <View style={styles.diagnosticCard}>
+              <Text style={styles.diagnosticTitle}>Check notification delivery</Text>
+              <Text style={styles.activationText}>
+                Send one manual test in about 30 seconds. This does not affect your regular schedule, quiet hours or daily reminder cap.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Schedule a test notification for about 30 seconds from now"
+                disabled={disabled}
+                onPress={() => Alert.alert(
+                  'Test device notification?',
+                  'MYELIN will schedule one test notification for about 30 seconds from now. You can lock your phone to check background delivery.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Schedule test',
+                      onPress: () => void run('delivery-test', async () => {
+                        setTestRequested(false);
+                        setTestRequested(await sendDeliveryTest());
+                      }),
+                    },
+                  ],
+                )}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  disabled && styles.disabled,
+                  pressed && !disabled && styles.pressed,
+                ]}>
+                <Text style={styles.secondaryButtonText}>
+                  {busy === 'delivery-test' ? 'Scheduling test…' : 'Test in 30 seconds'}
+                </Text>
+              </Pressable>
+              {testRequested ? (
+                <Text style={styles.diagnosticNote} accessibilityRole="text">
+                  Test requested, not yet confirmed delivered. Lock your screen and check in around 30 seconds. If nothing appears, inspect notification channels, Do Not Disturb and battery restrictions. Android may deliver later.
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {settings.enabled ? (
             <Pressable
@@ -2107,6 +2150,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   offButtonText: { color: colors.danger, fontSize: 11.2, fontWeight: '700' },
+  diagnosticCard: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  diagnosticTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  diagnosticNote: { color: colors.subtle, fontSize: 11, lineHeight: 17, marginTop: 10 },
   permissionRefresh: { minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center', marginTop: 3 },
   permissionRefreshText: { color: colors.subtle, fontSize: 10.8, fontWeight: '600' },
   ethics: {

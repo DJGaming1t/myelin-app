@@ -128,7 +128,7 @@ export const FEATURE_GUIDES = [
     description: 'Change study defaults, sleep times, reduced motion, account and privacy options. Replay the tutorial without resetting your study data.',
     helpSteps: [
       "Open a settings section to change its controls. Study defaults affect future planning.",
-      "Open Help & tutorial to view the core-loop tutorial again or choose Show me Today.",
+      "Open Help & tutorial to search these guides, view the core-loop tutorial again, or choose Show me Today.",
     ],
     searchTerms: ['tutorial', 'help', 'sleep', 'login', 'delete account', 'reduced motion', 'defaults', 'sync'],
     anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/settings' }],

@@ -328,6 +328,15 @@ export default function SettingsScreen() {
           <Section
             title="Help & tutorial"
             subtitle="Revisit how MYELIN works without resetting setup or touching your study data.">
+            <Pressable accessibilityRole="button" accessibilityLabel="Search MYELIN help"
+              onPress={() => router.push('/(app)/settings/help')}
+              style={({ pressed }) => [styles.transferButton, pressed && styles.pressed]}>
+              <View style={styles.transferCopy}>
+                <Text style={styles.transferTitle}>Search help</Text>
+                <Text style={styles.transferText}>Find an explanation or the right screen · works offline</Text>
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="View MYELIN tutorial again"

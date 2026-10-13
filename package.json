@@ -26,6 +26,7 @@
     "verify:notifications": "tsx scripts/verify-notifications.ts",
     "verify:onboarding": "tsx scripts/verify-onboarding.ts",
     "verify:guides": "tsx scripts/verify-guides.ts",
+    "verify:help": "tsx scripts/verify-help.ts",
     "verify:polish": "tsx scripts/verify-polish.ts",
     "verify:release": "tsx scripts/verify-release.ts",
     "eas:development": "npx eas-cli@latest build --platform android --profile development",

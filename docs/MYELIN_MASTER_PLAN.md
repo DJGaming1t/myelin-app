@@ -17,7 +17,7 @@ The checklist IDs and historical chunk log below are preserved. Their original �
 
 | ID | Reconciled state on current development branch | Remaining |
 | --- | --- | --- |
-| M01 / M02 | M01 registry/Today tour reconciled and locally/browser verified on the current branch (2026-10-14), publication pending. M02a offline Help remains on the older branch; unfinished Focus tutorial is preserved separately. | Reconcile existing offline Help next; other tours follow afterward. |
+| M01 / M02 | M01 registry/Today tour and M02a offline Help reconciled and locally/browser verified on the current branch (2026-10-14), publication pending. Earlier Focus tutorial work is preserved separately. | M02b contextual Focus guidance next; other tours follow afterward. |
 | M03 | Focus-aware reminder planning, recovered-window intents and expiry fallback now exist. Reminder Studio shows recovered notification previews. | Device delivery checks and multi-reminder collision/cap explanations; no duplicate reminder engine. |
 | M04 | Multi-exam capacity planning/reflow, Focus → optional due-only retrieval and visible topic adaptation now exist. | Targeted correctness and evidence/motion audit; this chunk fixes Focus completion/recovery controls. |
 | M05 | M05a task-only/commitment-only returning-user detection fixed and locally verified (2026-10-14), publication pending. Existing onboarding/account/settings remain. | Device/account audit remains. |
@@ -49,7 +49,7 @@ Key code: `app/(app)/today/index.tsx`, `src/features/focus/`, `src/features/adap
 ## Prioritized checklist
 
 - [x] **M01 — Guide foundation + Today tour.** Central typed registry with real routes, descriptions, search terms, anchors and currently supported actions. Three-step Today spotlight with dimming, Back/Next/Skip, reduced motion, state-aware copy, scroll restoration and replay. Registry-backed short core-loop explanation. No domain mutations, model, schema migration or native dependency.
-- [ ] **M02 — Local Help and contextual coverage.** M01 foundation/Today entry now integrated on the current branch; M02a local Help search is complete on the older branch and is the next integration chunk before M02b Focus guidance. Local keyword/fuzzy search and useful explanations cover the four requested example questions. Offer Go there, and Show me for implemented tours only. Then extend tours screen by screen, with contextual `?`, replay and owner-scoped first-open guidance. Keep the registry authoritative.
+- [ ] **M02 — Local Help and contextual coverage.** M01 foundation/Today entry and M02a offline Help now integrated and locally/browser verified on the current branch, publication pending. M02b Focus guidance is next. Local keyword/fuzzy search and useful explanations cover the four requested example questions. Offer Go there, and Show me for implemented tours only. Then extend tours screen by screen, with contextual `?`, replay and owner-scoped first-open guidance. Keep the registry authoritative.
 - [ ] **M03 — Reminder / schedule correctness.** Focus-aware suppression/recovery exists on the current development branch; audit delivery while retaining quiet/sleep boundaries and uniqueness. Then reproduce and fix any remaining recurrence, bounds, unscheduled-work, move and Not now bugs with regression checks.
 - [ ] **M04 — Recovery and evidence polish.** Unify Make smaller / Find another time / Move / Remove for repeated avoidance; preserve progressive, calm overdue urgency. Audit completion feedback and open/close/undo motion. Audit deterministic recommendations, review calibration/confusion practice, actionable Progress and Neural Map semantics without replacing existing engines. Tie changes to starts, completed blocks, retention and recovery outcomes.
 - [ ] **M05 — Onboarding, settings and account audit.** M05a task-only/commitment-only returning-user recovery is implemented and locally verified (2026-10-14); publication pending. Explain only the core loop at setup; advanced guidance stays contextual. Login persistence, account deletion, tutorial replay, layout/chevrons and device/account audit remain.
@@ -127,3 +127,15 @@ Status: integrated and locally/browser verified on current development branch; p
 - Passed TypeScript, guide/Today/onboarding/settings/polish/visual checks, OTA guard self-test and final Android export. Ten 320×568 browser scenarios (five states × normal/reduced motion) passed actual coordinate/card bounds, navigation, replay, scroll and saved-data preservation with no page errors/overflow.
 - Optional reusable browser harness: `scripts/verify-guides-ui.cjs`; it needs external Playwright/browser and Expo web. No native dependency, lockfile, runtime, planner, model or Focus changes. Physical Android and publication remain pending.
 - **Next chunk: M02a reconciliation — offline Help search.** Reuse the earlier search/Help implementation and current registry. Offer Explain, Go there and Show me Today only; Focus/other tours remain later chunks.
+
+
+### M02a reconciliation — Current offline Help — 2026-10-14 IST
+
+Status: integrated and locally/browser verified on current development branch; publication pending.
+
+- Reused the earlier bounded search and Help screen; Settings → Help & tutorial → Search help now opens it. Current registry supplies examples, descriptions, steps and permitted navigation/tutorial actions.
+- Four questions work offline, including typo/prefix matching and honest no-match/Browse/Clear. Explain expands instructions; Go there navigates; Show me is available for Today only. Search is ephemeral and never edits saved study data or starts Focus/Review.
+- Passed Help/guide/settings/onboarding/polish/visual checks, full TypeScript, OTA guard self-test and Android export. New route types regenerated through Expo, with no casts or generated files committed.
+- Both 320×568 browser flows (normal/reduced motion) passed offline questions and explanations, typo/no-match/browse/clear, real navigation/Back preserving query, Focus idle, Today tour and workspace/session preservation, with no page errors or horizontal overflow. Optional harness: `scripts/verify-help-ui.cjs`.
+- Physical Android keyboard/TalkBack/Back and publication remain pending. No native dependency, lockfile, runtime, model, planner or timer change.
+- **Next chunk: M02b — contextual Focus guidance.** Inspect/reuse preserved earlier guide work and adapt one bounded chunk to current Focus setup/session controls. Offer Show me Focus only when the implemented states are verified; the guide must leave the timer and saved work intact.

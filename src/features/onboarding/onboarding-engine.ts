@@ -19,6 +19,8 @@ export function normalizeDailyCapacity(value: number) {
 
 export function hasMeaningfulWorkspaceData(workspace: WorkspaceState) {
   return (
+    workspace.tasks.length > 0 ||
+    workspace.commitments.length > 0 ||
     workspace.topics.length > 0 ||
     workspace.exams.length > 0 ||
     workspace.mistakes.length > 0 ||

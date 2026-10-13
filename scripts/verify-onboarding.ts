@@ -2,7 +2,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
+import { parseWorkspaceJson } from '../src/data/migrations';
 import { createEmptyWorkspace } from '../src/data/schema';
+import { completeTask, createStudyTask } from '../src/features/planning/task-engine';
 import {
   DAILY_CAPACITY_OPTIONS,
   ONBOARDING_VERSION,
@@ -62,6 +64,31 @@ function main() {
   );
 
   const meaningfulCases = [
+    // These workspaces have no Topic, Exam or study history. They still
+    // belong to returning users when the onboarding record is missing.
+    ...(['open', 'completed'] as const).map(status =>
+      (workspace: ReturnType<typeof createEmptyWorkspace>) => {
+        const task = createStudyTask({ title: 'Finish biology practical notebook', now });
+        if (status === 'completed') completeTask(task, now);
+        workspace.tasks.push(task);
+      },
+    ),
+    ...[false, true].map(recurring =>
+      (workspace: ReturnType<typeof createEmptyWorkspace>) => {
+        workspace.commitments.push({
+          id: 'commitment_existing',
+          title: 'Tuition',
+          kind: 'tuition',
+          startAt: now,
+          endAt: now + 60 * 60_000,
+          startMinutes: 16 * 60,
+          endMinutes: 17 * 60,
+          recurrenceDays: recurring ? [1, 3, 5] : [],
+          createdAt: now,
+          updatedAt: now,
+        });
+      },
+    ),
     (workspace: ReturnType<typeof createEmptyWorkspace>) => {
       workspace.topics.push(
         createTopic(
@@ -98,6 +125,14 @@ function main() {
     seed(workspace);
     assert.equal(hasMeaningfulWorkspaceData(workspace), true);
     assert.equal(shouldShowOnboarding(workspace, null), false);
+
+    // Exercise the saved-data path too, not only an in-memory fixture.
+    workspace.settings.dailyMinutes = 60;
+    const restored = parseWorkspaceJson(JSON.stringify(workspace));
+    const before = JSON.stringify(restored);
+    assert.equal(shouldShowOnboarding(restored, null), false);
+    assert.equal(JSON.stringify(restored), before,
+      'Detecting returning-user data must not alter tasks, commitments or capacity.');
   }
 
   const setup = createEmptyWorkspace(now);
@@ -223,6 +258,7 @@ assert.ok(screenSource.includes('OnboardingShell'));
   console.log('✓ daily capacity choices are realistic and safely normalized');
   console.log('✓ settings-only changes do not misclassify a fresh workspace');
   console.log('✓ existing study activity is recognized as experienced-user data');
+  console.log('✓ open/completed task-only and one-off/recurring commitment-only saved workspaces bypass setup');
   console.log('✓ applying setup twice cannot duplicate the first topic');
   console.log('✓ onboarding storage is namespaced by encoded workspace owner');
   console.log('✓ creating a first topic cannot auto-dismiss onboarding mid-flow');

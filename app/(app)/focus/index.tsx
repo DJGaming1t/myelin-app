@@ -30,6 +30,9 @@ import { focusDialMarkPosition, focusDialSize } from '@/src/features/focus/focus
 import { buildPostFocusRetrievalSuggestion } from '@/src/features/focus/post-focus-retrieval';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
+import { useFocusGuide } from '@/src/features/guides/useFocusGuide';
+import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
+import { FocusGuideState } from '@/src/features/guides/guide-registry';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
@@ -54,7 +57,7 @@ export default function FocusScreen() {
   const { width: windowWidth } = useWindowDimensions();
   // Reserve content padding and the outer-ring overshoot on small screens.
   const timerDialSize = focusDialSize(windowWidth, spacing.lg);
-  const { workspace } = useWorkspace();
+  const { workspace, ownerKey } = useWorkspace();
   const {
     ready,
     session,
@@ -70,7 +73,7 @@ export default function FocusScreen() {
     skipBreak,
     discard,
   } = useFocus();
-  const { session: activeReview } = useReview();
+  const { session: activeReview, ready: reviewReady } = useReview();
 
   const topicId = param(params.topicId);
   const taskId = param(params.taskId);
@@ -161,6 +164,16 @@ export default function FocusScreen() {
         : null,
     [now, session?.focusActualMinutes, session?.phase, session?.topicId, workspace],
   );
+  const canExtend = !!session && session.phase === 'focus' && !finishing &&
+    session.launchMode === 'five-minute' &&
+    session.fullTargetMinutes > session.plannedFocusMinutes && timerDone;
+  const guideState: FocusGuideState = session
+    ? session.phase === 'break' ? timerDone ? 'break-done' : 'break'
+      : canExtend ? 'checkpoint' : finishing || timerDone ? 'finish' : 'active'
+    : activeReview ? 'review' : (!topic && !task) || task?.status === 'completed' ? 'empty' : 'setup';
+  const guide = useFocusGuide(ready && reviewReady && !!workspace && !savingFocus && !breakTransition, ownerKey, guideState);
+  const guideOverlay = guide.open ? <ScreenGuide key={guideState} title="Focus" steps={guide.steps}
+    anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null;
 
   async function begin(launchMode: 'full' | 'five-minute', firstStep = tinyStep) {
     if (!topic && !task) return;
@@ -286,21 +299,22 @@ export default function FocusScreen() {
       <SafeAreaView style={styles.safe}>
         <AmbientBackdrop />
         <View style={styles.setupPage}>
-          <TopBar label="Focus" backLabel="Review" onBack={() => router.replace('/(app)/review')} />
+          <TopBar onHelp={guide.start} label="Focus" backLabel="Review" onBack={() => router.replace('/(app)/review')} />
           <View style={styles.missing}>
             <Text style={styles.missingTitle}>A review queue is already active.</Text>
             <Text style={styles.missingText}>
               Resume or end that recall queue before starting a separate focus timer.
             </Text>
-            <Pressable
+            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><Pressable
               accessibilityRole="button"
               onPress={() => router.replace('/(app)/review')}
               style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
               <Text style={styles.primaryText}>Resume review</Text>
               <Text style={styles.buttonArrow}>→</Text>
-            </Pressable>
+            </Pressable></View>
           </View>
         </View>
+        {guideOverlay}
       </SafeAreaView>
     );
   }
@@ -311,20 +325,21 @@ export default function FocusScreen() {
         <SafeAreaView style={styles.safe}>
           <AmbientBackdrop />
           <View style={styles.setupPage}>
-            <TopBar label="Focus" onBack={() => router.replace('/(app)/today')} />
+            <TopBar onHelp={guide.start} label="Focus" onBack={() => router.replace('/(app)/today')} />
             <View style={styles.missing}>
               <Text style={styles.missingTitle}>Choose an open task or topic.</Text>
               <Text style={styles.missingText}>
                 Start Focus from any task card or from a topic in Library.
               </Text>
-              <Pressable
+              <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><Pressable
                 accessibilityRole="button"
                 onPress={() => router.replace('/(app)/today')}
                 style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
                 <Text style={styles.primaryText}>Back to Today</Text>
-              </Pressable>
+              </Pressable></View>
             </View>
           </View>
+          {guideOverlay}
         </SafeAreaView>
       );
     }
@@ -333,9 +348,10 @@ export default function FocusScreen() {
       <SafeAreaView style={styles.safe}>
         <AmbientBackdrop />
         <View style={styles.setupPage}>
-          <TopBar label="Focus" backLabel="Back" onBack={() => router.back()} />
+          <TopBar onHelp={guide.start} label="Focus" backLabel="Back" onBack={() => router.back()} />
 
           <ScrollView
+            ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.setupContent}
             showsVerticalScrollIndicator={false}>
@@ -354,7 +370,7 @@ export default function FocusScreen() {
               <Metric label="BREAK" value={`${breakMinutes} min`} />
             </View>
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
               {[10, 25, 45].map(minutes => <Pressable key={minutes} accessibilityRole="button"
                 accessibilityLabel={`Focus for ${minutes} minutes`} accessibilityState={{ selected: plannedMinutes === minutes }}
                 onPress={() => setSelectedMinutes(minutes)} style={[styles.secondary, { minWidth: 64 }, plannedMinutes === minutes && styles.effortActive]}>
@@ -362,7 +378,7 @@ export default function FocusScreen() {
               </Pressable>)}
             </View>
             <Text style={styles.fieldLabel}>First tiny step · optional</Text>
-            <TextInput
+            <View ref={guide.anchors['focus.secondary']} collapsable={false} testID="guide-focus-secondary"><TextInput
               accessibilityLabel="First tiny step"
               value={tinyStep}
               onChangeText={setTinyStep}
@@ -373,7 +389,7 @@ export default function FocusScreen() {
               multiline
               textAlignVertical="top"
               style={styles.tinyInput}
-            />
+            /></View>
 
             <Pressable
               accessibilityRole="button"
@@ -386,7 +402,7 @@ export default function FocusScreen() {
               <Text style={styles.buttonArrow}>→</Text>
             </Pressable>
 
-            <Pressable
+            <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support"><Pressable
               accessibilityRole="button"
               onPress={() => begin('five-minute')}
               style={({ pressed }) => [styles.launchButton, pressed && styles.pressed]}>
@@ -399,7 +415,7 @@ export default function FocusScreen() {
                   Only promise five minutes. If momentum arrives, continue into the full block.
                 </Text>
               </View>
-            </Pressable>
+            </Pressable></View>
 
             <DistractionShield />
             {focusError || saveError ? (
@@ -410,6 +426,7 @@ export default function FocusScreen() {
             </Text>
           </ScrollView>
         </View>
+        {guideOverlay}
       </SafeAreaView>
     );
   }
@@ -420,12 +437,14 @@ export default function FocusScreen() {
         <AmbientBackdrop />
         <View style={styles.sessionPage}>
           <TopBar
+            onHelp={guide.start}
             label="Break"
             onBack={() => router.replace('/(app)/today')}
             helper={timerDone ? 'Timer complete' : session.runningSince ? 'Timer stays active' : 'Timer paused'}
           />
 
           <ScrollView
+            ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
             contentContainerStyle={styles.timerArea}
             showsVerticalScrollIndicator={false}>
             <Text style={styles.eyebrow}>RECOVERY</Text>
@@ -476,6 +495,7 @@ export default function FocusScreen() {
               </View>
             ) : null}
 
+            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={{ alignSelf: 'stretch' }}>
             <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6} style={styles.breakActions}>
               {timerDone ? (
                 retrievalSuggestion ? (
@@ -565,29 +585,27 @@ export default function FocusScreen() {
                 </View>
               )}
             </Reveal>
+            </View>
           </ScrollView>
         </View>
+        {guideOverlay}
       </SafeAreaView>
     );
   }
-
-  const canExtend =
-    !finishing &&
-    session.launchMode === 'five-minute' &&
-    session.fullTargetMinutes > session.plannedFocusMinutes &&
-    timerDone;
 
   return (
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <View style={styles.sessionPage}>
         <TopBar
+          onHelp={guide.start}
           label="Focus"
           onBack={() => router.replace('/(app)/today')}
           helper={timerDone ? 'Timer complete' : session.runningSince ? 'Timer stays active' : 'Timer paused'}
         />
 
         <ScrollView
+          ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
           contentContainerStyle={styles.sessionContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -641,7 +659,7 @@ export default function FocusScreen() {
                 Continue this same session toward the original {session.fullTargetMinutes}-minute
                 block, or finish the five-minute launch here.
               </Text>
-              <Pressable
+              <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><Pressable
                 accessibilityRole="button"
                 onPress={extendLaunch}
                 style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
@@ -649,13 +667,13 @@ export default function FocusScreen() {
                   Continue to {session.fullTargetMinutes} minutes
                 </Text>
                 <Text style={styles.buttonArrow}>→</Text>
-              </Pressable>
-              <Pressable
+              </Pressable></View>
+              <View ref={guide.anchors['focus.secondary']} collapsable={false} testID="guide-focus-secondary"><Pressable
                 accessibilityRole="button"
                 onPress={() => setFinishing(true)}
                 style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
                 <Text style={styles.textButtonText}>Finish after five minutes</Text>
-              </Pressable>
+              </Pressable></View>
             </View>
           ) : finishing || timerDone ? (
             <View style={styles.finishPanel}>
@@ -666,7 +684,7 @@ export default function FocusScreen() {
                 How demanding did this block feel? This is about workload calibration, not judging
                 whether you studied “well.”
               </Text>
-              <View style={styles.effortRow}>
+              <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={styles.effortRow}>
                 {([1, 2, 3, 4, 5] as const).map((value) => (
                   <Pressable
                     key={value}
@@ -685,7 +703,7 @@ export default function FocusScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Pressable
+              <View ref={guide.anchors['focus.secondary']} collapsable={false} testID="guide-focus-secondary"><Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Complete focus"
                 accessibilityState={{ disabled: savingFocus, busy: savingFocus }}
@@ -694,7 +712,7 @@ export default function FocusScreen() {
                 style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
                 <Text style={styles.primaryText}>{savingFocus ? 'Saving…' : 'Complete focus'}</Text>
                 <Text style={styles.buttonArrow}>→</Text>
-              </Pressable>
+              </Pressable></View>
               {focusError ? <Text accessibilityRole="alert" style={{ color: colors.danger, marginTop: 10 }}>{focusError}</Text> : null}
               {!timerDone ? (
                 <Pressable
@@ -709,7 +727,7 @@ export default function FocusScreen() {
               ) : null}
             </View>
           ) : (
-            <View style={styles.timerActions}>
+            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={styles.timerActions}>
               <Pressable
                 accessibilityRole="button"
                 onPress={session.runningSince ? pause : resume}
@@ -727,7 +745,7 @@ export default function FocusScreen() {
           </Reveal>
 
           <View style={styles.parkingShell}>
-            <Pressable
+            <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support"><Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded: showParking }}
               accessibilityLabel="Distraction parking"
@@ -742,7 +760,7 @@ export default function FocusScreen() {
                 </Text>
               </View>
               <Text style={styles.parkingToggleMark}>{showParking ? '−' : '+'}</Text>
-            </Pressable>
+            </Pressable></View>
 
             <AnimatedDisclosure visible={showParking} style={styles.parking}>
                 <View style={styles.parkInputRow}>
@@ -795,6 +813,7 @@ export default function FocusScreen() {
           </Pressable>
         </ScrollView>
       </View>
+      {guideOverlay}
     </SafeAreaView>
   );
 }
@@ -803,11 +822,13 @@ function TopBar({
   label,
   onBack,
   helper,
+  onHelp,
   backLabel = 'Today',
 }: {
   label: string;
   onBack: () => void;
   helper?: string;
+  onHelp?: () => void;
   backLabel?: string;
 }) {
   return (
@@ -821,7 +842,10 @@ function TopBar({
           <Text style={styles.back}>← {backLabel}</Text>
         </Pressable>
         <Text style={styles.modeTitle} numberOfLines={1}>{label}</Text>
-        <View style={styles.topBarSpacer} accessible={false} />
+        {onHelp ? <View style={styles.topBarSpacer}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Teach me this screen"
+            onPress={onHelp} style={styles.helpButton}><Text style={styles.helpText}>?</Text></Pressable>
+        </View> : <View style={styles.topBarSpacer} accessible={false} />}
       </View>
       {helper ? <Text style={styles.topHelper}>{helper}</Text> : null}
     </View>
@@ -926,7 +950,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  topBarSpacer: { width: 96 },
+  topBarSpacer: { width: 96, alignItems: 'flex-end' },
+  helpButton: { minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
+  helpText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
   topHelper: {
     color: colors.muted,
     fontSize: 12,

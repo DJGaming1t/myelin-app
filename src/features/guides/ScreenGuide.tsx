@@ -8,14 +8,15 @@ import { GuideStep, TutorialAnchor } from './guide-registry';
 import { GuideRect, guideCardMaxHeight, guideCardTop, spotlightRect } from './guide-geometry';
 import { measureGuideView } from './measure-guide-view';
 
-type Props = {
-  steps: readonly GuideStep[];
-  anchors: Record<TutorialAnchor, RefObject<View | null>>;
-  revealAnchor: (anchor: TutorialAnchor) => Promise<void>;
+type Props<A extends TutorialAnchor> = {
+  title?: string;
+  steps: readonly GuideStep<A>[];
+  anchors: Record<A, RefObject<View | null>>;
+  revealAnchor: (anchor: A) => Promise<void>;
   onClose: () => void;
 };
 
-export function ScreenGuide({ steps, anchors, revealAnchor, onClose }: Props) {
+export function ScreenGuide<A extends TutorialAnchor>({ title = 'Today', steps, anchors, revealAnchor, onClose }: Props<A>) {
   const [index, setIndex] = useState(0);
   const [shown, setShown] = useState(false);
   const [target, setTarget] = useState<GuideRect | null>(null);
@@ -66,7 +67,7 @@ export function ScreenGuide({ steps, anchors, revealAnchor, onClose }: Props) {
       </View>
       <View testID="guide-card" accessibilityViewIsModal style={[styles.card, { top, left: Math.max(12, (width - 420) / 2), width: Math.min(width - 24, 420), maxHeight }]} onLayout={event => setCardHeight(event.nativeEvent.layout.height)}>
         <View style={styles.heading}>
-          <Text style={styles.step}>TODAY · {index + 1}/{steps.length}</Text>
+          <Text style={styles.step}>{title.toUpperCase()} · {index + 1}/{steps.length}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Skip tutorial" onPress={onClose} style={styles.skip}><Text style={styles.secondaryText}>Skip</Text></Pressable>
         </View>
         <ScrollView style={styles.copyScroll} contentContainerStyle={styles.copy}>

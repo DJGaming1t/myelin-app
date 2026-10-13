@@ -26,7 +26,7 @@ try{for(const reduced of [false,true]){
    assert.equal(await page.locator('[data-testid^="help-result-"]').first().getAttribute('data-testid'),'help-result-'+id);
    await result.getByRole('button',{name:'Explain '+name,exact:true}).click();
    await result.getByRole('button',{name:'Hide explanation for '+name,exact:true}).waitFor();
-   assert.equal(await result.getByRole('button',{name:/Show me/}).count(),0,'These examples must not advertise unimplemented tours');
+   assert.equal(await result.getByRole('button',{name:/Show me/}).count(),id==='focus'?1:0,'Only implemented tours are advertised');
    if(id==='confidence') {await result.getByText(/Choose confidence before/).waitFor();await page.waitForTimeout(250);await page.screenshot({path:dir+`/help-explain-${reduced}.png`,fullPage:true});}
    if(id==='tasks')await result.getByText(/deadline, not the study schedule/).waitFor();
    await result.getByRole('button',{name:'Hide explanation for '+name,exact:true}).click();

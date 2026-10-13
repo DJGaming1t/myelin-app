@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState } from '../src/features/guides/guide-registry';
+import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState } from '../src/features/guides/guide-registry';
 import { spotlightRect, guideCardMaxHeight, guideCardTop } from '../src/features/guides/guide-geometry';
 
 const guides: readonly FeatureGuide[] = FEATURE_GUIDES;
@@ -13,7 +13,7 @@ for (const guide of guides) {
   for (const action of guide.supportedActions) {
     if (action.type === 'navigate') assert.ok(routeExists(action.route));
     else {
-      assert.equal(action.tutorialId, 'today', 'Do not advertise unfinished screen tours.');
+      assert.ok(['today', 'focus'].includes(action.tutorialId), 'Do not advertise unfinished screen tours.');
       assert.ok(routeExists(tutorialDestination(action.tutorialId).pathname));
     }
   }
@@ -31,6 +31,19 @@ assert.match(todayGuideSteps('rest')[0].explanation, /sleep/);
 assert.match(todayGuideSteps('focus')[0].explanation, /existing timer/);
 assert.match(todayGuideSteps('review')[0].explanation, /Resume/);
 console.log('✓ Guide IDs, live routes, supported tutorials and state-specific Today explanations');
+
+const focus = guides.find(g => g.id === 'focus')!;
+for (const state of ['empty', 'review', 'setup', 'active', 'checkpoint', 'finish', 'break', 'break-done'] as FocusGuideState[]) {
+  const steps = focusGuideSteps(state);
+  assert.ok(steps.length >= 1 && steps.length <= 3);
+  assert.ok(steps.every(step => focus.anchors.includes(step.anchor)));
+  assert.equal(new Set(steps.map(step => step.anchor)).size, steps.length);
+}
+assert.equal(tutorialDestination('focus').pathname, '/(app)/focus');
+assert.match(focusGuideSteps('active')[0].explanation, /keeps running during this tour/);
+assert.match(focusGuideSteps('checkpoint')[0].explanation, /same session/);
+assert.match(focusGuideSteps('finish')[1].explanation, /saves no study evidence/);
+console.log('✓ Focus tutorials cover setup, empty, Review guard, active, checkpoint, finish and break states');
 
 const host = { x: 10, y: 24, width: 320, height: 568 };
 assert.deepEqual(spotlightRect({ x: 30, y: 124, width: 100, height: 48 }, host), { x: 15, y: 95, width: 110, height: 58 });

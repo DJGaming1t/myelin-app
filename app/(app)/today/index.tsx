@@ -40,6 +40,10 @@ import {
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
 import { useTodayGuide } from '@/src/features/guides/useTodayGuide';
+import { useTodayGuideOffer } from '@/src/features/guides/useTodayGuideOffer';
+import { TodayGuideOffer } from '@/src/features/guides/TodayGuideOffer';
+import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 import {
   ReclaimedStudyPlacement,
@@ -65,8 +69,10 @@ export default function TodayScreen() {
     reminderKind?: string | string[];
   }>();
   const { status, workspace, updateWorkspace, saveError, ownerKey } = useWorkspace();
-  const { session: activeFocus } = useFocus();
-  const { session: activeReview } = useReview();
+  const { session: activeFocus, ready: focusReady } = useFocus();
+  const { session: activeReview, ready: reviewReady } = useReview();
+  const { ready: onboardingReady, shouldShow: onboardingPending } = useOnboarding();
+  const { transitionPending } = useOnboardingTransition();
   const { style: heroMotion, busy: deferAnimating, transition } = useRecommendationMotion();
   const [showAdjust, setShowAdjust] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
@@ -139,11 +145,14 @@ export default function TodayScreen() {
     () => (workspace ? nearestUpcomingExam(workspace, now) : null),
     [workspace, now],
   );
+  const guideReady = status === 'ready' && !!workspace && !!plan && !deferAnimating &&
+    focusReady && reviewReady && onboardingReady && !onboardingPending && !transitionPending;
   const guide = useTodayGuide(
-    status === 'ready' && !!workspace && !!plan && !deferAnimating,
+    guideReady,
     ownerKey,
     activeReview ? 'review' : activeFocus ? 'focus' : plan && plan.remainingBudgetMinutes <= 0 ? 'rest' : plan?.nextBlock ? 'ready' : 'empty',
   );
+  const guideOffer = useTodayGuideOffer(ownerKey, guideReady && !activeFocus && !activeReview, guide.open);
   if (status === 'loading' || status === 'idle' || !workspace || !plan) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -514,6 +523,10 @@ export default function TodayScreen() {
               </View>
             )}
           </Animated.View>
+
+          <TodayGuideOffer visible={guideOffer.visible} saveFailed={guideOffer.saveFailed}
+            onShow={() => { guideOffer.choose('shown'); guide.start(); }}
+            onLater={() => guideOffer.choose('later')} onRetry={guideOffer.retry} />
 
           {!activeFocus && !activeReview && next?.topicId ? (
             <TodayAdaptationInsight

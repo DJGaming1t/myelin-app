@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
+import ts from 'typescript';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createFocusWriteQueue } from '../src/features/focus/focus-write-queue';
@@ -35,6 +37,101 @@ import {
 
 const MINUTE = 60_000;
 const now = 1_800_000_000_000;
+
+// Execute the actual screen handler with delayed/rejected storage, rather
+// than treating a legacy handler name as proof of the save-before-route flow.
+async function verifyBreakTransitions() {
+  const screen = fs.readFileSync('app/(app)/focus/index.tsx', 'utf8');
+  const source = ts.createSourceFile('focus.tsx', screen, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let handler: ts.FunctionDeclaration | undefined;
+  function visit(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === 'runBreakTransition') handler = node;
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.ok(handler, 'The Focus screen must have a shared break exit handler.');
+  const executable = ts.transpileModule(handler.getText(source), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
+  }).outputText;
+
+  function simulate(phase = 'break') {
+    const routes: unknown[] = [];
+    const saves: string[] = [];
+    const lock = { current: false };
+    let busy: string | null = null;
+    let error = '';
+    let persist: () => Promise<void> = async () => {};
+    const bindings = {
+      session: { phase },
+      breakTransitionLock: lock,
+      retrievalSuggestion: { topicId: 'topic_light', count: 3 } as { topicId: string; count: number } | null,
+      setBreakTransition: (value: string | null) => { busy = value; },
+      setFocusError: (value: string) => { error = value; },
+      completeBreak: async () => { saves.push('complete'); await persist(); },
+      skipBreak: async () => { saves.push('skip'); await persist(); },
+      router: { replace: (route: unknown) => { routes.push(JSON.parse(JSON.stringify(route))); } },
+      Date: { now: () => now },
+    };
+    const run = vm.runInNewContext(executable + '\nrunBreakTransition;', bindings, { timeout: 1000 }) as
+      (action: 'finish' | 'retrieve' | 'skip') => Promise<void>;
+    return { bindings, routes, saves, lock, run,
+      setPersistence: (next: () => Promise<void>) => { persist = next; },
+      busy: () => busy, error: () => error };
+  }
+
+  const rapid = simulate();
+  let release!: () => void;
+  rapid.setPersistence(() => new Promise<void>(resolve => { release = resolve; }));
+  const first = rapid.run('retrieve');
+  assert.equal(rapid.lock.current, true);
+  assert.equal(rapid.busy(), 'retrieve');
+  assert.deepEqual(rapid.routes, [], 'Do not navigate before break storage succeeds.');
+  await rapid.run('skip');
+  assert.deepEqual(rapid.saves, ['complete'], 'A second rapid exit must not start another save.');
+  rapid.bindings.retrievalSuggestion = { topicId: 'different_topic', count: 1 };
+  release();
+  await first;
+  assert.deepEqual(rapid.routes, [{ pathname: '/(app)/review', params: {
+    topicId: 'topic_light', autoStart: '1', limit: '3', source: 'focus',
+  } }], 'Retrieve the bounded topic captured at the tap, even if the live suggestion changes.');
+  await rapid.run('finish');
+  assert.equal(rapid.routes.length, 1, 'Keep duplicate exits blocked through successful navigation.');
+
+  const retry = simulate();
+  retry.setPersistence(async () => { throw new Error('device storage unavailable'); });
+  await retry.run('finish');
+  assert.deepEqual(retry.routes, [], 'A rejected save must keep the user on Break.');
+  assert.equal(retry.bindings.session.phase, 'break');
+  assert.equal(retry.lock.current, false);
+  assert.equal(retry.busy(), null);
+  assert.match(retry.error(), /could not be saved.*retry/i);
+  retry.setPersistence(async () => {});
+  await retry.run('finish');
+  assert.deepEqual(retry.saves, ['complete', 'complete']);
+  assert.deepEqual(retry.routes, ['/(app)/today']);
+  assert.equal(retry.error(), '', 'A successful retry clears the previous failure.');
+
+  const noRecall = simulate();
+  noRecall.bindings.retrievalSuggestion = null;
+  await noRecall.run('retrieve');
+  assert.deepEqual(noRecall.saves, ['complete']);
+  assert.deepEqual(noRecall.routes, ['/(app)/today']);
+
+  const skip = simulate();
+  skip.setPersistence(() => new Promise<void>(resolve => { release = resolve; }));
+  const skipping = skip.run('skip');
+  assert.deepEqual(skip.saves, ['skip']);
+  assert.deepEqual(skip.routes, []);
+  release();
+  await skipping;
+  assert.deepEqual(skip.routes, ['/(app)/today']);
+
+  const wrongPhase = simulate('focus');
+  await wrongPhase.run('retrieve');
+  assert.deepEqual(wrongPhase.saves, []);
+  assert.deepEqual(wrongPhase.routes, []);
+  console.log('✓ Actual break handler blocks rapid exits, waits for saves, preserves recall and recovers from failure');
+}
 
 class MemoryStore implements FocusKeyValueStore {
   values = new Map<string, string>();
@@ -417,6 +514,8 @@ async function main() {
   assert.equal(history.minutes, 38);
   assert.equal(history.tinyStep, 'Start with question 1');
 
+  await verifyBreakTransitions();
+
   console.log('✓ absolute timestamps survive background/app close');
   console.log('✓ pause and resume preserve elapsed time');
   console.log('✓ five-minute launch can extend into the full block');
@@ -638,9 +737,11 @@ const reviewScreenSource = fs.readFileSync(
   'utf8',
 );
 assert.ok(
-  focusScreenSource.includes('finishBreakAndRetrieve') &&
-    focusScreenSource.includes("autoStart: '1'") &&
-    focusScreenSource.includes("source: 'focus'"),
+  breakExit.includes("pathname: '/(app)/review'") &&
+    breakExit.includes('topicId: suggestion.topicId') &&
+    breakExit.includes('limit: String(suggestion.count)') &&
+    breakExit.includes("autoStart: '1'") &&
+    breakExit.includes("source: 'focus'"),
   'Focus must finish the break before handing a useful topic into short retrieval.',
 );
 assert.ok(

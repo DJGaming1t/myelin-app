@@ -174,9 +174,10 @@ assert(
     localPreviewRelease.includes("'--platform', 'android'"),
   'Local publisher must require an explicit action, full successful tests, clean unchanged Git state, and a matching Android EAS receipt.',
 );
+const windowsDeclaration = localPreviewRelease.indexOf("const windows = process.platform === 'win32';");
+const npmDeclaration = localPreviewRelease.indexOf("const npm = windows ? process.execPath : 'npm';");
 assert(
-  localPreviewRelease.indexOf("const windows = process.platform === 'win32';") <
-    localPreviewRelease.indexOf("const npm = windows ? 'npm.cmd' : 'npm';"),
+  windowsDeclaration >= 0 && npmDeclaration > windowsDeclaration,
   'Local publisher must initialize Windows detection before selecting the npm executable.',
 );
 assert(

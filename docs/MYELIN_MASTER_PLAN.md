@@ -92,3 +92,15 @@ Status: implemented and locally verified against the current development snapsho
 - No schema, scheduler, planner, notification, native dependency, runtime-version or model changes. Existing Focus → Retrieve handoff remains intact.
 - Verification: TypeScript, all 26 existing verification scripts and 12 browser scenarios at 320×568 passed (normal/reduced motion). Browser checks cover five-minute finish/extend, single-record persistence after reload, paused status, reachable break controls with eight parked thoughts, due-only retrieval handoff and skipping recall. The optional repeatable browser regression is `scripts/verify-focus-ui.cjs`; it requires a separately available Playwright browser and a running Expo web server. Physical Android scrolling/TalkBack and inference remain unverified.
 - Next chunk: **M05a — task-only and commitment-only workspace onboarding recovery**, followed by reconciling M01/M02 with the current branch. Preserve the same checklist.
+
+
+### F02 — Execute pending app checks and repair stale release assertions — 2026-10-14 IST
+
+Status: implemented and locally verified on current development source `ad9fc2a9e3a60116b2e128d424fb0628e722bbd7`; publication pending.
+
+- Recovered the exact current 548-file snapshot and validated Git blob hashes; installed the committed npm lockfile. Preserved all M01–M07 IDs and the historical reconciliation above.
+- Reproduced and fixed two verification blockers: the Focus test expected the removed individual retrieval handler; the release test expected the replaced Windows `npm.cmd` initializer. Existing safety assertions remain; initialization checks also reject missing declarations.
+- Added execution-based coverage of the actual Break exit handler: pending saves, conflicting rapid taps, bounded captured recall, storage rejection and retry, missing recall, skip and wrong phase.
+- Passed full TypeScript, 25 app verification scripts excluding Firestore, 13 additional assistant/scenario checks across India/US timezones, eight conversation Worker tests, publisher offline behavior tests and Expo prebuild config. Scripts used `node --import tsx` because this executor rejects the CLI IPC socket.
+- Still pending: Java 21+ Firestore emulator, Git-history/APK compatibility preflight, real Windows/Android QA and OTA publication. Last confirmed preview remains runtime 0.2.13, update `01a1263a-9ff6-700e-96f6-a05d3589d664`. No new model or UI is claimed shipped.
+- **Next chunk: M05a — task-only and commitment-only onboarding recovery.** Current `hasMeaningfulWorkspaceData` still omits both existing collections (confirmed in source this turn). Fix that bounded omission and verify onboarding before stopping for Next. M01/M02 reconciliation follows afterward; reuse prior guide work and preserve newer Focus code. Publishing remains pending an authorized verified execution path.

@@ -1,6 +1,6 @@
 import { useAchievement } from '@/src/features/achievement/AchievementProvider';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { RefObject, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -29,6 +29,9 @@ import {
   scheduleReview,
 } from '@/src/features/review/review-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
+import { useReviewGuide } from '@/src/features/guides/useReviewGuide';
+import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
+import { ReviewGuideState } from '@/src/features/guides/guide-registry';
 import { findQuestion, findTopic } from '@/src/features/topics/topic-operations';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
@@ -49,16 +52,18 @@ export default function ReviewScreen() {
     autoStart?: string | string[];
     limit?: string | string[];
     source?: string | string[];
+    guide?: string | string[];
   }>();
   const requestedTopicId = param(params.topicId);
   const autoStartRequested = param(params.autoStart) === '1';
+  const tutorialRequested = param(params.guide) === 'review';
   const fromFocus = param(params.source) === 'focus';
   const requestedLimit = Math.max(
     1,
     Math.min(3, Number(param(params.limit)) || 3),
   );
-  const { workspace } = useWorkspace();
-  const { session: activeFocus } = useFocus();
+  const { workspace, ownerKey } = useWorkspace();
+  const { session: activeFocus, ready: focusReady } = useFocus();
   const {
     ready,
     session,
@@ -99,8 +104,26 @@ export default function ReviewScreen() {
     () => (workspace ? reviewCounts(workspace, Date.now()) : { due: 0, total: 0 }),
     [workspace],
   );
+  const requestedTopic = workspace && requestedTopicId ? findTopic(workspace, requestedTopicId) : null;
+  const dueForTopic = useMemo(() => workspace && !session && requestedTopic
+    ? buildReviewQueue(workspace, { topicId: requestedTopic.id }).length : 0,
+    [workspace, session, requestedTopic]);
+  const guideState: ReviewGuideState = activeFocus || blockedByFocus ? 'blocked'
+    : session ? session.stage === 'attempt' ? 'attempt' : 'reference'
+    : requestedTopic ? !requestedTopic.cards.length ? 'empty-topic' : dueForTopic > 0 ? 'topic-ready' : 'practice'
+    : counts.due > 0 ? 'ready' : counts.total > 0 ? 'waiting' : 'empty';
+  const guide = useReviewGuide(ready && focusReady && !!workspace && !grading &&
+    (!session || !!currentCard) && (!autoStartRequested || autoStartConsumed || !!session), ownerKey, guideState);
+  const guideOverlay = guide.open ? <ScreenGuide key={guideState} title="Review" steps={guide.steps}
+    anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null;
 
   useEffect(() => {
+    // A tutorial replay must not inherit an automatic post-Focus start.
+    if (tutorialRequested) {
+      setAutoStartConsumed(true);
+      if (autoStartRequested) router.setParams({ autoStart: undefined });
+      return;
+    }
     if (
       !autoStartRequested ||
       autoStartConsumed ||
@@ -143,6 +166,7 @@ export default function ReviewScreen() {
     session,
     startReview,
     workspace,
+    tutorialRequested,
   ]);
 
   if (!ready || !workspace) {
@@ -159,10 +183,11 @@ export default function ReviewScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.page}>
-          <ScrollView contentContainerStyle={styles.dashboard}>
+          <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={styles.dashboard}>
             <View style={styles.brandRow}>
               <View style={styles.brandDot} />
               <Text style={styles.brand}>MYELIN</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Teach me this screen" onPress={guide.start} style={styles.blockedHelp}><Text style={styles.helpText}>?</Text></Pressable>
             </View>
             <Text style={styles.eyebrow}>REVIEW PAUSED</Text>
             <Text style={styles.dashboardTitle}>Finish the focus block first.</Text>
@@ -170,6 +195,7 @@ export default function ReviewScreen() {
               Your exact review card, answer draft, hint state and reference stage are still saved.
             </Text>
             <Pressable
+              ref={guide.anchors['review.primary']} collapsable={false} testID="guide-review-primary"
               accessibilityRole="button"
               onPress={() => router.push('/(app)/focus')}
               style={({ pressed }) => [styles.blockedCard, pressed && styles.pressed]}>
@@ -183,21 +209,18 @@ export default function ReviewScreen() {
           </ScrollView>
           <AppNav />
         </View>
+        {guideOverlay}
       </SafeAreaView>
     );
   }
 
   if (!session) {
-    const requestedTopic = requestedTopicId ? findTopic(workspace, requestedTopicId) : null;
-    const dueForTopic = requestedTopic
-      ? buildReviewQueue(workspace, { topicId: requestedTopic.id }).length
-      : 0;
-
     return (
       <SafeAreaView style={styles.safe}>
         <AmbientBackdrop />
         <View style={styles.page}>
           <ScreenHeader
+            onHelp={guide.start}
             variant="compact"
             title="Review"
             subtitle={
@@ -207,7 +230,7 @@ export default function ReviewScreen() {
             }
           />
 
-          <ScrollView contentContainerStyle={styles.dashboard} showsVerticalScrollIndicator={false}>
+          <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={styles.dashboard} showsVerticalScrollIndicator={false}>
             <AnimatedDisclosure visible={completedNotice} style={styles.completeNotice}>
               <Text style={styles.completeMark}>✓</Text>
               <View style={styles.completeCopy}>
@@ -218,6 +241,7 @@ export default function ReviewScreen() {
 
             {activeFocus || blockedByFocus ? (
               <Pressable
+                ref={guide.anchors['review.primary']} collapsable={false} testID="guide-review-primary"
                 accessibilityRole="button"
                 onPress={() => router.push('/(app)/focus')}
                 style={({ pressed }) => [styles.blockedCard, pressed && styles.pressed]}>
@@ -248,6 +272,7 @@ export default function ReviewScreen() {
                   <>
                     {dueForTopic > 0 ? (
                       <Pressable
+                        ref={guide.anchors['review.primary']} collapsable={false} testID="guide-review-primary"
                         accessibilityRole="button"
                         onPress={async () => {
                           setCompletedNotice(false);
@@ -263,6 +288,7 @@ export default function ReviewScreen() {
                     ) : null}
 
                     <Pressable
+                      ref={dueForTopic === 0 ? guide.anchors['review.primary'] : undefined} collapsable={false} testID={dueForTopic === 0 ? 'guide-review-primary' : undefined}
                       accessibilityRole="button"
                       onPress={async () => {
                         setCompletedNotice(false);
@@ -278,6 +304,7 @@ export default function ReviewScreen() {
                   </>
                 ) : (
                   <EmptyReview
+                    anchorRef={guide.anchors['review.primary']}
                     title="No recall questions yet."
                     text="Add one prompt to this topic before starting Review."
                     action="Add question"
@@ -317,6 +344,7 @@ export default function ReviewScreen() {
 
                 {counts.due > 0 ? (
                   <Pressable
+                    ref={guide.anchors['review.primary']} collapsable={false} testID="guide-review-primary"
                     accessibilityRole="button"
                     onPress={async () => {
                       setCompletedNotice(false);
@@ -331,6 +359,7 @@ export default function ReviewScreen() {
                   </Pressable>
                 ) : counts.total === 0 ? (
                   <EmptyReview
+                    anchorRef={guide.anchors['review.primary']}
                     title="Start in Library."
                     text="Add a recall question to any Topic. Review never invents fake material."
                     action="Open Library"
@@ -339,6 +368,7 @@ export default function ReviewScreen() {
                 ) : null}
 
                 <Pressable
+                  ref={guide.anchors['review.secondary']} collapsable={false} testID="guide-review-secondary"
                   accessibilityRole="button"
                   accessibilityLabel="Open mistake notebook"
                   onPress={() => router.push('/(app)/mistakes')}
@@ -355,6 +385,7 @@ export default function ReviewScreen() {
 
           <AppNav />
         </View>
+        {guideOverlay}
       </SafeAreaView>
     );
   }
@@ -429,14 +460,17 @@ export default function ReviewScreen() {
       <AmbientBackdrop />
       <View style={styles.reviewPage}>
         <View style={styles.reviewTop}>
-          <Pressable accessibilityRole="button" onPress={confirmDiscard} hitSlop={10}>
+          <Pressable accessibilityRole="button" onPress={confirmDiscard} hitSlop={10} style={styles.endAction}>
             <Text style={styles.endReview}>End</Text>
           </Pressable>
           <View style={styles.progressCopy}>
             <Text style={styles.progressLabel}>REVIEW</Text>
             <Text style={styles.progressValue}>{progress} / {session.queue.length}</Text>
           </View>
-          <Text style={styles.subjectTop}>{currentTopic.subject}</Text>
+          <View style={styles.reviewTopActions}>
+            <Text style={styles.subjectTop} numberOfLines={1} accessibilityLabel={currentTopic.subject}>{currentTopic.subject}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Teach me this screen" onPress={guide.start} style={styles.helpButton}><Text style={styles.helpText}>?</Text></Pressable>
+          </View>
         </View>
         <View style={styles.reviewProgress}>
           <AnimatedProgress
@@ -446,6 +480,7 @@ export default function ReviewScreen() {
         </View>
 
         <ScrollView
+          ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.reviewContent}
           showsVerticalScrollIndicator={false}>
@@ -478,7 +513,7 @@ export default function ReviewScreen() {
               ) : null}
 
               <Text style={styles.answerLabel}>YOUR ANSWER</Text>
-              <TextInput
+              <View ref={guide.anchors['review.primary']} collapsable={false} testID="guide-review-primary"><TextInput
                 accessibilityLabel="Your recall answer"
                 value={localAnswer}
                 onChangeText={setLocalAnswer}
@@ -489,10 +524,10 @@ export default function ReviewScreen() {
                 textAlignVertical="top"
                 maxLength={16000}
                 style={styles.answerInput}
-              />
+              /></View>
 
               <Text style={styles.confidenceLabel}>How sure were you before checking?</Text>
-              <View style={styles.confidenceRow}>
+              <View ref={guide.anchors['review.secondary']} collapsable={false} testID="guide-review-secondary" style={styles.confidenceRow}>
                 {CONFIDENCE.map((option) => (
                   <Pressable
                     key={option.value}
@@ -516,8 +551,9 @@ export default function ReviewScreen() {
                 ))}
               </View>
 
-              <Pressable
+              <View ref={guide.anchors['review.support']} collapsable={false} testID="guide-review-support"><Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Show reference answer"
                 accessibilityState={{ disabled: !referenceReady }}
                 disabled={!referenceReady}
                 onPress={showReference}
@@ -529,6 +565,7 @@ export default function ReviewScreen() {
                 <Text style={styles.primaryText}>Show reference answer</Text>
                 <Text style={styles.primaryArrow}>→</Text>
               </Pressable>
+              </View>
 
               <Pressable
                 accessibilityRole="button"
@@ -544,6 +581,7 @@ export default function ReviewScreen() {
                 label="REFERENCE"
                 text={currentCard.answer || 'No reference answer was saved for this prompt.'}
                 accent
+                anchorRef={guide.anchors['review.primary']}
               />
 
               <View style={styles.recallMeta}>
@@ -560,7 +598,7 @@ export default function ReviewScreen() {
                 Grade the recall, not how familiar the reference answer looks now. “Again” also adds this correction to Mistakes when a reference answer exists.
               </Text>
 
-              <View style={styles.gradeStack}>
+              <View ref={guide.anchors['review.secondary']} collapsable={false} testID="guide-review-secondary" style={styles.gradeStack}>
                 {(['again', 'practising', 'good'] as const).map((choice) => (
                   <ReviewChoiceButton
                     key={choice}
@@ -578,6 +616,7 @@ export default function ReviewScreen() {
           </Reveal>
         </ScrollView>
       </View>
+      {guideOverlay}
     </SafeAreaView>
   );
 }
@@ -592,11 +631,13 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function EmptyReview({
+  anchorRef,
   title,
   text,
   action,
   onPress,
 }: {
+  anchorRef?: RefObject<View | null>;
   title: string;
   text: string;
   action: string;
@@ -607,6 +648,7 @@ function EmptyReview({
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptyText}>{text}</Text>
       <Pressable
+        ref={anchorRef} collapsable={false} testID={anchorRef ? 'guide-review-primary' : undefined}
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [styles.emptyAction, pressed && styles.pressed]}>
@@ -617,17 +659,21 @@ function EmptyReview({
 }
 
 function CompareCard({
+  anchorRef,
   label,
   text,
   accent,
 }: {
+  anchorRef?: RefObject<View | null>;
   label: string;
   text: string;
   accent?: boolean;
 }) {
   return (
     <View style={[styles.compareCard, accent && styles.compareCardAccent]}>
-      <Text style={[styles.compareLabel, accent && styles.compareLabelAccent]}>{label}</Text>
+      <View ref={anchorRef} collapsable={false} testID={anchorRef ? 'guide-review-primary' : undefined}>
+        <Text style={[styles.compareLabel, accent && styles.compareLabelAccent]}>{label}</Text>
+      </View>
       <Text style={styles.compareText}>{text}</Text>
     </View>
   );
@@ -693,10 +739,15 @@ const styles = StyleSheet.create({
   reviewPage: { flex: 1 },
   reviewTop: { minHeight: 58, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.line },
   endReview: { color: colors.danger, fontSize: 10.5, fontWeight: '600' },
-  progressCopy: { position: 'absolute', left: '50%', transform: [{ translateX: -30 }], alignItems: 'center' },
+  endAction: { width: 96, minHeight: layout.minTouch, justifyContent: 'center' },
+  reviewTopActions: { width: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
+  helpButton: { minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
+  blockedHelp: { marginLeft: 'auto', minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
+  helpText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
+  progressCopy: { flex: 1, minWidth: 0, alignItems: 'center' },
   progressLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.2 },
   progressValue: { color: colors.text, fontSize: 10.5, fontWeight: '700', marginTop: 2 },
-  subjectTop: { color: colors.muted, fontSize: 9.5, maxWidth: 120 },
+  subjectTop: { color: colors.muted, fontSize: 9.5, maxWidth: 44 },
   reviewProgress: { paddingHorizontal: spacing.lg },
   reviewContent: {
     width: '100%',

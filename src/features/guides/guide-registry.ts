@@ -3,10 +3,11 @@ export type GuideRoute =
   | '/(app)/today' | '/(app)/focus' | '/(app)/review' | '/(app)/progress'
   | '/(app)/today/day-map' | '/(app)/mistakes' | '/(app)/settings'
   | '/(app)/settings/reminders';
-export type TutorialId = 'today' | 'focus';
+export type TutorialId = 'today' | 'focus' | 'review';
 export type TodayAnchor = 'today.next' | 'today.adjust' | 'today.day-map';
 export type FocusAnchor = 'focus.primary' | 'focus.secondary' | 'focus.support';
-export type TutorialAnchor = TodayAnchor | FocusAnchor;
+export type ReviewAnchor = 'review.primary' | 'review.secondary' | 'review.support';
+export type TutorialAnchor = TodayAnchor | FocusAnchor | ReviewAnchor;
 export type GuideAction =
   | { type: 'navigate'; route: GuideRoute }
   | { type: 'startTutorial'; tutorialId: TutorialId };
@@ -56,7 +57,7 @@ export const FEATURE_GUIDES = [
       "Compare your answer and choose Again, Practising or Good. Your result helps schedule the next review.",
     ],
     searchTerms: ['recall', 'retrieve', 'again', 'practising', 'good', 'question', 'answer', 'hint', 'memory'],
-    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/review' }],
+    anchors: ['review.primary', 'review.secondary', 'review.support'], supportedActions: [{ type: 'navigate', route: '/(app)/review' }, { type: 'startTutorial', tutorialId: 'review' }],
   },
   {
     id: 'confidence', name: 'Recall confidence', route: '/(app)/review',
@@ -167,6 +168,7 @@ export function todayGuideSteps(state: TodayGuideState): readonly GuideStep<Toda
 }
 
 export function tutorialDestination(id: TutorialId) {
+  if (id === 'review') return { pathname: '/(app)/review' as const, params: { guide: id, autoStart: '0' } };
   return { pathname: id === 'focus' ? '/(app)/focus' as const : '/(app)/today' as const, params: { guide: id } };
 }
 
@@ -196,3 +198,28 @@ const FOCUS_GUIDE_STEPS: Record<FocusGuideState, readonly GuideStep<FocusAnchor>
 };
 
 export function focusGuideSteps(state: FocusGuideState) { return FOCUS_GUIDE_STEPS[state]; }
+
+export type ReviewGuideState = 'blocked' | 'empty' | 'empty-topic' | 'waiting' | 'ready' | 'topic-ready' | 'practice' | 'attempt' | 'reference';
+const REVIEW_GUIDE_STEPS: Record<ReviewGuideState, readonly GuideStep<ReviewAnchor>[]> = {
+  blocked: [{ anchor: 'review.primary', title: 'Finish Focus before recall', explanation: 'Return to the active timer or break here. Your saved Review question, answer draft and stage stay intact. This tour does not end either session.' }],
+  empty: [{ anchor: 'review.primary', title: 'Give recall a real question', explanation: 'Open Library and add a prompt with a reference answer to a topic. Review uses your saved material; this tour does not create examples or start a queue.' }],
+  'empty-topic': [{ anchor: 'review.primary', title: 'Add a prompt to this topic', explanation: 'Add a question with its reference answer before starting recall. The guide does not add a question or edit this topic for you.' }],
+  waiting: [{ anchor: 'review.secondary', title: 'Nothing needs an early review', explanation: 'No saved questions are due right now. You can revisit corrections here, or practise from a topic in Library. Opening this guide never brings future reviews forward.' }],
+  ready: [
+    { anchor: 'review.primary', title: 'Start with what is due', explanation: 'Start mixed review draws from saved questions ready now. You choose when to begin; the tutorial never starts or advances a queue.' },
+    { anchor: 'review.secondary', title: 'Keep corrections close', explanation: 'Mistake notebook keeps corrections for another attempt. An Again grade can create a correction when a saved reference answer exists.' },
+  ],
+  'topic-ready': [{ anchor: 'review.primary', title: 'Recall this topic when ready', explanation: 'Start due recall uses questions ready in this topic. Practise all questions is a separate optional choice. This tour leaves review dates unchanged.' }],
+  practice: [{ anchor: 'review.primary', title: 'Early practice is your choice', explanation: 'Nothing in this topic is due. Practise all questions can open an optional queue; simply opening this tutorial never starts it or changes review dates.' }],
+  attempt: [
+    { anchor: 'review.primary', title: 'Try before checking', explanation: 'Write what you can recall before seeing the reference. A saved hint is optional when available, and its use is recorded. This tour keeps your current draft and hint state.' },
+    { anchor: 'review.secondary', title: 'Confidence is separate from correctness', explanation: 'Unsure means mostly guessing; Partly sure means some gaps; Sure means confident recall. Choose before checking. The guide does not choose for you.' },
+    { anchor: 'review.support', title: 'Reveal only after your attempt', explanation: 'Show reference answer becomes available after typing an attempt. If you answered mentally, use that separate action. The tutorial itself never reveals the answer.' },
+  ],
+  reference: [
+    { anchor: 'review.primary', title: 'Compare what you retrieved', explanation: 'Compare your saved attempt with the reference already revealed. Notice missing ideas and errors; familiarity after reading is different from successful recall.' },
+    { anchor: 'review.secondary', title: 'Grade recall honestly', explanation: 'Again means unreliable recall; Practising means partial recall; Good means successful recall. Hint use affects spacing. A grade saves evidence and advances the queue; this tour never chooses a grade.' },
+  ],
+};
+
+export function reviewGuideSteps(state: ReviewGuideState) { return REVIEW_GUIDE_STEPS[state]; }

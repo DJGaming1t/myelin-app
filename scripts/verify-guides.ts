@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState } from '../src/features/guides/guide-registry';
+import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, reviewGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState, ReviewGuideState } from '../src/features/guides/guide-registry';
 import { spotlightRect, guideCardMaxHeight, guideCardTop } from '../src/features/guides/guide-geometry';
 
 const guides: readonly FeatureGuide[] = FEATURE_GUIDES;
@@ -13,7 +13,7 @@ for (const guide of guides) {
   for (const action of guide.supportedActions) {
     if (action.type === 'navigate') assert.ok(routeExists(action.route));
     else {
-      assert.ok(['today', 'focus'].includes(action.tutorialId), 'Do not advertise unfinished screen tours.');
+      assert.ok(['today', 'focus', 'review'].includes(action.tutorialId), 'Do not advertise unfinished screen tours.');
       assert.ok(routeExists(tutorialDestination(action.tutorialId).pathname));
     }
   }
@@ -44,6 +44,18 @@ assert.match(focusGuideSteps('active')[0].explanation, /keeps running during thi
 assert.match(focusGuideSteps('checkpoint')[0].explanation, /same session/);
 assert.match(focusGuideSteps('finish')[1].explanation, /saves no study evidence/);
 console.log('✓ Focus tutorials cover setup, empty, Review guard, active, checkpoint, finish and break states');
+
+const review = guides.find(g => g.id === 'review')!;
+for (const state of ['blocked', 'empty', 'empty-topic', 'waiting', 'ready', 'topic-ready', 'practice', 'attempt', 'reference'] as ReviewGuideState[]) {
+  const steps = reviewGuideSteps(state);
+  assert.ok(steps.length >= 1 && steps.length <= 3);
+  assert.ok(steps.every(step => review.anchors.includes(step.anchor)));
+  assert.equal(new Set(steps.map(step => step.anchor)).size, steps.length);
+}
+assert.deepEqual(tutorialDestination('review'), { pathname: '/(app)/review', params: { guide: 'review', autoStart: '0' } });
+assert.match(reviewGuideSteps('attempt')[2].explanation, /never reveals/);
+assert.match(reviewGuideSteps('reference')[1].explanation, /never chooses a grade/);
+console.log('✓ Review tutorials cover all idle and active states; replay overrides inherited auto-start');
 
 const host = { x: 10, y: 24, width: 320, height: 568 };
 assert.deepEqual(spotlightRect({ x: 30, y: 124, width: 100, height: 48 }, host), { x: 15, y: 95, width: 110, height: 58 });

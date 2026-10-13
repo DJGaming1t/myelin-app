@@ -38,6 +38,8 @@ import {
   buildAutopilotReflowSummary,
 } from '@/src/features/exams/autopilot-reflow';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
+import { useTodayGuide } from '@/src/features/guides/useTodayGuide';
 import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 import {
   ReclaimedStudyPlacement,
@@ -62,7 +64,7 @@ export default function TodayScreen() {
     reminderExpired?: string | string[];
     reminderKind?: string | string[];
   }>();
-  const { status, workspace, updateWorkspace, saveError } = useWorkspace();
+  const { status, workspace, updateWorkspace, saveError, ownerKey } = useWorkspace();
   const { session: activeFocus } = useFocus();
   const { session: activeReview } = useReview();
   const { style: heroMotion, busy: deferAnimating, transition } = useRecommendationMotion();
@@ -136,6 +138,11 @@ export default function TodayScreen() {
   const nextExam = useMemo(
     () => (workspace ? nearestUpcomingExam(workspace, now) : null),
     [workspace, now],
+  );
+  const guide = useTodayGuide(
+    status === 'ready' && !!workspace && !!plan && !deferAnimating,
+    ownerKey,
+    activeReview ? 'review' : activeFocus ? 'focus' : plan && plan.remainingBudgetMinutes <= 0 ? 'rest' : plan?.nextBlock ? 'ready' : 'empty',
   );
   if (status === 'loading' || status === 'idle' || !workspace || !plan) {
     return (
@@ -380,9 +387,14 @@ export default function TodayScreen() {
           title={greeting(now)}
           actionLabel="Settings"
           onAction={() => router.push('/(app)/settings')}
+          onHelp={guide.start}
         />
 
         <ScrollView
+          ref={guide.scroll}
+          testID="today-scroll"
+          onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
@@ -405,7 +417,9 @@ export default function TodayScreen() {
                   {activeReview.mixed ? 'Mixed recall queue' : 'Topic recall queue'}
                 </Text>
                 <Text style={styles.heroReason}>Your place is saved.</Text>
-                <AppButton label="Resume review" onPress={() => router.push('/(app)/review')} />
+                <View ref={guide.anchors['today.next']} collapsable={false} testID="guide-today-next">
+                  <AppButton label="Resume review" onPress={() => router.push('/(app)/review')} />
+                </View>
               </View>
             ) : activeFocus ? (
               <View style={styles.hero}>
@@ -414,7 +428,9 @@ export default function TodayScreen() {
                 </Text>
                 <Text style={styles.heroTitle}>{activeFocus.topicName}</Text>
                 <Text style={styles.heroReason}>The timer stays intact while you are away.</Text>
-                <AppButton label="Resume focus" onPress={() => router.push('/(app)/focus')} />
+                <View ref={guide.anchors['today.next']} collapsable={false} testID="guide-today-next">
+                  <AppButton label="Resume focus" onPress={() => router.push('/(app)/focus')} />
+                </View>
               </View>
             ) : budgetFinished ? (
               <View style={styles.heroQuiet}>
@@ -422,11 +438,11 @@ export default function TodayScreen() {
                 <Text style={styles.heroReason}>
                   {sleepingAt(workspace.settings, now) ? 'Your tasks are saved. Day Map can find a slot after you wake.' : 'MYELIN will stay quiet unless your available time changes.'}
                 </Text>
-                <AppButton
+                <View ref={guide.anchors['today.next']} collapsable={false} testID="guide-today-next"><AppButton
                   label={sleepingAt(workspace.settings, now) ? 'Plan after rest' : 'Adjust today'}
                   variant="secondary"
                   onPress={() => sleepingAt(workspace.settings, now) ? router.push('/(app)/today/day-map') : setShowAdjust(true)}
-                />
+                /></View>
               </View>
             ) : next ? (
               <View style={styles.hero}>
@@ -453,6 +469,7 @@ export default function TodayScreen() {
                 </AnimatedDisclosure>
 
                 <View style={styles.heroActions}>
+                  <View ref={guide.anchors['today.next']} collapsable={false} testID="guide-today-next">
                   {next.taskId ? <TaskQuickActions task={currentWorkspace.tasks.find(task => task.id === next.taskId)!} /> : <AppButton
                     label={
                       next.source === 'task' && !next.focusable
@@ -464,6 +481,7 @@ export default function TodayScreen() {
                     onPress={() => startBlock(next)}
                     style={styles.primaryAction}
                   />}
+                  </View>
                   <View style={styles.heroSecondary}>
                   <Pressable
                     accessibilityRole="button"
@@ -490,7 +508,9 @@ export default function TodayScreen() {
                 <Text style={styles.heroReason}>
                   You can add something new or come back when the next study item is ready.
                 </Text>
-                <AppButton label="Add something" onPress={() => router.push('/(app)/quick-add')} />
+                <View ref={guide.anchors['today.next']} collapsable={false} testID="guide-today-next">
+                  <AppButton label="Add something" onPress={() => router.push('/(app)/quick-add')} />
+                </View>
               </View>
             )}
           </Animated.View>
@@ -725,7 +745,7 @@ export default function TodayScreen() {
                     : ''}
                 </Text>
               </View>
-              <SpringPressable
+              <View ref={guide.anchors['today.adjust']} collapsable={false} testID="guide-today-adjust"><SpringPressable
                 accessibilityRole="button"
                 accessibilityLabel="Adjust today's available time"
                 accessibilityState={{ expanded: showAdjust }}
@@ -733,7 +753,7 @@ export default function TodayScreen() {
                 lift={0}
                 style={styles.capacityAction}>
                 <Text style={styles.capacityActionText}>{showAdjust ? 'Done' : 'Adjust'}</Text>
-              </SpringPressable>
+              </SpringPressable></View>
             </View>
             <AnimatedProgress
               value={currentPlan.budgetMinutes ? currentPlan.alreadyUsedMinutes / currentPlan.budgetMinutes : 0}
@@ -796,10 +816,12 @@ export default function TodayScreen() {
 
 
           <View style={styles.shortcuts}>
+            <View ref={guide.anchors['today.day-map']} collapsable={false} testID="guide-today-day-map" style={styles.shortcutAnchor}>
             <SpringPressable accessibilityRole="button" accessibilityLabel="Open Day Map"
               onPress={() => router.push('/(app)/today/day-map')} style={styles.shortcut}>
               <Text style={styles.shortcutTitle}>Day Map</Text><Text style={styles.summaryMeta}>Your schedule →</Text>
             </SpringPressable>
+            </View>
             <SpringPressable accessibilityRole="button" accessibilityLabel="Show study tasks"
               accessibilityState={{ expanded: showInbox }}
               onPress={() => { setShowInbox(value => !value); setShowOverdue(false); }} style={styles.shortcut}>
@@ -888,6 +910,7 @@ export default function TodayScreen() {
 
         <AppNav />
       </View>
+      {guide.open ? <ScreenGuide steps={guide.steps} anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null}
     </SafeAreaView>
   );
 }
@@ -947,6 +970,7 @@ function formatDeadline(timestamp: number) {
 }
 
 const styles = StyleSheet.create({
+  shortcutAnchor: { flex: 1 },
   safe: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1 },
   scroll: { flex: 1 },

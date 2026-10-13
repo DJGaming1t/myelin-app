@@ -17,10 +17,10 @@ The checklist IDs and historical chunk log below are preserved. Their original �
 
 | ID | Reconciled state on current development branch | Remaining |
 | --- | --- | --- |
-| M01 / M02 | Today guide foundation and offline Help were delivered in PRs #80–81 on `expo-migration`, but are absent from this development branch. Unfinished Focus tutorial is preserved separately, not copied over newer Focus code. | Reconcile the existing registry/Help work into current routes before adding more tutorials. |
+| M01 / M02 | M01 registry/Today tour reconciled and locally/browser verified on the current branch (2026-10-14), publication pending. M02a offline Help remains on the older branch; unfinished Focus tutorial is preserved separately. | Reconcile existing offline Help next; other tours follow afterward. |
 | M03 | Focus-aware reminder planning, recovered-window intents and expiry fallback now exist. Reminder Studio shows recovered notification previews. | Device delivery checks and multi-reminder collision/cap explanations; no duplicate reminder engine. |
 | M04 | Multi-exam capacity planning/reflow, Focus → optional due-only retrieval and visible topic adaptation now exist. | Targeted correctness and evidence/motion audit; this chunk fixes Focus completion/recovery controls. |
-| M05 | Existing onboarding/account/settings remain. `hasMeaningfulWorkspaceData` still omits tasks and commitments. | Fix that confirmed omission next; device/account audit remains. |
+| M05 | M05a task-only/commitment-only returning-user detection fixed and locally verified (2026-10-14), publication pending. Existing onboarding/account/settings remain. | Device/account audit remains. |
 | M06 | Typed assistant action validation, preview/apply sessions and bounded model contracts exist. | Audit and integrate the guide action boundary; do not recreate the executor. |
 | M07 | Optional LiteRT-LM adapter/model manager, manual import and MYELIN Mini training/evaluation tooling exist. | Real Android inference/performance remains unverified here; no cloud provider added by this chunk. |
 
@@ -49,7 +49,7 @@ Key code: `app/(app)/today/index.tsx`, `src/features/focus/`, `src/features/adap
 ## Prioritized checklist
 
 - [x] **M01 — Guide foundation + Today tour.** Central typed registry with real routes, descriptions, search terms, anchors and currently supported actions. Three-step Today spotlight with dimming, Back/Next/Skip, reduced motion, state-aware copy, scroll restoration and replay. Registry-backed short core-loop explanation. No domain mutations, model, schema migration or native dependency.
-- [ ] **M02 — Local Help and contextual coverage.** M02a local Help search is complete on the older branch; integration into the current development branch is pending before M02b Focus guidance. Local keyword/fuzzy search and useful explanations cover the four requested example questions. Offer Go there, and Show me for implemented tours only. Then extend tours screen by screen, with contextual `?`, replay and owner-scoped first-open guidance. Keep the registry authoritative.
+- [ ] **M02 — Local Help and contextual coverage.** M01 foundation/Today entry now integrated on the current branch; M02a local Help search is complete on the older branch and is the next integration chunk before M02b Focus guidance. Local keyword/fuzzy search and useful explanations cover the four requested example questions. Offer Go there, and Show me for implemented tours only. Then extend tours screen by screen, with contextual `?`, replay and owner-scoped first-open guidance. Keep the registry authoritative.
 - [ ] **M03 — Reminder / schedule correctness.** Focus-aware suppression/recovery exists on the current development branch; audit delivery while retaining quiet/sleep boundaries and uniqueness. Then reproduce and fix any remaining recurrence, bounds, unscheduled-work, move and Not now bugs with regression checks.
 - [ ] **M04 — Recovery and evidence polish.** Unify Make smaller / Find another time / Move / Remove for repeated avoidance; preserve progressive, calm overdue urgency. Audit completion feedback and open/close/undo motion. Audit deterministic recommendations, review calibration/confusion practice, actionable Progress and Neural Map semantics without replacing existing engines. Tie changes to starts, completed blocks, retention and recovery outcomes.
 - [ ] **M05 — Onboarding, settings and account audit.** M05a task-only/commitment-only returning-user recovery is implemented and locally verified (2026-10-14); publication pending. Explain only the core loop at setup; advanced guidance stays contextual. Login persistence, account deletion, tutorial replay, layout/chevrons and device/account audit remain.
@@ -115,3 +115,15 @@ Status: implemented and locally verified on current development branch; publicat
 - Added four regressions and saved JSON/migration round-trip coverage. Reproduced failure before the fix; onboarding/auth/settings checks and full TypeScript passed after it.
 - No schema, native dependencies, runtime, assistant, timer or animation changes. Physical Android and OTA publication remain pending; broader M05 account/device audit stays open.
 - **Next chunk: M01/M02 reconciliation.** Inspect and reuse the older guide registry, then integrate only the foundation and Today entry into current routes with verified anchors. Preserve newer Focus code and stop after that one bounded integration.
+
+
+### M01 reconciliation — Current Today guide — 2026-10-14 IST
+
+Status: integrated and locally/browser verified on current development branch; publication pending.
+
+- Reused the committed earlier registry, geometry, measurement, overlay and Today hook. Adapted current Today controls rather than copying an older Today/Focus screen.
+- Header `?` teaches next action → Adjust → Day Map with actual highlights and state-aware copy. Back/Next/Skip/Done restore scroll; the tour closes on owner/navigation/loading changes and cannot start during recommendation transition.
+- Existing tutorial replay uses shared Plan → Start → Focus → Retrieve → Feedback → Adapt copy and `Show me Today`; its route request is consumed and does not reopen on reload.
+- Passed TypeScript, guide/Today/onboarding/settings/polish/visual checks, OTA guard self-test and final Android export. Ten 320×568 browser scenarios (five states × normal/reduced motion) passed actual coordinate/card bounds, navigation, replay, scroll and saved-data preservation with no page errors/overflow.
+- Optional reusable browser harness: `scripts/verify-guides-ui.cjs`; it needs external Playwright/browser and Expo web. No native dependency, lockfile, runtime, planner, model or Focus changes. Physical Android and publication remain pending.
+- **Next chunk: M02a reconciliation — offline Help search.** Reuse the earlier search/Help implementation and current registry. Offer Explain, Go there and Show me Today only; Focus/other tours remain later chunks.

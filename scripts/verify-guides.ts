@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, reviewGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState, ReviewGuideState } from '../src/features/guides/guide-registry';
+import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, reviewGuideSteps, progressGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState, ReviewGuideState, ProgressGuideState } from '../src/features/guides/guide-registry';
 import { spotlightRect, guideCardMaxHeight, guideCardTop } from '../src/features/guides/guide-geometry';
 
 const guides: readonly FeatureGuide[] = FEATURE_GUIDES;
@@ -13,7 +13,7 @@ for (const guide of guides) {
   for (const action of guide.supportedActions) {
     if (action.type === 'navigate') assert.ok(routeExists(action.route));
     else {
-      assert.ok(['today', 'focus', 'review'].includes(action.tutorialId), 'Do not advertise unfinished screen tours.');
+      assert.ok(['today', 'focus', 'review', 'progress'].includes(action.tutorialId), 'Do not advertise unfinished screen tours.');
       assert.ok(routeExists(tutorialDestination(action.tutorialId).pathname));
     }
   }
@@ -56,6 +56,22 @@ assert.deepEqual(tutorialDestination('review'), { pathname: '/(app)/review', par
 assert.match(reviewGuideSteps('attempt')[2].explanation, /never reveals/);
 assert.match(reviewGuideSteps('reference')[1].explanation, /never chooses a grade/);
 console.log('✓ Review tutorials cover all idle and active states; replay overrides inherited auto-start');
+
+const progress = guides.find(g => g.id === 'progress')!;
+for (const hasTopics of [false, true]) for (const practice of ['none', 'available', 'focus', 'review'] as ProgressGuideState['practice'][])
+  for (const expanded of [false, true]) for (const enoughConfidence of [false, true]) {
+    const steps = progressGuideSteps({ hasTopics, practice, expanded, enoughConfidence });
+    assert.deepEqual(steps.map(step => step.anchor), progress.anchors);
+    assert.equal(new Set(steps.map(step => step.anchor)).size, 3);
+  }
+assert.deepEqual(tutorialDestination('progress'), { pathname: '/(app)/progress', params: { guide: 'progress' } });
+const progressState: ProgressGuideState = { hasTopics: true, practice: 'available', expanded: false, enoughConfidence: false };
+assert.match(progressGuideSteps(progressState)[0].explanation, /once per question per day/);
+assert.match(progressGuideSteps(progressState)[0].explanation, /not a measurement of your brain/);
+assert.match(progressGuideSteps(progressState)[1].explanation, /never starts practice/);
+assert.match(progressGuideSteps({ ...progressState, expanded: true })[2].explanation, /at least five/);
+assert.match(progressGuideSteps({ ...progressState, practice: 'focus' })[1].explanation, /running timer keeps running/);
+console.log('✓ Progress guidance matches real summary/practice, active-session and expanded/sparse evidence states');
 
 const host = { x: 10, y: 24, width: 320, height: 568 };
 assert.deepEqual(spotlightRect({ x: 30, y: 124, width: 100, height: 48 }, host), { x: 15, y: 95, width: 110, height: 58 });

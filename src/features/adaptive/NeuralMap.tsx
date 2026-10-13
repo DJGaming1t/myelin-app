@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { RefObject, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { WorkspaceState } from '@/src/data/schema';
 import { Reveal } from '@/src/components/motion/Reveal';
@@ -7,7 +7,7 @@ import { neuralEvidence } from './insight-engine';
 import { colors, radius } from '@/src/theme/tokens';
 const POINTS = [[0.14,0.18],[0.5,0.12],[0.85,0.25],[0.17,0.52],[0.53,0.47],[0.84,0.6],[0.13,0.85],[0.48,0.83],[0.84,0.91]];
 const LINKS = [[0,1],[1,2],[0,3],[1,4],[2,5],[3,4],[4,5],[3,6],[4,7],[5,8],[6,7],[7,8]];
-export function NeuralMap({ workspace }: { workspace: WorkspaceState }) {
+export function NeuralMap({ workspace, anchorRef }: { workspace: WorkspaceState; anchorRef?: RefObject<View | null> }) {
   const evidence = neuralEvidence(workspace);
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState('');
@@ -23,9 +23,9 @@ export function NeuralMap({ workspace }: { workspace: WorkspaceState }) {
         {LINKS.map(([a, b]) => { if (!nodes[a] || !nodes[b]) return null; const x = POINTS[a][0] * width, y = POINTS[a][1] * 240; const dx = (POINTS[b][0] - POINTS[a][0]) * width, dy = (POINTS[b][1] - POINTS[a][1]) * 240; const length = Math.sqrt(dx * dx + dy * dy); const earned = nodes[a].wins > 0 && nodes[b].wins > 0; return <View key={`${a}-${b}`} pointerEvents="none" style={{ position: 'absolute', left: x + dx / 2 - length / 2, top: y + dy / 2, width: length, height: earned ? 2 : 1, backgroundColor: earned ? colors.accent : colors.lineStrong, opacity: earned ? 0.55 : 0.7, transform: [{ rotate: `${Math.atan2(dy, dx)}rad` }] }} />; })}
         {nodes.map((node, i) => <View key={node.topic.id} style={{ position: 'absolute', left: POINTS[i][0] * width - 23, top: POINTS[i][1] * 240 - 23 }}><Reveal delay={i * 25} distance={3}><Pressable accessibilityRole="button" accessibilityLabel={`${node.topic.name}, ${node.wins} earned recalls`} accessibilityState={{ selected: selected?.topic.id === node.topic.id }} onPress={() => setSelectedId(node.topic.id)} style={[styles.node, node.wins > 0 && styles.earned, selected?.topic.id === node.topic.id && styles.selected]}><View style={[styles.core, { width: node.wins >= 10 ? 22 : node.wins ? 16 : 9, height: node.wins >= 10 ? 22 : node.wins ? 16 : 9, backgroundColor: node.wins ? colors.accent : colors.muted }]} /></Pressable></Reveal></View>)}
       </View>
-      {selected ? <Pressable accessibilityRole="button" accessibilityLabel={`Open ${selected.topic.name}`} style={styles.detail} onPress={() => router.push({ pathname: '/(app)/topics/[topicId]', params: { topicId: selected.topic.id } })}><Text style={styles.topic}>{selected.topic.name} →</Text><Text style={styles.copy}>{selected.topic.subject} · {selected.wins} earned recalls</Text></Pressable> : null}
+      {selected ? <Pressable ref={anchorRef} collapsable={false} testID={anchorRef ? "guide-progress-map" : undefined} accessibilityRole="button" accessibilityLabel={`Open ${selected.topic.name}`} style={styles.detail} onPress={() => router.push({ pathname: '/(app)/topics/[topicId]', params: { topicId: selected.topic.id } })}><Text style={styles.topic}>{selected.topic.name} →</Text><Text style={styles.copy}>{selected.topic.subject} · {selected.wins} earned recalls</Text></Pressable> : null}
       {pages > 1 ? <View style={styles.paging}><Pressable accessibilityRole="button" accessibilityLabel="Previous map topics" disabled={safePage === 0} onPress={() => setPage(safePage - 1)} style={styles.pageButton}><Text style={styles.copy}>← Previous</Text></Pressable><Text style={styles.copy}>{safePage + 1}/{pages}</Text><Pressable accessibilityRole="button" accessibilityLabel="Next map topics" disabled={safePage === pages - 1} onPress={() => setPage(safePage + 1)} style={styles.pageButton}><Text style={styles.copy}>Next →</Text></Pressable></View> : null}
-    </> : <Pressable accessibilityRole="button" onPress={() => router.push('/(app)/topics/new')} style={styles.empty}><Text style={styles.topic}>Plant your first connection →</Text><Text style={styles.copy}>Add a topic and a recall question to begin.</Text></Pressable>}
+    </> : <Pressable ref={anchorRef} collapsable={false} testID={anchorRef ? "guide-progress-map" : undefined} accessibilityRole="button" accessibilityLabel="Add your first topic" onPress={() => router.push('/(app)/topics/new')} style={styles.empty}><Text style={styles.topic}>Plant your first connection →</Text><Text style={styles.copy}>Add a topic and a recall question to begin.</Text></Pressable>}
     <Text style={styles.milestone}>{evidence.earned.length ? `${evidence.earned[evidence.earned.length - 1]}-recall milestone earned` : 'First connection ahead'}{evidence.next ? ` · next at ${evidence.next}` : ' · keep growing'}</Text>
     <Text style={styles.note}>Bright nodes mark Good recalls without hints, once per question per day. Earned progress stays when a review becomes due. This is a learning map, not a measurement of your brain.</Text>
   </View>;

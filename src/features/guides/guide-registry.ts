@@ -3,11 +3,12 @@ export type GuideRoute =
   | '/(app)/today' | '/(app)/focus' | '/(app)/review' | '/(app)/progress'
   | '/(app)/today/day-map' | '/(app)/mistakes' | '/(app)/settings'
   | '/(app)/settings/reminders';
-export type TutorialId = 'today' | 'focus' | 'review';
+export type TutorialId = 'today' | 'focus' | 'review' | 'progress';
 export type TodayAnchor = 'today.next' | 'today.adjust' | 'today.day-map';
 export type FocusAnchor = 'focus.primary' | 'focus.secondary' | 'focus.support';
 export type ReviewAnchor = 'review.primary' | 'review.secondary' | 'review.support';
-export type TutorialAnchor = TodayAnchor | FocusAnchor | ReviewAnchor;
+export type ProgressAnchor = 'progress.map' | 'progress.practice' | 'progress.evidence';
+export type TutorialAnchor = TodayAnchor | FocusAnchor | ReviewAnchor | ProgressAnchor;
 export type GuideAction =
   | { type: 'navigate'; route: GuideRoute }
   | { type: 'startTutorial'; tutorialId: TutorialId };
@@ -114,7 +115,7 @@ export const FEATURE_GUIDES = [
       "The Neural Map reflects recorded unhinted Good recalls. It is a visual metaphor, not a measurement of your brain.",
     ],
     searchTerms: ['progress', 'insights', 'neural map', 'evidence', 'milestone', 'confident mistake', 'retention'],
-    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/progress' }],
+    anchors: ['progress.map', 'progress.practice', 'progress.evidence'], supportedActions: [{ type: 'navigate', route: '/(app)/progress' }, { type: 'startTutorial', tutorialId: 'progress' }],
   },
   {
     id: 'reminders', name: 'Reminder Studio', route: '/(app)/settings/reminders',
@@ -169,6 +170,7 @@ export function todayGuideSteps(state: TodayGuideState): readonly GuideStep<Toda
 
 export function tutorialDestination(id: TutorialId) {
   if (id === 'review') return { pathname: '/(app)/review' as const, params: { guide: id, autoStart: '0' } };
+  if (id === 'progress') return { pathname: '/(app)/progress' as const, params: { guide: id } };
   return { pathname: id === 'focus' ? '/(app)/focus' as const : '/(app)/today' as const, params: { guide: id } };
 }
 
@@ -223,3 +225,30 @@ const REVIEW_GUIDE_STEPS: Record<ReviewGuideState, readonly GuideStep<ReviewAnch
 };
 
 export function reviewGuideSteps(state: ReviewGuideState) { return REVIEW_GUIDE_STEPS[state]; }
+
+export type ProgressGuideState = {
+  hasTopics: boolean;
+  practice: 'none' | 'available' | 'focus' | 'review';
+  expanded: boolean;
+  enoughConfidence: boolean;
+};
+
+export function progressGuideSteps(state: ProgressGuideState): readonly GuideStep<ProgressAnchor>[] {
+  const practiceCopy = {
+    none: { title: 'Read the evidence you recorded', explanation: 'These totals count recorded study and review minutes, active days, graded reviews and due corrections. Minutes are not mastery. Practice suggestions appear when your saved material supports them.' },
+    available: { title: 'Choose useful practice', explanation: 'This insight explains which saved questions may benefit from practice. Tap its action when ready; it can include questions that are not due yet. The tour never starts practice or changes review dates.' },
+    focus: { title: 'Return to your active Focus first', explanation: 'This action resumes your existing timer or break before starting insight practice. Your Focus session keeps its place; a running timer keeps running during this tour.' },
+    review: { title: 'Finish your existing recall first', explanation: 'This action resumes your saved Review queue before starting insight practice. Your answer, confidence, hint state and current question stay intact during this tour.' },
+  }[state.practice];
+  return [
+    { anchor: 'progress.map', title: state.hasTopics ? 'A map of earned recalls' : 'Begin with your own material',
+      explanation: state.hasTopics
+        ? 'Select a node above, then open its topic here. Bright nodes mark Good recalls without hints, once per question per day. Earned progress stays when a review becomes due. The map is a metaphor, not a measurement of your brain.'
+        : 'Add a topic and a recall question here to begin. The Neural Map grows from your saved, unhinted Good recalls; this guide does not add sample material or evidence.' },
+    { anchor: 'progress.practice', ...practiceCopy },
+    { anchor: 'progress.evidence', title: state.expanded ? 'Confidence and recall are different' : 'Look deeper when useful',
+      explanation: state.expanded
+        ? `This summary compares confidence before checking with self-reported recall grades. ${state.enoughConfidence ? 'Read the sample size before drawing conclusions; these results do not measure mastery.' : 'The sample is still small; at least five graded recall attempts are recommended.'} Below, time calibration compares planned and completed focus blocks. The guide leaves this section open.`
+        : 'See deeper evidence opens confidence and time calibration, recorded outcomes and topic activity. Small samples stay provisional; minutes are not mastery. This tour leaves the section closed, so you choose when to explore it.' },
+  ];
+}

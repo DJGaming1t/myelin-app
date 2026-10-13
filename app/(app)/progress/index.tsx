@@ -20,6 +20,12 @@ import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
+import { useReview } from '@/src/features/review/ReviewProvider';
+import { learningInsights } from '@/src/features/adaptive/insight-engine';
+import { useProgressGuide } from '@/src/features/guides/useProgressGuide';
+import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
+import { ProgressGuideState } from '@/src/features/guides/guide-registry';
 import {
   ConfidenceBucket,
   TopicTrend,
@@ -29,7 +35,9 @@ import {
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 export default function ProgressScreen() {
-  const { workspace } = useWorkspace();
+  const { workspace, ownerKey } = useWorkspace();
+  const { session: focus, ready: focusReady } = useFocus();
+  const { session: review, ready: reviewReady } = useReview();
   const now = useScreenClock();
   const [showEvidence, setShowEvidence] = useState(false);
 
@@ -37,6 +45,15 @@ export default function ProgressScreen() {
     () => (workspace ? buildProgressSnapshot(workspace, now) : null),
     [workspace, now],
   );
+  const insights = useMemo(() => workspace ? learningInsights(workspace, now) : [], [workspace, now]);
+  const guideState: ProgressGuideState = {
+    hasTopics: !!workspace?.topics.length,
+    practice: !insights.length ? 'none' : focus ? 'focus' : review ? 'review' : 'available',
+    expanded: showEvidence,
+    enoughConfidence: snapshot?.confidence.enoughData ?? false,
+  };
+  const guide = useProgressGuide(!!workspace && !!snapshot && focusReady && reviewReady, ownerKey, guideState);
+  const guideKey = `${guideState.hasTopics}:${guideState.practice}:${showEvidence}:${guideState.enoughConfidence}`;
 
   if (!workspace || !snapshot) {
     return (
@@ -53,6 +70,7 @@ export default function ProgressScreen() {
       <AmbientBackdrop />
       <View style={styles.page}>
         <ScreenHeader
+          onHelp={guide.start}
           variant="compact"
           title="Progress"
           actionLabel="Settings"
@@ -60,11 +78,15 @@ export default function ProgressScreen() {
         />
 
         <ScrollView
+          testID="progress-scroll"
+          ref={guide.scroll}
+          onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <NeuralMap workspace={workspace} />
-          <LearningInsights workspace={workspace} now={now} />
+          <NeuralMap workspace={workspace} anchorRef={guide.anchors['progress.map']} />
+          <LearningInsights workspace={workspace} now={now} insights={insights} actionRef={guide.anchors['progress.practice']} />
           <AdaptationInsightList
             workspace={workspace}
             now={now}
@@ -76,7 +98,8 @@ export default function ProgressScreen() {
             }
           />
           <Reveal delay={35} distance={7}>
-            <View style={styles.summaryGrid}>
+            <View ref={!insights.length ? guide.anchors['progress.practice'] : undefined}
+              collapsable={false} testID={!insights.length ? 'guide-progress-practice' : undefined} style={styles.summaryGrid}>
               <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
               <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
               <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
@@ -136,7 +159,10 @@ export default function ProgressScreen() {
           )}
 
           <Pressable
+            ref={!showEvidence ? guide.anchors['progress.evidence'] : undefined}
+            collapsable={false} testID={!showEvidence ? 'guide-progress-evidence' : undefined}
             accessibilityRole="button"
+            accessibilityLabel={showEvidence ? 'Hide deeper evidence' : 'See deeper evidence'}
             accessibilityState={{ expanded: showEvidence }}
             onPress={() => setShowEvidence((current) => !current)}
             style={({ pressed }) => [styles.inlineAction, pressed && styles.pressed]}>
@@ -157,12 +183,15 @@ export default function ProgressScreen() {
                   <ConfidenceRow key={bucket.confidence} bucket={bucket} />
                 ))}
                 <View style={styles.insightDivider} />
-                <Text style={styles.insightText}>{snapshot.confidence.message}</Text>
-                <Text style={styles.sampleText}>
-                  {snapshot.confidence.sampleSize} graded recall{' '}
-                  {snapshot.confidence.sampleSize === 1 ? 'attempt' : 'attempts'}
-                  {!snapshot.confidence.enoughData ? ' · at least 5 recommended' : ''}
-                </Text>
+                <View ref={showEvidence ? guide.anchors['progress.evidence'] : undefined}
+                  collapsable={false} testID={showEvidence ? 'guide-progress-evidence' : undefined}>
+                  <Text style={styles.insightText}>{snapshot.confidence.message}</Text>
+                  <Text style={styles.sampleText}>
+                    {snapshot.confidence.sampleSize} graded recall{' '}
+                    {snapshot.confidence.sampleSize === 1 ? 'attempt' : 'attempts'}
+                    {!snapshot.confidence.enoughData ? ' · at least 5 recommended' : ''}
+                  </Text>
+                </View>
               </View>
 
               <SectionTitle
@@ -232,6 +261,8 @@ export default function ProgressScreen() {
 
         <AppNav />
       </View>
+      {guide.open ? <ScreenGuide key={guideKey} title="Progress" steps={guide.steps}
+        anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null}
     </SafeAreaView>
   );
 }

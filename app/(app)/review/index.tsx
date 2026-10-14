@@ -32,6 +32,10 @@ import { useReview } from '@/src/features/review/ReviewProvider';
 import { useReviewGuide } from '@/src/features/guides/useReviewGuide';
 import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
 import { ReviewGuideState } from '@/src/features/guides/guide-registry';
+import { useGuideOffer } from '@/src/features/guides/useGuideOffer';
+import { GuideOffer } from '@/src/features/guides/GuideOffer';
+import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { findQuestion, findTopic } from '@/src/features/topics/topic-operations';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
@@ -64,6 +68,8 @@ export default function ReviewScreen() {
   );
   const { workspace, ownerKey } = useWorkspace();
   const { session: activeFocus, ready: focusReady } = useFocus();
+  const { ready: onboardingReady, shouldShow: onboardingPending } = useOnboarding();
+  const { transitionPending } = useOnboardingTransition();
   const {
     ready,
     session,
@@ -112,8 +118,12 @@ export default function ReviewScreen() {
     : session ? session.stage === 'attempt' ? 'attempt' : 'reference'
     : requestedTopic ? !requestedTopic.cards.length ? 'empty-topic' : dueForTopic > 0 ? 'topic-ready' : 'practice'
     : counts.due > 0 ? 'ready' : counts.total > 0 ? 'waiting' : 'empty';
-  const guide = useReviewGuide(ready && focusReady && !!workspace && !grading &&
-    (!session || !!currentCard) && (!autoStartRequested || autoStartConsumed || !!session), ownerKey, guideState);
+  const guideReady = ready && focusReady && !!workspace && !grading &&
+    (!session || !!currentCard) && (!autoStartRequested || autoStartConsumed || !!session);
+  const guide = useReviewGuide(guideReady, ownerKey, guideState);
+  const guideOffer = useGuideOffer('review', ownerKey,
+    guideReady && guideState === 'attempt' && onboardingReady && !onboardingPending && !transitionPending,
+    guide.open && guideState === 'attempt');
   const guideOverlay = guide.open ? <ScreenGuide key={guideState} title="Review" steps={guide.steps}
     anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null;
 
@@ -573,6 +583,12 @@ export default function ReviewScreen() {
                 style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
                 <Text style={styles.textButtonText}>I answered this in my head</Text>
               </Pressable>
+
+              <GuideOffer tutorialId="review" screenName="Review"
+                description="See how to attempt an answer, record confidence and reveal when ready. Replay anytime from ?."
+                visible={guideOffer.visible} saveFailed={guideOffer.saveFailed}
+                onShow={() => { guideOffer.choose('shown'); guide.start(); }}
+                onLater={() => guideOffer.choose('later')} onRetry={guideOffer.retry} />
             </>
           ) : (
             <>

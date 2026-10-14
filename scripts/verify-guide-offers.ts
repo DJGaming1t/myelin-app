@@ -40,9 +40,16 @@ export async function verifyGuideOffers() {
   assert.equal(todayState.choice, 'later'); assert.equal(focusState.choice, 'shown');
   assert.equal((await storage.load('user:both', 'today'))?.choice, 'later');
   assert.equal((await storage.load('user:both', 'focus'))?.choice, 'shown');
+  let reviewState = emptyGuideOfferState();
+  const reviewController = createGuideOfferController(storage, 'review', next => { reviewState = next; });
+  await reviewController.activate('user:both'); assert.equal(reviewState.choice, null);
+  await reviewController.choose('user:both', 'later');
+  assert.equal((await storage.load('user:both', 'review'))?.choice, 'later');
+  assert.equal((await storage.load('user:both', 'today'))?.choice, 'later');
+  assert.equal((await storage.load('user:both', 'focus'))?.choice, 'shown');
   assert.equal(await storage.load('user:both', 'progress'), null);
   await focusController.activate('user:another'); assert.equal(focusState.choice, null);
-  console.log('✓ Simultaneous Today/Focus choices remain independent for the same owner');
+  console.log('✓ Today/Focus/Review choices remain independent for the same owner');
 
   let state: GuideOfferState = emptyGuideOfferState();
   const emit = (next: GuideOfferState) => { state = next; };

@@ -1,42 +1,15 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
-import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { StudyTask } from '@/src/data/schema';
-import { useAchievement } from '@/src/features/achievement/AchievementProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
-import { completeTask, taskRemainingMinutes } from './task-engine';
+import { taskRemainingMinutes } from './task-engine';
 import { taskUrgency } from './task-urgency';
 import { colors, radius } from '@/src/theme/tokens';
 
-export function useTaskCompletion() {
-  const { updateWorkspace, ownerKey } = useWorkspace();
-  const celebrate = useAchievement();
-  return (taskId: string) => {
-    let previous: StudyTask | null = null;
-    const completedAt = Date.now();
-    const result = updateWorkspace(draft => {
-      const task = draft.tasks.find(item => item.id === taskId);
-      if (!task || task.status !== 'open') return;
-      previous = { ...task };
-      completeTask(task, completedAt);
-    });
-    if (!result || !previous || !ownerKey) return;
-    const snapshot: StudyTask = previous;
-    celebrate({ title: 'One more thing done!', detail: snapshot.title, undo: () => {
-      updateWorkspace(draft => {
-        const task = draft.tasks.find(item => item.id === taskId);
-        if (!task || task.status !== 'completed' || task.completedAt !== completedAt) return;
-        // Restore planning state without overwriting edits or newly logged time.
-        task.status = 'open'; task.completedAt = 0;
-        task.planState = snapshot.planState;
-        task.scheduledStart = snapshot.scheduledStart; task.scheduledEnd = snapshot.scheduledEnd;
-        task.postponedUntil = snapshot.postponedUntil; task.updatedAt = Date.now();
-      });
-    } });
-  };
-}
+import { useQuickTaskCompletion } from './useTaskCompletion';
+export { useQuickTaskCompletion as useTaskCompletion } from './useTaskCompletion';
 
 export function TaskDueLabel({ task, now = Date.now() }: { task: StudyTask; now?: number }) {
   const urgency = taskUrgency(task, now);
@@ -45,7 +18,7 @@ export function TaskDueLabel({ task, now = Date.now() }: { task: StudyTask; now?
 }
 
 export function TaskQuickActions({ task }: { task: StudyTask }) {
-  const complete = useTaskCompletion();
+  const complete = useQuickTaskCompletion();
   const { session } = useFocus();
   const { session: review } = useReview();
   function focus() {

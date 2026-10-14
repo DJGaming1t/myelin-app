@@ -1,73 +1,46 @@
-import { useCallback, useState } from 'react';
-
-import { StudyTask } from '@/src/data/schema';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
-import { completeTask } from '@/src/features/planning/task-engine';
+import { useAchievement } from '@/src/features/achievement/AchievementProvider';
+import { applyTaskCompletion, canCompleteTask, canUndoTaskCompletion, restoreTaskCompletion, TaskCompletionReceipt } from './task-completion';
 
-type TaskCompletionSnapshot = Pick<
-  StudyTask,
-  | 'id'
-  | 'title'
-  | 'planState'
-  | 'scheduledStart'
-  | 'scheduledEnd'
-  | 'postponedUntil'
-  | 'completedAt'
->;
-
+/** One guarded transaction path for quick actions and the dedicated completion API. */
 export function useTaskCompletion() {
-  const { workspace, updateWorkspace } = useWorkspace();
-  const [lastCompleted, setLastCompleted] = useState<TaskCompletionSnapshot | null>(null);
-
-  const complete = useCallback(
-    (taskId: string) => {
-      const source = workspace?.tasks.find((item) => item.id === taskId);
-      if (!source || source.status !== 'open') return false;
-
-      const snapshot: TaskCompletionSnapshot = {
-        id: source.id,
-        title: source.title,
-        planState: source.planState,
-        scheduledStart: source.scheduledStart,
-        scheduledEnd: source.scheduledEnd,
-        postponedUntil: source.postponedUntil,
-        completedAt: source.completedAt,
-      };
-
-      const updated = updateWorkspace((draft) => {
-        const task = draft.tasks.find((item) => item.id === taskId);
-        if (task?.status === 'open') completeTask(task);
-      });
-
-      if (!updated) return false;
-      setLastCompleted(snapshot);
-      return true;
-    },
-    [updateWorkspace, workspace],
-  );
-
-  const undo = useCallback(() => {
-    if (!lastCompleted) return;
-
-    const snapshot = lastCompleted;
-    updateWorkspace((draft) => {
-      const task = draft.tasks.find((item) => item.id === snapshot.id);
-      if (!task) return;
-      task.status = 'open';
-      task.completedAt = snapshot.completedAt;
-      task.planState = snapshot.planState;
-      task.scheduledStart = snapshot.scheduledStart;
-      task.scheduledEnd = snapshot.scheduledEnd;
-      task.postponedUntil = snapshot.postponedUntil;
-      task.updatedAt = Date.now();
+  const { updateWorkspace, ownerKey } = useWorkspace();
+  const [lastCompleted, setLastCompleted] = useState<TaskCompletionReceipt | null>(null);
+  const receiptRef = useRef<TaskCompletionReceipt | null>(null);
+  useEffect(() => { receiptRef.current = null; setLastCompleted(null); }, [ownerKey]);
+  const completeWithReceipt = useCallback((taskId: string): TaskCompletionReceipt | null => {
+    if (!ownerKey) return null;
+    let receipt: TaskCompletionReceipt | null = null;
+    const now = Date.now();
+    const updated = updateWorkspace(draft => { receipt = applyTaskCompletion(draft, ownerKey, taskId, now); }, {
+      ownerKey, canApply: current => canCompleteTask(current, taskId),
     });
-    setLastCompleted(null);
-  }, [lastCompleted, updateWorkspace]);
+    if (!updated || !receipt) return null;
+    receiptRef.current = receipt; setLastCompleted(receipt); return receipt;
+  }, [ownerKey, updateWorkspace]);
+  const undoReceipt = useCallback((receipt: TaskCompletionReceipt) => {
+    // Consumed/superseded callbacks cannot undo a later completion from this hook.
+    if (receiptRef.current !== receipt) return false;
+    receiptRef.current = null;
+    const updated = updateWorkspace(draft => { restoreTaskCompletion(draft, receipt, Date.now()); }, {
+      ownerKey: receipt.ownerKey, canApply: current => canUndoTaskCompletion(current, receipt),
+    });
+    setLastCompleted(null); return !!updated;
+  }, [updateWorkspace]);
+  const complete = useCallback((taskId: string) => !!completeWithReceipt(taskId), [completeWithReceipt]);
+  const undo = useCallback(() => receiptRef.current ? undoReceipt(receiptRef.current) : false, [undoReceipt]);
+  const dismiss = useCallback(() => { receiptRef.current = null; setLastCompleted(null); }, []);
+  return { lastCompleted: lastCompleted?.ownerKey === ownerKey ? lastCompleted : null, complete, undo, dismiss, completeWithReceipt, undoReceipt };
+}
 
-  return {
-    lastCompleted,
-    complete,
-    undo,
-    dismiss: () => setLastCompleted(null),
-  };
+export function useQuickTaskCompletion() {
+  const { completeWithReceipt, undoReceipt } = useTaskCompletion();
+  const celebrate = useAchievement();
+  return useCallback((taskId: string) => {
+    const receipt = completeWithReceipt(taskId);
+    if (!receipt) return false;
+    celebrate({ title: 'One more thing done!', detail: receipt.title, undo: () => undoReceipt(receipt) });
+    return true;
+  }, [celebrate, completeWithReceipt, undoReceipt]);
 }

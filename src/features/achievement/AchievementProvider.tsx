@@ -6,36 +6,66 @@ import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { colors, layout, radius } from '@/src/theme/tokens';
 
-type Achievement = { title: string; detail: string; undo?: () => void };
+type Achievement = { title: string; detail: string; undo?: () => boolean | void };
+type OwnedAchievement = Achievement & { id: number; ownerKey: string };
 const Context = createContext<(achievement: Achievement) => void>(() => undefined);
 
 export function AchievementProvider({ children }: PropsWithChildren) {
-  const { ownerKey } = useWorkspace();
-  const [notice, setNotice] = useState<(Achievement & { id: number }) | null>(null);
+  const { ownerKey, status, saveError, retrySaves } = useWorkspace();
+  const [notice, setNotice] = useState<OwnedAchievement | null>(null);
   const sequence = useRef(0);
+  const ownerRef = useRef(ownerKey); ownerRef.current = ownerKey;
+  const readyRef = useRef(status === 'ready'); readyRef.current = status === 'ready';
+  const noticeRef = useRef<OwnedAchievement | null>(null);
+  const retryRef = useRef<object | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const insets = useSafeAreaInsets();
   const celebrate = useCallback((value: Achievement) => {
-    setNotice({ ...value, id: ++sequence.current });
+    if (!readyRef.current || !ownerKey || ownerRef.current !== ownerKey) return;
+    const next = { ...value, id: ++sequence.current, ownerKey };
+    noticeRef.current = next; setNotice(next);
     AccessibilityInfo.announceForAccessibility(`${value.title}. ${value.detail}${value.undo ? '. Undo is available.' : ''}`);
+  }, [ownerKey]);
+  const dismiss = useCallback((current: OwnedAchievement) => {
+    if (!readyRef.current || noticeRef.current !== current || ownerRef.current !== current.ownerKey) return;
+    noticeRef.current = null; setNotice(null);
   }, []);
-  useEffect(() => { setNotice(null); }, [ownerKey]);
+  const undo = useCallback((current: OwnedAchievement) => {
+    if (!readyRef.current || noticeRef.current !== current || ownerRef.current !== current.ownerKey) return;
+    // Consume before calling into the workspace so rapid/stale taps cannot replay.
+    noticeRef.current = null; setNotice(null);
+    const restored = current.undo?.();
+    if (ownerRef.current !== current.ownerKey) return;
+    if (restored === false) celebrate({ title: 'Your latest changes were kept', detail: 'This task changed after completion. Undo was not applied.' });
+    else if (restored === true) celebrate({ title: 'Task reopened', detail: current.detail });
+  }, [celebrate]);
+  const retry = useCallback(async (current: OwnedAchievement) => {
+    if (!readyRef.current || noticeRef.current !== current || ownerRef.current !== current.ownerKey || retryRef.current) return;
+    const ticket = {}; retryRef.current = ticket; setRetrying(true);
+    try { await retrySaves(current.ownerKey); }
+    finally { if (retryRef.current === ticket) { retryRef.current = null; setRetrying(false); } }
+  }, [retrySaves]);
+  useEffect(() => { noticeRef.current = null; retryRef.current = null; setNotice(null); setRetrying(false); }, [ownerKey, status]);
+  useEffect(() => {
+    if (status === 'ready' && ownerKey && saveError && !noticeRef.current) celebrate({ title: 'Changes need saving', detail: 'Retry to save the latest changes on this device.' });
+  }, [ownerKey, status, saveError, celebrate]);
   useEffect(() => {
     if (!notice) return;
     // Undo stays until dismissed, so it is usable with screen readers too.
-    if (notice.undo) return;
-    const timer = setTimeout(() => setNotice(null), 5500);
+    if (notice.undo || saveError) return;
+    const timer = setTimeout(() => dismiss(notice), 5500);
     return () => clearTimeout(timer);
-  }, [notice]);
+  }, [notice, saveError, dismiss]);
 
   return <Context.Provider value={celebrate}>
     {children}
-    {notice ? <View pointerEvents="box-none" style={[styles.overlay, { bottom: Math.max(16, insets.bottom) + 72 }]}>
-      <AchievementToast key={notice.id} notice={notice} dismiss={() => setNotice(null)} />
+    {status === 'ready' && notice && notice.ownerKey === ownerKey ? <View pointerEvents="box-none" style={[styles.overlay, { bottom: Math.max(16, insets.bottom) + 72 }]}>
+      <AchievementToast key={notice.id} notice={notice} dismiss={() => dismiss(notice)} undo={() => undo(notice)} saveError={saveError} retrying={retrying} retry={() => { void retry(notice); }} />
     </View> : null}
   </Context.Provider>;
 }
 
-function AchievementToast({ notice, dismiss }: { notice: Achievement; dismiss: () => void }) {
+function AchievementToast({ notice, dismiss, undo, saveError, retrying, retry }: { notice: Achievement; dismiss: () => void; undo: () => void; saveError: string; retrying: boolean; retry: () => void }) {
   const reduced = useReducedMotion();
   const pop = useSharedValue(1);
   const burst = useSharedValue(1);
@@ -64,7 +94,13 @@ function AchievementToast({ notice, dismiss }: { notice: Achievement; dismiss: (
         <Text style={styles.closeText}>×</Text>
       </Pressable>
     </View>
-    {notice.undo ? <Pressable accessibilityRole="button" accessibilityLabel="Undo task completion" style={styles.undo} onPress={() => { dismiss(); notice.undo?.(); }}>
+    {saveError ? <View style={styles.saveIssue}>
+      <Text accessibilityLiveRegion="polite" style={styles.saveError}>Could not save changes. They are still here on this screen.</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Retry saving your changes" disabled={retrying} onPress={retry} style={styles.undo}>
+        <Text style={styles.undoText}>{retrying ? 'Saving…' : 'Retry save'}</Text>
+      </Pressable>
+    </View> : null}
+    {notice.undo ? <Pressable accessibilityRole="button" accessibilityLabel="Undo task completion" style={styles.undo} onPress={undo}>
       <Text style={styles.undoText}>Undo completion</Text>
     </Pressable> : null}
   </Animated.View>;
@@ -84,6 +120,8 @@ const styles = StyleSheet.create({
   detail: { color: colors.text, fontSize: 12, lineHeight: 17, marginTop: 3 },
   close: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   closeText: { color: colors.muted, fontSize: 22 },
+  saveIssue: { marginTop: 8 },
+  saveError: { color: colors.accent, fontSize: 12, lineHeight: 17 },
   undo: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8, borderTopWidth: 1, borderTopColor: colors.line },
   undoText: { color: colors.text, fontSize: 13, fontWeight: '700' },
 });

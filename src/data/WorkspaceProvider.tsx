@@ -32,6 +32,7 @@ type WorkspaceContextValue = {
   saveError: string;
   updateWorkspace: (change: (draft: WorkspaceState) => void, guard?: WorkspaceUpdateGuard) => WorkspaceState | null;
   waitForSaves: () => Promise<void>;
+  retrySaves: (expectedOwner: string) => Promise<boolean>;
   resetWorkspace: () => Promise<void>;
   retryWorkspace: () => Promise<void>;
   replaceWorkspace: (next: WorkspaceState, expectedRevision: number) => Promise<WorkspaceState>;
@@ -143,8 +144,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       .then(() => workspaceStorage.save(currentOwner, next));
 
     saveQueue.current = queuedSave;
-    void queuedSave.catch((error) => {
-      if (ownerKeyRef.current !== currentOwner) return;
+    void queuedSave.then(() => {
+      if (ownerKeyRef.current === currentOwner && saveQueue.current === queuedSave) setSaveError('');
+    }, (error) => {
+      if (ownerKeyRef.current !== currentOwner || saveQueue.current !== queuedSave) return;
       setSaveError(error instanceof Error ? error.message : 'Could not save this workspace.');
     });
 
@@ -153,6 +156,26 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
 
   const waitForSaves = useCallback(async () => {
     await saveQueue.current;
+  }, []);
+
+  const retrySaves = useCallback(async (expectedOwner: string) => {
+    if (ownerKeyRef.current !== expectedOwner || !workspaceRef.current) return false;
+    // Retry persistence of the latest live snapshot, without repeating the user action.
+    const queued = saveQueue.current.catch(() => undefined).then(async () => {
+      if (ownerKeyRef.current !== expectedOwner || !workspaceRef.current) return false;
+      await workspaceStorage.save(expectedOwner, cloneWorkspace(workspaceRef.current));
+      return true;
+    });
+    saveQueue.current = queued;
+    try {
+      const saved = await queued;
+      if (ownerKeyRef.current !== expectedOwner) return false;
+      if (saved && saveQueue.current === queued) setSaveError('');
+      return saved;
+    } catch (error) {
+      if (ownerKeyRef.current === expectedOwner && saveQueue.current === queued) setSaveError(error instanceof Error ? error.message : 'Could not save this workspace.');
+      return false;
+    }
   }, []);
 
   const retryWorkspace = useCallback(async () => {
@@ -339,6 +362,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       saveError,
       updateWorkspace,
       waitForSaves,
+      retrySaves,
       resetWorkspace,
       retryWorkspace,
       replaceWorkspace,
@@ -360,6 +384,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       status,
       updateWorkspace,
       waitForSaves,
+      retrySaves,
       workspace,
     ],
   );

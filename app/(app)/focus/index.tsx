@@ -33,6 +33,10 @@ import { findTopic } from '@/src/features/topics/topic-operations';
 import { useFocusGuide } from '@/src/features/guides/useFocusGuide';
 import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
 import { FocusGuideState } from '@/src/features/guides/guide-registry';
+import { useGuideOffer } from '@/src/features/guides/useGuideOffer';
+import { GuideOffer } from '@/src/features/guides/GuideOffer';
+import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
@@ -74,6 +78,8 @@ export default function FocusScreen() {
     discard,
   } = useFocus();
   const { session: activeReview, ready: reviewReady } = useReview();
+  const { ready: onboardingReady, shouldShow: onboardingPending } = useOnboarding();
+  const { transitionPending } = useOnboardingTransition();
 
   const topicId = param(params.topicId);
   const taskId = param(params.taskId);
@@ -171,7 +177,11 @@ export default function FocusScreen() {
     ? session.phase === 'break' ? timerDone ? 'break-done' : 'break'
       : canExtend ? 'checkpoint' : finishing || timerDone ? 'finish' : 'active'
     : activeReview ? 'review' : (!topic && !task) || task?.status === 'completed' ? 'empty' : 'setup';
-  const guide = useFocusGuide(ready && reviewReady && !!workspace && !savingFocus && !breakTransition, ownerKey, guideState);
+  const guideReady = ready && reviewReady && !!workspace && !savingFocus && !breakTransition;
+  const guide = useFocusGuide(guideReady, ownerKey, guideState);
+  const guideOffer = useGuideOffer('focus', ownerKey,
+    guideReady && guideState === 'setup' && onboardingReady && !onboardingPending && !transitionPending,
+    guide.open && guideState === 'setup');
   const guideOverlay = guide.open ? <ScreenGuide key={guideState} title="Focus" steps={guide.steps}
     anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null;
 
@@ -416,6 +426,12 @@ export default function FocusScreen() {
                 </Text>
               </View>
             </Pressable></View>
+
+            <GuideOffer tutorialId="focus" screenName="Focus"
+              description="See block length, your first tiny step and the five-minute launch. Replay anytime from ?."
+              visible={guideOffer.visible} saveFailed={guideOffer.saveFailed}
+              onShow={() => { guideOffer.choose('shown'); guide.start(); }}
+              onLater={() => guideOffer.choose('later')} onRetry={guideOffer.retry} />
 
             <DistractionShield />
             {focusError || saveError ? (

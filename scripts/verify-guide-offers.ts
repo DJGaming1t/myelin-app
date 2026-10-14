@@ -32,6 +32,18 @@ export async function verifyGuideOffers() {
   assert.equal(data.get('workspace'), 'unchanged'); assert.equal(data.get('onboarding'), 'unchanged');
   console.log('✓ Guide choices validate versions and stay isolated by encoded owner/tutorial, outside study/onboarding data');
 
+  let todayState = emptyGuideOfferState(); let focusState = emptyGuideOfferState();
+  const todayController = createGuideOfferController(storage, 'today', next => { todayState = next; });
+  const focusController = createGuideOfferController(storage, 'focus', next => { focusState = next; });
+  await Promise.all([todayController.activate('user:both'), focusController.activate('user:both')]);
+  await Promise.all([todayController.choose('user:both', 'later'), focusController.choose('user:both', 'shown')]);
+  assert.equal(todayState.choice, 'later'); assert.equal(focusState.choice, 'shown');
+  assert.equal((await storage.load('user:both', 'today'))?.choice, 'later');
+  assert.equal((await storage.load('user:both', 'focus'))?.choice, 'shown');
+  assert.equal(await storage.load('user:both', 'progress'), null);
+  await focusController.activate('user:another'); assert.equal(focusState.choice, null);
+  console.log('✓ Simultaneous Today/Focus choices remain independent for the same owner');
+
   let state: GuideOfferState = emptyGuideOfferState();
   const emit = (next: GuideOfferState) => { state = next; };
   const oldLoad = deferred<string | null>();

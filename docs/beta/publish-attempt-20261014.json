@@ -24,7 +24,7 @@
   ],
   "artifacts": [],
   "newUpdateId": null,
-  "failureReason": "Unconfirmed: job logs return 404; GitHub connector does not support annotation reads.",
+  "failureReason": "Confirmed in signed-in GitHub Actions annotations on 2026-10-15: recent account payments failed or the spending limit needs increasing; job was not started.",
   "lastConfirmedPreview": {
     "runtimeVersion": "0.2.13",
     "updateId": "01a1263a-9ff6-700e-96f6-a05d3589d664"
@@ -49,5 +49,14 @@
     "Expo publication",
     "physical Android/account-transition QA"
   ],
-  "next": "Read failure annotations with approved browser fallback, resolve external release gate, retry the source revision; M04i wrong-answer review feedback remains next improvement."
+  "next": "Complete secure Expo sign-in, inspect existing project/linkage/quota and use an alternate gated preview pipeline if supported; otherwise resolve the GitHub account gate and retry the original source revision. M04i wrong-answer review feedback remains next improvement.",
+  "failureReasonSource": "GitHub Actions run summary, attempt 2, Annotations",
+  "followUp": {
+    "dateIST": "2026-10-15",
+    "githubBrowserAuthentication": "verified",
+    "billingSettingsChanged": false,
+    "expoAlternateRoute": "investigating existing project and EAS Workflows; not configured or run",
+    "expoAuthentication": "sign-in rejected; secure manual handoff needed",
+    "newUpdatePublished": false
+  }
 }

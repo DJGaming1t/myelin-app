@@ -18,6 +18,11 @@ import { validateWorkspaceV2 } from './validation';
 
 type WorkspaceStatus = 'idle' | 'loading' | 'ready' | 'error';
 
+export type WorkspaceUpdateGuard = {
+  ownerKey: string;
+  canApply: (current: WorkspaceState) => boolean;
+};
+
 type WorkspaceContextValue = {
   status: WorkspaceStatus;
   ownerKey: string | null;
@@ -25,7 +30,7 @@ type WorkspaceContextValue = {
   recovered: boolean;
   resetBecauseCorrupt: boolean;
   saveError: string;
-  updateWorkspace: (change: (draft: WorkspaceState) => void) => WorkspaceState | null;
+  updateWorkspace: (change: (draft: WorkspaceState) => void, guard?: WorkspaceUpdateGuard) => WorkspaceState | null;
   waitForSaves: () => Promise<void>;
   resetWorkspace: () => Promise<void>;
   retryWorkspace: () => Promise<void>;
@@ -117,10 +122,12 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     };
   }, [authReady, localMode, user?.uid]);
 
-  const updateWorkspace = useCallback((change: (draft: WorkspaceState) => void) => {
+  const updateWorkspace = useCallback((change: (draft: WorkspaceState) => void, guard?: WorkspaceUpdateGuard) => {
     const current = workspaceRef.current;
     const currentOwner = ownerKeyRef.current;
     if (!current || !currentOwner) return null;
+    // Evaluate against the live record, before cloning, revisions or queued saves.
+    if (guard && (guard.ownerKey !== currentOwner || !guard.canApply(current))) return null;
 
     const next = cloneWorkspace(current);
     change(next);

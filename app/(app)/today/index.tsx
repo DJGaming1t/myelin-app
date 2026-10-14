@@ -6,7 +6,7 @@ import {
   router,
   useLocalSearchParams,
 } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -51,7 +51,7 @@ import {
 } from '@/src/features/exams/autopilot-recovery';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { StudyInboxCard } from '@/src/features/planning/StudyInboxCard';
-import { postponeTask } from '@/src/features/planning/task-engine';
+import { applyDeferral, canDefer, DeferralReceipt, restoreDeferral, undoAvailability } from '@/src/features/today/deferral';
 import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { buildTodayPlan, nextLocalDayStart, PlanBlock } from '@/src/features/today/planner';
@@ -80,27 +80,9 @@ export default function TodayScreen() {
   const [showOverdue, setShowOverdue] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [reflow, setReflow] = useState<AutopilotReflowSummary | null>(null);
-  const [lastDeferred, setLastDeferred] = useState<
-    | {
-        source: 'topic';
-        id: string;
-        name: string;
-        previousSnoozeUntil: number;
-        previousPostponements: number;
-      }
-    | {
-        source: 'task';
-        id: string;
-        name: string;
-        previousPlanState: 'inbox' | 'today' | 'scheduled' | 'postponed';
-        previousPostponedUntil: number;
-        previousPostponements: number;
-        previousLastPostponedAt: number;
-        previousScheduledStart: number;
-        previousScheduledEnd: number;
-      }
-    | null
-  >(null);
+  const [lastDeferred, setLastDeferred] = useState<DeferralReceipt | null>(null);
+  const [deferNotice, setDeferNotice] = useState<{ ownerKey: string; message: string } | null>(null);
+  useEffect(() => { setLastDeferred(null); setDeferNotice(null); setReflow(null); }, [ownerKey]);
 
   const now = useScreenClock();
   const plan = useMemo(
@@ -256,61 +238,19 @@ export default function TodayScreen() {
   }
 
   function deferForToday(block: PlanBlock) {
-    if (block.source === 'task' && block.taskId) {
-      const task = currentWorkspace.tasks.find((item) => item.id === block.taskId);
-      if (!task) return;
-      setLastDeferred({
-        source: 'task',
-        id: task.id,
-        name: task.title,
-        previousPlanState: task.planState,
-        previousPostponedUntil: task.postponedUntil,
-        previousPostponements: task.postponements ?? 0,
-        previousLastPostponedAt: task.lastPostponedAt ?? 0,
-        previousScheduledStart: task.scheduledStart,
-        previousScheduledEnd: task.scheduledEnd,
-      });
-      const nextWorkspace = updateWorkspace((draft) => {
-        const target = draft.tasks.find((item) => item.id === task.id);
-        if (target) postponeTask(target, nextLocalDayStart(Date.now()));
-      });
-      if (nextWorkspace) {
-        setReflow(
-          buildAutopilotReflowSummary(
-            currentWorkspace,
-            nextWorkspace,
-            Date.now(),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (!block.topicId) return;
-    const topic = currentWorkspace.topics.find((item) => item.id === block.topicId);
-    if (!topic) return;
-
-    const previousSnoozeUntil = topic.snoozeUntil;
-    const nextWorkspace = updateWorkspace((draft) => {
-      const target = draft.topics.find((item) => item.id === block.topicId);
-      if (target) { target.snoozeUntil = nextLocalDayStart(Date.now()); target.postponements = Math.min(100000, (target.postponements ?? 0) + 1); }
-    });
-    if (nextWorkspace) {
-      setReflow(
-        buildAutopilotReflowSummary(
-          currentWorkspace,
-          nextWorkspace,
-          Date.now(),
-        ),
-      );
-    }
-    setLastDeferred({
-      source: 'topic',
-      id: topic.id,
-      name: topic.name,
-      previousSnoozeUntil,
-      previousPostponements: topic.postponements ?? 0,
-    });
+    if (!ownerKey || (block.source !== 'task' && block.source !== 'topic')) return;
+    const id = block.source === 'task' ? block.taskId : block.topicId;
+    if (!id) return;
+    const source = block.source;
+    const at = Date.now();
+    let receipt: DeferralReceipt | null = null;
+    const nextWorkspace = updateWorkspace(draft => {
+      receipt = applyDeferral(draft, ownerKey, source, id, nextLocalDayStart(at), at);
+    }, { ownerKey, canApply: current => canDefer(current, source, id, at) });
+    if (!nextWorkspace || !receipt) return;
+    setLastDeferred(receipt);
+    setDeferNotice(null);
+    setReflow(buildAutopilotReflowSummary(currentWorkspace, nextWorkspace, at));
   }
 
   function deferWithTransition(block: PlanBlock) {
@@ -319,33 +259,20 @@ export default function TodayScreen() {
   }
 
   function undoDefer() {
-    if (!lastDeferred) return;
-    const nextWorkspace = updateWorkspace((draft) => {
-      if (lastDeferred.source === 'topic') {
-        const target = draft.topics.find((item) => item.id === lastDeferred.id);
-        if (target) { target.snoozeUntil = lastDeferred.previousSnoozeUntil; target.postponements = lastDeferred.previousPostponements; }
-        return;
-      }
-
-      const target = draft.tasks.find((item) => item.id === lastDeferred.id);
-      if (!target) return;
-      target.planState = lastDeferred.previousPlanState;
-      target.postponedUntil = lastDeferred.previousPostponedUntil;
-      target.postponements = lastDeferred.previousPostponements;
-      target.lastPostponedAt = lastDeferred.previousLastPostponedAt;
-      target.scheduledStart = lastDeferred.previousScheduledStart;
-      target.scheduledEnd = lastDeferred.previousScheduledEnd;
-      target.updatedAt = Date.now();
+    if (!lastDeferred || !ownerKey || lastDeferred.ownerKey !== ownerKey) return;
+    const receipt = lastDeferred;
+    const at = Date.now();
+    let availability = undoAvailability(currentWorkspace, receipt, at);
+    const nextWorkspace = updateWorkspace(draft => { restoreDeferral(draft, receipt, at); }, {
+      ownerKey: receipt.ownerKey,
+      canApply: current => { availability = undoAvailability(current, receipt, at); return availability === 'available'; },
     });
     if (nextWorkspace) {
-      setReflow(
-        buildAutopilotReflowSummary(
-          currentWorkspace,
-          nextWorkspace,
-          Date.now(),
-        ),
-      );
-    }
+      setReflow(buildAutopilotReflowSummary(currentWorkspace, nextWorkspace, at));
+      setDeferNotice({ ownerKey: receipt.ownerKey, message: 'Previous plan restored.' });
+    } else setDeferNotice({ ownerKey: receipt.ownerKey, message: availability === 'expired'
+      ? 'That deferral has ended. Your current plan was kept.'
+      : 'This item changed after Not now. Your latest changes were kept.' });
     setLastDeferred(null);
   }
 
@@ -523,6 +450,26 @@ export default function TodayScreen() {
               </View>
             )}
           </Animated.View>
+
+          {lastDeferred && lastDeferred.ownerKey === ownerKey ? (
+            <MotionItem key={`undo:${lastDeferred.source}:${lastDeferred.id}`} style={styles.undoRow}>
+              <View testID="today-defer-feedback" style={styles.undoCopy}>
+                <Text style={styles.undoTitle}>Moved out of today</Text>
+                <Text numberOfLines={1} style={styles.undoText}>{lastDeferred.name}</Text>
+                <Text style={styles.undoText}>{lastDeferred.source === 'task' ? 'Until tomorrow. Deadline unchanged.' : 'Until tomorrow. Recall dates unchanged.'}</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Undo moving ${lastDeferred.name} out of today`}
+                onPress={undoWithTransition}
+                disabled={deferAnimating}
+                style={({ pressed }) => [styles.undoButton, pressed && styles.pressed]}>
+                <Text style={styles.undoButtonText}>Undo</Text>
+              </Pressable>
+            </MotionItem>
+          ) : null}
+
+          {deferNotice?.ownerKey === ownerKey && deferNotice ? <MotionItem key={deferNotice.message} style={styles.deferNotice}><Text testID="today-defer-notice" accessibilityLiveRegion="polite" style={styles.undoText}>{deferNotice.message}</Text></MotionItem> : null}
 
           <TodayGuideOffer visible={guideOffer.visible} saveFailed={guideOffer.saveFailed}
             onShow={() => { guideOffer.choose('shown'); guide.start(); }}
@@ -723,22 +670,6 @@ export default function TodayScreen() {
           </Pressable> : null}
           <AnimatedDisclosure visible={showOverdue}><StudyInboxCard overdueOnly /></AnimatedDisclosure>
 
-          {lastDeferred ? (
-            <MotionItem key={`undo:${lastDeferred.source}:${lastDeferred.id}`} style={styles.undoRow}>
-              <View style={styles.undoCopy}>
-                <Text style={styles.undoTitle}>Moved out of today</Text>
-                <Text numberOfLines={1} style={styles.undoText}>{lastDeferred.name}</Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Undo moving ${lastDeferred.name} out of today`}
-                onPress={undoWithTransition}
-                disabled={deferAnimating}
-                style={({ pressed }) => [styles.undoButton, pressed && styles.pressed]}>
-                <Text style={styles.undoButtonText}>Undo</Text>
-              </Pressable>
-            </MotionItem>
-          ) : null}
 
           {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>Save issue: {saveError}</Text> : null}
 
@@ -1219,6 +1150,7 @@ const styles = StyleSheet.create({
   textActionText: { color: colors.textDim, ...type.meta, fontWeight: '600' },
   textActionMuted: { color: colors.subtle, ...type.meta, fontWeight: '600' },
 
+  deferNotice: { paddingHorizontal: space.lg, paddingVertical: space.sm },
   undoRow: {
     minHeight: 58,
     marginTop: space.sm,

@@ -276,15 +276,14 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
         visible={Boolean(schedulerTask)}
         onRequestClose={closeScheduler}
         statusBarTranslucent>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close scheduling sheet"
-          style={styles.modalBackdrop}
-          onPress={closeScheduler}>
+        <View style={styles.modalBackdrop}>
           <Pressable
-            accessibilityRole="none"
-            onPress={() => undefined}
-            style={styles.scheduleSheet}>
+            accessibilityRole="button"
+            accessibilityLabel="Close scheduling sheet"
+            style={StyleSheet.absoluteFill}
+            onPress={closeScheduler}
+          />
+          <View style={styles.scheduleSheet}>
             <ScrollView
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -385,8 +384,8 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
                 <Text style={styles.cancelScheduleText}>Cancel</Text>
               </Pressable>
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );

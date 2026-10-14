@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import './verify-today-deferral';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -553,7 +554,7 @@ function main() {
     todayScreen.includes('<MotionItem key={`undo:'),
     'Undo feedback should animate in and out.',
   );
-  assert.ok(todayScreen.includes('nextLocalDayStart(Date.now())'), 'Today does not defer until the next local day.');
+  assert.ok(todayScreen.includes('nextLocalDayStart(at)'), 'Today does not defer until the next local day.');
   assert.ok(
     todayScreen.includes('Nothing urgent right now.'),
     'Today is missing a calm fallback card after the recommendation queue is exhausted.',

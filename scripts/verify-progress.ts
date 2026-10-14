@@ -14,8 +14,9 @@ import {
 } from '../src/features/progress/progress-engine';
 
 const DAY = 24 * 60 * 60 * 1000;
-const now = Date.UTC(2026, 8, 30, 12, 0, 0);
-const todayStart = Date.UTC(2026, 8, 30, 0, 0, 0);
+// These assertions describe local calendar days, independent of the runner's timezone.
+const now = new Date(2026, 8, 30, 12).getTime();
+const todayStart = new Date(2026, 8, 30).getTime();
 
 function topic(id: string, name: string, subject: string): Topic {
   return {

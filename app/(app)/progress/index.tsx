@@ -26,6 +26,10 @@ import { learningInsights } from '@/src/features/adaptive/insight-engine';
 import { useProgressGuide } from '@/src/features/guides/useProgressGuide';
 import { ScreenGuide } from '@/src/features/guides/ScreenGuide';
 import { ProgressGuideState } from '@/src/features/guides/guide-registry';
+import { useGuideOffer } from '@/src/features/guides/useGuideOffer';
+import { GuideOffer } from '@/src/features/guides/GuideOffer';
+import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
+import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import {
   ConfidenceBucket,
   TopicTrend,
@@ -38,6 +42,8 @@ export default function ProgressScreen() {
   const { workspace, ownerKey } = useWorkspace();
   const { session: focus, ready: focusReady } = useFocus();
   const { session: review, ready: reviewReady } = useReview();
+  const { ready: onboardingReady, shouldShow: onboardingPending } = useOnboarding();
+  const { transitionPending } = useOnboardingTransition();
   const now = useScreenClock();
   const [showEvidence, setShowEvidence] = useState(false);
 
@@ -52,7 +58,12 @@ export default function ProgressScreen() {
     expanded: showEvidence,
     enoughConfidence: snapshot?.confidence.enoughData ?? false,
   };
-  const guide = useProgressGuide(!!workspace && !!snapshot && focusReady && reviewReady, ownerKey, guideState);
+  const guideReady = !!workspace && !!snapshot && focusReady && reviewReady;
+  const guide = useProgressGuide(guideReady, ownerKey, guideState);
+  const offerEligible = guideReady && !focus && !review && onboardingReady && !onboardingPending && !transitionPending;
+  const guideOffer = useGuideOffer('progress', ownerKey,
+    offerEligible,
+    guide.open && !focus && !review);
   const guideKey = `${guideState.hasTopics}:${guideState.practice}:${showEvidence}:${guideState.enoughConfidence}`;
 
   if (!workspace || !snapshot) {
@@ -106,6 +117,12 @@ export default function ProgressScreen() {
               <Metric label="DUE CORRECTIONS" value={String(snapshot.mistakes.due)} />
             </View>
           </Reveal>
+
+          <GuideOffer tutorialId="progress" screenName="Progress"
+            description="See your Neural Map, useful practice and deeper evidence. Replay anytime from ?."
+            visible={guideOffer.visible} saveFailed={guideOffer.saveFailed && offerEligible}
+            onShow={() => { guideOffer.choose('shown'); guide.start(); }}
+            onLater={() => guideOffer.choose('later')} onRetry={guideOffer.retry} />
 
           <SectionTitle
             title="Study time"

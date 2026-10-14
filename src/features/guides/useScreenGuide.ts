@@ -37,11 +37,11 @@ export function useScreenGuide<A extends TutorialAnchor>(ready: boolean, ownerKe
     }
   }, [guide, ready, close, start, tutorialId]);
 
-  const revealAnchor = useCallback(async (anchor: A) => {
+  const revealAnchor = useCallback(async (anchor: A, shouldContinue: () => boolean = () => true) => {
     const [target, viewport] = await Promise.all([
       measureGuideView(anchors[anchor].current), measureGuideView(scroll.current?.getNativeScrollRef() ?? null),
     ]);
-    if (!openRef.current || !target || !viewport) return;
+    if (!openRef.current || !shouldContinue() || !target || !viewport) return;
     // Scrolling is immediate even when motion is enabled: the spotlight never chases a moving target.
     scroll.current?.scrollTo({ y: Math.max(0, offset.current + target.y - viewport.y - 16), animated: false });
     await new Promise<void>(resolve => setTimeout(resolve, 100));

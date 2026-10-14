@@ -48,8 +48,16 @@ export async function verifyGuideOffers() {
   assert.equal((await storage.load('user:both', 'today'))?.choice, 'later');
   assert.equal((await storage.load('user:both', 'focus'))?.choice, 'shown');
   assert.equal(await storage.load('user:both', 'progress'), null);
+  let progressState = emptyGuideOfferState();
+  const progressController = createGuideOfferController(storage, 'progress', next => { progressState = next; });
+  await progressController.activate('user:both'); assert.equal(progressState.choice, null);
+  await progressController.choose('user:both', 'shown');
+  assert.equal((await storage.load('user:both', 'progress'))?.choice, 'shown');
+  assert.equal((await storage.load('user:both', 'today'))?.choice, 'later');
+  assert.equal((await storage.load('user:both', 'focus'))?.choice, 'shown');
+  assert.equal((await storage.load('user:both', 'review'))?.choice, 'later');
   await focusController.activate('user:another'); assert.equal(focusState.choice, null);
-  console.log('✓ Today/Focus/Review choices remain independent for the same owner');
+  console.log('✓ All four core tutorial choices remain independent for the same owner');
 
   let state: GuideOfferState = emptyGuideOfferState();
   const emit = (next: GuideOfferState) => { state = next; };

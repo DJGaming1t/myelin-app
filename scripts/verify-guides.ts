@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, reviewGuideSteps, progressGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState, ReviewGuideState, ProgressGuideState } from '../src/features/guides/guide-registry';
 import { spotlightRect, guideCardMaxHeight, guideCardTop } from '../src/features/guides/guide-geometry';
 import { verifyGuideOffers } from './verify-guide-offers';
+import { verifyGuideScroll } from './verify-guide-scroll';
 
 const guides: readonly FeatureGuide[] = FEATURE_GUIDES;
 assert.equal(new Set(guides.map(g => g.id)).size, guides.length, 'Feature IDs must be unique.');
@@ -91,4 +92,4 @@ for (const height of [480, 568, 740, 900]) {
 }
 console.log('✓ Spotlight coordinate origins, clipping, invalid measurements and compact card placement');
 
-void verifyGuideOffers().catch(error => { console.error(error); process.exitCode = 1; });
+void Promise.all([verifyGuideOffers(), verifyGuideScroll()]).catch(error => { console.error(error); process.exitCode = 1; });

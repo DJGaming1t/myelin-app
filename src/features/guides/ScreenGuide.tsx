@@ -12,7 +12,7 @@ type Props<A extends TutorialAnchor> = {
   title?: string;
   steps: readonly GuideStep<A>[];
   anchors: Record<A, RefObject<View | null>>;
-  revealAnchor: (anchor: A) => Promise<void>;
+  revealAnchor: (anchor: A, shouldContinue?: () => boolean) => Promise<void>;
   onClose: () => void;
 };
 
@@ -33,12 +33,13 @@ export function ScreenGuide<A extends TutorialAnchor>({ title = 'Today', steps, 
   const height = hostSize.height || dimensions.height;
 
   useEffect(() => {
-    if (!shown || !step) return;
+    // Wait for the modal layout before scrolling; a superseded measurement must not move the screen.
+    if (!shown || !step || hostSize.width <= 0 || hostSize.height <= 0) return;
     let cancelled = false;
     setMeasuring(true); setTarget(null);
     void (async () => {
       try {
-        await revealAnchor(step.anchor);
+        await revealAnchor(step.anchor, () => !cancelled);
         if (cancelled) return;
         const [anchor, host] = await Promise.all([measureGuideView(anchors[step.anchor].current), measureGuideView(hostRef.current)]);
         if (cancelled) return;

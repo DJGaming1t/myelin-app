@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import './verify-task-completion';
+import './verify-task-edit';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -496,7 +497,6 @@ console.log('✓ skipped dates survive reload, free time is reclaimed, overnight
     path.join(process.cwd(), 'src/features/planning/TaskForm.tsx'), 'utf8',
   );
   assert.ok(taskFormSource.includes('<Label>Estimated time</Label>') &&
-    taskFormSource.includes("target.estimatedMinutes = minutes;") &&
     taskFormSource.includes("Save task"),
     'Custom estimate edits must still require the existing Save task control');
 

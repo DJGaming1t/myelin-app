@@ -1,6 +1,6 @@
 import { TaskQuickActions, TaskDueLabel, useTaskCompletion } from '@/src/features/planning/TaskQuickActions';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -18,6 +18,7 @@ import {
   createStudyTask,
   reopenTask,
 } from '@/src/features/planning/task-engine';
+import { applyTaskEdit, taskEditConflict, RecordedTime, TaskEdit } from './task-edit';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const DURATIONS = [15, 25, 35, 45, 60];
@@ -99,12 +100,28 @@ function dueChoice(task: StudyTask | null): DueChoice {
 }
 
 export function TaskForm({ taskId }: { taskId?: string }) {
+  const { workspace, ownerKey, status } = useWorkspace();
+  if (!workspace || !ownerKey || status !== 'ready') return null;
+  if (taskId && !workspace.tasks.some(task => task.id === taskId)) return <View style={styles.content}>
+    <ScreenHeader variant="compact" title="Task unavailable" subtitle="This task has been removed." onBack={() => router.back()} />
+  </View>;
+  return <TaskFormEditor key={`${ownerKey}:${taskId ?? 'new'}`} taskId={taskId} />;
+}
+
+function TaskFormEditor({ taskId }: { taskId?: string }) {
   const complete = useTaskCompletion();
-  const { workspace, updateWorkspace } = useWorkspace();
+  const { workspace, ownerKey, updateWorkspace } = useWorkspace();
   const existing = useMemo(
     () => workspace?.tasks.find((task) => task.id === taskId) ?? null,
     [taskId, workspace],
   );
+
+  const [initial] = useState(existing);
+  const submitted = useRef(false);
+  const [deadlineBaseline, setDeadlineBaseline] = useState(existing?.dueAt ?? 0);
+  const [dueEdited, setDueEdited] = useState(false);
+  const [recordedBaseline, setRecordedBaseline] = useState<RecordedTime | null>(null);
+  const [conflict, setConflict] = useState<'deadline' | 'time' | null>(null);
 
   const [title, setTitle] = useState(existing?.title ?? '');
   const [subject, setSubject] = useState(existing?.subject ?? '');
@@ -117,8 +134,8 @@ export function TaskForm({ taskId }: { taskId?: string }) {
   const [due, setDue] = useState<DueChoice>(dueChoice(existing));
   const [customDate, setCustomDate] = useState(existing?.dueAt ? dateText(existing.dueAt) : '');
   const [customTime, setCustomTime] = useState(existing?.dueAt ? timeText(existing.dueAt) : '23:59');
-  const [estimate, setEstimate] = useState(String(existing?.estimatedMinutes || 35));
-  const [actual, setActual] = useState(String(existing?.actualMinutes || 0));
+  const [estimate, setEstimate] = useState(String(existing?.estimatedMinutes ?? 35));
+  const [actual, setActual] = useState<string | null>(null);
   const [priority, setPriority] = useState<Priority>(existing?.priority ?? 2);
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [error, setError] = useState('');
@@ -138,69 +155,70 @@ export function TaskForm({ taskId }: { taskId?: string }) {
   }
 
   function save() {
+    if (submitted.current || !ownerKey) return;
     const cleanTitle = title.trim();
     if (!cleanTitle) {
       setError('Add a short task title.');
       return;
     }
-    const resolvedDue = dueTimestamp(due, customDate, customTime);
-    if (due === 'custom' && !resolvedDue) {
+    const resolvedDue = initial && !dueEdited ? deadlineBaseline : dueTimestamp(due, customDate, customTime);
+    if ((!initial || dueEdited) && due === 'custom' && !resolvedDue) {
       setError('Use a valid due date and time, such as 2026-10-12 and 18:30.');
       return;
     }
     const minutes = Math.max(0, Math.min(720, Math.round(Number(estimate) || 0)));
-    const actualMinutes = Math.max(0, Math.round(Number(actual) || 0));
+    const actualMinutes = actual === null ? null : Number(actual);
+    if (actualMinutes !== null && (!Number.isFinite(actualMinutes) || actualMinutes < 0)) {
+      setError('Use a non-negative number for recorded minutes.'); return;
+    }
     const now = Date.now();
 
-    updateWorkspace((draft) => {
-      if (existing) {
-        const target = draft.tasks.find((item) => item.id === existing.id);
-        if (!target) return;
-        target.title = cleanTitle;
-        target.subject = subject.trim().slice(0, 120);
-        target.topicId = topicId;
-        target.examId = examId;
-        target.type = type;
-        target.dueAt = resolvedDue;
-        target.estimatedMinutes = minutes;
-        target.actualMinutes = actualMinutes;
-        target.priority = priority;
-        target.notes = notes.trim().slice(0, 12000);
-        if (target.planState !== 'scheduled') target.planState = planState;
-        target.updatedAt = now;
-      } else {
-        draft.tasks.push(
-          createStudyTask({
-            title: cleanTitle,
-            subject,
-            topicId,
-            examId,
-            type,
-            planState,
-            dueAt: resolvedDue,
-            estimatedMinutes: minutes,
-            priority,
-            notes,
-            now,
-          }),
-        );
+    const patch: TaskEdit = {};
+    if (initial) {
+      const values = { title: cleanTitle, subject: subject.trim().slice(0, 120), topicId, examId, type,
+        estimatedMinutes: minutes, priority, notes: notes.trim().slice(0, 12000) };
+      for (const key of Object.keys(values) as (keyof typeof values)[]) {
+        if (values[key] !== initial[key]) Object.assign(patch, { [key]: values[key] });
       }
-    });
+      if (dueEdited) patch.dueAt = resolvedDue;
+      if (actualMinutes !== null) patch.actualMinutes = Math.round(actualMinutes);
+      const originalPlan = initial.planState === 'today' ? 'today' : 'inbox';
+      if (planState !== originalPlan) patch.planState = planState;
+    }
+    let issue: ReturnType<typeof taskEditConflict> = null;
+    submitted.current = true;
+    const updated = updateWorkspace((draft) => {
+      if (taskId) applyTaskEdit(draft.tasks.find(item => item.id === taskId)!, patch, now);
+      else draft.tasks.push(createStudyTask({ title: cleanTitle, subject, topicId, examId, type, planState,
+        dueAt: resolvedDue, estimatedMinutes: minutes, priority, notes, now }));
+    }, { ownerKey, canApply: current => {
+      if (!taskId) return true;
+      issue = taskEditConflict(current.tasks.find(item => item.id === taskId), patch, deadlineBaseline, recordedBaseline);
+      return !issue;
+    } });
+    if (!updated) {
+      submitted.current = false;
+      setConflict(issue === 'deadline' || issue === 'time' ? issue : null);
+      setError(issue === 'time' ? 'Study time changed while you were editing. Use the latest recorded time before saving.'
+        : issue === 'deadline' ? 'The deadline changed while you were editing. Use the latest deadline before saving.'
+        : 'This task is no longer available. Your changes were not saved.');
+      return;
+    }
     router.back();
   }
 
   function toggleComplete() {
-    if (!existing) return;
-    if (existing.status === 'open') complete(existing.id);
-    else updateWorkspace((draft) => {
-      const target = draft.tasks.find((item) => item.id === existing.id);
-      if (target) reopenTask(target);
-    });
-    router.back();
+    if (!existing || submitted.current || !ownerKey) return;
+    submitted.current = true;
+    const accepted = existing.status === 'open' ? complete(existing.id) : !!updateWorkspace((draft) => {
+      reopenTask(draft.tasks.find(item => item.id === existing.id)!);
+    }, { ownerKey, canApply: current => current.tasks.some(item => item.id === existing.id && item.status === 'completed') });
+    if (accepted) router.back();
+    else submitted.current = false;
   }
 
   function remove() {
-    if (!existing) return;
+    if (!existing || !ownerKey || submitted.current) return;
     Alert.alert(
       'Delete this study task?',
       'The task will be removed. Existing Focus history is kept.',
@@ -210,10 +228,12 @@ export function TaskForm({ taskId }: { taskId?: string }) {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            updateWorkspace((draft) => {
+            if (submitted.current) return;
+            submitted.current = true;
+            const updated = updateWorkspace((draft) => {
               draft.tasks = draft.tasks.filter((item) => item.id !== existing.id);
-            });
-            router.back();
+            }, { ownerKey, canApply: current => current.tasks.some(item => item.id === existing.id) });
+            if (updated) router.back(); else submitted.current = false;
           },
         },
       ],
@@ -271,18 +291,20 @@ export function TaskForm({ taskId }: { taskId?: string }) {
 
       <Label>Due</Label>
       <View style={styles.rowWrap}>
-        <Chip label="No date" active={due === 'none'} onPress={() => setDue('none')} />
-        <Chip label="Today" active={due === 'today'} onPress={() => setDue('today')} />
-        <Chip label="Tomorrow" active={due === 'tomorrow'} onPress={() => setDue('tomorrow')} />
-        <Chip label="Choose date" active={due === 'custom'} onPress={() => setDue('custom')} />
+        <Chip label="No date" active={due === 'none'} onPress={() => { setDue('none'); setDueEdited(true); }} />
+        <Chip label="Today" active={due === 'today'} onPress={() => { setDue('today'); setDueEdited(true); }} />
+        <Chip label="Tomorrow" active={due === 'tomorrow'} onPress={() => { setDue('tomorrow'); setDueEdited(true); }} />
+        <Chip label="Choose date" active={due === 'custom'} onPress={() => { setDue('custom'); setDueEdited(true); }} />
       </View>
+
+      {existing?.dueAt && !dueEdited ? <Text style={styles.helper}>Saved deadline: {new Date(existing.dueAt).toLocaleString()}</Text> : null}
 
       {due === 'custom' ? (
         <View style={styles.customDueRow}>
           <TextInput
             accessibilityLabel="Due date"
             value={customDate}
-            onChangeText={setCustomDate}
+            onChangeText={value => { setCustomDate(value); setDueEdited(true); }}
             placeholder="YYYY-MM-DD"
             placeholderTextColor={colors.subtle}
             autoCapitalize="none"
@@ -291,7 +313,7 @@ export function TaskForm({ taskId }: { taskId?: string }) {
           <TextInput
             accessibilityLabel="Due time"
             value={customTime}
-            onChangeText={setCustomTime}
+            onChangeText={value => { setCustomTime(value); setDueEdited(true); }}
             placeholder="18:30"
             placeholderTextColor={colors.subtle}
             keyboardType="numbers-and-punctuation"
@@ -353,8 +375,12 @@ export function TaskForm({ taskId }: { taskId?: string }) {
         <>
           <Label>Time already done</Label>
           <TextInput
-            value={actual}
-            onChangeText={setActual}
+            accessibilityLabel="Time already done in minutes"
+            value={actual ?? String(existing.actualMinutes)}
+            onChangeText={value => {
+              if (actual === null) setRecordedBaseline({ actualMinutes: existing.actualMinutes, lastFocusSessionId: existing.lastFocusSessionId });
+              setActual(value);
+            }}
             keyboardType="number-pad"
             placeholder="0"
             placeholderTextColor={colors.subtle}
@@ -380,7 +406,14 @@ export function TaskForm({ taskId }: { taskId?: string }) {
         style={[styles.input, styles.notes]}
       />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
+      {conflict && existing ? <Pressable accessibilityRole="button" onPress={() => {
+        if (conflict === 'time') { setActual(null); setRecordedBaseline(null); }
+        else { setDeadlineBaseline(existing.dueAt); setDue(dueChoice(existing)); setCustomDate(dateText(existing.dueAt)); setCustomTime(timeText(existing.dueAt)); setDueEdited(false); }
+        setConflict(null); setError('');
+      }} style={styles.secondary}>
+        <Text style={styles.secondaryText}>{conflict === 'time' ? 'Use latest recorded time' : 'Use latest deadline'}</Text>
+      </Pressable> : null}
 
       <Pressable accessibilityRole="button" onPress={save} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
         <Text style={styles.primaryText}>{existing ? 'Save task' : planState === 'today' ? 'Add to Today' : 'Add to Inbox'}</Text>

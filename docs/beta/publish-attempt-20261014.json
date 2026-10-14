@@ -1,5 +1,5 @@
 {
-  "status": "blocked_not_published",
+  "status": "ci_attempt_blocked_resolved_by_direct_publication",
   "sourceSha": "a7d1a76d7cb4e7ca87652acdc2fe4145fc901d72",
   "sourceBranch": "codex/exam-autopilot-capacity-v1",
   "workflowRunId": 38617121826,
@@ -23,7 +23,7 @@
     }
   ],
   "artifacts": [],
-  "newUpdateId": null,
+  "newUpdateId": "01a13c1e-bd41-7ebc-925b-756e31ec79ea",
   "failureReason": "Confirmed in signed-in GitHub Actions annotations on 2026-10-15: recent account payments failed or the spending limit needs increasing; job was not started.",
   "lastConfirmedPreview": {
     "runtimeVersion": "0.2.13",
@@ -49,14 +49,16 @@
     "Expo publication",
     "physical Android/account-transition QA"
   ],
-  "next": "Complete secure Expo sign-in, inspect existing project/linkage/quota and use an alternate gated preview pipeline if supported; otherwise resolve the GitHub account gate and retry the original source revision. M04i wrong-answer review feedback remains next improvement.",
+  "next": "Physical phone verification; M04i wrong-answer review feedback. Hosted CI remains externally blocked.",
   "failureReasonSource": "GitHub Actions run summary, attempt 2, Annotations",
   "followUp": {
     "dateIST": "2026-10-15",
     "githubBrowserAuthentication": "verified",
     "billingSettingsChanged": false,
-    "expoAlternateRoute": "investigating existing project and EAS Workflows; not configured or run",
-    "expoAuthentication": "sign-in rejected; secure manual handoff needed",
-    "newUpdatePublished": false
-  }
+    "expoAlternateRoute": "manual EAS workflow accepted but free-minute quota exhausted; direct locally verified EAS CLI update succeeded",
+    "expoAuthentication": "verified; official EAS CLI device sign-in completed",
+    "newUpdatePublished": true
+  },
+  "resolvedBy": "guides-recovery-update-20261015.json",
+  "resolvedSourceSha": "db6bd026fd8b33cdccfeb0fb68925ac6900240a8"
 }

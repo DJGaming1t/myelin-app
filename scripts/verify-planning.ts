@@ -5,6 +5,7 @@ import './verify-task-edit';
 import './verify-task-planning';
 import './verify-day-rebuild';
 import './verify-day-skip';
+import './verify-task-unstuck';
 import fs from 'node:fs';
 import path from 'node:path';
 

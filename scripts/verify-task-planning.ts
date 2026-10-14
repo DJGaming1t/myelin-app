@@ -9,6 +9,9 @@ import * as day from '../src/features/planning/day-engine';
 import * as planning from '../src/features/planning/task-planning';
 import * as rebuildEngine from '../src/features/planning/day-rebuild';
 import * as daySkipEngine from '../src/features/planning/day-skip';
+import * as unstuckEngine from '../src/features/today/task-unstuck';
+import * as outcomes from '../src/features/adaptive/outcome-engine';
+import * as sleep from '../src/features/adaptive/sleep-engine';
 import * as planner from '../src/features/today/planner';
 import * as recovery from '../src/features/exams/autopilot-recovery';
 import * as reflow from '../src/features/exams/autopilot-reflow';
@@ -22,7 +25,7 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
   if(state==='postponed')task.postponedUntil=now+86400000;
   if(state==='scheduled'){task.scheduledStart=now-3600000;task.scheduledEnd=now-2100000;}
   const other=engine.createStudyTask({title:'Worksheet',estimatedMinutes:25,planState:'inbox',now});other.id='t2';w.tasks=[task,other];
-  let active:any,provider:any,hookModule:any,rebuildModule:any,skipModule:any;const writes:{owner:string;workspace:schema.WorkspaceState}[]=[],reflows:{before:schema.WorkspaceState;after:schema.WorkspaceState}[]=[];
+  let active:any,provider:any,hookModule:any,rebuildModule:any,skipModule:any,unstuckModule:any;let activeFocus:any=null,activeReview:any=null;const routes:any[]=[];const writes:{owner:string;workspace:schema.WorkspaceState}[]=[],reflows:{before:schema.WorkspaceState;after:schema.WorkspaceState}[]=[];
   const react:any={createContext:()=>({Provider:'Provider'}),
     useState(value:any){const i=active.cursor++,slot=active.slots[i]??={value:typeof value==='function'?value():value};return[slot.value,(v:any)=>{slot.value=typeof v==='function'?v(slot.value):v}];},
     useRef(value:any){const i=active.cursor++,slot=active.slots[i]??={value:{current:value}};if(!active.refs.includes(slot.value))active.refs.push(slot.value);return slot.value;},
@@ -35,11 +38,12 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
   function load(file:string){const m:any={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{module:m,exports:m.exports,Date:Clock,Promise,Error,setTimeout:()=>1,clearTimeout:()=>{},require(name:string){
     if(name==='react')return react;if(name==='react/jsx-runtime')return{jsx,jsxs:jsx};if(name.endsWith('/AuthProvider'))return{useAuth:()=>({ready:true,user:null,localMode:true})};
     if(name==='./schema')return schema;if(name==='./owner')return{workspaceOwnerKey:()=>owner};if(name==='./validation')return{};if(name==='./storage')return{workspaceStorage:{save:async(key:string,workspace:schema.WorkspaceState)=>{writes.push({owner:key,workspace})}}};
-    if(name.endsWith('/WorkspaceProvider'))return{useWorkspace:context};if(name.endsWith('/task-engine'))return engine;if(name.endsWith('/task-planning'))return planning;if(name.endsWith('/useTaskPlanning'))return hookModule;if(name.endsWith('/useDayRebuild'))return rebuildModule;if(name.endsWith('/day-rebuild'))return rebuildEngine;if(name.endsWith('/day-skip'))return daySkipEngine;if(name.endsWith('/useDaySkip'))return skipModule;
+    if(name.endsWith('/WorkspaceProvider'))return{useWorkspace:context};if(name.endsWith('/task-engine'))return engine;if(name.endsWith('/task-planning'))return planning;if(name.endsWith('/useTaskPlanning'))return hookModule;if(name.endsWith('/useDayRebuild'))return rebuildModule;if(name.endsWith('/day-rebuild'))return rebuildEngine;if(name.endsWith('/day-skip'))return daySkipEngine;if(name.endsWith('/useDaySkip'))return skipModule;if(name.endsWith('/TaskUnstuck'))return unstuckModule;if(name.endsWith('/task-unstuck'))return unstuckEngine;if(name.endsWith('/outcome-engine'))return outcomes;if(name.endsWith('/sleep-engine'))return sleep;
     if(name.endsWith('/day-engine'))return day;if(name.endsWith('/planner'))return planner;if(name.endsWith('/autopilot-recovery'))return recovery;if(name.endsWith('/autopilot-reflow'))return{...reflow,buildAutopilotReflowSummary:(before:schema.WorkspaceState,after:schema.WorkspaceState,at:number)=>{reflows.push({before,after});return reflow.buildAutopilotReflowSummary(before,after,at);}};if(name.endsWith('/focus-engine'))return focus;if(name.endsWith('/commitment-dates'))return commitmentDates;
-    if(name.endsWith('/useScreenClock'))return{useScreenClock:()=>now};if(name.endsWith('/FocusProvider'))return{useFocus:()=>({session:null})};
+    if(name.endsWith('/useReducedMotion'))return{useReducedMotion:()=>!!context().workspace?.settings.reduceMotion};
+    if(name.endsWith('/useScreenClock'))return{useScreenClock:()=>now};if(name.endsWith('/FocusProvider'))return{useFocus:()=>({session:activeFocus,ready:true})};if(name.endsWith('/ReviewProvider'))return{useReview:()=>({session:activeReview,ready:true})};
     if(name.endsWith('/TaskQuickActions'))return{TaskQuickActions:'QuickActions',TaskDueLabel:'DueLabel',useTaskCompletion:()=>()=>false};
-    if(name==='expo-router')return{router:{back:()=>{},push:()=>{},replace:()=>{},setParams:()=>{}},useLocalSearchParams:()=>({})};
+    if(name==='expo-router')return{router:{back:()=>{},push:(route:any)=>{routes.push(route)},replace:()=>{},setParams:()=>{}},useLocalSearchParams:()=>({})};
     if(name==='react-native')return{View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',ScrollView:'ScrollView',Modal:'Modal',StyleSheet:{create:(s:any)=>s},Alert:{alert:()=>{}}};
     if(name==='react-native-safe-area-context')return{SafeAreaView:'SafeAreaView'};
     if(name.endsWith('/ScreenHeader'))return{ScreenHeader:'Header'};if(name.endsWith('/AmbientBackdrop'))return{AmbientBackdrop:'Backdrop'};if(name.endsWith('/MotionItem'))return{MotionItem:'MotionItem'};if(name.endsWith('/AnimatedDisclosure'))return{AnimatedDisclosure:'Disclosure'};if(name.endsWith('/AutopilotReflowNotice'))return{AutopilotReflowNotice:'ReflowNotice'};
@@ -49,12 +53,13 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
   hookModule=load('src/features/planning/useTaskPlanning.ts');const hook=host(()=>hookModule.useTaskPlanning());
   rebuildModule=load('src/features/planning/useDayRebuild.ts');
   skipModule=load('src/features/planning/useDaySkip.ts');
+  unstuckModule=load('src/features/today/TaskUnstuck.tsx');
   const mod=load(surface==='inbox'?'src/features/planning/StudyInboxCard.tsx':'app/(app)/today/day-map.tsx');const root=host(()=>surface==='inbox'?mod.StudyInboxCard({}):mod.default());
   function nodes(n:any):any[]{if(!n)return[];if(Array.isArray(n))return n.flatMap(nodes);if((n.type==='Disclosure'||n.type==='Modal')&&n.props?.visible===false)return[n];return[n,...nodes(n.props?.children)];}
-  function actions(name:string|RegExp){return nodes(root.output).filter(n=>{const label=n.props?.label??n.props?.accessibilityLabel;return (typeof label==='string'&&(typeof name==='string'?label===name:name.test(label))) || n.type==='Pressable'&&nodes(n.props.children).some(c=>c.type==='Text'&&(typeof name==='string'?c.props.children===name:typeof c.props.children==='string'&&name.test(c.props.children)));}).map(n=>n.props.onPress);}
+  function actions(name:string|RegExp,h=root){return nodes(h.output).filter(n=>{const label=n.props?.label??n.props?.accessibilityLabel;return (typeof label==='string'&&(typeof name==='string'?label===name:name.test(label))) || n.type==='Pressable'&&nodes(n.props.children).some(c=>c.type==='Text'&&(typeof name==='string'?c.props.children===name:typeof c.props.children==='string'&&name.test(c.props.children)));}).map(n=>n.props.onPress);}
   if(surface==='daymap'&&state==='today'){actions(/Planning options/)[0]();root.render();}
   const input=(name:string)=>nodes(root.output).find(n=>n.type==='TextInput'&&n.props.accessibilityLabel===name).props;
-  return {owner,initialNow,task,other,root,hook,context,writes,reflows,actions,input,workspace:()=>provider.refs[0].current,advance:(ms:number)=>{now+=ms},now:()=>now,setStatus:(value:string)=>{provider.slots[0].value=value;root.render();},
+  return {owner,initialNow,task,other,root,hook,context,writes,reflows,actions,input,routes,nodes,mount:(file:string,name:string,props:()=>any)=>{const mod=load(file);return host(()=>mod[name](props()));},mountChild:(parent:any)=>host(()=>parent.output.type(parent.output.props)),unmount:(h:any)=>h.slots.forEach((slot:any)=>slot?.cleanup?.()),setSessions:(focus:any,review:any)=>{activeFocus=focus;activeReview=review;},workspace:()=>provider.refs[0].current,advance:(ms:number)=>{now+=ms},now:()=>now,setStatus:(value:string)=>{provider.slots[0].value=value;root.render();},
     mutate:(fn:(w:schema.WorkspaceState)=>void)=>context().updateWorkspace(fn),switchOwner:()=>{provider.refs[1].current='user:new';provider.slots[1].value='user:new';root.render();hook.render();},modal:()=>nodes(root.output).find(n=>n.type==='Modal')?.props,text:()=>nodes(root.output).filter(n=>n.type==='Text').map(n=>n.props.children).flat().join(' ')};
 }
 async function verify(){

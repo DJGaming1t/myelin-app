@@ -1,3 +1,4 @@
+import { TaskUnstuck, TaskScheduleRequest } from '@/src/features/today/TaskUnstuck';
 import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -13,7 +14,7 @@ import {
 
 import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useTaskPlanning } from './useTaskPlanning';
-import { planningFailureMessage, taskPlanningSnapshot, ScheduleChoice, TaskPlanningSnapshot } from './task-planning';
+import { planningFailureMessage, taskPlanningConflict, taskPlanningSnapshot, ScheduleChoice, TaskPlanningSnapshot } from './task-planning';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { suggestTaskSlots } from '@/src/features/planning/day-engine';
 import {
@@ -110,8 +111,8 @@ function slotTimeLabel(start: number, end: number) {
   return `${format.format(new Date(start))} – ${format.format(new Date(end))}`;
 }
 
-export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean }) {
-  const { workspace, ownerKey } = useWorkspace();
+export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onScheduleRequestHandled }: { overdueOnly?: boolean; scheduleRequest?: TaskScheduleRequest | null; onScheduleRequestHandled?: (request: TaskScheduleRequest) => void }) {
+  const { workspace, ownerKey, status, readWorkspace } = useWorkspace();
   const planning = useTaskPlanning();
   const ownerRef = useRef(ownerKey); ownerRef.current = ownerKey;
   const [visibleCount, setVisibleCount] = useState(4);
@@ -123,7 +124,18 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
   const [customTime, setCustomTime] = useState('');
   const [scheduleError, setScheduleError] = useState('');
 
-  useEffect(() => { schedulerRef.current = null; setScheduler(null); setScheduleError(''); setNotice(null); }, [ownerKey]);
+  useEffect(() => { schedulerRef.current = null; setScheduler(null); setScheduleError(''); setNotice(null); }, [ownerKey, status]);
+  const handledRequest = useRef<TaskScheduleRequest | null>(null);
+  useEffect(() => {
+    if (!scheduleRequest || handledRequest.current === scheduleRequest) return;
+    handledRequest.current = scheduleRequest;
+    onScheduleRequestHandled?.(scheduleRequest);
+    if (ownerKey !== scheduleRequest.ownerKey) return;
+    const latest = readWorkspace(scheduleRequest.ownerKey)?.tasks.find(item => item.id === scheduleRequest.task.id);
+    if (!latest || taskPlanningConflict(latest, taskPlanningSnapshot(scheduleRequest.task))) return;
+    openScheduler(latest.id);
+  }, [scheduleRequest, ownerKey, readWorkspace]);
+
   if (!workspace) return null;
   const currentWorkspace = workspace;
 
@@ -141,7 +153,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
       return a.createdAt - b.createdAt;
     });
 
-  const schedulerTask = scheduler?.ownerKey === ownerKey
+  const schedulerTask = status === 'ready' && scheduler?.ownerKey === ownerKey
     ? currentWorkspace.tasks.find(item => item.id === scheduler.expected.id) ?? null : null;
   const offeredAt = Date.now();
   const suggestedSlots = schedulerTask?.status === 'open'
@@ -158,9 +170,10 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
 
   function openScheduler(taskId: string, preserveCustom = false) {
     if (!ownerKey || ownerRef.current !== ownerKey) return;
-    const task = currentWorkspace.tasks.find(item => item.id === taskId);
-    if (!task || task.status !== 'open') return;
-    const firstSuggestion = suggestTaskSlots(currentWorkspace, task, Date.now(), 1)[0];
+    const latest = readWorkspace(ownerKey);
+    const task = latest?.tasks.find(item => item.id === taskId);
+    if (!latest || !task || task.status !== 'open') return;
+    const firstSuggestion = suggestTaskSlots(latest, task, Date.now(), 1)[0];
     const fallback = new Date(); fallback.setDate(fallback.getDate() + 1); fallback.setHours(18, 0, 0, 0);
     const seed = Math.max(Math.ceil((firstSuggestion?.start ?? fallback.getTime()) / 60000) * 60000, Math.floor(Date.now() / 60000) * 60000 + 60000);
     const next = { ownerKey, expected: taskPlanningSnapshot(task) };
@@ -252,6 +265,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
               <Mini label="Today" onPress={() => moveToday(task.id)} />
               <Mini label="Schedule" onPress={() => openScheduler(task.id)} accent />
             </View>
+            <TaskUnstuck task={task} onSchedule={request => { if (request.ownerKey === ownerKey) openScheduler(request.task.id); }} />
           </MotionItem>
         ))
       ) : (

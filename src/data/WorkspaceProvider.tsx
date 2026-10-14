@@ -30,6 +30,7 @@ type WorkspaceContextValue = {
   recovered: boolean;
   resetBecauseCorrupt: boolean;
   saveError: string;
+  readWorkspace: (expectedOwner: string) => WorkspaceState | null;
   updateWorkspace: (change: (draft: WorkspaceState) => void, guard?: WorkspaceUpdateGuard) => WorkspaceState | null;
   waitForSaves: () => Promise<void>;
   retrySaves: (expectedOwner: string) => Promise<boolean>;
@@ -59,6 +60,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const workspaceRef = useRef<WorkspaceState | null>(null);
   const ownerKeyRef = useRef<string | null>(null);
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const statusRef = useRef(status); statusRef.current = status;
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +124,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       cancelled = true;
     };
   }, [authReady, localMode, user?.uid]);
+
+  // Read the live owner-bound record without queuing a no-op mutation.
+  const readWorkspace = useCallback((expectedOwner: string) =>
+    statusRef.current === 'ready' && ownerKeyRef.current === expectedOwner ? workspaceRef.current : null, []);
 
   const updateWorkspace = useCallback((change: (draft: WorkspaceState) => void, guard?: WorkspaceUpdateGuard) => {
     const current = workspaceRef.current;
@@ -360,6 +366,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       recovered,
       resetBecauseCorrupt,
       saveError,
+      readWorkspace,
       updateWorkspace,
       waitForSaves,
       retrySaves,
@@ -382,6 +389,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       restoreImportRecovery,
       saveError,
       status,
+      readWorkspace,
       updateWorkspace,
       waitForSaves,
       retrySaves,

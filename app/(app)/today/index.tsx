@@ -1,3 +1,4 @@
+import { TaskUnstuck, TaskScheduleRequest } from '@/src/features/today/TaskUnstuck';
 import { sleepingAt } from '@/src/features/adaptive/sleep-engine';
 import { TodayAdaptationInsight } from '@/src/features/adaptive/AdaptationInsights';
 import { taskUrgency } from '@/src/features/planning/task-urgency';
@@ -76,6 +77,8 @@ export default function TodayScreen() {
   const { style: heroMotion, busy: deferAnimating, transition } = useRecommendationMotion();
   const [showAdjust, setShowAdjust] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
+  const [scheduleRequest, setScheduleRequest] = useState<TaskScheduleRequest | null>(null);
+  useEffect(() => { setScheduleRequest(null); }, [ownerKey]);
   const [showRest, setShowRest] = useState(false);
   const [showOverdue, setShowOverdue] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
@@ -436,6 +439,9 @@ export default function TodayScreen() {
                     <Text style={styles.textActionMuted}>Not now</Text>
                   </Pressable>
                   </View>
+                  {next.taskId ? <TaskUnstuck task={currentWorkspace.tasks.find(task => task.id === next.taskId)!}
+                    enabled={!deferAnimating && !guide.open && !transitionPending && focusReady && reviewReady}
+                    onSchedule={request => { setScheduleRequest(request); setShowInbox(true); setShowOverdue(false); }} /> : null}
                 </View>
               </View>
             ) : (
@@ -776,7 +782,7 @@ export default function TodayScreen() {
           <AnimatedDisclosure
             visible={showInbox}
             style={styles.inboxWrap}>
-            <StudyInboxCard />
+            <StudyInboxCard scheduleRequest={scheduleRequest} onScheduleRequestHandled={request => setScheduleRequest(current => current === request ? null : current)} />
           </AnimatedDisclosure>
 
           {restCount > 0 ? <>

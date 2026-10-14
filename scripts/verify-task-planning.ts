@@ -8,6 +8,7 @@ import * as engine from '../src/features/planning/task-engine';
 import * as day from '../src/features/planning/day-engine';
 import * as planning from '../src/features/planning/task-planning';
 import * as rebuildEngine from '../src/features/planning/day-rebuild';
+import * as daySkipEngine from '../src/features/planning/day-skip';
 import * as planner from '../src/features/today/planner';
 import * as recovery from '../src/features/exams/autopilot-recovery';
 import * as reflow from '../src/features/exams/autopilot-reflow';
@@ -21,7 +22,7 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
   if(state==='postponed')task.postponedUntil=now+86400000;
   if(state==='scheduled'){task.scheduledStart=now-3600000;task.scheduledEnd=now-2100000;}
   const other=engine.createStudyTask({title:'Worksheet',estimatedMinutes:25,planState:'inbox',now});other.id='t2';w.tasks=[task,other];
-  let active:any,provider:any,hookModule:any,rebuildModule:any;const writes:{owner:string;workspace:schema.WorkspaceState}[]=[],reflows:{before:schema.WorkspaceState;after:schema.WorkspaceState}[]=[];
+  let active:any,provider:any,hookModule:any,rebuildModule:any,skipModule:any;const writes:{owner:string;workspace:schema.WorkspaceState}[]=[],reflows:{before:schema.WorkspaceState;after:schema.WorkspaceState}[]=[];
   const react:any={createContext:()=>({Provider:'Provider'}),
     useState(value:any){const i=active.cursor++,slot=active.slots[i]??={value:typeof value==='function'?value():value};return[slot.value,(v:any)=>{slot.value=typeof v==='function'?v(slot.value):v}];},
     useRef(value:any){const i=active.cursor++,slot=active.slots[i]??={value:{current:value}};if(!active.refs.includes(slot.value))active.refs.push(slot.value);return slot.value;},
@@ -34,7 +35,7 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
   function load(file:string){const m:any={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{module:m,exports:m.exports,Date:Clock,Promise,Error,setTimeout:()=>1,clearTimeout:()=>{},require(name:string){
     if(name==='react')return react;if(name==='react/jsx-runtime')return{jsx,jsxs:jsx};if(name.endsWith('/AuthProvider'))return{useAuth:()=>({ready:true,user:null,localMode:true})};
     if(name==='./schema')return schema;if(name==='./owner')return{workspaceOwnerKey:()=>owner};if(name==='./validation')return{};if(name==='./storage')return{workspaceStorage:{save:async(key:string,workspace:schema.WorkspaceState)=>{writes.push({owner:key,workspace})}}};
-    if(name.endsWith('/WorkspaceProvider'))return{useWorkspace:context};if(name.endsWith('/task-engine'))return engine;if(name.endsWith('/task-planning'))return planning;if(name.endsWith('/useTaskPlanning'))return hookModule;if(name.endsWith('/useDayRebuild'))return rebuildModule;if(name.endsWith('/day-rebuild'))return rebuildEngine;
+    if(name.endsWith('/WorkspaceProvider'))return{useWorkspace:context};if(name.endsWith('/task-engine'))return engine;if(name.endsWith('/task-planning'))return planning;if(name.endsWith('/useTaskPlanning'))return hookModule;if(name.endsWith('/useDayRebuild'))return rebuildModule;if(name.endsWith('/day-rebuild'))return rebuildEngine;if(name.endsWith('/day-skip'))return daySkipEngine;if(name.endsWith('/useDaySkip'))return skipModule;
     if(name.endsWith('/day-engine'))return day;if(name.endsWith('/planner'))return planner;if(name.endsWith('/autopilot-recovery'))return recovery;if(name.endsWith('/autopilot-reflow'))return{...reflow,buildAutopilotReflowSummary:(before:schema.WorkspaceState,after:schema.WorkspaceState,at:number)=>{reflows.push({before,after});return reflow.buildAutopilotReflowSummary(before,after,at);}};if(name.endsWith('/focus-engine'))return focus;if(name.endsWith('/commitment-dates'))return commitmentDates;
     if(name.endsWith('/useScreenClock'))return{useScreenClock:()=>now};if(name.endsWith('/FocusProvider'))return{useFocus:()=>({session:null})};
     if(name.endsWith('/TaskQuickActions'))return{TaskQuickActions:'QuickActions',TaskDueLabel:'DueLabel',useTaskCompletion:()=>()=>false};
@@ -47,6 +48,7 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
   const p=load('src/data/WorkspaceProvider.tsx');provider=host(()=>p.WorkspaceProvider({children:null}),false);provider.slots[0].value='ready';provider.slots[1].value=owner;provider.slots[2].value=w;provider.refs[0].current=w;provider.refs[1].current=owner;
   hookModule=load('src/features/planning/useTaskPlanning.ts');const hook=host(()=>hookModule.useTaskPlanning());
   rebuildModule=load('src/features/planning/useDayRebuild.ts');
+  skipModule=load('src/features/planning/useDaySkip.ts');
   const mod=load(surface==='inbox'?'src/features/planning/StudyInboxCard.tsx':'app/(app)/today/day-map.tsx');const root=host(()=>surface==='inbox'?mod.StudyInboxCard({}):mod.default());
   function nodes(n:any):any[]{if(!n)return[];if(Array.isArray(n))return n.flatMap(nodes);if((n.type==='Disclosure'||n.type==='Modal')&&n.props?.visible===false)return[n];return[n,...nodes(n.props?.children)];}
   function actions(name:string|RegExp){return nodes(root.output).filter(n=>{const label=n.props?.label??n.props?.accessibilityLabel;return (typeof label==='string'&&(typeof name==='string'?label===name:name.test(label))) || n.type==='Pressable'&&nodes(n.props.children).some(c=>c.type==='Text'&&(typeof name==='string'?c.props.children===name:typeof c.props.children==='string'&&name.test(c.props.children)));}).map(n=>n.props.onPress);}

@@ -1,3 +1,6 @@
+import { useDaySkip } from '@/src/features/planning/useDaySkip';
+import { daySkipFailureMessage, restorableOccurrenceDates } from '@/src/features/planning/day-skip';
+import type { Commitment, StudyTask } from '@/src/data/schema';
 import { localDateKey } from '@/src/features/planning/commitment-dates';
 import { useDayRebuild } from '@/src/features/planning/useDayRebuild';
 import { rebuildIssueMessage } from '@/src/features/planning/day-rebuild';
@@ -33,7 +36,6 @@ import {
 } from '@/src/features/planning/day-engine';
 import {
   extendMetTaskEstimate,
-  postponeTask,
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
 import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
@@ -93,6 +95,7 @@ export default function DayMapScreen() {
   }>();
   const { workspace, ownerKey, updateWorkspace } = useWorkspace();
   const planning = useTaskPlanning();
+  const daySkip = useDaySkip();
   const moveOwnerRef = useRef(ownerKey); moveOwnerRef.current = ownerKey;
   const [moveNotice, setMoveNotice] = useState<{ ownerKey: string; text: string } | null>(null);
   useEffect(() => { setMoveNotice(null); }, [ownerKey]);
@@ -107,6 +110,7 @@ export default function DayMapScreen() {
   const clock = useScreenClock();
   const [refresh, setNow] = useState(Date.now());
   const now = Math.max(clock, refresh);
+  const viewedDay = localDateKey(now);
   const rebuild = useDayRebuild();
   const proposal = rebuild.preview;
   const [showPlanning, setShowPlanning] = useState(false);
@@ -419,13 +423,18 @@ export default function DayMapScreen() {
     )
     .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
 
-  function skipOccurrence(id: string, date: string, restore = false) {
-    updateWithReflow(draft => {
-      const item = draft.commitments.find(item => item.id === id);
-      if (!item || !item.recurrenceDays.length) return;
-      item.skippedDates = restore ? (item.skippedDates ?? []).filter(value => value !== date) : [...new Set([...(item.skippedDates ?? []), date])];
-      item.updatedAt = Date.now();
-    });
+  function skipOccurrence(item: Commitment, date: string, restore = false) {
+    if (!ownerKey || moveOwnerRef.current !== ownerKey) return;
+    const result = daySkip.occurrence(item, date, restore, viewedDay);
+    if (!result.ok && (result.reason === 'consumed' || result.reason === 'owner')) return;
+    if (!result.ok) {
+      setMoveNotice({ ownerKey, text: daySkipFailureMessage(result.reason, 'occurrence') });
+      if (result.reason === 'expired') setNow(Date.now());
+      return;
+    }
+    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+    setMoveNotice({ ownerKey, text: `Occurrence ${restore ? 'restored' : 'skipped'} · Future repeats unchanged.` });
+    setNow(Date.now());
   }
 
   function moveTask(taskId: string) {
@@ -500,12 +509,17 @@ export default function DayMapScreen() {
     );
   }
 
-  function skipToday(taskId: string) {
-    const tomorrow = addLocalDays(startOfLocalDay(Date.now()), 1);
-    updateWithReflow((draft) => {
-      const task = draft.tasks.find((item) => item.id === taskId);
-      if (task) postponeTask(task, tomorrow);
-    });
+  function skipToday(task: StudyTask) {
+    if (!ownerKey || moveOwnerRef.current !== ownerKey) return;
+    const result = daySkip.skipTask(task, viewedDay);
+    if (!result.ok && (result.reason === 'consumed' || result.reason === 'owner')) return;
+    if (!result.ok) {
+      setMoveNotice({ ownerKey, text: daySkipFailureMessage(result.reason, 'task') });
+      if (result.reason === 'expired') setNow(Date.now());
+      return;
+    }
+    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+    setMoveNotice({ ownerKey, text: 'Task skipped until tomorrow · Deadline unchanged.' });
     setNow(Date.now());
   }
 
@@ -1064,6 +1078,7 @@ export default function DayMapScreen() {
               const passed = entry.end < now;
               if (entry.kind === 'commitment') {
                 const sourceId = entry.commitmentId;
+                const commitment = workspace.commitments.find(item => item.id === sourceId);
                 return (
                   <MotionItem key={entry.id}>
                   <View style={[styles.timelineRow, passed && styles.passed]}>
@@ -1079,7 +1094,7 @@ export default function DayMapScreen() {
                         <Text style={styles.blockTitle}>{entry.title}</Text>
                         <Text style={styles.blockMeta}>{durationLabel(entry.start, entry.end)} · fixed</Text>
                       </Pressable>
-                      {workspace.commitments.find(item => item.id === sourceId)?.recurrenceDays.length ? <Mini label="Skip this occurrence" onPress={() => skipOccurrence(sourceId, entry.occurrenceDateKey)} /> : null}
+                      {commitment?.recurrenceDays.length ? <Mini label="Skip this occurrence" onPress={() => skipOccurrence(commitment, entry.occurrenceDateKey)} /> : null}
                     </View>
                   </View>
                   </MotionItem>
@@ -1146,7 +1161,7 @@ export default function DayMapScreen() {
                             })
                           }
                         />
-                        <Mini label="Skip" onPress={() => skipToday(task.id)} />
+                        <Mini label="Skip" onPress={() => skipToday(task)} />
                       </View>
                     ) : null}
                   </View>
@@ -1163,11 +1178,10 @@ export default function DayMapScreen() {
             </View>
           )}
 
-          {workspace.commitments.flatMap(item => (item.skippedDates ?? [])
-            .filter(date => date === localDateKey(now) || (item.endMinutes < item.startMinutes && date === localDateKey(addLocalDays(now, -1))))
+          {workspace.commitments.flatMap(item => restorableOccurrenceDates(item, now)
             .map(date => <View key={`${item.id}:${date}`} style={{ paddingVertical: 12 }}>
               <Text style={styles.blockMeta}>{item.title} · skipped {date}</Text>
-              <Mini label="Restore occurrence" onPress={() => skipOccurrence(item.id, date, true)} />
+              <Mini label="Restore occurrence" onPress={() => skipOccurrence(item, date, true)} />
             </View>))}
 
           <Pressable

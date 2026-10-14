@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, reviewGuideSteps, progressGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState, ReviewGuideState, ProgressGuideState } from '../src/features/guides/guide-registry';
+import { FEATURE_GUIDES, CORE_GUIDE_STEPS, todayGuideSteps, focusGuideSteps, reviewGuideSteps, progressGuideSteps, libraryGuideSteps, tutorialDestination, FeatureGuide, TodayGuideState, FocusGuideState, ReviewGuideState, ProgressGuideState } from '../src/features/guides/guide-registry';
 import { spotlightRect, guideCardMaxHeight, guideCardTop } from '../src/features/guides/guide-geometry';
 import { verifyGuideOffers } from './verify-guide-offers';
 import { verifyGuideScroll } from './verify-guide-scroll';
@@ -15,7 +15,7 @@ for (const guide of guides) {
   for (const action of guide.supportedActions) {
     if (action.type === 'navigate') assert.ok(routeExists(action.route));
     else {
-      assert.ok(['today', 'focus', 'review', 'progress'].includes(action.tutorialId), 'Do not advertise unfinished screen tours.');
+      assert.ok(['today', 'focus', 'review', 'progress', 'library'].includes(action.tutorialId), 'Do not advertise unfinished screen tours.');
       assert.ok(routeExists(tutorialDestination(action.tutorialId).pathname));
     }
   }
@@ -74,6 +74,16 @@ assert.match(progressGuideSteps(progressState)[1].explanation, /never starts pra
 assert.match(progressGuideSteps({ ...progressState, expanded: true })[2].explanation, /at least five/);
 assert.match(progressGuideSteps({ ...progressState, practice: 'focus' })[1].explanation, /running timer keeps running/);
 console.log('✓ Progress guidance matches real summary/practice, active-session and expanded/sparse evidence states');
+
+const library = guides.find(g => g.id === 'library')!;
+for (const hasTopics of [false, true]) for (const hasResults of [false, true]) for (const filtered of [false, true]) for (const expanded of [false, true]) {
+  const steps = libraryGuideSteps({ hasTopics, hasResults, filtered, expanded });
+  assert.deepEqual(steps.map(step => step.anchor), library.anchors);
+}
+assert.equal(tutorialDestination('library').pathname, '/(app)/topics');
+assert.match(libraryGuideSteps({ hasTopics: true, hasResults: false, filtered: true, expanded: false })[2].explanation, /does not delete/);
+assert.match(libraryGuideSteps({ hasTopics: false, hasResults: false, filtered: false, expanded: true })[2].explanation, /never adds/);
+console.log('✓ Library guides cover empty, populated, filtered and expanded controls without changing material');
 
 const host = { x: 10, y: 24, width: 320, height: 568 };
 assert.deepEqual(spotlightRect({ x: 30, y: 124, width: 100, height: 48 }, host), { x: 15, y: 95, width: 110, height: 58 });

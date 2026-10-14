@@ -2,13 +2,14 @@
 export type GuideRoute =
   | '/(app)/today' | '/(app)/focus' | '/(app)/review' | '/(app)/progress'
   | '/(app)/today/day-map' | '/(app)/mistakes' | '/(app)/settings'
-  | '/(app)/settings/reminders';
-export type TutorialId = 'today' | 'focus' | 'review' | 'progress';
+  | '/(app)/settings/reminders' | '/(app)/topics';
+export type TutorialId = 'today' | 'focus' | 'review' | 'progress' | 'library';
 export type TodayAnchor = 'today.next' | 'today.adjust' | 'today.day-map';
 export type FocusAnchor = 'focus.primary' | 'focus.secondary' | 'focus.support';
 export type ReviewAnchor = 'review.primary' | 'review.secondary' | 'review.support';
 export type ProgressAnchor = 'progress.map' | 'progress.practice' | 'progress.evidence';
-export type TutorialAnchor = TodayAnchor | FocusAnchor | ReviewAnchor | ProgressAnchor;
+export type LibraryAnchor = 'library.search' | 'library.filters' | 'library.results';
+export type TutorialAnchor = TodayAnchor | FocusAnchor | ReviewAnchor | ProgressAnchor | LibraryAnchor;
 export type GuideAction =
   | { type: 'navigate'; route: GuideRoute }
   | { type: 'startTutorial'; tutorialId: TutorialId };
@@ -118,6 +119,18 @@ export const FEATURE_GUIDES = [
     anchors: ['progress.map', 'progress.practice', 'progress.evidence'], supportedActions: [{ type: 'navigate', route: '/(app)/progress' }, { type: 'startTutorial', tutorialId: 'progress' }],
   },
   {
+    id: 'library', name: 'Library', route: '/(app)/topics',
+    description: 'Find your saved topics, notes and questions. Narrow by subject or topic status, then open a topic to edit material, Focus or practise.',
+    helpSteps: [
+      'Open Library. Search matches topic names, subjects, notes and saved question text, answers and hints.',
+      'Use Filters to narrow by topic status or subject. The result count and active filters stay visible; Clear all restores the whole Library.',
+      'Open a topic for its saved material and study actions, or use Add your first topic when Library is empty. Opening a guide never creates material or starts practice.',
+    ],
+    searchTerms: ['library', 'topics', 'find topic', 'search notes', 'search questions', 'subject filter', 'topic status', 'add topic'],
+    anchors: ['library.search', 'library.filters', 'library.results'],
+    supportedActions: [{ type: 'navigate', route: '/(app)/topics' }, { type: 'startTutorial', tutorialId: 'library' }],
+  },
+  {
     id: 'reminders', name: 'Reminder Studio', route: '/(app)/settings/reminders',
     description: 'Opt into local reminders and choose their voice, detail, timing and quiet hours. Sleep protection also applies.',
     helpSteps: [
@@ -169,6 +182,7 @@ export function todayGuideSteps(state: TodayGuideState): readonly GuideStep<Toda
 }
 
 export function tutorialDestination(id: TutorialId) {
+  if (id === 'library') return { pathname: '/(app)/topics' as const, params: { guide: id } };
   if (id === 'review') return { pathname: '/(app)/review' as const, params: { guide: id, autoStart: '0' } };
   if (id === 'progress') return { pathname: '/(app)/progress' as const, params: { guide: id } };
   return { pathname: id === 'focus' ? '/(app)/focus' as const : '/(app)/today' as const, params: { guide: id } };
@@ -250,5 +264,24 @@ export function progressGuideSteps(state: ProgressGuideState): readonly GuideSte
       explanation: state.expanded
         ? `This summary compares confidence before checking with self-reported recall grades. ${state.enoughConfidence ? 'Read the sample size before drawing conclusions; these results do not measure mastery.' : 'The sample is still small; at least five graded recall attempts are recommended.'} Below, time calibration compares planned and completed focus blocks. The guide leaves this section open.`
         : 'See deeper evidence opens confidence and time calibration, recorded outcomes and topic activity. Small samples stay provisional; minutes are not mastery. This tour leaves the section closed, so you choose when to explore it.' },
+  ];
+}
+
+
+export type LibraryGuideState = { hasTopics: boolean; hasResults: boolean; filtered: boolean; expanded: boolean };
+export function libraryGuideSteps(state: LibraryGuideState): readonly GuideStep<LibraryAnchor>[] {
+  return [
+    { anchor: 'library.search', title: 'Find your saved material', explanation: 'Search topic names, subjects, notes and saved question text, answers or hints. Searching only narrows this list; it does not change your material.' },
+    { anchor: 'library.filters', title: state.expanded ? 'Narrow by subject or status' : 'Use filters when useful', explanation: state.expanded
+      ? 'The open filters let you choose a subject and New, Learning or Review topic status. These labels are saved topic states, not mastery scores. The tour keeps your selections and the panel open.'
+      : 'Open Filters to narrow by subject or saved topic status. Active selections appear beside the result count even with the panel closed. This tour leaves the panel as you found it.' },
+    { anchor: 'library.results', title: !state.hasTopics ? 'Start with one real topic' : !state.hasResults ? 'Bring your topics back' : 'Open the topic you need',
+      explanation: !state.hasTopics
+        ? 'Add your first topic opens a blank form for your own chapter, concept or skill. The tour never adds examples or starts study.'
+        : !state.hasResults
+          ? 'No topics match this combination. Clear all removes only the search and filters, so your saved topics reappear. It does not delete material.'
+          : state.filtered
+            ? 'The count shows how many of your saved topics match. Clear all restores the full list. Open a topic below for notes, questions and explicit Focus or practice actions; the guide starts none of them.'
+            : 'Open a topic below for notes, questions and explicit Focus or practice actions. Add lets you capture more material. The tour never opens a topic or starts a session for you.' },
   ];
 }

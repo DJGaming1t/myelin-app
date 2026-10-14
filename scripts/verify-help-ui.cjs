@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
 const {createEmptyWorkspace}=require(process.cwd()+'/src/data/schema.ts');
 const dir=process.env.MYELIN_HELP_SCREENSHOTS || require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(),'myelin-help-ui-'));
 const baseUrl=process.env.MYELIN_TEST_BASE_URL || 'http://localhost:8081';
+const {FEATURE_GUIDES}=require(process.cwd()+'/src/features/guides/guide-registry.ts');
 const key='@myelin/native/workspace/local%3Adevice/primary';
 (async()=>{let browser;
 try{for(const reduced of [false,true]){
@@ -33,7 +34,7 @@ try{for(const reduced of [false,true]){
   }
   await search().fill('foucs');await page.getByTestId('help-result-focus').waitFor();
   await search().fill('zzzzzzzz spaceship banana');await page.getByText('No matching guide yet',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Browse all guides',exact:true}).click();assert.equal(await page.locator('[data-testid^="help-result-"]').count(),10);
+  await page.getByRole('button',{name:'Browse all guides',exact:true}).click();assert.equal(await page.locator('[data-testid^="help-result-"]').count(),FEATURE_GUIDES.length);
   await search().fill('unsure');await page.getByRole('button',{name:'Clear help search',exact:true}).click();await page.getByText('TRY A QUESTION',{exact:true}).waitFor();
   await page.getByRole('button',{name:'What does unsure mean?',exact:true}).click();await page.getByTestId('help-result-confidence').waitFor();
   await page.context().setOffline(false);

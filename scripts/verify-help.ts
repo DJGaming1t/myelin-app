@@ -19,6 +19,9 @@ const cases: [string, string][] = [
   ['neural map', 'progress'],
   ['where can my study fit', 'day-map'],
   ['delete account', 'settings'],
+  ['library', 'library'],
+  ['search notes', 'library'],
+  ['subject filter', 'library'],
 ];
 for (const [query, expected] of cases) {
   assert.equal(searchGuides(query)[0]?.id, expected, `Top result for ${query}`);

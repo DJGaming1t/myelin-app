@@ -1,4 +1,6 @@
 import { localDateKey } from '@/src/features/planning/commitment-dates';
+import { useDayRebuild } from '@/src/features/planning/useDayRebuild';
+import { rebuildIssueMessage } from '@/src/features/planning/day-rebuild';
 import { useTaskPlanning } from '@/src/features/planning/useTaskPlanning';
 import { planningFailureMessage } from '@/src/features/planning/task-planning';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
@@ -26,14 +28,12 @@ import { timerRemainingMs } from '@/src/features/focus/focus-engine';
 import {
   addLocalDays,
   buildDayMap,
-  rebuildRemainingDay,
   startOfLocalDay,
   suggestTaskSlots,
 } from '@/src/features/planning/day-engine';
 import {
   extendMetTaskEstimate,
   postponeTask,
-  scheduleTask,
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
 import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
@@ -107,7 +107,8 @@ export default function DayMapScreen() {
   const clock = useScreenClock();
   const [refresh, setNow] = useState(Date.now());
   const now = Math.max(clock, refresh);
-  const [proposal, setProposal] = useState<ReturnType<typeof rebuildRemainingDay> | null>(null);
+  const rebuild = useDayRebuild();
+  const proposal = rebuild.preview;
   const [showPlanning, setShowPlanning] = useState(false);
   const [reflow, setReflow] = useState<AutopilotReflowSummary | null>(() =>
     parseAutopilotReflow(params.reflow),
@@ -629,19 +630,15 @@ export default function DayMapScreen() {
     }
   }
 
-  function buildProposal() {
-    setProposal(rebuildRemainingDay(workspace!, Date.now()));
-  }
-
+  function buildProposal() { rebuild.build(); }
+  function cancelProposal() { if (proposal) rebuild.cancel(proposal); }
+  function refreshProposal() { if (proposal) rebuild.refresh(proposal); }
   function applyProposal() {
-    if (!proposal) return;
-    updateWithReflow((draft) => {
-      for (const move of proposal.moves) {
-        const task = draft.tasks.find((item) => item.id === move.taskId);
-        if (task) scheduleTask(task, move.start, move.end);
-      }
-    });
-    setProposal(null);
+    if (!proposal || moveOwnerRef.current !== ownerKey) return;
+    const result = rebuild.apply(proposal);
+    if (!result.ok) return;
+    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+    setMoveNotice({ ownerKey: proposal.ownerKey, text: 'Rebuilt plan applied · Deadlines unchanged.' });
     setNow(Date.now());
   }
 
@@ -1022,33 +1019,36 @@ export default function DayMapScreen() {
               </Text>
               <View style={styles.overloadActions}>
                 <Action label="Rebalance" onPress={buildProposal} accent />
-                <Action label="Keep it" onPress={() => setProposal(null)} />
+                <Action label="Keep it" onPress={cancelProposal} />
               </View>
             </View>
           </AnimatedDisclosure>
 
           <AnimatedDisclosure visible={Boolean(proposal)}>
             {proposal ? (
-            <View style={styles.proposal}>
+            <View testID="day-rebuild-preview" style={styles.proposal}>
               <Text style={styles.sectionLabel}>REBUILD EVENING · PREVIEW</Text>
               <Text style={styles.proposalText}>
-                {proposal.moves.length} {proposal.moves.length === 1 ? 'activity' : 'activities'} moved
+                {proposal.moves.length} {proposal.moves.length === 1 ? 'activity' : 'activities'} proposed
                 {proposal.unscheduledCount ? ' · ' + proposal.unscheduledCount + ' still flexible' : ''}.
               </Text>
               {proposal.moves.map((move) => {
-                const task = workspace.tasks.find((item) => item.id === move.taskId);
-                if (!task) return null;
+                const previewDay = localDateKey(proposal.createdAt);
+                const day = localDateKey(move.start);
+                const label = day === previewDay ? 'Today' : day === localDateKey(addLocalDays(proposal.createdAt, 1)) ? 'Tomorrow'
+                  : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(move.start));
                 return (
-                  <View key={move.taskId} style={styles.proposalRow}>
-                    <Text style={styles.proposalTime}>{timeLabel(move.start)}</Text>
-                    <Text style={styles.proposalTitle} numberOfLines={1}>{task.title}</Text>
+                  <View key={move.taskId} testID={`day-rebuild-row-${move.taskId}`} style={styles.proposalRow}>
+                    <View style={styles.proposalTimeCell}><Text style={styles.proposalDay}>{label}</Text><Text style={styles.proposalTime}>{timeLabel(move.start)}</Text></View>
+                    <Text style={styles.proposalTitle} numberOfLines={1}>{proposal.titles[move.taskId]}</Text>
                     <Text style={styles.proposalDuration}>{durationLabel(move.start, move.end)}</Text>
                   </View>
                 );
               })}
+              {rebuild.issue ? <Text accessibilityLiveRegion="polite" style={styles.proposalText}>{rebuildIssueMessage(rebuild.issue)}</Text> : null}
               <View style={styles.proposalActions}>
-                <Action label="Apply plan" onPress={applyProposal} accent />
-                <Action label="Cancel" onPress={() => setProposal(null)} />
+                {rebuild.issue ? <Action label="Refresh preview" onPress={refreshProposal} accent /> : <Action label="Apply plan" onPress={applyProposal} accent />}
+                <Action label="Cancel" onPress={cancelProposal} />
               </View>
             </View>
             ) : null}
@@ -1652,8 +1652,10 @@ const styles = StyleSheet.create({
   proposal: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: colors.panel, padding: spacing.md },
   proposalText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5, marginBottom: 8 },
   proposalRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: colors.line },
-  proposalTime: { width: 62, color: colors.accent, fontSize: 9.5, fontWeight: '800' },
-  proposalTitle: { flex: 1, color: colors.text, fontSize: 10.5, fontWeight: '700' },
+  proposalTimeCell: { width: 78 },
+  proposalDay: { color: colors.muted, fontSize: 9, lineHeight: 13 },
+  proposalTime: { width: 78, color: colors.accent, fontSize: 9.5, fontWeight: '800' },
+  proposalTitle: { flex: 1, minWidth: 0, color: colors.text, fontSize: 10.5, fontWeight: '700' },
   proposalDuration: { color: colors.subtle, fontSize: 9 },
   proposalActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
   timelineHeader: {

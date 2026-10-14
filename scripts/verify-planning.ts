@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import './verify-task-completion';
 import './verify-task-edit';
+import './verify-task-planning';
 import fs from 'node:fs';
 import path from 'node:path';
 

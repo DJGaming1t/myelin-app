@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import './verify-today-deferral';
+import './verify-task-planning';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -563,10 +564,7 @@ function main() {
     inboxCard.includes('label="Schedule"') && inboxCard.includes('openScheduler(task.id)'),
     'Inbox scheduling must open a chooser instead of immediately committing the task.',
   );
-  assert.ok(
-    inboxCard.includes('scheduleTask(target, start, end)'),
-    'Inbox scheduling does not persist the selected time as a real scheduled task.',
-  );
+  // Actual Inbox/Day Map handler execution above verifies accepted time persistence, guards and queue behavior.
   const syllabusScreen = read('app/(app)/settings/ai-syllabus.tsx');
   assert.ok(
     syllabusScreen.includes('Start in Today') &&

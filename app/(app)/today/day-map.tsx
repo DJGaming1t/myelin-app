@@ -1,4 +1,6 @@
 import { localDateKey } from '@/src/features/planning/commitment-dates';
+import { useTaskPlanning } from '@/src/features/planning/useTaskPlanning';
+import { planningFailureMessage } from '@/src/features/planning/task-planning';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { TaskQuickActions, TaskDueLabel, useTaskCompletion } from '@/src/features/planning/TaskQuickActions';
 
@@ -89,7 +91,11 @@ export default function DayMapScreen() {
     recoveredEnd?: string | string[];
     recoveredHandoff?: string | string[];
   }>();
-  const { workspace, updateWorkspace } = useWorkspace();
+  const { workspace, ownerKey, updateWorkspace } = useWorkspace();
+  const planning = useTaskPlanning();
+  const moveOwnerRef = useRef(ownerKey); moveOwnerRef.current = ownerKey;
+  const [moveNotice, setMoveNotice] = useState<{ ownerKey: string; text: string } | null>(null);
+  useEffect(() => { setMoveNotice(null); }, [ownerKey]);
   const completeTaskWithUndo = useTaskCompletion();
   const { session: focusSession } = useFocus();
   const scrollRef = useRef<ScrollView | null>(null);
@@ -422,14 +428,17 @@ export default function DayMapScreen() {
   }
 
   function moveTask(taskId: string) {
-    const task = workspace!.tasks.find((item) => item.id === taskId);
+    if (!ownerKey || moveOwnerRef.current !== ownerKey) return;
+    const task = workspace!.tasks.find(item => item.id === taskId);
     if (!task) return;
-    const slot = suggestTaskSlots(workspace!, task, Date.now(), 1)[0];
-    if (!slot) return;
-    updateWithReflow((draft) => {
-      const target = draft.tasks.find((item) => item.id === taskId);
-      if (target) scheduleTask(target, slot.start, slot.end);
-    });
+    const offeredAt = Date.now();
+    const slot = suggestTaskSlots(workspace!, task, offeredAt, 1)[0];
+    if (!slot) { setMoveNotice({ ownerKey, text: 'No open suggestion was found. Your current plan was kept.' }); return; }
+    const result = planning.schedule(task, { kind: 'suggested', start: slot.start, end: slot.end, offeredAt });
+    if (!result.ok && result.reason === 'consumed') return;
+    if (!result.ok) { setMoveNotice({ ownerKey, text: planningFailureMessage(result.reason, 'move') }); return; }
+    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+    setMoveNotice({ ownerKey, text: 'Task scheduled in the next available gap · Deadline unchanged.' });
     setNow(Date.now());
   }
 
@@ -1174,6 +1183,8 @@ export default function DayMapScreen() {
             </View>
             <Text style={styles.planningToggleMark}>{showPlanning ? '−' : '+'}</Text>
           </Pressable>
+
+          {moveNotice?.ownerKey === ownerKey ? <Text accessibilityLiveRegion="polite" style={styles.flexibleIntro}>{moveNotice.text}</Text> : null}
 
           <AnimatedDisclosure visible={showPlanning}>
           <View style={styles.freeStrip}>

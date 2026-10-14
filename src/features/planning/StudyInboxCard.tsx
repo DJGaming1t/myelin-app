@@ -1,6 +1,6 @@
 import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -12,10 +12,11 @@ import {
 } from 'react-native';
 
 import { MotionItem } from '@/src/components/motion/MotionItem';
+import { useTaskPlanning } from './useTaskPlanning';
+import { planningFailureMessage, taskPlanningSnapshot, ScheduleChoice, TaskPlanningSnapshot } from './task-planning';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { suggestTaskSlots } from '@/src/features/planning/day-engine';
 import {
-  scheduleTask,
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -110,13 +111,19 @@ function slotTimeLabel(start: number, end: number) {
 }
 
 export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean }) {
-  const { workspace, updateWorkspace } = useWorkspace();
+  const { workspace, ownerKey } = useWorkspace();
+  const planning = useTaskPlanning();
+  const ownerRef = useRef(ownerKey); ownerRef.current = ownerKey;
   const [visibleCount, setVisibleCount] = useState(4);
-  const [schedulerTaskId, setSchedulerTaskId] = useState<string | null>(null);
+  type Scheduling = { ownerKey: string; expected: TaskPlanningSnapshot };
+  const [scheduler, setScheduler] = useState<Scheduling | null>(null);
+  const schedulerRef = useRef<Scheduling | null>(null);
+  const [notice, setNotice] = useState<{ ownerKey: string; text: string } | null>(null);
   const [customDate, setCustomDate] = useState('');
   const [customTime, setCustomTime] = useState('');
   const [scheduleError, setScheduleError] = useState('');
 
+  useEffect(() => { schedulerRef.current = null; setScheduler(null); setScheduleError(''); setNotice(null); }, [ownerKey]);
   if (!workspace) return null;
   const currentWorkspace = workspace;
 
@@ -134,60 +141,45 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
       return a.createdAt - b.createdAt;
     });
 
-  const schedulerTask = schedulerTaskId
-    ? currentWorkspace.tasks.find((item) => item.id === schedulerTaskId) ?? null
-    : null;
-  const suggestedSlots = schedulerTask
-    ? suggestTaskSlots(currentWorkspace, schedulerTask, Date.now(), 4)
-    : [];
+  const schedulerTask = scheduler?.ownerKey === ownerKey
+    ? currentWorkspace.tasks.find(item => item.id === scheduler.expected.id) ?? null : null;
+  const offeredAt = Date.now();
+  const suggestedSlots = schedulerTask?.status === 'open'
+    ? suggestTaskSlots(currentWorkspace, schedulerTask, offeredAt, 4) : [];
 
   function moveToday(taskId: string) {
-    updateWorkspace((draft) => {
-      const task = draft.tasks.find((item) => item.id === taskId);
-      if (!task) return;
-      task.planState = 'today';
-      task.scheduledStart = 0;
-      task.scheduledEnd = 0;
-      task.updatedAt = Date.now();
-    });
-  }
-
-  function openScheduler(taskId: string) {
-    const task = currentWorkspace.tasks.find((item) => item.id === taskId);
+    if (!ownerKey || ownerRef.current !== ownerKey) return;
+    const task = currentWorkspace.tasks.find(item => item.id === taskId);
     if (!task) return;
+    const result = planning.moveToday(task);
+    if (!result.ok && result.reason === 'consumed') return;
+    setNotice({ ownerKey, text: result.ok ? 'Moved to Today · Deadline unchanged.' : planningFailureMessage(result.reason, 'move') });
+  }
 
+  function openScheduler(taskId: string, preserveCustom = false) {
+    if (!ownerKey || ownerRef.current !== ownerKey) return;
+    const task = currentWorkspace.tasks.find(item => item.id === taskId);
+    if (!task || task.status !== 'open') return;
     const firstSuggestion = suggestTaskSlots(currentWorkspace, task, Date.now(), 1)[0];
-    const fallback = new Date();
-    fallback.setDate(fallback.getDate() + 1);
-    fallback.setHours(18, 0, 0, 0);
-    const seed = firstSuggestion?.start ?? fallback.getTime();
-
-    setSchedulerTaskId(taskId);
-    setCustomDate(dateInputText(seed));
-    setCustomTime(timeInputText(seed));
-    setScheduleError('');
+    const fallback = new Date(); fallback.setDate(fallback.getDate() + 1); fallback.setHours(18, 0, 0, 0);
+    const seed = Math.max(Math.ceil((firstSuggestion?.start ?? fallback.getTime()) / 60000) * 60000, Math.floor(Date.now() / 60000) * 60000 + 60000);
+    const next = { ownerKey, expected: taskPlanningSnapshot(task) };
+    schedulerRef.current = next; setScheduler(next);
+    if (!preserveCustom) { setCustomDate(dateInputText(seed)); setCustomTime(timeInputText(seed)); }
+    setScheduleError(''); setNotice(null);
   }
 
-  function closeScheduler() {
-    setSchedulerTaskId(null);
-    setScheduleError('');
+  function closeScheduler(current = scheduler) {
+    if (!current || ownerRef.current !== current.ownerKey || schedulerRef.current !== current) return;
+    schedulerRef.current = null; setScheduler(null); setScheduleError('');
   }
 
-  function applySchedule(taskId: string, start: number, end: number) {
-    if (start <= Date.now()) {
-      setScheduleError('Choose a time that is still ahead.');
-      return;
-    }
-    if (end <= start) {
-      setScheduleError('Choose a valid study slot.');
-      return;
-    }
-
-    updateWorkspace((draft) => {
-      const target = draft.tasks.find((item) => item.id === taskId);
-      if (target) scheduleTask(target, start, end);
-    });
-    closeScheduler();
+  function applySchedule(choice: ScheduleChoice) {
+    if (!scheduler || schedulerRef.current !== scheduler || ownerRef.current !== scheduler.ownerKey) return;
+    const result = planning.schedule(scheduler.expected, choice);
+    if (!result.ok) { setScheduleError(planningFailureMessage(result.reason)); return; }
+    setNotice({ ownerKey: scheduler.ownerKey, text: 'Task scheduled · Deadline unchanged.' });
+    closeScheduler(scheduler);
   }
 
   function scheduleCustom() {
@@ -202,7 +194,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
       taskRemainingMinutes(schedulerTask) ||
       schedulerTask.estimatedMinutes ||
       25;
-    applySchedule(schedulerTask.id, start, start + Math.max(5, minutes) * 60000);
+    applySchedule({ kind: 'custom', start, end: start + Math.max(5, minutes) * 60000 });
   }
 
   return (
@@ -224,6 +216,8 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
           <Text style={styles.addText}>+ Add</Text>
         </Pressable>
       </View>
+
+      {notice?.ownerKey === ownerKey ? <Text accessibilityLiveRegion="polite" style={styles.scheduleIntro}>{notice.text}</Text> : null}
 
       {tasks.length ? (
         tasks.slice(0, visibleCount).map((task, index) => (
@@ -274,14 +268,14 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
         transparent
         animationType="fade"
         visible={Boolean(schedulerTask)}
-        onRequestClose={closeScheduler}
+        onRequestClose={() => closeScheduler()}
         statusBarTranslucent>
         <View style={styles.modalBackdrop}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close scheduling sheet"
             style={StyleSheet.absoluteFill}
-            onPress={closeScheduler}
+            onPress={() => closeScheduler()}
           />
           <View style={styles.scheduleSheet}>
             <ScrollView
@@ -293,7 +287,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
                 {schedulerTask?.title ?? 'Study task'}
               </Text>
               <Text style={styles.scheduleIntro}>
-                Pick an actual time. Scheduling no longer sends this task to Today automatically.
+                {schedulerTask?.status === 'open' ? 'Pick an actual time. Scheduling no longer sends this task to Today automatically.' : 'This task is already complete. Close this sheet to return to your current plan.'}
               </Text>
 
               {suggestedSlots.length ? (
@@ -305,7 +299,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
                       accessibilityLabel={`Schedule for ${slotDayLabel(slot.start)} at ${slotTimeLabel(slot.start, slot.end)}`}
                       onPress={() =>
                         schedulerTask
-                          ? applySchedule(schedulerTask.id, slot.start, slot.end)
+                          ? applySchedule({ kind: 'suggested', start: slot.start, end: slot.end, offeredAt })
                           : undefined
                       }
                       style={({ pressed }) => [
@@ -324,7 +318,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
                 </View>
               ) : (
                 <Text style={styles.noSuggestions}>
-                  No open suggestion was found in the next few days. You can still pick a time below.
+                  {schedulerTask?.status === 'open' ? 'No open suggestion was found in the next few days. You can still pick a time below.' : 'Your current plan was kept.'}
                 </Text>
               )}
 
@@ -339,6 +333,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
                   accessibilityLabel="Schedule date"
                   value={customDate}
                   onChangeText={(value) => {
+                    if (!scheduler || schedulerRef.current !== scheduler || ownerRef.current !== scheduler.ownerKey) return;
                     setCustomDate(value);
                     setScheduleError('');
                   }}
@@ -351,6 +346,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
                   accessibilityLabel="Schedule time"
                   value={customTime}
                   onChangeText={(value) => {
+                    if (!scheduler || schedulerRef.current !== scheduler || ownerRef.current !== scheduler.ownerKey) return;
                     setCustomTime(value);
                     setScheduleError('');
                   }}
@@ -362,11 +358,15 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
               </View>
 
               {scheduleError ? (
-                <Text style={styles.scheduleError}>{scheduleError}</Text>
+                <Text accessibilityLiveRegion="polite" style={styles.scheduleError}>{scheduleError}</Text>
               ) : null}
 
+              {scheduleError && schedulerTask?.status === 'open' ? <Pressable accessibilityRole="button" onPress={() => openScheduler(schedulerTask.id, true)} style={styles.cancelSchedule}>
+                <Text style={styles.cancelScheduleText}>Refresh scheduling options</Text>
+              </Pressable> : null}
               <Pressable
                 accessibilityRole="button"
+                disabled={schedulerTask?.status !== 'open'}
                 onPress={scheduleCustom}
                 style={({ pressed }) => [
                   styles.schedulePrimary,
@@ -376,7 +376,7 @@ export function StudyInboxCard({ overdueOnly = false }: { overdueOnly?: boolean 
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                onPress={closeScheduler}
+                onPress={() => closeScheduler()}
                 style={({ pressed }) => [
                   styles.cancelSchedule,
                   pressed && styles.pressed,
@@ -565,6 +565,7 @@ const styles = StyleSheet.create({
   customRow: { flexDirection: 'row', gap: 8 },
   dateInput: {
     flex: 1,
+    minWidth: 0,
     minHeight: layout.minTouch,
     borderRadius: radius.md,
     borderWidth: 1,

@@ -1,4 +1,4 @@
-name: Verify and publish assistant beta preview
+name: Verify and publish Android beta preview
 
 on:
   workflow_dispatch:
@@ -19,6 +19,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      TZ: UTC
     steps:
       - uses: actions/checkout@v5
         with:
@@ -103,7 +105,7 @@ jobs:
           --environment preview
           --platform android
           --non-interactive
-          --message "MYELIN readable Reminder Studio small-screen update $GITHUB_SHA"
+          --message "MYELIN guides, recovery, Get unstuck and guarded Focus starts $GITHUB_SHA"
           --json > "$RUNNER_TEMP/beta-update.json"
       - name: Record update receipt
         run: |

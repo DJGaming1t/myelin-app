@@ -62,7 +62,7 @@ function historyId(focusSessionId: string) {
 }
 
 export function FocusProvider({ children }: PropsWithChildren) {
-  const { ownerKey, workspace, updateWorkspace, waitForSaves } = useWorkspace();
+  const { ownerKey, workspace, readWorkspace, updateWorkspace, waitForSaves } = useWorkspace();
   const celebrate = useAchievement();
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<FocusSessionState | null>(null);
@@ -73,6 +73,12 @@ export function FocusProvider({ children }: PropsWithChildren) {
     if (next) await focusStorage.save(owner, next);
     else await focusStorage.clear(owner);
   }));
+
+  const lifecycle = useRef({ ownerKey, ready, epoch: 0 });
+  if (lifecycle.current.ownerKey !== ownerKey) lifecycle.current.epoch++;
+  lifecycle.current.ownerKey = ownerKey;
+  lifecycle.current.ready = ready;
+  const ownerEpoch = lifecycle.current.epoch;
 
   const commitSession = useCallback(
     async (next: FocusSessionState | null) => {
@@ -177,18 +183,20 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
   const start = useCallback(
     async (input: StartInput) => {
-      if (!workspace || !ownerRef.current || sessionRef.current) return null;
+      if (!ownerKey || ownerRef.current !== ownerKey || lifecycle.current.epoch !== ownerEpoch || !lifecycle.current.ready || sessionRef.current) return null;
+      const currentWorkspace = readWorkspace(ownerKey);
+      if (!currentWorkspace) return null;
 
-      const task = input.taskId ? taskById(workspace, input.taskId) : null;
+      const task = input.taskId ? taskById(currentWorkspace, input.taskId) : null;
       if (input.taskId && (!task || task.status !== 'open')) return null;
 
-      const requestedTopic = input.topicId ? findTopic(workspace, input.topicId) : null;
+      const requestedTopic = input.topicId ? findTopic(currentWorkspace, input.topicId) : null;
       if (input.topicId && !requestedTopic) return null;
       if (task?.topicId && input.topicId && task.topicId !== input.topicId) return null;
 
       const topic =
         requestedTopic ??
-        (task?.topicId ? findTopic(workspace, task.topicId) : null);
+        (task?.topicId ? findTopic(currentWorkspace, task.topicId) : null);
       if (!topic && !task) return null;
 
       const next = createFocusSession({
@@ -202,11 +210,24 @@ export function FocusProvider({ children }: PropsWithChildren) {
         tinyStep: input.tinyStep,
       });
 
+      const ownsStart = () => ownerRef.current === ownerKey && lifecycle.current.epoch === ownerEpoch && sessionRef.current?.id === next.id;
       await commitSession(next);
-      updateWorkspace(draft => recordFocusOutcome(draft, next, 'started'));
+      // A saved start belongs to the original owner and this exact optimistic
+      // session. A later owner/load/discard must not receive its outcome.
+      if (!ownsStart() || !lifecycle.current.ready || !readWorkspace(ownerKey)) return null;
+      const recorded = updateWorkspace(draft => recordFocusOutcome(draft, next, 'started'), {
+        ownerKey, canApply: current => {
+          const currentTask = next.taskId ? taskById(current, next.taskId) : null;
+          return (!next.taskId || !!currentTask && currentTask.status === 'open' && currentTask.topicId === task?.topicId) && (!next.topicId || !!findTopic(current, next.topicId));
+        },
+      });
+      if (!recorded) {
+        if (ownsStart()) await commitSession(null);
+        return null;
+      }
       return next;
     },
-    [commitSession, workspace, updateWorkspace],
+    [commitSession, ownerKey, ownerEpoch, readWorkspace, updateWorkspace],
   );
 
   const transform = useCallback(

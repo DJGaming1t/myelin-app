@@ -1,3 +1,4 @@
+import './verify-focus-start';
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

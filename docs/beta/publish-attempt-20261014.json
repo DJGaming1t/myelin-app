@@ -1,0 +1,53 @@
+{
+  "status": "blocked_not_published",
+  "sourceSha": "a7d1a76d7cb4e7ca87652acdc2fe4145fc901d72",
+  "sourceBranch": "codex/exam-autopilot-capacity-v1",
+  "workflowRunId": 38617121826,
+  "workflowUrl": "https://github.com/DJGaming1t/myelin-app/actions/runs/38617121826",
+  "attempts": [
+    {
+      "number": 1,
+      "verifyJobId": 116034956071,
+      "verify": "failure",
+      "reportedSteps": null,
+      "publishJobId": 116034985239,
+      "publish": "skipped"
+    },
+    {
+      "number": 2,
+      "verifyJobId": 116035503820,
+      "verify": "failure",
+      "reportedSteps": null,
+      "publishJobId": 116035524509,
+      "publish": "skipped"
+    }
+  ],
+  "artifacts": [],
+  "newUpdateId": null,
+  "failureReason": "Unconfirmed: job logs return 404; GitHub connector does not support annotation reads.",
+  "lastConfirmedPreview": {
+    "runtimeVersion": "0.2.13",
+    "updateId": "01a1263a-9ff6-700e-96f6-a05d3589d664"
+  },
+  "localVerification": {
+    "typescript": "pass",
+    "packageVerifyScriptsExcludingFirestore": 27,
+    "focusProviderTimezones": [
+      "UTC",
+      "Asia/Kolkata",
+      "America/New_York"
+    ],
+    "browserDistinctScenarios": 53,
+    "workerSecurityAndAssistantRegressions": "pass",
+    "otaCompatibilitySelfTest": "pass",
+    "nativeInputsAndPackageMetadataComparison": "unchanged from installed preview",
+    "androidExport": "entry-33437d499a30f3918fba7e6be00a7e70.hbc"
+  },
+  "notVerified": [
+    "CI Java21 Firestore",
+    "CI full Git-history compatibility",
+    "Expo publication",
+    "physical Android/account-transition QA"
+  ],
+  "next": "Read failure annotations with approved browser fallback, resolve external release gate, retry the source revision; M04i wrong-answer review feedback remains next improvement."
+}

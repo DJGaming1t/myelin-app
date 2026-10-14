@@ -1,0 +1,101 @@
+name: Publish verified Android preview
+on:
+  workflow_dispatch: {}
+defaults:
+  image: sdk-57
+  tools:
+    node: "24"
+jobs:
+  publish_preview:
+    name: Verify all changes and publish Android preview
+    type: update
+    environment: preview
+    env:
+      TZ: UTC
+      BETA_BUILD_SHA: 137eee631edbe582da8c0e64ec89229a86a5aa9a
+      MYELIN_RELEASE_SHA: ${{ github.sha }}
+      MYELIN_RELEASE_REPORT_DIR: /tmp/myelin-preview-verification
+    params:
+      channel: preview
+      platform: android
+      message: MYELIN guides, recovery, Get unstuck and guarded Focus starts ${{ github.sha }}
+    hooks:
+      after_checkout:
+        - name: Require exact source and installed preview compatibility
+          run: |-
+            set -euo pipefail
+            node -e 'const assert=require("node:assert/strict"),{execFileSync}=require("node:child_process");assert.match(process.env.MYELIN_RELEASE_SHA??"",/^[a-f0-9]{40}$/);assert.equal(execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),process.env.MYELIN_RELEASE_SHA)'
+            if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+              git fetch --quiet --unshallow origin
+            fi
+            git cat-file -e "$BETA_BUILD_SHA^{commit}"
+            git merge-base --is-ancestor a7d1a76d7cb4e7ca87652acdc2fe4145fc901d72 HEAD
+            node scripts/check-beta-ota-compatibility.cjs --self-test
+            node scripts/check-beta-ota-compatibility.cjs
+            mkdir -p "$MYELIN_RELEASE_REPORT_DIR"
+        - name: Install Java 21 for unchanged Firestore rule checks
+          run: |-
+            set -euo pipefail
+            sudo apt-get update -qq
+            sudo apt-get install -y openjdk-21-jdk-headless
+            set-env JAVA_HOME /usr/lib/jvm/java-21-openjdk-amd64
+            set-env PATH "/usr/lib/jvm/java-21-openjdk-amd64/bin:$PATH"
+      before_update:
+        - name: Verify release toolchain
+          run: |-
+            set -euo pipefail
+            node -e 'require("node:assert/strict").equal(process.versions.node.split(".")[0],"24")'
+            java -version
+            "$JAVA_HOME/bin/java" -version
+        - name: TypeScript
+          run: |-
+            set -euo pipefail
+            npx tsc --noEmit
+        - name: Hosted conversation Worker security and protocol tests
+          run: |-
+            set -euo pipefail
+            node --test workers/assistant/test/conversation.test.mjs
+        - name: App regressions, including chat screen integration
+          run: |
+            set -euo pipefail
+            node <<'NODE'
+            const { execFileSync } = require('node:child_process');
+            const { scripts } = require('./package.json');
+            for (const name of Object.keys(scripts).filter(name => name.startsWith('verify:'))) {
+              console.log(`Running ${name}`);
+              execFileSync('npm', ['run', name], { stdio: 'inherit' });
+            }
+            NODE
+        - name: Hybrid, local-only schedule protocol and app safety regressions
+          run: |
+            set -euo pipefail
+            TZ=Asia/Kolkata npx tsx scripts/verify-assistant-planning-review.ts
+            TZ=America/Los_Angeles npx tsx scripts/verify-assistant-planning-review.ts
+            npx tsx scripts/verify-hybrid-assistant.ts
+            npx tsx scripts/verify-assistant-clarification.ts
+            npx tsx scripts/verify-assistant-grounding.ts
+            TZ=Asia/Kolkata npx tsx scripts/verify-assistant-conversation.ts
+            TZ=America/Los_Angeles npx tsx scripts/verify-assistant-conversation.ts
+            TZ=Asia/Kolkata npx tsx scripts/verify-assistant-schedules.ts
+            TZ=America/Los_Angeles npx tsx scripts/verify-assistant-schedules.ts
+            TZ=Asia/Kolkata MYELIN_ASSISTANT_SCENARIO_REPORT="$MYELIN_RELEASE_REPORT_DIR/assistant-scenarios-india.json" npx tsx scripts/verify-assistant-app-scenarios.ts
+            TZ=America/Los_Angeles MYELIN_ASSISTANT_SCENARIO_REPORT="$MYELIN_RELEASE_REPORT_DIR/assistant-scenarios-us.json" npx tsx scripts/verify-assistant-app-scenarios.ts
+            npx tsx scripts/verify-adaptive.ts
+            npx tsx scripts/verify-transition.ts
+        - name: Expo export configuration
+          run: |-
+            set -euo pipefail
+            npx expo config --type prebuild > /dev/null
+        - name: Record successful source verification
+          run: |-
+            set -euo pipefail
+            node <<'NODE'
+            const fs=require('node:fs');
+            fs.writeFileSync(process.env.MYELIN_RELEASE_REPORT_DIR+'/verification.json',JSON.stringify({status:'verified_before_publication',sourceSha:process.env.MYELIN_RELEASE_SHA,installedBuildSha:process.env.BETA_BUILD_SHA,runtimeVersion:'0.2.13',platform:'android',channel:'preview',node:process.versions.node,checks:['exact source','full Git history native compatibility','TypeScript','Worker security','all package verify scripts including Firestore','hybrid and assistant India/US scenarios','Expo prebuild config']},null,2)+'
+            ');
+            NODE
+        - uses: eas/upload_artifact
+          with:
+            type: other
+            name: myelin-preview-verification
+            path: ${{ env.MYELIN_RELEASE_REPORT_DIR }}/*.json

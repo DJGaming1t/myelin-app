@@ -46,12 +46,14 @@ export default function ProgressScreen() {
   const { transitionPending } = useOnboardingTransition();
   const now = useScreenClock();
   const [showEvidence, setShowEvidence] = useState(false);
+  const [insightRefreshAt, setInsightRefreshAt] = useState(0);
+  const insightNow = Math.max(now, insightRefreshAt);
 
   const snapshot = useMemo(
     () => (workspace ? buildProgressSnapshot(workspace, now) : null),
     [workspace, now],
   );
-  const insights = useMemo(() => workspace ? learningInsights(workspace, now) : [], [workspace, now]);
+  const insights = useMemo(() => workspace ? learningInsights(workspace, insightNow) : [], [workspace, insightNow]);
   const guideState: ProgressGuideState = {
     hasTopics: !!workspace?.topics.length,
     practice: !insights.length ? 'none' : focus ? 'focus' : review ? 'review' : 'available',
@@ -97,7 +99,7 @@ export default function ProgressScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
           <NeuralMap workspace={workspace} anchorRef={guide.anchors['progress.map']} />
-          <LearningInsights workspace={workspace} now={now} insights={insights} actionRef={guide.anchors['progress.practice']} />
+          <LearningInsights workspace={workspace} now={insightNow} insights={insights} onRefresh={() => setInsightRefreshAt(Date.now())} actionRef={guide.anchors['progress.practice']} />
           <AdaptationInsightList
             workspace={workspace}
             now={now}

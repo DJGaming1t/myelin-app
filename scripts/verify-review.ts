@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
+import './verify-review-ownership';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createEmptyWorkspace, Topic } from '../src/data/schema';

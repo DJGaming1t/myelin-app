@@ -73,6 +73,8 @@ export default function ReviewScreen() {
   const { transitionPending } = useOnboardingTransition();
   const {
     ready,
+    saveError,
+    retryRestore,
     session,
     blockedByFocus,
     startReview,
@@ -94,12 +96,12 @@ export default function ReviewScreen() {
   }, [session?.id, session?.currentIndex, session?.stage]);
 
   useEffect(() => {
-    if (!session || session.stage !== 'attempt' || localAnswer === session.answerDraft) return;
+    if (saveError || !session || session.stage !== 'attempt' || localAnswer === session.answerDraft) return;
     const timer = setTimeout(() => {
       void setAnswerDraft(localAnswer);
     }, 350);
     return () => clearTimeout(timer);
-  }, [localAnswer, session?.answerDraft, session?.currentIndex, session?.id, session?.stage, setAnswerDraft]);
+  }, [localAnswer, session?.answerDraft, session?.currentIndex, session?.id, session?.stage, setAnswerDraft, saveError]);
 
   const currentItem = session?.queue[session.currentIndex] ?? null;
   const currentTopic =
@@ -184,7 +186,13 @@ export default function ReviewScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <Text style={styles.loading}>Restoring review session…</Text>
+          <Text style={styles.loading}>{saveError ? 'Review needs a retry.' : 'Restoring review session…'}</Text>
+          {saveError ? <>
+            <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text>
+            <Pressable accessibilityRole="button" onPress={retryRestore} style={styles.secondaryLarge}>
+              <Text style={styles.secondaryLargeText}>Retry restoring review</Text>
+            </Pressable>
+          </> : null}
         </View>
       </SafeAreaView>
     );
@@ -201,6 +209,7 @@ export default function ReviewScreen() {
               <Pressable accessibilityRole="button" accessibilityLabel="Teach me this screen" onPress={guide.start} style={styles.blockedHelp}><Text style={styles.helpText}>?</Text></Pressable>
             </View>
             <Text style={styles.eyebrow}>REVIEW PAUSED</Text>
+            {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text> : null}
             <Text style={styles.dashboardTitle}>Finish the focus block first.</Text>
             <Text style={styles.dashboardText}>
               Your exact review card, answer draft, hint state and reference stage are still saved.
@@ -242,6 +251,7 @@ export default function ReviewScreen() {
           />
 
           <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={styles.dashboard} showsVerticalScrollIndicator={false}>
+            {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text> : null}
             <AnimatedDisclosure visible={completedNotice} style={styles.completeNotice}>
               <Text style={styles.completeMark}>✓</Text>
               <View style={styles.completeCopy}>
@@ -406,6 +416,12 @@ export default function ReviewScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Text style={styles.loading}>Updating review queue…</Text>
+          {saveError ? <>
+            <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text>
+            <Pressable accessibilityRole="button" onPress={retryRestore} style={styles.secondaryLarge}>
+              <Text style={styles.secondaryLargeText}>Retry restoring review</Text>
+            </Pressable>
+          </> : null}
         </View>
       </SafeAreaView>
     );
@@ -415,16 +431,15 @@ export default function ReviewScreen() {
   const referenceReady = localAnswer.trim().length > 0;
 
   async function showReference() {
-    if (!referenceReady) return;
-    await setAnswerDraft(localAnswer);
-    await revealReference();
+    if (!referenceReady || grading) return;
+    if (await setAnswerDraft(localAnswer)) await revealReference();
   }
 
   async function answerMentally() {
+    if (grading) return;
     const marker = '— Answered mentally —';
     setLocalAnswer(marker);
-    await setAnswerDraft(marker);
-    await revealReference();
+    if (await setAnswerDraft(marker)) await revealReference();
   }
 
   async function grade(choice: ReviewChoice) {
@@ -458,8 +473,7 @@ export default function ReviewScreen() {
           text: 'End review',
           style: 'destructive',
           onPress: async () => {
-            await discardReview();
-            router.replace('/(app)/review');
+            if (await discardReview()) router.replace('/(app)/review');
           },
         },
       ],
@@ -495,6 +509,7 @@ export default function ReviewScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.reviewContent}
           showsVerticalScrollIndicator={false}>
+          {saveError && session.stage === 'attempt' ? <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text> : null}
           <Reveal key={`${currentCard.id}:${session.stage}`} distance={8}>
           <View>
           <Text style={styles.stageCue}>
@@ -526,6 +541,7 @@ export default function ReviewScreen() {
               <Text style={styles.answerLabel}>YOUR ANSWER</Text>
               <View ref={guide.anchors['review.primary']} collapsable={false} testID="guide-review-primary"><TextInput
                 accessibilityLabel="Your recall answer"
+                editable={!grading}
                 value={localAnswer}
                 onChangeText={setLocalAnswer}
                 placeholder="Answer from memory before checking the reference…"
@@ -615,6 +631,7 @@ export default function ReviewScreen() {
                 Grade your first attempt, before seeing the reference or practising a retry. “Again” also saves the reference and your first answer to Mistakes when a reference exists.
               </Text>
 
+              {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text> : null}
               <View ref={guide.anchors['review.secondary']} collapsable={false} testID="guide-review-secondary" style={styles.gradeStack}>
                 {(['again', 'practising', 'good'] as const).map((choice) => (
                   <ReviewChoiceButton
@@ -853,6 +870,7 @@ const styles = StyleSheet.create({
   gradeHeading: { color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: '700', marginTop: spacing.xl },
   gradeHelp: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4 },
   gradeStack: { gap: 8, marginTop: spacing.md },
+  saveError: { color: colors.danger, fontSize: 12, lineHeight: 19, marginVertical: 12 },
   saving: { color: colors.muted, fontSize: 9.5, textAlign: 'center', marginTop: 9 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

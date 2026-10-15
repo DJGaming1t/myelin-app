@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-15",
+  "chunk": "M04k",
+  "baseCommit": "b327ae2b8a05c18b029b8687b4cfe0323ae3c0a5",
+  "runtimeVersion": "0.2.13",
+  "sourceSha256": {
+    "app/(app)/mistakes/retest.tsx": "480da6c70b19963dde9436c2ddf36f363ff9e65624ed1eaeb5d4a35b47e3434e",
+    "src/features/mistakes/MistakeRetest.tsx": "4cc030eacd636ccd18a2d87b83e9087258bce44028af3b30e82fc47357d02a0a",
+    "scripts/verify-mistakes.ts": "78df0de9d6e268615e6d55c735a563e3a11875858390861743e17bf8bd870c82",
+    "scripts/verify-task-planning.ts": "32f9569ef6ae6daabfe6c0a4020a30cf7caab12a34a3e734f153ae3b579429a0",
+    "scripts/verify-visual-overhaul.ts": "570de7ffb17124d46677435d51603ffac0d565a32e661f9d9140855b16bdb3ce",
+    "scripts/verify-mistake-retest.ts": "c0a705ac8d2cd722e7d5f2841665cb0409972b66d71965a23855384a3008b6d0",
+    "scripts/verify-mistake-retest-ui.cjs": "2d5fa2c9c7c321d3c8801bb30b1191863dfc743ea50cdbd59149f6f3b54d8c29"
+  },
+  "typescript": "passed",
+  "packageVerification": "all 27 non-Firestore verify:* package scripts passed",
+  "actualComponentVM": {
+    "modules": [
+      "MistakeRetestAttempt",
+      "WorkspaceProvider"
+    ],
+    "timezones": [
+      "UTC",
+      "Asia/Kolkata",
+      "America/New_York"
+    ],
+    "result": "passed"
+  },
+  "browser": {
+    "distinctCases": 22,
+    "motion": [
+      "normal",
+      "reduced"
+    ],
+    "viewport": "320x568",
+    "result": "passed",
+    "rechecks": "Six failed-save cases repeated with physical hit-testing after dismissing existing save notice"
+  },
+  "additionalRegressions": [
+    "Focus start ownership",
+    "Review owner/save suite via verify:review",
+    "adaptive",
+    "transition",
+    "OTA compatibility self-test",
+    "OTA installed APK 137eee631edbe582da8c0e64ec89229a86a5aa9a"
+  ],
+  "androidExport": {
+    "bundle": "entry-78925210151e34095a4739dfc2267fc5.hbc",
+    "bytes": 7299830,
+    "assets": 27,
+    "result": "passed"
+  },
+  "firestoreRules": "unchanged; not rerun in M04k; historical M04i pass",
+  "publication": {
+    "status": "not published",
+    "lastKnownBlocker": "Expo CLI sign-in unavailable in M04i; no new authentication provided",
+    "previousPublishedGroup": "2088f71e-b024-4838-b861-bfd6c6b36422",
+    "previousPublishedSource": "db6bd026fd8b33cdccfeb0fb68925ac6900240a8"
+  },
+  "deviceQA": "TalkBack, native Back, keyboard, insets/font scaling and real signed-in transitions pending"
+}

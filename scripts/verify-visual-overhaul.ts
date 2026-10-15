@@ -167,7 +167,7 @@ function main() {
   assert.ok(exams.includes('variant="compact"'));
   assert.equal(exams.includes('EXAM PRESSURE'), false);
 
-  const retest = read('app/(app)/mistakes/retest.tsx');
+  const retest = read('src/features/mistakes/MistakeRetest.tsx');
   assert.ok(retest.includes('fontSize: 11'));
   assert.ok(retest.includes('fontSize: 13'));
 

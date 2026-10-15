@@ -58,7 +58,7 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
     if(name==='expo-router')return{router:{back:()=>{},push:(route:any)=>{routes.push(route)},replace:()=>{},setParams:()=>{}},useLocalSearchParams:()=>({})};
     if(name==='react-native')return{View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',ScrollView:'ScrollView',Modal:'Modal',StyleSheet:{create:(s:any)=>s},Alert:{alert:()=>{}}};
     if(name==='react-native-safe-area-context')return{SafeAreaView:'SafeAreaView'};
-    if(name.endsWith('/ScreenHeader'))return{ScreenHeader:'Header'};if(name.endsWith('/AmbientBackdrop'))return{AmbientBackdrop:'Backdrop'};if(name.endsWith('/MotionItem'))return{MotionItem:'MotionItem'};if(name.endsWith('/AnimatedDisclosure'))return{AnimatedDisclosure:'Disclosure'};if(name.endsWith('/AutopilotReflowNotice'))return{AutopilotReflowNotice:'ReflowNotice'};
+    if(name.endsWith('/Reveal'))return{Reveal:'Reveal'};if(name.endsWith('/ScreenHeader'))return{ScreenHeader:'Header'};if(name.endsWith('/AmbientBackdrop'))return{AmbientBackdrop:'Backdrop'};if(name.endsWith('/MotionItem'))return{MotionItem:'MotionItem'};if(name.endsWith('/AnimatedDisclosure'))return{AnimatedDisclosure:'Disclosure'};if(name.endsWith('/AutopilotReflowNotice'))return{AutopilotReflowNotice:'ReflowNotice'};
     if(name.endsWith('/tokens'))return{colors:{},layout:{},radius:{},spacing:{}};throw Error('Unexpected '+name);
   }},{filename:file});return m.exports;}
   const p=load('src/data/WorkspaceProvider.tsx');provider=host(()=>p.WorkspaceProvider({children:null}),false);provider.slots[0].value='ready';provider.slots[1].value=owner;provider.slots[2].value=w;provider.refs[0].current=w;provider.refs[1].current=owner;

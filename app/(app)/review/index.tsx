@@ -22,6 +22,7 @@ import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { ReviewChoiceButton } from '@/src/features/review/ReviewChoiceButton';
+import { ReferenceFeedback } from '@/src/features/review/ReferenceFeedback';
 import {
   ReviewChoice,
   buildReviewQueue,
@@ -593,11 +594,11 @@ export default function ReviewScreen() {
           ) : (
             <>
               <CompareCard label="YOUR ANSWER" text={session.answerDraft || '—'} />
-              <CompareCard
-                label="REFERENCE"
-                text={currentCard.answer || 'No reference answer was saved for this prompt.'}
-                accent
+              <ReferenceFeedback
+                key={JSON.stringify([ownerKey, session.id, session.attemptId, currentCard.id, currentCard.answer])}
+                answer={currentCard.answer}
                 anchorRef={guide.anchors['review.primary']}
+                guideOpen={guide.open}
               />
 
               <View style={styles.recallMeta}>
@@ -611,7 +612,7 @@ export default function ReviewScreen() {
 
               <Text style={styles.gradeHeading}>How well did you actually retrieve it?</Text>
               <Text style={styles.gradeHelp}>
-                Grade the recall, not how familiar the reference answer looks now. “Again” also adds this correction to Mistakes when a reference answer exists.
+                Grade your first attempt, before seeing the reference or practising a retry. “Again” also saves the reference and your first answer to Mistakes when a reference exists.
               </Text>
 
               <View ref={guide.anchors['review.secondary']} collapsable={false} testID="guide-review-secondary" style={styles.gradeStack}>

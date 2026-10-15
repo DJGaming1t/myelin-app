@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +26,8 @@ type Props = {
   topics: Topic[];
   initial?: Partial<MistakeInput>;
   submitLabel: string;
+  disabled?: boolean;
+  feedback?: ReactNode;
   onCancel: () => void;
   onSubmit: (input: MistakeInput) => void;
 };
@@ -34,9 +36,13 @@ export function MistakeForm({
   topics,
   initial,
   submitLabel,
+  disabled = false,
+  feedback,
   onCancel,
   onSubmit,
 }: Props) {
+  const locked = useRef(disabled);
+  locked.current = disabled;
   const initialTopicId = initial?.topicId ?? topics[0]?.id ?? '';
   const [topicId, setTopicId] = useState(initialTopicId);
   const [cardId, setCardId] = useState<string | null>(initial?.cardId ?? null);
@@ -52,11 +58,13 @@ export function MistakeForm({
   );
 
   function chooseTopic(nextTopicId: string) {
+    if (locked.current) return;
     setTopicId(nextTopicId);
     if (nextTopicId !== topicId) setCardId(null);
   }
 
   function submit() {
+    if (locked.current) return;
     if (!topicId || !selectedTopic) {
       setError('Choose a topic for this mistake.');
       return;
@@ -91,6 +99,7 @@ export function MistakeForm({
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
           {topics.map((topic) => (
             <Chip
+              disabled={disabled}
               key={topic.id}
               label={topic.name}
               active={topic.id === topicId}
@@ -103,13 +112,15 @@ export function MistakeForm({
           <>
             <Label>Link to recall question (optional)</Label>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-              <Chip label="None" active={!cardId} onPress={() => setCardId(null)} />
+              <Chip disabled={disabled} label="None" active={!cardId} onPress={() => { if (!locked.current) setCardId(null); }} />
               {selectedTopic.cards.map((card) => (
                 <Chip
+                  disabled={disabled}
                   key={card.id}
                   label={card.prompt}
                   active={cardId === card.id}
                   onPress={() => {
+                    if (locked.current) return;
                     setCardId(card.id);
                     if (!prompt.trim()) setPrompt(card.prompt);
                     if (!correction.trim()) setCorrection(card.answer);
@@ -124,7 +135,8 @@ export function MistakeForm({
         <TextInput
           accessibilityLabel="Mistake prompt"
           value={prompt}
-          onChangeText={setPrompt}
+          editable={!disabled}
+          onChangeText={value => { if (!locked.current) setPrompt(value); }}
           placeholder="Question, task, misconception or step…"
           placeholderTextColor={colors.subtle}
           selectionColor={colors.accent}
@@ -138,7 +150,8 @@ export function MistakeForm({
         <TextInput
           accessibilityLabel="What happened"
           value={detail}
-          onChangeText={setDetail}
+          editable={!disabled}
+          onChangeText={value => { if (!locked.current) setDetail(value); }}
           placeholder="Your wrong answer, the step you missed, what confused you…"
           placeholderTextColor={colors.subtle}
           selectionColor={colors.accent}
@@ -152,7 +165,8 @@ export function MistakeForm({
         <TextInput
           accessibilityLabel="Correct answer"
           value={correction}
-          onChangeText={setCorrection}
+          editable={!disabled}
+          onChangeText={value => { if (!locked.current) setCorrection(value); }}
           placeholder="Write the corrected reasoning in a form future-you can use…"
           placeholderTextColor={colors.subtle}
           selectionColor={colors.accent}
@@ -168,10 +182,12 @@ export function MistakeForm({
             <Pressable
               key={item.value}
               accessibilityRole="button"
-              accessibilityState={{ selected: reason === item.value }}
-              onPress={() => setReason(item.value)}
+              disabled={disabled}
+              accessibilityState={{ selected: reason === item.value, disabled }}
+              onPress={() => { if (!locked.current) setReason(item.value); }}
               style={({ pressed }) => [
                 styles.reasonCard,
+                disabled && styles.disabled,
                 reason === item.value && styles.reasonActive,
                 pressed && styles.pressed,
               ]}>
@@ -191,19 +207,24 @@ export function MistakeForm({
           </Text>
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 
+        {feedback}
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
-            onPress={onCancel}
-            style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+            disabled={disabled}
+            accessibilityState={{ disabled }}
+            onPress={() => { if (!locked.current) onCancel(); }}
+            style={({ pressed }) => [styles.secondary, disabled && styles.disabled, pressed && styles.pressed]}>
             <Text style={styles.secondaryText}>Cancel</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
+            disabled={disabled}
+            accessibilityState={{ disabled }}
             onPress={submit}
-            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+            style={({ pressed }) => [styles.primary, disabled && styles.disabled, pressed && styles.pressed]}>
             <Text style={styles.primaryText}>{submitLabel}</Text>
           </Pressable>
         </View>
@@ -219,19 +240,23 @@ function Label({ children }: { children: string }) {
 function Chip({
   label,
   active,
+  disabled,
   onPress,
 }: {
   label: string;
   active: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      disabled={disabled}
+      accessibilityState={{ selected: active, disabled }}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
+        disabled && styles.disabled,
         active && styles.chipActive,
         pressed && styles.pressed,
       ]}>
@@ -243,6 +268,7 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
+  disabled: { opacity: 0.45 },
   flex: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: 52 },
   label: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },

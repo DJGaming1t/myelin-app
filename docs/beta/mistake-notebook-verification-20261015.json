@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-15",
+  "chunk": "M04l",
+  "baseCommit": "fc74f17d79bb6c6bda9eaad9b4646b9522294ccd",
+  "runtimeVersion": "0.2.13",
+  "sourceSha256": {
+    "app/(app)/mistakes/new.tsx": "0d9a4c929154b2d8645a7338b8bcdd057e6d2ef7ba7a141ef01915798bb31aca",
+    "app/(app)/mistakes/[mistakeId].tsx": "8862278d6ed50d41657e0023df070797c1eede39f5c43b3fa662320d14dd403c",
+    "src/features/mistakes/MistakeForm.tsx": "1686c228c2b5779ede8a1dbe687f8dc210a60050214f7892c07ddc402cb512e0",
+    "src/features/mistakes/MistakeNotebook.tsx": "8472e4f8ab4a2c06e2aead8c73a2bfc5ac97da7cdfb7ce062f3f21138c8cd45a",
+    "src/features/mistakes/useMistakeMutation.ts": "2ae3f3340a617f45fb813d80bb8a67ff7d95d557f0f3c7dd5ad7fc5aee214bcb",
+    "scripts/verify-mistakes.ts": "298aece03ecad29b484dd2f2419abcbe3182d1cd7b503c9aececdb793f0b6239",
+    "scripts/verify-task-planning.ts": "558f94ef0e5f5ebc02f5acd0dae13f1f701bcc41b9f61d18c32e3365cddf861f",
+    "scripts/verify-mistake-notebook.ts": "60dd10e86b29e4673cdb107537c6eaa8fa4d38bbf1caa8979121c49df6162c7d",
+    "scripts/verify-mistake-notebook-ui.cjs": "a108cebde980da505ac2eea7b248fb97864bdf3d03ee93b8e6fad99ecb2e7a13"
+  },
+  "typescript": "passed",
+  "packageVerification": "all 27 non-Firestore verify:* package scripts passed",
+  "actualVM": {
+    "modules": [
+      "useMistakeMutation",
+      "WorkspaceProvider",
+      "MistakeDetailAttempt confirmation"
+    ],
+    "timezones": [
+      "UTC",
+      "Asia/Kolkata",
+      "America/New_York"
+    ],
+    "result": "passed"
+  },
+  "browser": {
+    "distinctCases": 44,
+    "newNotebookCases": 22,
+    "retainedRetestCases": 22,
+    "motion": [
+      "normal",
+      "reduced"
+    ],
+    "viewport": "320x568",
+    "result": "passed"
+  },
+  "additionalRegressions": [
+    "Review owner/save suite via verify:review",
+    "Mistakes retest suite via verify:mistakes",
+    "Focus start ownership",
+    "adaptive",
+    "transition",
+    "OTA compatibility self-test",
+    "OTA installed APK 137eee631edbe582da8c0e64ec89229a86a5aa9a"
+  ],
+  "androidExport": {
+    "bundle": "entry-cf9e7cea06d71fd69b87fa3a8489cc9b.hbc",
+    "bytes": 7310072,
+    "assets": 27,
+    "result": "passed"
+  },
+  "firestoreRules": "unchanged; not rerun in M04l; historical M04i pass",
+  "publication": {
+    "status": "not published",
+    "lastKnownBlocker": "Expo CLI sign-in unavailable in M04i; no new authentication provided",
+    "previousPublishedGroup": "2088f71e-b024-4838-b861-bfd6c6b36422",
+    "previousPublishedSource": "db6bd026fd8b33cdccfeb0fb68925ac6900240a8"
+  },
+  "deviceQA": "TalkBack, native Back, keyboard, insets/font scaling and real signed-in transitions pending"
+}

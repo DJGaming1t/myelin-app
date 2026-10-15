@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import './verify-mistake-retest';
+import './verify-mistake-notebook';
 
 import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createEmptyWorkspace } from '../src/data/schema';

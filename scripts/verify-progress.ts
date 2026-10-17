@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import './verify-progress-insights';
+import './verify-neural-map';
 import fs from 'node:fs';
 import path from 'node:path';
 

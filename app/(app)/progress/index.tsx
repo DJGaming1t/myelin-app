@@ -98,7 +98,7 @@ export default function ProgressScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <NeuralMap workspace={workspace} anchorRef={guide.anchors['progress.map']} />
+          <NeuralMap workspace={workspace} now={now} anchorRef={guide.anchors['progress.map']} />
           <LearningInsights workspace={workspace} now={insightNow} insights={insights} onRefresh={() => setInsightRefreshAt(Date.now())} actionRef={guide.anchors['progress.practice']} />
           <AdaptationInsightList
             workspace={workspace}

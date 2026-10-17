@@ -1,4 +1,5 @@
 import { WorkspaceState } from '@/src/data/schema';
+import { localDateKey } from '@/src/features/planning/commitment-dates';
 import { retrievability } from './memory-engine';
 
 export const INSIGHT_PRACTICE_LIMIT = 10;
@@ -35,14 +36,24 @@ export function learningInsights(workspace: WorkspaceState, now: number): Learni
     detail: `${underconfident.length} question${underconfident.length === 1 ? '' : 's'} went well without a hint despite low confidence. Notice what you recalled correctly.`, evidence, cardIds: underconfident });
   return insights.slice(0, 2);
 }
-export function neuralEvidence(workspace: WorkspaceState) {
+export function neuralEvidence(workspace: WorkspaceState, now = Date.now()) {
+  // History carries both IDs. Reused card IDs in different topics remain
+  // attributable; never guess an owner from the card ID alone.
+  const cardsByTopic = new Map(workspace.topics.map(topic => {
+    const counts = new Map<string, number>();
+    for (const card of topic.cards) counts.set(card.id, (counts.get(card.id) ?? 0) + 1);
+    return [topic.id, counts] as const;
+  }));
   const wins = new Map<string, Set<string>>();
   for (const h of workspace.history) {
-    if (h.kind !== 'review' || h.grade !== 3 || h.hintUsed || !h.cardId) continue;
-    const d = new Date(h.at);
-    const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (h.kind !== 'review' || h.grade !== 3 || h.hintUsed || !h.cardId ||
+      !Number.isFinite(h.at) || h.at < 0 || h.at > now || !Number.isFinite(new Date(h.at).getTime()) ||
+      cardsByTopic.get(h.topicId)?.get(h.cardId) !== 1) continue;
+    // An eventual unhinted Good still earns a connection after Again or hints.
+    // No recent-history window or current due-date filter: valid wins stay earned.
     const evidence = wins.get(h.topicId) ?? new Set<string>();
-    evidence.add(`${h.cardId}:${day}`); wins.set(h.topicId, evidence);
+    evidence.add(JSON.stringify([h.cardId, localDateKey(h.at)]));
+    wins.set(h.topicId, evidence);
   }
   const nodes = workspace.topics.map(topic => ({ topic, wins: wins.get(topic.id)?.size ?? 0 })).sort((a, b) => a.topic.createdAt - b.topic.createdAt || a.topic.id.localeCompare(b.topic.id));
   const total = nodes.reduce((sum, n) => sum + n.wins, 0);

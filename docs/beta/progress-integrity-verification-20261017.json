@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-17",
+  "chunk": "M04o",
+  "baseCommit": "8ea8d28d8475aae0c7e27b1d3aac4fcc335081a0",
+  "runtimeVersion": "0.2.13",
+  "sourceSha256": {
+    "src/features/progress/progress-evidence.ts": "0e00deb2cb2cfb9656cb86b1df5ad7ed05dc022637c9d9edf65ae3ef13072b33",
+    "src/features/progress/progress-engine.ts": "f045f86759adee9cf33de18cf0d42625da92ad8eefad4d1d3cad4900ad078fdc",
+    "src/features/adaptive/outcome-engine.ts": "04d548716e8dacaf2e471b9cf4a53371947c1b1f4635474d32327c062af20858",
+    "src/features/adaptive/LearningInsights.tsx": "2309df64697e2ee91b7051d0a1091de8161cf3a3904b77fee724d0f0c2ccbdf7",
+    "app/(app)/progress/index.tsx": "4612e4fe57d5cdc7683a4ffb4e55a192dca88b20484426553bc1afcaa2914344",
+    "scripts/verify-progress.ts": "343b34fbfec6b2978c6fb308e241731e8b85d701ae46842f8d85f7a166f7b1b3",
+    "scripts/verify-progress-integrity.ts": "afbcb06860b5ada36b20a944d88543a69fd89a81d4e5d9d098c30c9be1fd693c",
+    "scripts/verify-progress-integrity-ui.cjs": "bb37b80ab8f652d708812d6694079698316bcaec5000357f367d7b6c8b1b88d6"
+  },
+  "policy": "Read-only, clock-bounded Progress history and exact topic/card attribution; preserve topic-only/legacy reviews. Match modern Focus identifiers plus times/minutes/plan/mode before suppressing duplicate standalone outcome.",
+  "timing": "Exclude zero recorded minutes only from timing; preserve positive short/fractional durations and historical starts/completions. Existing whole-minute timer rounding is unchanged.",
+  "retention": "Eligibility-before-deduplication retained. Recorded elapsedDays >= 1 means at least 24 hours; rolling 30x24-hour window unchanged. Deduplication now includes topic/card/local date.",
+  "retentionProductDecision": "First-attempt-only rule deferred; examples and historical effects documented in docs/progress-integrity.md.",
+  "displayedEffects": [
+    "Future/invalid/mismatched/orphan history no longer inflates minutes/review/confidence/timing/trends.",
+    "Matching Focus history/outcomes contribute once. Inconsistent or insufficient legacy identity metadata remains separate rather than discarding unrelated work.",
+    "Zero timing samples are removed; sample size, planned totals, medians/ratios and sufficiency may change. Starts/completions are retained.",
+    "Future-dated Focus finishes are not completed yet; their past starts stay visible.",
+    "Retention identity corrections can remove invalid samples or restore separate samples previously collapsed by reused card IDs; rates can change.",
+    "No stored history is deleted, sorted in place or rewritten; no first-attempt semantics or Neural Map scoring change."
+  ],
+  "typescript": "passed",
+  "packageVerification": {
+    "nonFirestore": "all 27 verify:* scripts passed",
+    "firestore": "passed under Java21 emulator using node --import tsx; same existing assertions"
+  },
+  "additionalChecks": [
+    "Progress integrity suite in UTC, Asia/Kolkata and America/New_York including DST and timezone changes",
+    "verify-adaptive.ts",
+    "verify-transition.ts",
+    "verify-focus-start.ts",
+    "33 Worker security/conversation tests passed",
+    "installed APK OTA compatibility against 137eee631edbe582da8c0e64ec89229a86a5aa9a",
+    "OTA compatibility self-test"
+  ],
+  "browser": {
+    "status": "passed; all five browser scripts exited zero",
+    "newIntegrityCases": 2,
+    "retainedMapCases": 4,
+    "retainedInsightCases": 18,
+    "retainedGuideCases": 14,
+    "retainedOfferCases": 18,
+    "viewport": "320x568",
+    "motion": "normal and reduced per suite",
+    "distinctCases": 56
+  },
+  "preserved": "insight-engine.ts, NeuralMap.tsx, FocusProvider.tsx, schema and scheduler unchanged; LearningInsights actionable component prefix byte-for-byte unchanged.",
+  "limitations": [
+    "No Android preview, native build or authentication attempt.",
+    "Physical Android keyboard/Back/TalkBack/insets/font scaling and actual signed-in transitions remain pending.",
+    "Aggregation trusts validated saved grade/minute/elapsed-gap values; it does not infer actual knowledge or repair corrupt imports.",
+    "Strict Focus deduplication leaves ambiguous legacy metadata separate.",
+    "Timing excludes recorded zeros; existing timer rounds some brief sessions to zero without erasing their records."
+  ],
+  "publication": {
+    "status": "not published",
+    "lastConfirmedSource": "db6bd026fd8b33cdccfeb0fb68925ac6900240a8",
+    "lastConfirmedGroup": "2088f71e-b024-4838-b861-bfd6c6b36422",
+    "authentication": "last-known CLI sign-in blocker not rechecked"
+  },
+  "applicationCommit": "1b9a271ca709685815ed9d8c54f987a45fb40d48",
+  "applicationTree": "596856d125a4ed4bf2db92cbbbf85b025779cd9b"
+}

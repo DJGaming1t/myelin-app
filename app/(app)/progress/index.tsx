@@ -215,14 +215,14 @@ export default function ProgressScreen() {
 
               <SectionTitle
                 title="Time calibration"
-                subtitle="Planned focus compared with actual finished blocks."
+                subtitle="Planned focus compared with finished blocks with recorded work."
               />
               <View style={styles.panel}>
                 {snapshot.timing.direction === 'insufficient' ? (
                   <>
                     <Text style={styles.insightText}>{snapshot.timing.message}</Text>
                     <Text style={styles.sampleText}>
-                      {snapshot.timing.sampleSize}/3 completed focus blocks available
+                      {snapshot.timing.sampleSize}/3 completed focus blocks with recorded work available
                     </Text>
                   </>
                 ) : (
@@ -244,6 +244,7 @@ export default function ProgressScreen() {
                     <Text style={styles.insightText}>{snapshot.timing.message}</Text>
                   </>
                 )}
+                <Text style={styles.sampleText}>Zero-minute completions are excluded from this comparison. Shorter blocks with recorded work stay included.</Text>
               </View>
 
               <SectionTitle

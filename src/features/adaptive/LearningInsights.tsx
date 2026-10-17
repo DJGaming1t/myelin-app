@@ -90,8 +90,8 @@ export function OutcomeEvidence({ workspace, now }: { workspace: WorkspaceState;
     <Text style={styles.title}>What is helping? · 30 days</Text>
     <Text style={styles.copy}>{data.starts} focus starts · {data.fullBlocks} reached the planned duration · {data.finished} saved blocks, including early finishes.</Text>
     <Text style={styles.copy}>{data.recovered} overdue tasks completed.</Text>
-    <Text style={styles.copy}>{data.retentionSamples ? `${data.recalled}/${data.retentionSamples} delayed, unassisted reviews recalled (Practising or Good).` : 'Delayed recall evidence will appear after questions are reviewed at least one day later.'}</Text>
-    <Text style={styles.note}>Recall grades are self-reported. Immediate retries and hinted answers are excluded from retention. Focus start measurements begin with this update.</Text>
+    <Text style={styles.copy}>{data.retentionSamples ? `${data.recalled}/${data.retentionSamples} delayed, unassisted reviews recalled (Practising or Good).` : 'Delayed recall evidence will appear after reviews recorded at least 24 hours after the previous review.'}</Text>
+    <Text style={styles.note}>Recall grades are self-reported. Retention uses the first eligible review per topic/question/local day: at least 24 hours since the previous review, without a hint. Ineligible earlier attempts do not block a later eligible review. Focus start measurements begin with this update.</Text>
     <Text style={[styles.title, { marginTop: 22 }]}>Launch experiment</Text>
     {data.trials.map(t => <Text key={t.variant} style={styles.copy}>{t.variant === 'five-minute' ? 'Five-minute suggestion' : 'Standard suggestion'}: {t.starts}/{t.offers} offers led to a start within 24h.</Text>)}
     <Text style={styles.note}>Task-level comparison, across all recorded offers. Offers still inside their 24-hour window are excluded. These are descriptive counts; MYELIN will not claim a winner from small samples or change your defaults automatically.</Text>

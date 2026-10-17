@@ -1,3 +1,4 @@
+import { recordedAt, recordedHistory } from './progress-evidence';
 import { Confidence, StudySession, WorkspaceState } from '@/src/data/schema';
 
 export type DailyStudyPoint = {
@@ -125,17 +126,31 @@ function median(values: number[]) {
   return ((ordered[middle - 1] ?? 0) + (ordered[middle] ?? 0)) / 2;
 }
 
-function allStudySessions(workspace: WorkspaceState): StudySession[] {
-  const standalone = (workspace.focusOutcomes ?? []).filter(o => o.taskOnly && o.status === 'finished');
-  return [...workspace.history, ...standalone.map(o => ({
+function allStudySessions(workspace: WorkspaceState, now: number): StudySession[] {
+  const history = recordedHistory(workspace, now);
+  const historyById = new Map(history.map(session => [session.id, session]));
+  const standalone = (workspace.focusOutcomes ?? []).filter(outcome => {
+    if (!outcome.taskOnly || outcome.status !== 'finished' ||
+      !recordedAt(outcome.startedAt, now) || !recordedAt(outcome.endedAt, now) ||
+      outcome.endedAt < outcome.startedAt) return false;
+    const session = historyById.get(`session_${outcome.id}`);
+    // Modern FocusProvider writes these fields together. A colliding ID alone,
+    // a review or inconsistent/legacy metadata is not proof of duplication.
+    const represented = session?.kind === 'study' && session.at === outcome.endedAt &&
+      session.startedAt === outcome.startedAt && session.endedAt === outcome.endedAt &&
+      session.minutes === outcome.minutes && session.plannedMinutes === outcome.plannedMinutes &&
+      session.launchMode === outcome.launchMode;
+    return !represented;
+  });
+  return [...history, ...standalone.map(o => ({
     id: `outcome_${o.id}`, topicId: '', at: o.endedAt, kind: 'study' as const,
     minutes: o.minutes, grade: 0 as const, effort: 3 as const, prompt: '', response: '',
     confidence: 'unsure' as const, plannedMinutes: o.plannedMinutes,
   }))];
 }
 
-function reviewSessions(workspace: WorkspaceState) {
-  return workspace.history.filter((session) => session.kind === 'review' && session.grade > 0);
+function reviewSessions(workspace: WorkspaceState, now: number) {
+  return recordedHistory(workspace, now).filter((session) => session.kind === 'review' && session.grade > 0);
 }
 
 function sessionsInRange(
@@ -180,6 +195,7 @@ export function buildDailyStudyHistory(
 ): DailyStudyPoint[] {
   const today = startOfLocalDay(now);
   const result: DailyStudyPoint[] = [];
+  const sessions = allStudySessions(workspace, now);
 
   for (let offset = days - 1; offset >= 0; offset -= 1) {
     const start = addLocalDays(today, -offset);
@@ -187,20 +203,20 @@ export function buildDailyStudyHistory(
     result.push({
       day: dayKey(start),
       label: dayLabel(start),
-      minutes: sumMinutes(sessionsInRange(allStudySessions(workspace), start, end)),
+      minutes: sumMinutes(sessionsInRange(sessions, start, end)),
     });
   }
 
   return result;
 }
 
-export function buildTimeCalibration(workspace: WorkspaceState): TimeCalibration {
-  const sessions = allStudySessions(workspace).filter(
+export function buildTimeCalibration(workspace: WorkspaceState, now = Date.now()): TimeCalibration {
+  const sessions = allStudySessions(workspace, now).filter(
     (session) =>
       session.kind === 'study' &&
       typeof session.plannedMinutes === 'number' &&
       session.plannedMinutes > 0 &&
-      session.minutes >= 0,
+      session.minutes > 0,
   );
 
   const sampleSize = sessions.length;
@@ -262,8 +278,8 @@ export function buildTimeCalibration(workspace: WorkspaceState): TimeCalibration
   };
 }
 
-export function buildConfidenceCalibration(workspace: WorkspaceState) {
-  const sessions = reviewSessions(workspace).filter(
+export function buildConfidenceCalibration(workspace: WorkspaceState, now = Date.now()) {
+  const sessions = reviewSessions(workspace, now).filter(
     (session) => Boolean(session.reviewAttemptId),
   );
   const buckets = (['unsure', 'partial', 'sure'] as const).map((confidence) =>
@@ -305,9 +321,10 @@ export function buildTopicTrends(
   const previousStart = addLocalDays(recentStart, -7);
   const previousEnd = recentStart;
 
+  const history = recordedHistory(workspace, now);
   return workspace.topics
     .map((topic) => {
-      const topicSessions = workspace.history.filter(
+      const topicSessions = history.filter(
         (session) => session.topicId === topic.id,
       );
       const recent = sessionsInRange(topicSessions, recentStart, recentEnd);
@@ -362,11 +379,12 @@ export function buildProgressSnapshot(
   const previous7Start = addLocalDays(last7Start, -7);
   const last30Start = addLocalDays(today, -29);
 
-  const todaySessions = sessionsInRange(allStudySessions(workspace), today, tomorrow);
-  const last7Sessions = sessionsInRange(allStudySessions(workspace), last7Start, tomorrow);
-  const previous7Sessions = sessionsInRange(allStudySessions(workspace), previous7Start, last7Start);
-  const last30Sessions = sessionsInRange(allStudySessions(workspace), last30Start, tomorrow);
-  const reviews = reviewSessions(workspace);
+  const sessions = allStudySessions(workspace, now);
+  const todaySessions = sessionsInRange(sessions, today, tomorrow);
+  const last7Sessions = sessionsInRange(sessions, last7Start, tomorrow);
+  const previous7Sessions = sessionsInRange(sessions, previous7Start, last7Start);
+  const last30Sessions = sessionsInRange(sessions, last30Start, tomorrow);
+  const reviews = reviewSessions(workspace, now);
   const last30Reviews = sessionsInRange(reviews, last30Start, tomorrow);
   const last7Days = buildDailyStudyHistory(workspace, now, 7);
 
@@ -390,8 +408,8 @@ export function buildProgressSnapshot(
       good: last30Reviews.filter((session) => session.grade === 3).length,
       averageGrade: averageReviewGrade(last30Reviews),
     },
-    confidence: buildConfidenceCalibration(workspace),
-    timing: buildTimeCalibration(workspace),
+    confidence: buildConfidenceCalibration(workspace, now),
+    timing: buildTimeCalibration(workspace, now),
     mistakes: {
       total: workspace.mistakes.length,
       open: openMistakes.length,

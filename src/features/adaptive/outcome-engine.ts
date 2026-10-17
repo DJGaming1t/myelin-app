@@ -1,3 +1,5 @@
+import { localDateKey } from '@/src/features/planning/commitment-dates';
+import { recordedAt, recordedHistory } from '@/src/features/progress/progress-evidence';
 import { FocusOutcome, StudyTask, WorkspaceState } from '@/src/data/schema';
 import { FocusSessionState } from '@/src/features/focus/types';
 
@@ -31,11 +33,12 @@ export function suggestedSteps(task: StudyTask) {
 export function outcomeSnapshot(workspace: WorkspaceState, now: number) {
   const since = now - 30 * 86_400_000;
   const focus = (workspace.focusOutcomes ?? []).filter(o => o.startedAt >= since && o.startedAt <= now);
-  const finished = focus.filter(o => o.status === 'finished');
-  // First delayed, unassisted attempt per question per local day; immediate retries are not retention.
+  const finished = focus.filter(o => o.status === 'finished' && recordedAt(o.endedAt, now) && o.endedAt >= o.startedAt);
+  // First eligible delayed, unhinted attempt per topic/question/local day.
+  // Preserve eligibility-before-deduplication; first-attempt-only scoring is a separate product decision.
   const seen = new Set<string>();
-  const retention = workspace.history.filter(h => h.kind === 'review' && h.cardId && h.at >= since && h.at <= now && (h.elapsedDays ?? 0) >= 1 && !h.hintUsed)
-    .sort((a, b) => a.at - b.at).filter(h => { const date = new Date(h.at); const key = `${h.cardId}:${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`; if (seen.has(key)) return false; seen.add(key); return true; });
+  const retention = recordedHistory(workspace, now).filter(h => h.kind === 'review' && h.cardId && h.at >= since && h.at <= now && (h.elapsedDays ?? 0) >= 1 && !h.hintUsed)
+    .sort((a, b) => a.at - b.at).filter(h => { const key = JSON.stringify([h.topicId, h.cardId, localDateKey(h.at)]); if (seen.has(key)) return false; seen.add(key); return true; });
   const trials = workspace.tasks.flatMap(t => t.launchTrial && t.launchTrial.offeredAt <= now - 86_400_000 ? [t.launchTrial] : []);
   return { starts: focus.length, finished: finished.length, fullBlocks: finished.filter(o => o.minutes >= o.plannedMinutes).length,
     recalled: retention.filter(h => h.grade >= 2).length, retentionSamples: retention.length,

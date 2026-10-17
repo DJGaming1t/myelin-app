@@ -1,13 +1,13 @@
 # MYELIN AI Handoff
 
-Current checkpoint: **2026-10-17 IST**. GitHub is the source of truth. Update this summary after each implementation; keep detailed evidence in linked records.
+Current checkpoint: **2026-10-18 IST**. GitHub is the source of truth. Update this summary after each implementation; keep detailed evidence in linked records.
 
 ## Repository and baseline
 
 - Repository: [DJGaming1t/myelin-app](https://github.com/DJGaming1t/myelin-app).
 - Active application branch: `codex/exam-autopilot-capacity-v1`.
-- Latest verified branch checkpoint before this documentation-only workflow update: `6375752910663dd2ad9701a5560d2af1b1eb9ecf` (M04p receipts). The five Focus/motion transfer files were freshly fetched and matched against this commit byte for byte. Recheck the live head when Argon returns a patch.
-- Latest verified application commit: `1b9a271ca709685815ed9d8c54f987a45fb40d48` (M04o), based on `8ea8d28d8475aae0c7e27b1d3aac4fcc335081a0`. Application tree: `596856d125a4ed4bf2db92cbbbf85b025779cd9b`.
+- Latest integration base: `384995b61b5e6e9a557eb756ed7abf9653fc65da`. Argon's supplied base `6375752910663dd2ad9701a5560d2af1b1eb9ecf` differed only in documentation; the application files and dependencies were unchanged. Recheck the live head before the next patch.
+- Latest verified application commit: `be16e9fc2a09815522197813e14a06b77cba2ed5` (Argon Focus Experience & Motion Polish, Chunk 1). Tree: `77e9a26c0e6cac7aad68f7d119972d33908f63d0`. Committed and verified, **not published**. M04o source `1b9a271ca709685815ed9d8c54f987a45fb40d48` and M04p publication remain preserved.
 - The following handoff/receipt commit is documentation only; its exact SHA is reported in the sync report and GitHub history. The verified application source is pinned above. Recheck the live branch head before new work.
 - Default branch `main` at `c50c72a359feac15dc489e41e006779b4610eab2` contains only README.md. Do not base app work on it. `expo-migration` is an older application branch.
 - Open PRs inspected: [#65 native icon](https://github.com/DJGaming1t/myelin-app/pull/65) targets expo-migration; [#83 hosted deployment workflow](https://github.com/DJGaming1t/myelin-app/pull/83) is a draft targeting main. Both remain untouched. No open PR targets the active branch at this checkpoint.
@@ -24,6 +24,7 @@ Current checkpoint: **2026-10-17 IST**. GitHub is the source of truth. Update th
 
 ## Implemented and recently completed
 
+- Argon Focus/motion Chunk 1: spring controls, custom duration presets, active/paused/complete dial states, success progress tone, session context/effort labels/parking badge and structured Focus support panels. Codex repaired patch format/context and verification harnesses; no engine, provider or schema changes. [Verification record](beta/argon-focus-motion-verification-20261018.json). Not published.
 - Topics/cards, tasks, Today recommendations, Focus, Review, Mistakes, exams/capacity planning, Day Map, Progress/Neural Map, settings, onboarding, import/export, reminders and sync modules exist. This is not a claim of complete device QA.
 - Core-loop tours, offline Help, first-open guide offers, Library guidance and task-only returning-user detection.
 - M04a–h: guarded task deferral/completion/Undo/edit/scheduling/rebuild/Day Map/Get unstuck and Focus starts with save recovery; included in the last confirmed preview.
@@ -52,6 +53,7 @@ Current checkpoint: **2026-10-17 IST**. GitHub is the source of truth. Update th
 - M04o fresh verification: TypeScript; all 28 package verification scripts (Firestore under Java21 emulator); three-timezone integrity suite; adaptive/transition/Focus-start; 33 Worker tests and OTA compatibility/self-test pass. All 56 browser cases pass (2 new integrity + 4 map + 18 insight + 14 guide + 18 offer). [receipt](beta/progress-integrity-verification-20261017.json). Changes are read-only; timing sample counts/ratios and corrected Progress/retention totals can change as detailed in the policy. That M04o verification was local; M04p now publishes the same application implementation.
 - M04p fresh release checks: all 638 tracked files matched GitHub, TypeScript, all 28 package checks including Java21 Firestore, full India/US assistant release checks, adaptive/transition, Android export and native compatibility/self-test passed. Worker initial parallel-file run had one failure; all 33 passed with file concurrency 1 without changing assertions or internal race tests. Root cause remains unestablished; retain the intermittent failure for review. Browser 56-case results are historical M04o evidence, not claimed rerun for M04p. [Release receipt/details](beta/preview-recovery-verification-20261017.json).
 - Future changes require relevant regression checks. This host uses node --import tsx for TS scripts because the tsx CLI IPC path may be unavailable. Distinguish new execution from historical evidence.
+- Argon Focus/motion fresh checks: TypeScript, all 27 non-Firestore package suites, adaptive/transition, final affected Focus/planning/Progress/adaptive reruns, Android export and OTA guard/self-test passed. The OTA guard was rerun against committed source `be16e9fc2a09815522197813e14a06b77cba2ed5`. All 54 browser cases passed: 10 start/save/reload, 11 tutorials, 12 timer/break/retrieval, 17 first-open offers, 4 new 320/390px normal/reduced-motion cases. New cases measure pause/completion scale targets, success fill color, dial visibility, duration selection, disclosure bounds, parking and single completion. Initial planning VM import and browser lifecycle failures were repaired without removing guard assertions. Firestore/Worker suites were not rerun for this UI-only chunk; physical Android remains pending.
 
 ## Codex / Gemini 4 Argon synchronization protocol
 
@@ -64,17 +66,18 @@ Current checkpoint: **2026-10-17 IST**. GitHub is the source of truth. Update th
 7. **Publishing:** require explicit user authorization for the particular update. A patch, source transfer, verified commit or general continuation does not authorize publication. Distinguish committed, tested, merged and published; claim publication only with an actual receipt.
 8. **Handoff/report:** maintain this summary and the existing master checklist. After each completed integration provide a **GEMINI/ARGON SYNC REPORT** with reasons, exact files, branch/SHA/PR, architecture/API changes, tests/results, remaining problems and research/review questions. Documentation-only commits do not imply another app test run. Stop after the bounded chunk.
 
-## Current Argon source handoff — 2026-10-17
+## Argon Focus/motion integration — 2026-10-18
 
-- Scope: Focus experience/motion source transfer and collaboration documentation only. Five files identified by the supplied Chunk 1 package: `src/components/motion/AnimatedProgress.tsx`, `src/features/focus/focus-dial-layout.ts`, `src/features/adaptive/FocusSupport.tsx`, `app/(app)/focus/index.tsx`, `scripts/verify-focus.ts`.
-- Base: `6375752910663dd2ad9701a5560d2af1b1eb9ecf`; exact GitHub contents, Git blob hashes and local committed/working bytes matched for all five. The transfer includes complete files and a manifest, not a full repository export.
-- The attachment already contains a proposed implementation. It is not applied or verified in this source-handoff chunk. Its runtime note says 0.2.7; the current app uses version 0.2.13 with runtime policy appVersion. Compatibility must be checked against current source during integration.
-- App code, architecture and the published preview are unchanged. TypeScript/regression/export suites were not rerun for these documentation-only edits; M04p evidence above remains historical. Next: Argon reviews the pinned source and returns/confirms one bounded patch with its base and acceptance cases. Publication requires separate explicit authorization.
+- Accepted and integrated the supplied five-file package after comparing its base with the live branch. The prior scoped source transfer remains pinned to 6375752; current source is the verified application commit above.
+- Repairs: malformed hunk counts and two incorrect unchanged-context style lines; retained the actual baseline styles. Added the existing SpringPressable boundary to the planning VM, per-case browser lifetime/optional Chromium flags to the older Focus browser suite, helper boundary tests and a dedicated rendered motion suite. Argon's application design is preserved; no significant redesign was needed.
+- API: AnimatedProgress gains optional `tone: 'accent' | 'success'`, default accent. New pure dial/preset helpers and optional private TimerDial paused/sublabel props; no persistence or provider API changes. Mutation/transition handlers, FocusSupport owner/conflict/save logic and every tutorial anchor reference match the baseline. M04m/M04n/M04o remain intact.
+- Compatibility: package's 0.2.7 note was stale; actual runtime remains 0.2.13/appVersion. No native dependency, APK, scheduler, history or production changes. Distraction blocking still opens phone settings; app/site blocking is not implemented by this package.
+- Status: committed and verified; no EAS update/build invoked. Next: Argon reviews the integration report, then the user chooses the next bounded chunk or explicitly authorizes preview publication. Native TalkBack/font scaling/keyboard/Back and actual signed-in device transitions remain QA work.
 
 ## Pending Gemini recommendations and priorities
 
 - Argos M04n recommendations, reviewed against base 96245fe and approved by the user on 2026-10-17: implemented with restrictions. First-attempt-only scoring rejected for this chunk; historical retry wins retained. Broader old replacements (M04m, reminders, onboarding, timer, cleanup and silent history trimming) were not applied.
 - M04o Argos recommendations: implemented with user safeguards; filter-before-dedup retention semantics retained, ID-only Focus suppression rejected, positive short work and zero-minute historical starts/completions preserved.
-- Current next chunk: Argon-led Focus/motion work after the scoped source handoff above. Preserve M04m/M04n/M04o, guide anchors, owner/save guards, persisted wall-clock timing and break single-flight transitions. Integration and publication are separate steps. M04o boundary/retention review, published-preview device QA and the intermittent Worker test remain pending.
+- Current review: Argon Focus/motion Chunk 1 is integrated and verified. Review the concrete integration/test adjustments above before selecting another bounded chunk. Publishing this code requires explicit authorization. M04o boundary/retention review, published-preview device QA and the intermittent Worker test remain pending.
 - Deferred: first-attempt-only retention needs separate approval/versioning. Examples and expected historical effects are documented in progress-integrity.md; no filter-order change was made. Do not infer publication from committed source.
 - Then continue the existing checklist: device/account QA and release recovery, remaining guidance/reminder/scheduling audits. Keep optional model feasibility and quality work separate.

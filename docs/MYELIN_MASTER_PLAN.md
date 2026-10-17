@@ -1,7 +1,9 @@
 # MYELIN master checklist
 
-Last bounded chunk: 2026-10-17 (Argon collaboration workflow and scoped Focus/motion source handoff; documentation only). Last application release: M04p — preview published. Continue this checklist; do not replace it on each turn.
+Last bounded chunk: 2026-10-18 (Argon Focus Experience & Motion Polish, Chunk 1 — integrated and verified, not published). Last application release: M04p — preview published. Continue this checklist; do not replace it on each turn.
 Work one bounded chunk at a time. Verify, report Completed / Verified / Remaining / Next, then wait for **Next**.
+
+**Latest verified application source:** `be16e9fc2a09815522197813e14a06b77cba2ed5` on `codex/exam-autopilot-capacity-v1`. Focus/motion changes are committed but are not in the Android preview below. No publication was attempted in this chunk.
 
 **Current collaboration:** Gemini 4 Argon authors feature code; Codex/Astra integrates GitHub changes, verifies, debugs and tests with independent engineering judgment. Fetch requested source at the latest verified active-branch commit and include complete contents/base SHA; avoid full exports. Validate incoming patches against current files/dependencies, preserve Argon's design where practical, and return concrete problems for significant redesign. Run TypeScript, relevant regressions and compatibility checks before committing. Maintain this checklist and [handoff protocol](MYELIN_AI_HANDOFF.md#codex--gemini-4-argon-synchronization-protocol). Publishing requires explicit authorization for the update and an actual receipt.
 
@@ -448,3 +450,12 @@ Status: integrated and locally/browser verified on current development branch; p
 - **Verified:** five fresh GitHub file reads match their Git blob hashes and local committed/working bytes. Open PRs #65/#83 do not target the active branch and remain untouched. This chunk changes only this checklist and the handoff; no fresh app suite execution is claimed.
 - **Remaining:** the supplied implementation remains pending integration/testing. Correct its stale runtime note (0.2.7; current 0.2.13/appVersion) before relying on compatibility claims. No application, native, schema, dependency, guide or owner-guard changes; no publication.
 - **Next:** Argon reviews the exact source and returns/confirms one bounded implementation with its base and acceptance cases. Codex checks the live branch again, integrates and verifies; significant redesign questions return to Argon. Separate explicit user authorization is required to publish. Existing device QA and deferred product decisions remain open.
+
+
+## Argon Focus Experience & Motion Polish — Chunk 1 — 2026-10-18 IST
+
+- **Completed:** Argon's phase-aware dial/progress, spring controls, custom duration presets, effort/context labels, parking badge and structured support panels are integrated at `be16e9fc2a09815522197813e14a06b77cba2ed5`, based on live head 384995b. Supplied 6375752 base differs only in documentation. Fixed malformed patch counts and two context-only style mismatches without redesigning the feature.
+- **Verified:** TypeScript; all 27 non-Firestore package suites; adaptive/transition and final affected suite reruns; Android export; committed-source OTA compatibility/self-test. All 54 browser cases pass: starts/save/reload (10), tutorials (11), timer/break/retrieval (12), offers (17) and new normal/reduced motion at 320/390px (4). Motion transforms, success color, visible dial, presets, disclosure bounds, parking and single completion are checked. Receipt: `docs/beta/argon-focus-motion-verification-20261018.json`.
+- **Integration repairs:** existing planning VM now understands SpringPressable; original Focus browser tests use one browser per case and optional host arguments. Assertions were retained. Native handlers/ownership logic, all guide anchors, M04m/M04n/M04o and saved data are preserved. Only optional AnimatedProgress tone and pure dial/preset helpers are new APIs.
+- **Remaining:** native Android TalkBack, font scaling, keyboard/insets/Back and signed-in transitions. Firestore/Worker tests are historical M04p evidence, not rerun. DistractionShield still opens system settings; no app/site enforcement. Runtime remains 0.2.13/appVersion, correcting the package's stale 0.2.7 note. No schema, provider, dependency, scheduler or native changes.
+- **Publication/Next:** not published; no EAS update or APK build invoked. Argon reviews the integration report; the user chooses the next bounded chunk or explicitly authorizes preview publication. Existing device QA and deferred retention decisions remain open. Stop after this chunk.

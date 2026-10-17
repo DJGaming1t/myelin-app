@@ -12,6 +12,14 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import Animated, {
+  LinearTransition,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
@@ -19,14 +27,21 @@ import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { MotionItem } from '@/src/components/motion/MotionItem';
 import { Reveal } from '@/src/components/motion/Reveal';
+import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import {
   formatTimer,
   timerIsComplete,
   timerRemainingMs,
 } from '@/src/features/focus/focus-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
-import { focusDialMarkPosition, focusDialSize } from '@/src/features/focus/focus-dial-layout';
+import {
+  focusDialMarkPosition,
+  focusDialSize,
+  focusDialTickState,
+  focusDurationPresets,
+} from '@/src/features/focus/focus-dial-layout';
 import { buildPostFocusRetrievalSuggestion } from '@/src/features/focus/post-focus-retrieval';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
@@ -37,7 +52,7 @@ import { useGuideOffer } from '@/src/features/guides/useGuideOffer';
 import { GuideOffer } from '@/src/features/guides/GuideOffer';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -59,6 +74,7 @@ export default function FocusScreen() {
   }>();
 
   const { width: windowWidth } = useWindowDimensions();
+  const reduceMotion = useReducedMotion();
   // Reserve content padding and the outer-ring overshoot on small screens.
   const timerDialSize = focusDialSize(windowWidth, spacing.lg);
   const { workspace, ownerKey } = useWorkspace();
@@ -92,6 +108,10 @@ export default function FocusScreen() {
   const breakMinutes = Math.max(
     1,
     Math.min(30, intParam(params.breakMinutes, workspace?.settings.breakMinutes ?? 10)),
+  );
+  const durationPresets = useMemo(
+    () => focusDurationPresets(suggestedMinutes),
+    [suggestedMinutes],
   );
 
   const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
@@ -315,13 +335,13 @@ export default function FocusScreen() {
             <Text style={styles.missingText}>
               Resume or end that recall queue before starting a separate focus timer.
             </Text>
-            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><Pressable
+            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><SpringPressable
               accessibilityRole="button"
               onPress={() => router.replace('/(app)/review')}
-              style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+              style={styles.primary}>
               <Text style={styles.primaryText}>Resume review</Text>
               <Text style={styles.buttonArrow}>→</Text>
-            </Pressable></View>
+            </SpringPressable></View>
           </View>
         </View>
         {guideOverlay}
@@ -341,12 +361,12 @@ export default function FocusScreen() {
               <Text style={styles.missingText}>
                 Start Focus from any task card or from a topic in Library.
               </Text>
-              <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><Pressable
+              <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><SpringPressable
                 accessibilityRole="button"
                 onPress={() => router.replace('/(app)/today')}
-                style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+                style={styles.primary}>
                 <Text style={styles.primaryText}>Back to Today</Text>
-              </Pressable></View>
+              </SpringPressable></View>
             </View>
           </View>
           {guideOverlay}
@@ -378,14 +398,31 @@ export default function FocusScreen() {
             <View style={styles.planStrip}>
               <Metric label="FULL BLOCK" value={`${plannedMinutes} min`} />
               <Metric label="BREAK" value={`${breakMinutes} min`} />
+              <Metric
+                label="ENERGY"
+                value={workspace.settings.energy === 'low' ? 'Low pace' : 'Standard'}
+              />
             </View>
 
-            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-              {[10, 25, 45].map(minutes => <Pressable key={minutes} accessibilityRole="button"
-                accessibilityLabel={`Focus for ${minutes} minutes`} accessibilityState={{ selected: plannedMinutes === minutes }}
-                onPress={() => setSelectedMinutes(minutes)} style={[styles.secondary, { minWidth: 64 }, plannedMinutes === minutes && styles.effortActive]}>
-                <Text style={styles.secondaryText}>{minutes} min</Text>
-              </Pressable>)}
+            <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={styles.durationRow}>
+              {durationPresets.map((minutes) => {
+                const selected = plannedMinutes === minutes;
+                return (
+                  <SpringPressable
+                    key={minutes}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Focus for ${minutes} minutes`}
+                    accessibilityState={{ selected }}
+                    scaleTo={0.98}
+                    lift={0}
+                    onPress={() => setSelectedMinutes(minutes)}
+                    style={[styles.durationChip, selected && styles.durationChipActive]}>
+                    <Text style={[styles.durationChipText, selected && styles.durationChipTextActive]}>
+                      {minutes} min
+                    </Text>
+                  </SpringPressable>
+                );
+              })}
             </View>
             <Text style={styles.fieldLabel}>First tiny step · optional</Text>
             <View ref={guide.anchors['focus.secondary']} collapsable={false} testID="guide-focus-secondary"><TextInput
@@ -401,21 +438,23 @@ export default function FocusScreen() {
               style={styles.tinyInput}
             /></View>
 
-            <Pressable
+            <SpringPressable
               accessibilityRole="button"
               onPress={() => begin('full')}
-              style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+              scaleTo={0.985}
+              style={styles.primary}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.primaryText}>Start {plannedMinutes}-minute focus</Text>
                 <Text style={styles.primarySubtext}>One task. A little more progress.</Text>
               </View>
               <Text style={styles.buttonArrow}>→</Text>
-            </Pressable>
+            </SpringPressable>
 
-            <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support"><Pressable
+            <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support"><SpringPressable
               accessibilityRole="button"
               onPress={() => begin('five-minute')}
-              style={({ pressed }) => [styles.launchButton, pressed && styles.pressed]}>
+              scaleTo={0.988}
+              style={styles.launchButton}>
               <View style={styles.launchMark}>
                 <Text style={styles.launchMarkText}>5</Text>
               </View>
@@ -425,7 +464,7 @@ export default function FocusScreen() {
                   Only promise five minutes. If momentum arrives, continue into the full block.
                 </Text>
               </View>
-            </Pressable></View>
+            </SpringPressable></View>
 
             <GuideOffer tutorialId="focus" screenName="Focus"
               description="See block length, your first tiny step and the five-minute launch. Replay anytime from ?."
@@ -467,9 +506,11 @@ export default function FocusScreen() {
             <Text style={styles.sessionTitle}>Leave the work alone.</Text>
             {session.focusLogged ? (
               <Reveal key={`focus-saved:${session.id}`} distance={5}>
-                <Text style={styles.focusSavedCue}>
-                  ✓ Focus logged · {session.focusActualMinutes} min
-                </Text>
+                <View style={styles.focusSavedPill}>
+                  <Text style={styles.focusSavedCue}>
+                    ✓ Focus logged · {session.focusActualMinutes} min
+                  </Text>
+                </View>
               </Reveal>
             ) : null}
 
@@ -477,12 +518,15 @@ export default function FocusScreen() {
               value={formatTimer(remaining)}
               label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
               complete={timerDone}
+              paused={!session.runningSince && !timerDone}
               progress={phaseProgress}
               size={timerDialSize}
+              sublabel={`${session.breakMinutes}m recovery`}
             />
             <View style={styles.phaseProgress}>
               <AnimatedProgress
                 value={phaseProgress}
+                tone="success"
                 accessibilityLabel={`Break progress: ${Math.round(phaseProgress * 100)}%`}
               />
             </View>
@@ -578,12 +622,13 @@ export default function FocusScreen() {
                 )
               ) : (
                 <View style={styles.timerActions}>
-                  <Pressable
+                  <SpringPressable
                     accessibilityRole="button"
                     onPress={session.runningSince ? pause : resume}
-                    style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                    scaleTo={0.985}
+                    style={styles.secondary}>
                     <Text style={styles.secondaryText}>{session.runningSince ? 'Pause' : 'Resume'}</Text>
-                  </Pressable>
+                  </SpringPressable>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityState={{ disabled: Boolean(breakTransition), busy: Boolean(breakTransition) }}
@@ -649,16 +694,35 @@ export default function FocusScreen() {
                   : 'PAUSED'
             }
             complete={timerDone}
+            paused={!session.runningSince && !timerDone}
             progress={phaseProgress}
             size={timerDialSize}
+            sublabel={
+              session.launchMode === 'five-minute'
+                ? `5m launch · ${session.fullTargetMinutes}m target`
+                : `${session.plannedFocusMinutes}m target`
+            }
           />
           <View style={styles.phaseProgress}>
             <AnimatedProgress
               value={phaseProgress}
+              tone={timerDone ? 'success' : 'accent'}
               accessibilityLabel={`Focus progress: ${Math.round(phaseProgress * 100)}%`}
             />
+            <View style={styles.sessionMetaStrip}>
+              <Text style={styles.sessionMetaText}>
+                {session.launchMode === 'five-minute'
+                  ? `5-min launch · ${session.fullTargetMinutes}m full block`
+                  : `${session.plannedFocusMinutes}m focus block`}
+              </Text>
+              <Text style={styles.sessionMetaText}>
+                {session.breakMinutes}m break next
+              </Text>
+            </View>
           </View>
 
+          <Animated.View
+            layout={reduceMotion ? undefined : LinearTransition.duration(motion.stateMs)}>
           <Reveal
             key={
               canExtend
@@ -675,15 +739,16 @@ export default function FocusScreen() {
                 Continue this same session toward the original {session.fullTargetMinutes}-minute
                 block, or finish the five-minute launch here.
               </Text>
-              <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><Pressable
+              <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary"><SpringPressable
                 accessibilityRole="button"
                 onPress={extendLaunch}
-                style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                scaleTo={0.985}
+                style={[styles.primary, styles.wideButton]}>
                 <Text style={styles.primaryText}>
                   Continue to {session.fullTargetMinutes} minutes
                 </Text>
                 <Text style={styles.buttonArrow}>→</Text>
-              </Pressable></View>
+              </SpringPressable></View>
               <View ref={guide.anchors['focus.secondary']} collapsable={false} testID="guide-focus-secondary"><Pressable
                 accessibilityRole="button"
                 onPress={() => setFinishing(true)}
@@ -702,33 +767,39 @@ export default function FocusScreen() {
               </Text>
               <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={styles.effortRow}>
                 {([1, 2, 3, 4, 5] as const).map((value) => (
-                  <Pressable
+                  <SpringPressable
                     key={value}
                     accessibilityRole="button"
                     accessibilityState={{ selected: effort === value }}
                     accessibilityLabel={`Effort ${value} out of 5`}
+                    scaleTo={0.96}
+                    lift={0}
                     onPress={() => setEffort(value)}
-                    style={({ pressed }) => [
+                    style={[
                       styles.effort,
                       effort === value && styles.effortActive,
-                      pressed && styles.pressed,
                     ]}>
                     <Text style={[styles.effortText, effort === value && styles.effortTextActive]}>
                       {value}
                     </Text>
-                  </Pressable>
+                  </SpringPressable>
                 ))}
               </View>
-              <View ref={guide.anchors['focus.secondary']} collapsable={false} testID="guide-focus-secondary"><Pressable
+              <View style={styles.effortLegendRow} accessible={false}>
+                <Text style={styles.effortLegendText}>1 · Light</Text>
+                <Text style={styles.effortLegendText}>5 · Very demanding</Text>
+              </View>
+              <View ref={guide.anchors['focus.secondary']} collapsable={false} testID="guide-focus-secondary"><SpringPressable
                 accessibilityRole="button"
                 accessibilityLabel="Complete focus"
                 accessibilityState={{ disabled: savingFocus, busy: savingFocus }}
                 disabled={savingFocus}
                 onPress={finishFocus}
-                style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
+                scaleTo={0.985}
+                style={[styles.primary, styles.wideButton, savingFocus && styles.disabled]}>
                 <Text style={styles.primaryText}>{savingFocus ? 'Saving…' : 'Complete focus'}</Text>
                 <Text style={styles.buttonArrow}>→</Text>
-              </Pressable></View>
+              </SpringPressable></View>
               {focusError ? <Text accessibilityRole="alert" style={{ color: colors.danger, marginTop: 10 }}>{focusError}</Text> : null}
               {!timerDone ? (
                 <Pressable
@@ -744,29 +815,34 @@ export default function FocusScreen() {
             </View>
           ) : (
             <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={styles.timerActions}>
-              <Pressable
+              <SpringPressable
                 accessibilityRole="button"
                 onPress={session.runningSince ? pause : resume}
-                style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                scaleTo={0.982}
+                style={styles.secondary}>
                 <Text style={styles.secondaryText}>{session.runningSince ? 'Pause' : 'Resume'}</Text>
-              </Pressable>
-              <Pressable
+              </SpringPressable>
+              <SpringPressable
                 accessibilityRole="button"
                 onPress={requestFinishEarly}
-                style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+                scaleTo={0.982}
+                style={styles.secondary}>
                 <Text style={styles.secondaryText}>Finish early</Text>
-              </Pressable>
+              </SpringPressable>
             </View>
           )}
           </Reveal>
+          </Animated.View>
 
           <View style={styles.parkingShell}>
-            <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support"><Pressable
+            <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support"><SpringPressable
               accessibilityRole="button"
               accessibilityState={{ expanded: showParking }}
               accessibilityLabel="Distraction parking"
+              scaleTo={0.99}
+              lift={0}
               onPress={() => setShowParking((current) => !current)}
-              style={({ pressed }) => [styles.parkingToggle, pressed && styles.pressed]}>
+              style={styles.parkingToggle}>
               <View style={styles.parkingCopy}>
                 <Text style={styles.parkingTitle}>Park a distraction</Text>
                 <Text style={styles.parkingSubtitle}>
@@ -775,8 +851,15 @@ export default function FocusScreen() {
                     : 'Capture it without leaving Focus'}
                 </Text>
               </View>
-              <Text style={styles.parkingToggleMark}>{showParking ? '−' : '+'}</Text>
-            </Pressable></View>
+              <View style={styles.parkingRight}>
+                {session.distractions.length > 0 ? (
+                  <View style={styles.parkingCountBadge}>
+                    <Text style={styles.parkingCountText}>{session.distractions.length}</Text>
+                  </View>
+                ) : null}
+                <Text style={styles.parkingToggleMark}>{showParking ? '−' : '+'}</Text>
+              </View>
+            </SpringPressable></View>
 
             <AnimatedDisclosure visible={showParking} style={styles.parking}>
                 <View style={styles.parkInputRow}>
@@ -881,38 +964,85 @@ function TimerDial({
   value,
   label,
   complete,
+  paused,
   progress,
   size,
+  sublabel,
 }: {
   value: string;
   label: string;
   complete?: boolean;
+  paused?: boolean;
   progress: number;
   size: number;
+  sublabel?: string;
 }) {
+  const reduceMotion = useReducedMotion();
+  const dialScale = useSharedValue(1);
+  const innerOpacity = useSharedValue(paused && !complete ? 0.88 : 1);
   const innerSize = size - 40;
+
+  useEffect(() => {
+    cancelAnimation(dialScale);
+    cancelAnimation(innerOpacity);
+    if (reduceMotion) {
+      dialScale.set(1);
+      innerOpacity.set(paused && !complete ? 0.88 : 1);
+      return;
+    }
+    dialScale.set(
+      withSpring(complete ? 1.015 : paused ? 0.988 : 1, {
+        ...motion.revealSpring,
+      }),
+    );
+    innerOpacity.set(
+      withTiming(paused && !complete ? 0.88 : 1, {
+        duration: motion.stateMs,
+      }),
+    );
+  }, [complete, dialScale, innerOpacity, paused, reduceMotion]);
+
+  const animatedDialStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: dialScale.get() }],
+  }));
+
+  const animatedInnerStyle = useAnimatedStyle(() => ({
+    opacity: innerOpacity.get(),
+  }));
+
   return (
     <Reveal distance={8} style={{ alignSelf: 'center' }}>
-      <View
+      <Animated.View
         style={[
           styles.dial,
           { width: size, height: size, borderRadius: size / 2 },
+          paused && !complete && styles.dialPaused,
           complete && styles.dialComplete,
+          animatedDialStyle,
         ]}>
         <View style={styles.dialOuterRing} />
         <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
           {Array.from({ length: 40 }, (_, index) => {
-            const lit = index / 40 < progress;
+            const tickState = focusDialTickState(index, progress, complete);
+            const lit = tickState !== 'unlit';
             return <View key={index} style={{ position: 'absolute', width: 3, height: 9,
               ...focusDialMarkPosition(size, index),
               borderRadius: 2, transform: [{ rotate: (index * 9) + 'deg' }],
-              backgroundColor: lit ? (complete ? colors.success : colors.accent) : colors.lineStrong }} />;
+              opacity: tickState === 'lead' ? 1 : tickState === 'unlit' ? 0.55 : 0.92,
+              backgroundColor: lit
+                ? complete
+                  ? colors.success
+                  : tickState === 'lead'
+                    ? colors.accentBright
+                    : colors.accent
+                : colors.lineStrong }} />;
           })}
         </View>
-        <View
+        <Animated.View
           style={[
             styles.dialInner,
             { width: innerSize, height: innerSize, borderRadius: innerSize / 2 },
+            animatedInnerStyle,
           ]}>
           <Text
             numberOfLines={1}
@@ -926,9 +1056,23 @@ function TimerDial({
             ]}>
             {value}
           </Text>
-          <Text numberOfLines={2} style={styles.timerLabel}>{label}</Text>
-        </View>
-      </View>
+          <View style={styles.timerStatusRow}>
+            <View
+              style={[
+                styles.timerStatusDot,
+                paused && !complete && styles.timerStatusDotPaused,
+                complete && styles.timerStatusDotComplete,
+              ]}
+            />
+            <Text numberOfLines={2} style={styles.timerLabel}>{label}</Text>
+          </View>
+          {sublabel && size >= 168 ? (
+            <Text numberOfLines={1} style={styles.timerSublabel}>
+              {sublabel}
+            </Text>
+          ) : null}
+        </Animated.View>
+      </Animated.View>
     </Reveal>
   );
 }
@@ -983,9 +1127,28 @@ const styles = StyleSheet.create({
   setupSubtitle: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 9, maxWidth: 540 },
   taskContext: { color: colors.accent, fontSize: 10, fontWeight: '700', marginTop: 7 },
   planStrip: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
-  metric: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12, justifyContent: 'space-between' },
+  metric: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panelRaised, padding: 12, justifyContent: 'space-between' },
   metricLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.4 },
-  metricValue: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  metricValue: { color: colors.text, fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  durationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  durationChip: {
+    flex: 1,
+    minWidth: 68,
+    minHeight: layout.minTouch,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  durationChipActive: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+  },
+  durationChipText: { color: colors.textDim, fontSize: 12.5, fontWeight: '700' },
+  durationChipTextActive: { color: colors.accent, fontWeight: '800' },
   fieldLabel: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: spacing.xl, marginBottom: 8 },
   tinyInput: { minHeight: 92, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: 13, color: colors.text, fontSize: 13, lineHeight: 19 },
   primary: { minHeight: 56, marginTop: spacing.lg, borderRadius: radius.md, backgroundColor: colors.accent, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -1010,12 +1173,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     width: '100%',
     maxWidth: 500,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    backgroundColor: colors.panel,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
-  stepLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.5 },
-  stepText: { color: colors.text, fontSize: 14, lineHeight: 20, marginTop: 5, textAlign: 'center' },
+  stepLabel: { color: colors.accent, fontSize: 10, lineHeight: 14, fontWeight: '800', letterSpacing: 0.8 },
+  stepText: { color: colors.text, fontSize: 14, lineHeight: 20, marginTop: 4 },
   timerArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, paddingBottom: 40 },
   breakActions: { width: '100%', maxWidth: 430 },
   dial: {
@@ -1027,6 +1195,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,128,91,0.022)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dialPaused: {
+    borderColor: colors.lineStrong,
+    backgroundColor: 'rgba(255,255,255,0.015)',
   },
   dialComplete: { borderColor: 'rgba(180,216,174,0.34)', backgroundColor: 'rgba(180,216,174,0.04)' },
   dialOuterRing: {
@@ -1046,12 +1218,30 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 18,
   },
+  sessionMetaStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 8,
+  },
+  sessionMetaText: {
+    color: colors.subtle,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
+  },
   dialInner: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  timerValue: { color: colors.text, fontSize: 48, lineHeight: 56, fontWeight: '600', letterSpacing: -2 },
+  timerValue: { color: colors.text, fontSize: 48, lineHeight: 56, fontWeight: '600', letterSpacing: -2, fontVariant: ['tabular-nums'] },
   timerValueCompact: { fontSize: 38, lineHeight: 46 },
   timerValueTiny: { fontSize: 27, lineHeight: 34, letterSpacing: -1.2 },
   timerValueComplete: { color: colors.success },
-  timerLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, marginTop: 4, textAlign: 'center', paddingHorizontal: 4 },
+  timerStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, paddingHorizontal: 6 },
+  timerStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
+  timerStatusDotPaused: { backgroundColor: colors.subtle },
+  timerStatusDotComplete: { backgroundColor: colors.success },
+  timerLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, textAlign: 'center', paddingHorizontal: 4 },
+  timerSublabel: { color: colors.muted, fontSize: 10.5, lineHeight: 14, marginTop: 4, fontWeight: '600' },
   timerActions: { flexDirection: 'row', gap: 9, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
   secondary: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
@@ -1063,11 +1253,26 @@ const styles = StyleSheet.create({
   effortActive: { borderColor: 'rgba(255,128,91,0.5)', backgroundColor: colors.accentSoft },
   effortText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   effortTextActive: { color: colors.accent },
+  effortLegendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, paddingHorizontal: 2 },
+  effortLegendText: { color: colors.subtle, fontSize: 10.5, lineHeight: 14, fontWeight: '600' },
   textButton: { minHeight: layout.minTouch, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   textButtonText: { color: colors.muted, fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   parkingShell: { marginTop: spacing.xl, borderTopWidth: 1, borderTopColor: colors.line },
   parkingToggle: { minHeight: layout.minTouch, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   parkingCopy: { flex: 1, minWidth: 0 },
+  parkingRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  parkingCountBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  parkingCountText: { color: colors.accent, fontSize: 11, fontWeight: '800' },
   parkingToggleMark: { color: colors.accent, fontSize: 22, lineHeight: 24, fontWeight: '400' },
   parking: { paddingBottom: spacing.sm },
   parkingTitle: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
@@ -1084,13 +1289,22 @@ const styles = StyleSheet.create({
   discard: { alignSelf: 'center', marginTop: spacing.xl, padding: 9 },
   discardText: { color: colors.danger, fontSize: 12, lineHeight: 16, fontWeight: '600' },
   breakPrompt: { color: colors.muted, fontSize: 13.5, lineHeight: 20, textAlign: 'center', maxWidth: 380, marginTop: spacing.lg },
+  focusSavedPill: {
+    alignSelf: 'center',
+    marginTop: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(180,216,174,0.28)',
+    backgroundColor: 'rgba(180,216,174,0.06)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
   focusSavedCue: {
     alignSelf: 'center',
     color: colors.success,
     fontSize: 12.5,
     lineHeight: 18,
     fontWeight: '700',
-    marginTop: 9,
   },
   retrieveCue: {
     width: '100%',

@@ -9,8 +9,9 @@ const {createTopic,createQuestion}=require(process.cwd()+'/src/features/topics/t
 const dir=require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(),'myelin-focus-ui-'));
 const baseUrl=process.env.MYELIN_TEST_BASE_URL || 'http://localhost:8081';
 const wk='@myelin/native/workspace/local%3Adevice/primary',fk='@myelin/native/focus/local%3Adevice',rk='@myelin/native/review/local%3Adevice';
-(async()=>{const browser=await chromium.launch({...(process.env.CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.CHROMIUM_EXECUTABLE_PATH} : {}),args:['--no-sandbox'],headless:true});
+(async()=>{let browser;
 try{for(const reduced of [false,true])for(const mode of ['checkpoint','continue','paused','break','retrieve','skip-recall']){
+ browser=await chromium.launch({...(process.env.CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.CHROMIUM_EXECUTABLE_PATH} : {}),args:process.env.MYELIN_CHROMIUM_ARGS ? JSON.parse(process.env.MYELIN_CHROMIUM_ARGS) : ['--no-sandbox'],headless:true});
  const page=await browser.newPage({viewport:{width:320,height:568},timezoneId:'Asia/Kolkata',reducedMotion:reduced?'reduce':'no-preference'});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const now=new Date('2026-10-07T12:00:00+05:30').getTime();await page.clock.setFixedTime(now);
@@ -48,5 +49,5 @@ try{for(const reduced of [false,true])for(const mode of ['checkpoint','continue'
   }
   assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   console.log('PASS',mode,'reduced='+reduced);
- }catch(e){await page.screenshot({path:dir+'/current-focus-failure.png'});console.error((await page.locator('body').innerText()).slice(-3000));throw e;}finally{await page.close();}
-}}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
+ }catch(e){await page.screenshot({path:dir+'/current-focus-failure.png'});console.error((await page.locator('body').innerText()).slice(-3000));throw e;}finally{await page.close();await browser.close();browser=null;}
+}}finally{if(browser)await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

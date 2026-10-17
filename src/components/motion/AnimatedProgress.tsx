@@ -13,9 +13,11 @@ import { colors } from '@/src/theme/tokens';
 export function AnimatedProgress({
   value,
   accessibilityLabel,
+  tone = 'accent',
 }: {
   value: number;
   accessibilityLabel?: string;
+  tone?: 'accent' | 'success';
 }) {
   const reduceMotion = useReducedMotion();
   const progress = useSharedValue(clamp(value));
@@ -46,7 +48,13 @@ export function AnimatedProgress({
       accessible={Boolean(accessibilityLabel)}
       accessibilityLabel={accessibilityLabel}
       style={styles.track}>
-      <Animated.View style={[styles.fill, fillStyle]} />
+      <Animated.View
+        style={[
+          styles.fill,
+          tone === 'success' && styles.fillSuccess,
+          fillStyle,
+        ]}
+      />
       <View style={styles.highlight} />
     </View>
   );
@@ -72,6 +80,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.accent,
     transformOrigin: 'left center',
+  },
+  fillSuccess: {
+    backgroundColor: colors.success,
   },
   highlight: {
     position: 'absolute',

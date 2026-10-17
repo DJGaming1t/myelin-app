@@ -1,0 +1,310 @@
+{
+  "chunk": "Argon Focus Experience & Motion Polish \u2014 Chunk 1",
+  "verified_at_utc": "2026-10-17T19:33:02.751791+00:00",
+  "branch": "codex/exam-autopilot-capacity-v1",
+  "integration_base": "384995b61b5e6e9a557eb756ed7abf9653fc65da",
+  "argon_patch_base": "6375752910663dd2ad9701a5560d2af1b1eb9ecf",
+  "incoming_package_sha256": "9494d829439db02fadd2c2b8edb26e9bd05d6ac77b3522a4120aaa6b81b8ef77",
+  "authorship": "Feature design/application changes: Gemini 4 Argon. Integration, patch repair, regression coverage and verification: Codex/Astra.",
+  "integration_changes": [
+    "Recounted malformed patch hunks; corrected two context-only style lines to match the actual baseline, retaining current styles.",
+    "Added SpringPressable to the existing planning VM boundary without removing guard assertions.",
+    "Existing Focus browser harness now launches a browser per case and accepts the same optional Chromium arguments as other suites.",
+    "Added duration/tick boundary assertions and four rendered tests including measured normal/reduced-motion pause/completion transforms and success progress color."
+  ],
+  "typescript": {
+    "command": "node node_modules/typescript/bin/tsc --noEmit",
+    "exit_code": 0
+  },
+  "package_and_additional_suites": [
+    {
+      "name": "verify:data",
+      "command": "node --import tsx scripts/verify-data.ts",
+      "exit_code": 0,
+      "seconds": 0.21
+    },
+    {
+      "name": "verify:topics",
+      "command": "node --import tsx scripts/verify-topics.ts",
+      "exit_code": 0,
+      "seconds": 0.22
+    },
+    {
+      "name": "verify:today",
+      "command": "node --import tsx scripts/verify-today.ts",
+      "exit_code": 0,
+      "seconds": 2.82
+    },
+    {
+      "name": "verify:focus",
+      "command": "node --import tsx scripts/verify-focus.ts",
+      "exit_code": 0,
+      "seconds": 3.34
+    },
+    {
+      "name": "verify:review",
+      "command": "node --import tsx scripts/verify-review.ts",
+      "exit_code": 0,
+      "seconds": 3.83
+    },
+    {
+      "name": "verify:mistakes",
+      "command": "node --import tsx scripts/verify-mistakes.ts",
+      "exit_code": 0,
+      "seconds": 4.74
+    },
+    {
+      "name": "verify:exams",
+      "command": "node --import tsx scripts/verify-exams.ts",
+      "exit_code": 0,
+      "seconds": 0.22
+    },
+    {
+      "name": "verify:progress",
+      "command": "node --import tsx scripts/verify-progress.ts",
+      "exit_code": 0,
+      "seconds": 3.78
+    },
+    {
+      "name": "verify:settings",
+      "command": "node --import tsx scripts/verify-settings.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:transfer",
+      "command": "node --import tsx scripts/verify-transfer.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:cloud",
+      "command": "node --import tsx scripts/verify-cloud.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:cloud-conversation",
+      "command": "node --import tsx scripts/verify-cloud-conversation.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:notifications",
+      "command": "node --import tsx scripts/verify-notifications.ts",
+      "exit_code": 0,
+      "seconds": 0.42
+    },
+    {
+      "name": "verify:onboarding",
+      "command": "node --import tsx scripts/verify-onboarding.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:guides",
+      "command": "node --import tsx scripts/verify-guides.ts",
+      "exit_code": 0,
+      "seconds": 0.72
+    },
+    {
+      "name": "verify:help",
+      "command": "node --import tsx scripts/verify-help.ts",
+      "exit_code": 0,
+      "seconds": 0.26
+    },
+    {
+      "name": "verify:polish",
+      "command": "node --import tsx scripts/verify-polish.ts",
+      "exit_code": 0,
+      "seconds": 0.21
+    },
+    {
+      "name": "verify:release",
+      "command": "node --import tsx scripts/verify-release.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:planning",
+      "command": "node --import tsx scripts/verify-planning.ts",
+      "exit_code": 0,
+      "seconds": 8.34,
+      "initial_exit_code": 1,
+      "resolution": "Native-animation boundary added for SpringPressable in existing VM; all owner/conflict/save assertions retained."
+    },
+    {
+      "name": "verify:auth",
+      "command": "node --import tsx scripts/verify-auth.ts",
+      "exit_code": 0,
+      "seconds": 0.21
+    },
+    {
+      "name": "verify:visual",
+      "command": "node --import tsx scripts/verify-visual-overhaul.ts",
+      "exit_code": 0,
+      "seconds": 0.21
+    },
+    {
+      "name": "verify:exam-plan",
+      "command": "node --import tsx scripts/verify-exam-plan.ts",
+      "exit_code": 0,
+      "seconds": 0.37
+    },
+    {
+      "name": "verify:feasibility",
+      "command": "node --import tsx scripts/verify-feasibility.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:assistant-actions",
+      "command": "node --import tsx scripts/verify-assistant-actions.ts",
+      "exit_code": 0,
+      "seconds": 0.32
+    },
+    {
+      "name": "verify:local-ai",
+      "command": "node --import tsx scripts/verify-local-ai.ts",
+      "exit_code": 0,
+      "seconds": 0.31
+    },
+    {
+      "name": "verify:syllabus-intake",
+      "command": "node --import tsx scripts/verify-syllabus-intake.ts",
+      "exit_code": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "verify:myelin-mini",
+      "command": "node --import tsx scripts/verify-myelin-mini.ts && node --import tsx scripts/verify-myelin-mini-fast-router.ts && node --import tsx scripts/generate-myelin-mini-failure-data.ts && node --import tsx scripts/build-myelin-mini-dataset.ts --check",
+      "exit_code": 0,
+      "seconds": 1.13
+    },
+    {
+      "name": "adaptive",
+      "command": "node --import tsx scripts/verify-adaptive.ts",
+      "exit_code": 0,
+      "seconds": 0.32
+    },
+    {
+      "name": "transition",
+      "command": "node --import tsx scripts/verify-transition.ts",
+      "exit_code": 0,
+      "seconds": 0.26
+    }
+  ],
+  "final_affected_suite_reruns": [
+    {
+      "name": "focus",
+      "exit_code": 0
+    },
+    {
+      "name": "planning",
+      "exit_code": 0
+    },
+    {
+      "name": "progress",
+      "exit_code": 0
+    },
+    {
+      "name": "adaptive",
+      "exit_code": 0
+    }
+  ],
+  "browser_suites": [
+    {
+      "script": "scripts/verify-focus-start-ui.cjs",
+      "passed_cases": 10,
+      "log_sha256": "10e9e6923e2c98a09ba1c3be794be0673d5eaf37580c11c76dd5098817f1c181"
+    },
+    {
+      "script": "scripts/verify-focus-guides-ui.cjs",
+      "passed_cases": 11,
+      "log_sha256": "971a8aca4e47f4eae8bf59ed71994f0a974d9a4cb404c0528b2392e5e90cfe44"
+    },
+    {
+      "script": "scripts/verify-focus-ui.cjs",
+      "passed_cases": 12,
+      "log_sha256": "9f0c54d26b445fc71a032f755f191d271346a301bdaa9750d99e1c08c0d4aa1c"
+    },
+    {
+      "script": "scripts/verify-focus-offers-ui.cjs",
+      "passed_cases": 17,
+      "log_sha256": "2152b8d92e8c977f3fa4ce237b52088dbc4366ff2bfe8e6dae96b57a149484ca"
+    },
+    {
+      "script": "scripts/verify-focus-motion-ui.cjs",
+      "passed_cases": 4,
+      "log_sha256": "e2ea86181baeb3ddc521fd6dcab2ab4e24fe370a9a3205588146b2cb20ed71b3"
+    }
+  ],
+  "browser_total_passed": 54,
+  "preservation_checks": [
+    "Focus begin, finishFocus, runBreakTransition, addDistraction and requestFinishEarly function bodies match integration base exactly.",
+    "All guide.anchors references match integration base in order.",
+    "FocusSupportEditor logic before its UI return matches integration base exactly, including live owner, task conflict, save and launch guards.",
+    "M04m/M04n/M04o engines, schemas, providers and native inputs are unchanged."
+  ],
+  "compatibility": {
+    "android_export": "passed",
+    "bundle": "_expo/static/js/android/entry-5e23ecc40ee97a9b10be4c011e219b52.hbc",
+    "runtime": "0.2.13",
+    "runtime_policy": "appVersion",
+    "installed_apk_source": "137eee631edbe582da8c0e64ec89229a86a5aa9a",
+    "ota_guard_and_self_test": "passed against committed baseline; pending diff contains no native/runtime/package changes",
+    "new_apk_required_by_this_diff": false
+  },
+  "initial_failures": [
+    "Raw package could not git apply: malformed counts and two nonmatching context lines.",
+    "Planning VM initially rejected the new SpringPressable import; fixed in the test boundary and relevant suites rerun.",
+    "Single-process Chromium closed after first original Focus browser case; per-case browser lifecycle resolved it with all 12 assertions/cases retained.",
+    "New test initially expected aria-selected from accessibilityState, which current React Native Web does not expose. Replaced with behavioral duration selection assertions; native selection semantics remain unchanged."
+  ],
+  "limitations": [
+    "Physical Android TalkBack, system font scaling, keyboard/insets, native Back and real signed-in transitions remain unverified.",
+    "Firestore and Worker suites were not rerun for this UI-only chunk; M04p results are historical.",
+    "DistractionShield remains a phone-settings handoff; this chunk does not enforce app or website blocking.",
+    "A successful Android export is not APK or OTA publication."
+  ],
+  "publication": {
+    "attempted": false,
+    "status": "not published",
+    "last_confirmed_group": "68b457ae-4ac7-456a-b83e-861eee8c4625",
+    "last_confirmed_source": "72414c906a8275068c2d110289ea88f7b1a23d73"
+  },
+  "files": [
+    {
+      "path": "app/(app)/focus/index.tsx",
+      "sha256": "3bbddedbfe611e4b79fdb1faef944e0eae74daaa7894adbac045e90a52742d65"
+    },
+    {
+      "path": "src/components/motion/AnimatedProgress.tsx",
+      "sha256": "330048067edc0695befc3c6c99674c51ffd21fc70da388be02a0bae2405ad455"
+    },
+    {
+      "path": "src/features/adaptive/FocusSupport.tsx",
+      "sha256": "fa9df665208ea9bf5b5cc561c90cc34e7ba3b6bd1ebe3ad92ec15b4331c8ac5e"
+    },
+    {
+      "path": "src/features/focus/focus-dial-layout.ts",
+      "sha256": "25a329659bb8ce498bd9842c68d816a8e9410a366a45068f7dd707b779a4273a"
+    },
+    {
+      "path": "scripts/verify-focus.ts",
+      "sha256": "9c2305adc61167939a0c3c3a5d0c0d7bef61df943055a2cb0bdea679eb0cb6bc"
+    },
+    {
+      "path": "scripts/verify-task-planning.ts",
+      "sha256": "f1e2d7897ad74ac54acb8e13c19b45a1add8d0fd129f0ede5a6f277082cdeb05"
+    },
+    {
+      "path": "scripts/verify-focus-ui.cjs",
+      "sha256": "f2f31052221d25ddaf9beaa1ab2606fea16748292af6e458334434b27203cae5"
+    },
+    {
+      "path": "scripts/verify-focus-motion-ui.cjs",
+      "sha256": "c37978997146deec84601c85f4b066a904f9f74f7235d56cd8df3c8ac1a4f9c5"
+    }
+  ]
+}

@@ -11,6 +11,8 @@ import { createFocusWriteQueue } from '../src/features/focus/focus-write-queue';
 import {
   focusDialMarkPosition,
   focusDialSize,
+  focusDialTickState,
+  focusDurationPresets,
 } from '../src/features/focus/focus-dial-layout';
 import { createEmptyWorkspace } from '../src/data/schema';
 import {
@@ -290,6 +292,27 @@ async function main() {
         'Circular progress marks must fit within the measured dial.');
     }
   }
+
+  assert.deepEqual(focusDurationPresets(45), [10, 25, 45]);
+  assert.deepEqual(focusDurationPresets(35), [10, 25, 35, 45]);
+  assert.deepEqual(focusDurationPresets(60), [10, 25, 45, 60]);
+  assert.deepEqual(focusDurationPresets(5), [5, 10, 25, 45]);
+  assert.deepEqual(focusDurationPresets(15.6), [10, 16, 25, 45]);
+  assert.deepEqual(focusDurationPresets(-1), [5, 10, 25, 45]);
+  assert.deepEqual(focusDurationPresets(241), [10, 25, 45, 240]);
+  assert.deepEqual(focusDurationPresets(Number.NaN), [10, 25, 45]);
+  assert.equal(focusDialTickState(0, 0, false), 'unlit');
+  assert.equal(focusDialTickState(9, 0.26, false), 'lit');
+  assert.equal(focusDialTickState(10, 0.26, false), 'lead');
+  assert.equal(focusDialTickState(11, 0.26, false), 'unlit');
+  assert.equal(focusDialTickState(39, 0.26, true), 'complete');
+  assert.equal(focusDialTickState(0, Number.NaN), 'unlit');
+  assert.equal(focusDialTickState(0, -0.1), 'unlit');
+  assert.equal(focusDialTickState(0, 0.001), 'lead');
+  assert.equal(focusDialTickState(0, 0.025), 'lit');
+  assert.equal(focusDialTickState(1, 0.025), 'lead');
+  assert.equal(focusDialTickState(39, 0.999), 'lead');
+  assert.equal(focusDialTickState(39, 1), 'complete');
 
   const memory = new MemoryStore();
   const storage = createFocusStorage(memory);
@@ -730,6 +753,13 @@ assert.ok(
   effortStyleStart > 0 &&
     focusScreenSource.slice(effortStyleStart, effortStyleEnd).includes('minHeight: layout.minTouch'),
   'Focus effort rating chips must meet MYELIN minimum touch target height.',
+);
+assert.ok(
+  focusScreenSource.includes('<SpringPressable') &&
+    focusScreenSource.includes('focusDialTickState(index, progress, complete)') &&
+    focusScreenSource.includes('focusDurationPresets(suggestedMinutes)') &&
+    focusScreenSource.includes('effortLegendRow'),
+  'Focus should use shared spring pressables, dynamic duration presets, leading tick state, and effort scale anchors.',
 );
 console.log('✓ Focus dial adapts to narrow screens with accessible effort controls');
 

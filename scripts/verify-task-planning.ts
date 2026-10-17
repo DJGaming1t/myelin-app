@@ -62,6 +62,9 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
     if(name==='expo-router')return{router:{back:()=>{},push:(route:any)=>{routes.push(route)},replace:()=>{},setParams:()=>{}},useLocalSearchParams:()=>({}),useFocusEffect:(fn:any)=>react.useEffect(fn,[fn])};
     if(name==='react-native')return{KeyboardAvoidingView:'KeyboardAvoidingView',Platform:{OS:'web'},View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',ScrollView:'ScrollView',Modal:'Modal',StyleSheet:{create:(s:any)=>s},Alert:{alert:()=>{}}};
     if(name==='react-native-safe-area-context')return{SafeAreaView:'SafeAreaView'};
+    // Keep the native-animation boundary inert while exercising the actual support handlers.
+    // SpringPressable forwards the same onPress/accessibility props; browser suites cover its rendering.
+    if(name.endsWith('/SpringPressable'))return{SpringPressable:'Pressable'};
     if(name.endsWith('/Reveal'))return{Reveal:'Reveal'};if(name.endsWith('/ScreenHeader'))return{ScreenHeader:'Header'};if(name.endsWith('/AmbientBackdrop'))return{AmbientBackdrop:'Backdrop'};if(name.endsWith('/MotionItem'))return{MotionItem:'MotionItem'};if(name.endsWith('/AnimatedDisclosure'))return{AnimatedDisclosure:'Disclosure'};if(name.endsWith('/AutopilotReflowNotice'))return{AutopilotReflowNotice:'ReflowNotice'};
     if(name.endsWith('/tokens'))return{colors:{},layout:{},radius:{},spacing:{}};throw Error('Unexpected '+name);
   }},{filename:file});return m.exports;}

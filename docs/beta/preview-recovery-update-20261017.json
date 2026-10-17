@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a149e4-d568-7f58-a55a-084308e2ed42",
+    "createdAt": "2026-10-17T12:44:56.040Z",
+    "group": "68b457ae-4ac7-456a-b83e-861eee8c4625",
+    "branch": "preview",
+    "message": "MYELIN verified Review Mistakes Progress integrity M04i-o 72414c906a8275068c2d110289ea88f7b1a23d73",
+    "runtimeVersion": "0.2.13",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a149e4-d568-7f58-a55a-084308e2ed42",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "72414c906a8275068c2d110289ea88f7b1a23d73"
+  }
+]

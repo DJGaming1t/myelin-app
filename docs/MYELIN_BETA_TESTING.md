@@ -1,5 +1,29 @@
 # MYELIN assistant beta
 
+## M04p — Review, Mistakes and Progress integrity — published 2026-10-17 IST
+
+**Android preview published — 2026-10-17 IST:** source `72414c906a8275068c2d110289ea88f7b1a23d73` is confirmed on channel/branch `preview`, Android runtime `0.2.13`. Update `01a149e4-d568-7f58-a55a-084308e2ed42`, group `68b457ae-4ac7-456a-b83e-861eee8c4625`, created `2026-10-17T12:44:56.040Z` (18:14:56 IST). [Expo receipt](https://expo.dev/accounts/duckslord/projects/myelin/updates/68b457ae-4ac7-456a-b83e-861eee8c4625). Official EAS CLI returned Published; fresh CLI channel metadata and the signed-in dashboard independently confirm source/platform/runtime/deployment. Accumulated M04i–o Review/Mistakes/Progress improvements are now included alongside previously published work. Native compatibility matches installed APK source `137eee631edbe582da8c0e64ec89229a86a5aa9a`; no new APK or production change. Physical phone QA is pending; use docs/MYELIN_BETA_TESTING.md. Hosted EAS workflow quota remains exhausted until November 1 UTC; direct CLI authentication was recovered and publication succeeded without paid services.
+
+
+Actual receipt: [preview-recovery-update-20261017.json](beta/preview-recovery-update-20261017.json). Fresh checks, recovery details and known limitations: [verification](beta/preview-recovery-verification-20261017.json). [Dashboard proof](beta/preview-recovery-dashboard-20261017.jpg). Source changes include M04i optional correction practice; M04j Review save/owner recovery; M04k–l Mistakes retest/notebook recovery; M04m actionable insight evidence; M04n Neural Map integrity/navigation; M04o global Progress integrity. No unrestricted AI/model release or new cloud endpoint.
+
+### Real-Android QA — pending
+
+Use the existing preview APK. Mark each item only after testing on an actual phone; publication alone does not prove delivery or successful launch.
+
+- [ ] Update delivery: open online, let update checking finish, close/reopen if needed; verify the new correction-practice, insight provenance and Progress timing explanation are visible. Confirm saved work remains. Do not clear app data.
+- [ ] Onboarding: on a spare test profile, try new-user setup and Use without account; confirm a task-only returning profile does not loop back into setup.
+- [ ] Accounts: switch between local mode and two test accounts; each shows only its own topics, drafts and sessions. A stale Progress/Mistakes link must not open another owner's work.
+- [ ] Today: defer, schedule, edit, complete and Undo a task; verify notes, deadlines and logged work survive. Check Day Map skip/restore and tutorial replay.
+- [ ] Focus: start five-minute and full blocks, pause/resume, background and reopen. Complete once; check saved time is not duplicated. Very brief finishes remain recorded even when timing calibration excludes zero minutes.
+- [ ] Review: type an answer, reveal, cover/reference retry and grade. Resume after restart. Retry stays optional and does not earn a grade by itself; failed saves remain recoverable.
+- [ ] Progress: replay the tour, page/select Neural Map topics and open a topic. Confirm unhinted Again→Good retains one daily connection, meaningful insights start/resume Review, and timing/retention explanations are readable.
+- [ ] Reminders: check permission handling, quiet/sleep windows, no interruption during Focus, delivery after Focus, disable/cancel behavior and owner switching. Check device OS notification settings; do not assume browser tests establish delivery.
+- [ ] UI: test onboarding/auth/tab transitions, native Back, keyboard, TalkBack, larger fonts, reduced motion and screen insets. Record device/Android version, observed behavior and reproduction steps for any failure.
+
+
+The initial local Worker parallel-file run had one concurrency assertion failure; all 33 assertions passed on a sequential-file rerun with internal race tests unchanged. Hosted EAS verification did not execute because of quota. Local checks and direct CLI publication succeeded. The existing previous release/history below is retained.
+
 ## Guides, recovery and guarded Focus starts — published 2026-10-15 IST
 
 **Latest Android preview:** source `db6bd026fd8b33cdccfeb0fb68925ac6900240a8`, channel/branch `preview`, runtime `0.2.13`. Update `01a13c1e-bd41-7ebc-925b-756e31ec79ea`, group `2088f71e-b024-4838-b861-bfd6c6b36422`, published at `2026-10-14T20:33:29.921Z` (2026-10-15 02:03:29 IST). [Expo update group](https://expo.dev/accounts/duckslord/projects/myelin/updates/2088f71e-b024-4838-b861-bfd6c6b36422). CLI returned Published and the signed-in dashboard confirms the source, Android/runtime and preview deployment. Raw receipt: `docs/beta/guides-recovery-update-20261015.json`; local verification: `docs/beta/guides-recovery-verification-20261015.json`.

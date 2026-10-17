@@ -1,0 +1,1817 @@
+MYELIN - ARGON SOURCE PACK: 03_VERIFICATION_AND_GUIDES.txt
+Repository: DJGaming1t/myelin-app
+Exact source commit: 6375752910663dd2ad9701a5560d2af1b1eb9ecf
+Current branch at packaging: codex/exam-autopilot-capacity-v1
+Handoff-only branch: handoff/argon-focus-6375752
+Every BEGIN FILE block contains complete original contents; do not use this snapshot to overwrite changed code.
+Files: 9
+=== SOURCE MANIFEST ===
+scripts/verify-polish.ts | git blob SHA: a18b8cb893d3461e65c03445fcf49176474e5b64 | chars: 15550
+scripts/verify-visual-overhaul.ts | git blob SHA: 1756474e2e614a69d449985b3e30be48c69db113 | chars: 12850
+scripts/verify-focus.ts | git blob SHA: 4816b6716f254c994d5e6acbfa66a9ab57b8d8dd | chars: 29981
+src/features/guides/useFocusGuide.ts | git blob SHA: 6e90617f03b1c2355ff9f627c6e2ad2a6ed6ac01 | chars: 670
+src/features/guides/useScreenGuide.ts | git blob SHA: 8949d197cc46e901dd5eb0c40e6e6717c614932c | chars: 3181
+src/features/guides/guide-registry.ts | git blob SHA: e89a7a6ccf93f84771f1b66e66bfa2950ab430e6 | chars: 25501
+src/features/guides/ScreenGuide.tsx | git blob SHA: 3fdfbb5b52a293c14e4594bb90daada9de4fb97d | chars: 7767
+src/features/guides/useGuideOffer.ts | git blob SHA: 5ac20b5c1e278f6dec7127314852e2136a3c3cbc | chars: 1619
+src/features/guides/GuideOffer.tsx | git blob SHA: d92b56f9d52ce87abc7998cca8eb665fce28a7fb | chars: 1943
+=== END SOURCE MANIFEST ===
+
+========== BEGIN FILE: scripts/verify-polish.ts ==========
+import fs from 'node:fs';
+import path from 'node:path';
+
+function read(relative: string) {
+  return fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
+}
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+const tokens = read('src/theme/tokens.ts');
+const motion = read('src/features/accessibility/useReducedMotion.ts');
+const root = read('app/_layout.tsx');
+const app = read('app/(app)/_layout.tsx');
+const nav = read('src/components/app/AppNav.tsx');
+const header = read('src/components/app/ScreenHeader.tsx');
+const appButton = read('src/components/app/AppButton.tsx');
+const actionRow = read('src/components/app/ActionRow.tsx');
+const disclosure = read('src/components/motion/AnimatedDisclosure.tsx');
+const motionItem = read('src/components/motion/MotionItem.tsx');
+const topicsLayout = read('app/(app)/topics/_layout.tsx');
+const states = read('src/components/app/ScreenState.tsx');
+const focus = read('app/(app)/focus/index.tsx');
+const workspaceProvider = read('src/data/WorkspaceProvider.tsx');
+const reveal = read('src/components/motion/Reveal.tsx');
+const planCard = read('src/features/today/PlanBlockCard.tsx');
+const ambient = read('src/components/app/AmbientBackdrop.tsx');
+const pulseHalo = read('src/components/motion/PulseHalo.tsx');
+const animatedProgress = read('src/components/motion/AnimatedProgress.tsx');
+const springPressable = read('src/components/motion/SpringPressable.tsx');
+const today = read('app/(app)/today/index.tsx');
+const review = read('app/(app)/review/index.tsx');
+const onboarding = read('app/(onboarding)/index.tsx');
+const onboardingShell = read('src/components/onboarding/OnboardingShell.tsx');
+const authWelcome = read('app/(auth)/index.tsx');
+const authScaffold = read('src/components/auth/AuthScaffold.tsx');
+const authButton = read('src/components/auth/AuthButton.tsx');
+const settings = read('app/(app)/settings/index.tsx');
+const settingsCloud = read('app/(app)/settings/cloud-sync.tsx');
+const settingsTransfer = read('app/(app)/settings/data-transfer.tsx');
+const settingsReminders = read('app/(app)/settings/reminders.tsx');
+const settingsTutorial = read('app/(app)/settings/tutorial.tsx');
+const taskForm = read('src/features/planning/TaskForm.tsx');
+const commitmentForm = read('src/features/planning/CommitmentForm.tsx');
+const examForm = read('src/features/exams/ExamForm.tsx');
+const questionForm = read('src/features/topics/QuestionForm.tsx');
+
+assert(tokens.includes('contentMax: 820'), 'Responsive content cap is missing.');
+assert(tokens.includes('minTouch: 48'), '48-point Android touch target token is missing.');
+assert(tokens.includes('pressSpring:'), 'Shared press spring tokens are missing.');
+assert(tokens.includes('releaseSpring:'), 'Shared release spring tokens are missing.');
+assert(tokens.includes('revealSpring:'), 'Shared reveal spring tokens are missing.');
+assert(motion.includes('AccessibilityInfo.isReduceMotionEnabled'), 'System reduced-motion preference is not read.');
+assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion'), 'User and system motion preferences are not combined.');
+assert(
+  root.includes("animation: 'none'"),
+  'Root group navigation must stay motion-free so reduced motion and the circle handoff are not layered with a second transition.',
+);
+assert(
+  app.includes('PEER_ROUTE_NAMES.has(route.name)') &&
+    app.includes("? 'fade'") &&
+    app.includes(": 'fade_from_bottom'"),
+  'Peer tabs must crossfade without positional motion while deeper routes keep hierarchy motion.',
+);
+for (const routeName of [
+  "'today'",
+  "'today/index'",
+  "'topics'",
+  "'topics/index'",
+  "'review'",
+  "'review/index'",
+  "'progress'",
+  "'progress/index'",
+]) {
+  assert(
+    app.includes(routeName),
+    `Peer-route transition guard is missing ${routeName}.`,
+  );
+}
+assert(
+  app.includes('<Stack.Screen name="today/index" />') &&
+    app.includes('<Stack.Screen name="progress/index" />'),
+  'Today and Progress should stay explicit peer destinations in the app stack.',
+);
+assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
+assert(app.includes('actionLabel="Try again"'), 'Workspace error state is missing a retry action.');
+assert(app.includes('retryWorkspace()'), 'Workspace retry action is not wired to the provider.');
+assert(workspaceProvider.includes('retryWorkspace: () => Promise<void>'), 'Workspace retry API is missing.');
+assert(workspaceProvider.includes('workspaceStorage.load(currentOwner)'), 'Workspace retry does not reload durable storage.');
+assert(states.includes('accessibilityLiveRegion'), 'Shared loading/error states do not announce changes.');
+assert(nav.includes('accessibilityLabel={item.label}'), 'Bottom navigation labels are missing.');
+assert(nav.includes('minHeight: layout.minTouch'), 'Bottom navigation touch targets are too small.');
+assert(nav.includes('maxWidth: layout.contentMax'), 'Bottom navigation is not tablet/web bounded.');
+assert(nav.includes('if (active) return;'), 'Tapping the active tab should be a true no-op.');
+assert(!nav.includes('pressedMotion'), 'Bottom tabs should not scale on press.');
+assert(nav.includes('addButtonFrame'), 'Quick Add needs an explicit centered frame above its label.');
+assert(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'), 'Library nested index should not add a second transition.');
+assert(appButton.includes('<SpringPressable'), 'Shared buttons should use the same spring press primitive.');
+assert(header.includes('<SpringPressable'), 'Header controls should use the shared spring press primitive.');
+assert(actionRow.includes('<SpringPressable'), 'Shared action rows should use spring press feedback.');
+assert(actionRow.includes('scaleTo={0.985}'), 'Action-row spring feedback should remain subtle.');
+assert(disclosure.includes('FadeInDown.duration(motion.stateMs)'), 'Disclosures must share the same enter timing.');
+assert(disclosure.includes('FadeOutUp.duration(motion.pressMs + 20)'), 'Disclosures must share the same exit timing.');
+assert(disclosure.includes('useReducedMotion()'), 'Shared disclosure motion must respect reduced motion.');
+assert(motionItem.includes('FadeInDown'), 'Motion items need an enter transition.');
+assert(motionItem.includes('FadeOutUp'), 'Motion items need an exit transition.');
+assert(motionItem.includes('LinearTransition'), 'Motion items need layout reflow animation.');
+assert(motionItem.includes('useReducedMotion()'), 'Motion-item transitions must respect reduced motion.');
+assert(header.includes('accessibilityRole="header"'), 'Screen titles are not exposed as headers.');
+assert(header.includes('minHeight: layout.minTouch'), 'Header controls are too small.');
+assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tablet/web bounded.');
+assert(focus.includes('setInterval(() => setNow(Date.now()), 1000)'), 'Focus timer redraw frequency was not reduced.');
+assert(reveal.includes("from 'react-native-reanimated'"), 'Shared entrance motion is not running through Reanimated.');
+assert(reveal.includes('withTiming') && reveal.includes('withSpring'), 'Shared entrance motion is missing timing/spring transitions.');
+assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
+assert(nav.includes('<AppIcon'), 'Bottom navigation is missing the shared icon treatment.');
+
+assert((nav.match(/\{ key: '(today|topics|review|progress)'/g) ?? []).length === 4, 'Bottom navigation should expose exactly four primary destinations.');
+assert(!nav.includes("key: 'settings'"), 'Settings should remain secondary.');
+assert(nav.includes("label: 'Library'"), 'Topics should be presented as the Library destination.');
+assert(!nav.includes("key: 'mistakes'"), 'Mistakes should be contextual to Review/Today rather than permanent navigation.');
+assert(!nav.includes("key: 'exams'"), 'Exams should be contextual rather than permanent navigation.');
+assert(nav.includes("router.push('/(app)/quick-add')"), 'Global Quick Add is missing from the navigation shell.');
+
+assert(!header.includes('<Reveal'), 'Shared screen headers should not replay entrance motion on every navigation.');
+assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
+assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');
+assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');
+assert(!ambient.includes('Animated.loop'), 'Ambient background should not run continuous decorative animation loops.');
+assert(!ambient.includes('Easing.'), 'Ambient background should remain static and quiet.');
+assert(pulseHalo.includes('reduceMotion'), 'Legacy halo primitive must remain accessibility-safe while it exists.');
+
+assert(animatedProgress.includes("from 'react-native-reanimated'"), 'Progress animation is not running through Reanimated.');
+assert(animatedProgress.includes('withSpring'), 'Animated progress spring primitive is missing.');
+assert(animatedProgress.includes('scaleX'), 'Progress should animate a transform instead of layout width.');
+assert(animatedProgress.includes('if (reduceMotion)'), 'Animated progress ignores reduced motion.');
+assert(springPressable.includes("from 'react-native-reanimated'"), 'Shared press feedback is not running through Reanimated.');
+assert(springPressable.includes('withSpring'), 'Shared spring press primitive is missing.');
+assert(springPressable.includes('useReducedMotion()'), 'Shared press motion ignores reduced motion.');
+assert(springPressable.includes('motion.pressSpring'), 'Shared press feedback is not driven by theme motion tokens.');
+assert(springPressable.includes('{ translateY: translateY.get() }'), 'Press transform should translate before scaling.');
+assert(nav.includes('<SpringPressable'), 'Quick Add should use the shared press-motion primitive.');
+assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
+assert(today.includes('Later today'), 'Today is missing the reduced later-today hierarchy.');
+assert(today.includes('showAdjust'), 'Today tuning should be progressively disclosed.');
+assert(focus.includes('<AnimatedProgress'), 'Focus must show explicit phase progress.');
+assert(focus.includes('phaseProgress'), 'Focus phase progress is not derived from the timer.');
+assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while the student is working.');
+assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
+assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
+
+assert(onboarding.includes('How much focus fits in a normal day?'), 'Onboarding should ask for one useful setup decision.');
+assert(onboarding.includes('<SpringPressable'), 'Onboarding choices should use shared press motion.');
+assert(onboardingShell.includes('scrollable?: boolean'), 'Onboarding shell needs explicit scroll control.');
+assert(onboardingShell.includes('height < 740'), 'Onboarding shell should adapt to short phones.');
+assert(onboardingShell.includes('<Reveal'), 'Onboarding entrance hierarchy is missing.');
+assert(onboardingShell.includes('<SpringPressable'), 'Onboarding primary action should use shared press motion.');
+assert(authWelcome.includes('scrollable={false}'), 'Welcome must keep both actions in the first viewport.');
+assert(authWelcome.includes('I already use MYELIN'), 'Existing-user path is missing from the welcome screen.');
+assert(!authScaffold.includes('<Reveal'), 'Repeated auth screens should remain motion-quiet.');
+assert(authButton.includes('<SpringPressable'), 'Auth buttons should use shared press motion.');
+assert(!onboarding.includes('AnimatedProgress'), 'One-step onboarding should not show artificial multi-step progress.');
+assert(!onboarding.includes('TopicStep'), 'Onboarding should not require topic creation before entering the app.');
+assert(settings.includes('variant="compact"'), 'Settings should use the compact utility-screen header.');
+assert(settings.includes('sectionSubtitle: { color: colors.muted, fontSize: 12'), 'Settings section descriptions are too small.');
+assert(settings.includes('dataLabel: { color: colors.subtle, fontSize: 10'), 'Settings data labels regressed below the readability floor.');
+assert(settings.includes('accessibilityState={{ expanded: open }}'), 'Settings groups should use progressive disclosure.');
+assert(settings.includes('FadeInDown.duration(motion.stateMs)'), 'Settings disclosures should use shared open-motion timing.');
+assert(settings.includes('FadeOutUp.duration(motion.pressMs + 20)'), 'Settings disclosures should use shared close-motion timing.');
+assert(settings.includes('LinearTransition.duration(motion.stateMs)'), 'Settings layout motion should be theme-driven.');
+assert(settings.includes("label=\"Delete account\""), 'Settings should expose direct account deletion.');
+assert(settings.includes('transferCopy: { flex: 1, minWidth: 0 }'), 'Settings action copy must be constrained so arrows stay inside rows.');
+assert(settings.includes("onBack={() => router.back()}"), 'Settings should behave like a secondary screen.');
+assert(!settings.includes('<AppNav />'), 'Settings should not duplicate top-level navigation.');
+assert(settingsCloud.includes('<AmbientBackdrop />'), 'Cloud sync should use the shared visual shell.');
+assert(!settingsCloud.includes('Delete account & study data'), 'Cloud sync should not duplicate account deletion.');
+assert(settingsCloud.includes('actionCopy: { flex: 1, minWidth: 0 }'), 'Cloud sync action text must stay inside its row.');
+assert(settingsTransfer.includes('<AmbientBackdrop />'), 'Backup & migration should use the shared visual shell.');
+assert(settingsTransfer.includes('chooseCopy: { flex: 1, minWidth: 0 }'), 'Backup chooser text must stay inside its row.');
+assert(settingsTransfer.includes('chooseArrow: { color: colors.accent, fontSize: 20, flexShrink: 0 }'), 'Backup chooser arrow must stay inside its row.');
+assert(settingsReminders.includes('<AmbientBackdrop />'), 'Reminders should use the shared visual shell.');
+assert(settingsReminders.includes('previewButtonCopy: { flex: 1, minWidth: 0 }'), 'Reminder preview copy must stay inside its row.');
+assert(settingsTutorial.includes('Three ideas. About a minute.'), 'Tutorial replay should stay intentionally short.');
+assert(settingsTutorial.includes('signalStage'), 'Tutorial replay should include the MYELIN signal visual.');
+assert(settingsTutorial.includes('withRepeat'), 'Tutorial signal should animate.');
+assert(!settingsTutorial.includes('current.cards'), 'Tutorial replay should not return to dense explanation cards.');
+assert(taskForm.includes('variant="compact"'), 'Task form should use the compact form header.');
+assert(taskForm.includes("chipText: { color: colors.muted, fontSize: 12"), 'Task form chip labels are too small.');
+assert(commitmentForm.includes('variant="compact"'), 'Fixed-time form should use the compact form header.');
+assert(commitmentForm.includes("helper: { color: colors.muted, fontSize: 11.5"), 'Fixed-time helper text is too small.');
+assert(examForm.includes("dateHelp: { color: colors.muted, fontSize: 11.5"), 'Exam date helper is too small.');
+assert(questionForm.includes("label: { color: colors.textDim, fontSize: 12.5"), 'Recall form labels are too small.');
+assert(states.includes('fontSize: 13'), 'Shared state messages should remain readable.');
+
+console.log('Product polish verification passed.');
+
+========== END FILE: scripts/verify-polish.ts ==========
+
+========== BEGIN FILE: scripts/verify-visual-overhaul.ts ==========
+/// <reference types="node" />
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+function read(path: string) {
+  return fs.readFileSync(path, 'utf8');
+}
+
+function main() {
+  const tokens = read('src/theme/tokens.ts');
+  assert.ok(tokens.includes('export const type ='));
+  assert.ok(tokens.includes('export const space ='));
+  assert.ok(tokens.includes('export const motion ='));
+
+  const backdrop = read('src/components/app/AmbientBackdrop.tsx');
+  assert.equal(backdrop.includes('Animated.loop'), false);
+  assert.equal(backdrop.includes('Animated.View'), false);
+  assert.ok(backdrop.includes('orbTop'));
+
+  const reveal = read('src/components/motion/Reveal.tsx');
+  assert.ok(reveal.includes('useReducedMotion'));
+
+  const springPressable = read('src/components/motion/SpringPressable.tsx');
+  assert.ok(springPressable.includes('useReducedMotion'));
+
+  const disclosure = read('src/components/motion/AnimatedDisclosure.tsx');
+  assert.ok(disclosure.includes('FadeInDown.duration(motion.stateMs)'));
+  assert.ok(disclosure.includes('FadeOutUp.duration(motion.pressMs + 20)'));
+  assert.ok(disclosure.includes('useReducedMotion'));
+
+  const motionItem = read('src/components/motion/MotionItem.tsx');
+  assert.ok(motionItem.includes('FadeInDown'));
+  assert.ok(motionItem.includes('FadeOutUp'));
+  assert.ok(motionItem.includes('LinearTransition'));
+  assert.ok(motionItem.includes('useReducedMotion'));
+
+  const progress = read('src/components/motion/AnimatedProgress.tsx');
+  assert.ok(progress.includes('useReducedMotion'));
+
+  const nav = read('src/components/app/AppNav.tsx');
+  assert.ok(nav.includes("label: 'Library'"));
+  assert.ok(nav.includes("router.push('/(app)/quick-add')"));
+  assert.ok(nav.includes('<AppIcon'));
+  assert.ok(nav.includes('addButtonFrame'));
+  assert.equal(nav.includes("key: 'exams'"), false);
+  assert.equal((nav.match(/\{ key: '(today|topics|review|progress)'/g) ?? []).length, 4);
+
+  const header = read('src/components/app/ScreenHeader.tsx');
+  assert.ok(header.includes("variant?: 'hero' | 'standard' | 'compact'"));
+  assert.ok(header.includes('...type.pageTitle'));
+  assert.equal(header.includes('eyebrowPill'), false);
+
+  const quickAdd = read('app/(app)/quick-add.tsx');
+  assert.ok(quickAdd.includes('Add to MYELIN'));
+  assert.ok(quickAdd.includes('title="Topic"'));
+  assert.ok(quickAdd.includes('title="Task"'));
+  assert.ok(quickAdd.includes('title="Exam"'));
+  assert.ok(quickAdd.includes('title="Fixed time"'));
+
+  const topicForm = read('src/features/topics/TopicForm.tsx');
+  assert.ok(topicForm.includes('showAdvanced'));
+  assert.ok(topicForm.includes('More options'));
+  assert.ok(topicForm.indexOf('Topic name') < topicForm.indexOf('More options'));
+  assert.ok(topicForm.indexOf('More options') < topicForm.indexOf('Estimated focused study time'));
+
+  const today = read('app/(app)/today/index.tsx');
+  assert.ok(today.includes('<AmbientBackdrop />'));
+  assert.ok(today.includes('Later today'));
+  assert.ok(today.includes('Adjust today'));
+  assert.ok(today.includes('showAdjust'));
+  assert.ok(today.includes('<AnimatedDisclosure visible={showWhy}'));
+  assert.ok(today.includes('<AnimatedDisclosure visible={showAdjust}'));
+  assert.ok(today.includes('Why this?'));
+  assert.equal(today.includes('TUNE TODAY'), false);
+  assert.equal(today.includes('SummaryMetric'), false);
+  assert.ok(today.indexOf("'NEXT'") < today.indexOf('Later today'));
+
+  for (const path of [
+    'app/(app)/topics/index.tsx',
+    'app/(app)/topics/[topicId]/index.tsx',
+    'app/(app)/progress/index.tsx',
+    'app/(app)/settings/index.tsx',
+    'app/(app)/settings/cloud-sync.tsx',
+    'app/(app)/settings/data-transfer.tsx',
+    'app/(app)/settings/reminders.tsx',
+    'app/(app)/settings/tutorial.tsx',
+  ]) {
+    assert.ok(
+      read(path).includes('<AmbientBackdrop />'),
+      `${path} should use the shared ambient shell.`,
+    );
+  }
+
+  const appLayout = read('app/(app)/_layout.tsx');
+  assert.ok(appLayout.includes('PEER_ROUTE_NAMES.has(route.name)'));
+  assert.ok(appLayout.includes("? 'fade'"));
+  assert.ok(appLayout.includes(": 'fade_from_bottom'"));
+  for (const routeName of [
+    "'today'",
+    "'today/index'",
+    "'topics'",
+    "'topics/index'",
+    "'review'",
+    "'review/index'",
+    "'progress'",
+    "'progress/index'",
+  ]) {
+    assert.ok(appLayout.includes(routeName));
+  }
+
+  const topicsLayout = read('app/(app)/topics/_layout.tsx');
+  assert.ok(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'));
+
+  const topics = read('app/(app)/topics/index.tsx');
+  assert.ok(topics.includes('title="Library"'));
+  assert.ok(topics.includes('showFilters'));
+  assert.ok(topics.includes('<AnimatedDisclosure visible={showFilters}'));
+  assert.ok(topics.includes('ActionRow'));
+  assert.equal(topics.includes('eyebrow="STUDY LIBRARY"'), false);
+
+  const topicCard = read('src/features/topics/TopicCard.tsx');
+  assert.ok(topicCard.includes('<SpringPressable'));
+  assert.ok(topicCard.includes('rightMeta'));
+  assert.equal(topicCard.includes('notes'), false);
+
+  const topicDetail = read('app/(app)/topics/[topicId]/index.tsx');
+  assert.ok(topicDetail.includes('NEXT MOVE'));
+  assert.ok(topicDetail.includes('recommendReview'));
+  assert.ok(topicDetail.includes('showDetails'));
+  assert.ok(topicDetail.includes('Topic details'));
+  assert.ok(topicDetail.indexOf('NEXT MOVE') < topicDetail.indexOf('Topic details'));
+
+  const dayMap = read('app/(app)/today/day-map.tsx');
+  assert.ok(dayMap.includes('TIMELINE'));
+  assert.ok(dayMap.includes('showPlanning'));
+  assert.ok(dayMap.includes('<AnimatedDisclosure visible={showPlanning}>'));
+  assert.ok(dayMap.includes('Planning options'));
+  assert.equal(dayMap.includes('>Flow</Text>'), false);
+
+  const focus = read('app/(app)/focus/index.tsx');
+  assert.ok(focus.includes('<AnimatedProgress'));
+  assert.ok(focus.includes('showParking'));
+  assert.ok(focus.includes('Park a distraction'));
+  assert.equal(focus.includes('<PulseHalo'), false);
+
+  const review = read('app/(app)/review/index.tsx');
+  assert.ok(review.includes('title="Review"'));
+  assert.ok(review.includes('Recall what is due. Corrections stay close.'));
+  assert.ok(review.includes('RECALL BEFORE YOU CHECK'));
+  assert.ok(review.includes('COMPARE, THEN GRADE'));
+  assert.ok(review.includes('<AnimatedProgress'));
+
+  const progressScreen = read('app/(app)/progress/index.tsx');
+  assert.ok(progressScreen.includes('showEvidence'));
+  assert.ok(progressScreen.includes('<AnimatedDisclosure visible={showEvidence}>'));
+  assert.ok(progressScreen.includes('See deeper evidence'));
+  assert.ok(progressScreen.includes('Evidence, not a score'));
+
+  const mistakes = read('app/(app)/mistakes/index.tsx');
+  assert.ok(mistakes.includes('title="Corrections"'));
+  assert.ok(mistakes.includes('showBrowse'));
+  assert.ok(mistakes.includes('<AnimatedDisclosure visible={showBrowse}'));
+  assert.ok(mistakes.includes('Browse corrections'));
+  assert.equal(mistakes.includes('CORRECTION LOOP'), false);
+
+  const exams = read('app/(app)/exams/index.tsx');
+  assert.ok(exams.includes('variant="compact"'));
+  assert.equal(exams.includes('EXAM PRESSURE'), false);
+
+  const retest = read('src/features/mistakes/MistakeRetest.tsx');
+  assert.ok(retest.includes('fontSize: 11'));
+  assert.ok(retest.includes('fontSize: 13'));
+
+  const authIntro = read('app/(auth)/index.tsx');
+  const authAccess = read('app/(auth)/access.tsx');
+  const authScaffold = read('src/components/auth/AuthScaffold.tsx');
+  assert.ok(authIntro.includes('Know what to study'));
+assert.ok(authIntro.includes('OnboardingShell'));
+assert.ok(authIntro.includes('StudyPathVisual'));
+  assert.equal(authIntro.includes('<Signal'), false);
+  assert.equal(authIntro.includes('<LoopStep'), false);
+  assert.ok(authAccess.includes('Continue to MYELIN'));
+  assert.equal(authAccess.includes('PersonalityStep'), false);
+  assert.ok(authScaffold.includes('<AmbientBackdrop />'));
+  assert.equal(authScaffold.includes('<Reveal'), false);
+
+  const onboardingShell = read('src/components/onboarding/OnboardingShell.tsx');
+  assert.ok(onboardingShell.includes('withRepeat'));
+  assert.ok(onboardingShell.includes('useReducedMotion'));
+  assert.ok(onboardingShell.includes('signal.value'));
+
+  const onboardingTransition = read('src/features/onboarding/OnboardingTransitionProvider.tsx');
+  assert.ok(onboardingTransition.includes('transitionPending'));
+  assert.ok(onboardingTransition.includes('await task()'));
+  assert.ok(onboardingTransition.includes('CircleTransitionOverlay'));
+  assert.ok(onboardingTransition.includes('circleProgress'));
+  assert.ok(onboardingTransition.includes('Math.hypot(width, height) * 1.08'));
+  assert.ok(onboardingTransition.includes('[travel, 0, -travel]'));
+  assert.equal(onboardingTransition.includes('scale: interpolate('), false);
+  assert.ok(onboardingTransition.includes('styles.trail'));
+  assert.ok(onboardingTransition.includes('styles.sheen'));
+  assert.ok(onboardingTransition.includes('styles.contourOne'));
+  assert.ok(onboardingTransition.includes('styles.contourTwo'));
+  assert.ok(onboardingTransition.includes('withRepeat('));
+  assert.ok(onboardingTransition.includes('cancelAnimation(fieldPhase)'));
+  assert.ok(onboardingTransition.includes('useSegments()'));
+  assert.ok(onboardingTransition.includes('resolveEntryTransitionDestination'));
+  assert.ok(onboardingTransition.includes('waitForEntryDestination'));
+  assert.ok(onboardingTransition.includes('waitForRouteDestination'));
+  assert.ok(onboardingTransition.includes('transitionSegmentsMatch'));
+  assert.ok(onboardingTransition.includes('router.replace(destination)'));
+  assert.ok(onboardingTransition.includes('STATE_READY_TIMEOUT_MS'));
+  assert.ok(onboardingTransition.includes('ROUTE_READY_TIMEOUT_MS'));
+  assert.equal(onboardingTransition.includes("router.replace('/')"), false);
+  assert.equal(onboardingTransition.includes('notifyTransitionReady'), false);
+  assert.equal(onboardingTransition.includes('armDestinationReady'), false);
+  assert.equal(onboardingTransition.includes('coralSheet'), false);
+  assert.equal(onboardingTransition.includes('darkSheet'), false);
+  assert.equal(onboardingTransition.includes('accentRibbon'), false);
+
+  const rootLayout = read('app/_layout.tsx');
+  assert.ok(rootLayout.includes("animation: 'none'"));
+
+  const todayReady = read('app/(app)/today/index.tsx');
+  assert.equal(todayReady.includes('notifyTransitionReady'), false);
+  assert.equal(todayReady.includes('useFocusEffect'), false);
+
+  const onboarding = read('app/(onboarding)/index.tsx');
+  assert.equal(onboarding.includes('notifyTransitionReady'), false);
+  assert.equal(onboarding.includes('useFocusEffect'), false);
+  assert.ok(onboarding.includes('How much focus fits in a normal day?'));
+assert.ok(onboarding.includes('OnboardingShell'));
+  assert.equal(onboarding.includes('TopicStep'), false);
+  assert.equal(onboarding.includes('AnimatedProgress'), false);
+
+  const tutorialScreen = read('app/(app)/settings/tutorial.tsx');
+  assert.ok(tutorialScreen.includes('Three ideas. About a minute.'));
+  assert.ok(tutorialScreen.includes('signalStage'));
+  assert.ok(tutorialScreen.includes('withRepeat'));
+  assert.equal(tutorialScreen.includes('current.cards'), false);
+
+  const settingsScreen = read('app/(app)/settings/index.tsx');
+  assert.ok(settingsScreen.includes('accessibilityState={{ expanded: open }}'));
+  assert.ok(settingsScreen.includes('FadeInDown.duration(motion.stateMs)'));
+  assert.ok(settingsScreen.includes('label="Delete account"'));
+  assert.equal(settingsScreen.includes('<AppNav />'), false);
+
+  assert.ok(nav.includes('if (active) return;'));
+  assert.equal(nav.includes('pressedMotion'), false);
+
+  console.log('✓ shared semantic design tokens are established');
+  console.log('✓ navigation exposes four real destinations plus a separate Add action');
+  console.log('✓ Quick Add routes capture into the existing study model');
+  console.log('✓ Topic creation is simple by default and progressively discloses power');
+  console.log('✓ Today is decision-first and hides tuning until requested');
+  console.log('✓ Library hides secondary filters until requested');
+  console.log('✓ Review keeps the idle hub simple while active recall stays immersive');
+  console.log('✓ Progress shows action-relevant evidence before deeper calibration');
+  console.log('✓ Focus hides distraction management until requested');
+  console.log('✓ Day Map keeps the timeline primary and planning tools secondary');
+  console.log('✓ Topic detail puts the recommended study action before admin state');
+  console.log('✓ Corrections behaves like a queue instead of a dashboard');
+  console.log('✓ Focus and Recall remain immersive study modes');
+  console.log('✓ the existing product engine remains connected behind the new hierarchy');
+}
+
+main();
+
+========== END FILE: scripts/verify-visual-overhaul.ts ==========
+
+========== BEGIN FILE: scripts/verify-focus.ts ==========
+import './verify-focus-start';
+/// <reference types="node" />
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import ts from 'typescript';
+
+import { migrateAndValidateWorkspace } from '../src/data/migrations';
+import { createFocusWriteQueue } from '../src/features/focus/focus-write-queue';
+import {
+  focusDialMarkPosition,
+  focusDialSize,
+} from '../src/features/focus/focus-dial-layout';
+import { createEmptyWorkspace } from '../src/data/schema';
+import {
+  addParkedDistraction,
+  beginBreak,
+  breakActualMinutes,
+  createFocusSession,
+  extendFiveMinuteLaunch,
+  focusActualMinutes,
+  formatTimer,
+  pauseFocusTimer,
+  removeParkedDistraction,
+  resumeFocusTimer,
+  timerIsComplete,
+  timerRemainingMs,
+} from '../src/features/focus/focus-engine';
+import {
+  FocusKeyValueStore,
+  createFocusStorage,
+} from '../src/features/focus/focus-storage';
+import {
+  POST_FOCUS_RETRIEVAL_LIMIT,
+  buildPostFocusRetrievalSuggestion,
+} from '../src/features/focus/post-focus-retrieval';
+
+const MINUTE = 60_000;
+const now = 1_800_000_000_000;
+
+// Execute the actual screen handler with delayed/rejected storage, rather
+// than treating a legacy handler name as proof of the save-before-route flow.
+async function verifyBreakTransitions() {
+  const screen = fs.readFileSync('app/(app)/focus/index.tsx', 'utf8');
+  const source = ts.createSourceFile('focus.tsx', screen, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let handler: ts.FunctionDeclaration | undefined;
+  function visit(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === 'runBreakTransition') handler = node;
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.ok(handler, 'The Focus screen must have a shared break exit handler.');
+  const executable = ts.transpileModule(handler.getText(source), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
+  }).outputText;
+
+  function simulate(phase = 'break') {
+    const routes: unknown[] = [];
+    const saves: string[] = [];
+    const lock = { current: false };
+    let busy: string | null = null;
+    let error = '';
+    let persist: () => Promise<void> = async () => {};
+    const bindings = {
+      session: { phase },
+      breakTransitionLock: lock,
+      retrievalSuggestion: { topicId: 'topic_light', count: 3 } as { topicId: string; count: number } | null,
+      setBreakTransition: (value: string | null) => { busy = value; },
+      setFocusError: (value: string) => { error = value; },
+      completeBreak: async () => { saves.push('complete'); await persist(); },
+      skipBreak: async () => { saves.push('skip'); await persist(); },
+      router: { replace: (route: unknown) => { routes.push(JSON.parse(JSON.stringify(route))); } },
+      Date: { now: () => now },
+    };
+    const run = vm.runInNewContext(executable + '\nrunBreakTransition;', bindings, { timeout: 1000 }) as
+      (action: 'finish' | 'retrieve' | 'skip') => Promise<void>;
+    return { bindings, routes, saves, lock, run,
+      setPersistence: (next: () => Promise<void>) => { persist = next; },
+      busy: () => busy, error: () => error };
+  }
+
+  const rapid = simulate();
+  let release!: () => void;
+  rapid.setPersistence(() => new Promise<void>(resolve => { release = resolve; }));
+  const first = rapid.run('retrieve');
+  assert.equal(rapid.lock.current, true);
+  assert.equal(rapid.busy(), 'retrieve');
+  assert.deepEqual(rapid.routes, [], 'Do not navigate before break storage succeeds.');
+  await rapid.run('skip');
+  assert.deepEqual(rapid.saves, ['complete'], 'A second rapid exit must not start another save.');
+  rapid.bindings.retrievalSuggestion = { topicId: 'different_topic', count: 1 };
+  release();
+  await first;
+  assert.deepEqual(rapid.routes, [{ pathname: '/(app)/review', params: {
+    topicId: 'topic_light', autoStart: '1', limit: '3', source: 'focus',
+  } }], 'Retrieve the bounded topic captured at the tap, even if the live suggestion changes.');
+  await rapid.run('finish');
+  assert.equal(rapid.routes.length, 1, 'Keep duplicate exits blocked through successful navigation.');
+
+  const retry = simulate();
+  retry.setPersistence(async () => { throw new Error('device storage unavailable'); });
+  await retry.run('finish');
+  assert.deepEqual(retry.routes, [], 'A rejected save must keep the user on Break.');
+  assert.equal(retry.bindings.session.phase, 'break');
+  assert.equal(retry.lock.current, false);
+  assert.equal(retry.busy(), null);
+  assert.match(retry.error(), /could not be saved.*retry/i);
+  retry.setPersistence(async () => {});
+  await retry.run('finish');
+  assert.deepEqual(retry.saves, ['complete', 'complete']);
+  assert.deepEqual(retry.routes, ['/(app)/today']);
+  assert.equal(retry.error(), '', 'A successful retry clears the previous failure.');
+
+  const noRecall = simulate();
+  noRecall.bindings.retrievalSuggestion = null;
+  await noRecall.run('retrieve');
+  assert.deepEqual(noRecall.saves, ['complete']);
+  assert.deepEqual(noRecall.routes, ['/(app)/today']);
+
+  const skip = simulate();
+  skip.setPersistence(() => new Promise<void>(resolve => { release = resolve; }));
+  const skipping = skip.run('skip');
+  assert.deepEqual(skip.saves, ['skip']);
+  assert.deepEqual(skip.routes, []);
+  release();
+  await skipping;
+  assert.deepEqual(skip.routes, ['/(app)/today']);
+
+  const wrongPhase = simulate('focus');
+  await wrongPhase.run('retrieve');
+  assert.deepEqual(wrongPhase.saves, []);
+  assert.deepEqual(wrongPhase.routes, []);
+  console.log('✓ Actual break handler blocks rapid exits, waits for saves, preserves recall and recovers from failure');
+}
+
+class MemoryStore implements FocusKeyValueStore {
+  values = new Map<string, string>();
+
+  async getItem(key: string) {
+    return this.values.get(key) ?? null;
+  }
+
+  async setItem(key: string, value: string) {
+    this.values.set(key, value);
+  }
+
+  async removeItem(key: string) {
+    this.values.delete(key);
+  }
+}
+
+async function main() {
+  let session = createFocusSession({
+    topicId: 'topic_math',
+    topicName: 'Quadratic Equations',
+    subject: 'Mathematics',
+    plannedMinutes: 45,
+    breakMinutes: 10,
+    launchMode: 'full',
+    tinyStep: 'Solve question 1 without notes',
+    now,
+    id: 'focus_test',
+  });
+
+  assert.equal(timerRemainingMs(session, now), 45 * MINUTE);
+  assert.equal(timerRemainingMs(session, now + 10 * MINUTE), 35 * MINUTE);
+
+  // Simulate 90 minutes spent outside the app while Android suspends the
+  // JavaScript interval. The persisted start time, not tick count, determines
+  // the completed display when the screen becomes active again.
+  const backgroundSession = createFocusSession({
+    topicId: 'topic_background',
+    topicName: 'Background timer check',
+    subject: 'Mathematics',
+    plannedMinutes: 25,
+    breakMinutes: 5,
+    launchMode: 'full',
+    tinyStep: '',
+    now,
+    id: 'focus_background',
+  });
+  assert.equal(timerRemainingMs(backgroundSession, now + 90 * MINUTE), 0);
+  assert.equal(timerIsComplete(backgroundSession, now + 90 * MINUTE), true);
+  assert.equal(backgroundSession.runningSince, now, 'Recomputing must not restart or mutate the timer.');
+  const backgroundPaused = pauseFocusTimer(backgroundSession, now + 4 * MINUTE);
+  assert.equal(
+    timerRemainingMs(backgroundPaused, now + 90 * MINUTE),
+    21 * MINUTE,
+    'An intentionally paused timer stays paused even after a long background period.',
+  );
+
+  session = pauseFocusTimer(session, now + 10 * MINUTE);
+  assert.equal(session.runningSince, null);
+  assert.equal(timerRemainingMs(session, now + 25 * MINUTE), 35 * MINUTE);
+
+  session = resumeFocusTimer(session, now + 25 * MINUTE);
+  assert.equal(timerRemainingMs(session, now + 30 * MINUTE), 30 * MINUTE);
+  assert.equal(focusActualMinutes(session, now + 30 * MINUTE), 15);
+
+  session = addParkedDistraction(session, 'Check that message later', now + 31 * MINUTE);
+  assert.equal(session.distractions.length, 1);
+  assert.equal(session.distractions[0]?.text, 'Check that message later');
+  assert.equal(
+    JSON.stringify({
+      plannedMinutes: session.plannedFocusMinutes,
+      tinyStep: session.tinyStep,
+    }).includes('Check that message later'),
+    false,
+    'Distraction text should not be part of permanent study metadata.',
+  );
+
+  const distractionId = session.distractions[0]!.id;
+  session = removeParkedDistraction(session, distractionId);
+  assert.equal(session.distractions.length, 0);
+
+  const standaloneTask = createFocusSession({
+    taskId: 'task_homework',
+    topicName: 'Finish worksheet',
+    subject: 'Mathematics',
+    plannedMinutes: 25,
+    breakMinutes: 8,
+    launchMode: 'full',
+    tinyStep: 'Start question 1',
+    now,
+    id: 'focus_task',
+  });
+  assert.equal(standaloneTask.topicId, undefined);
+  assert.equal(standaloneTask.taskId, 'task_homework');
+
+  const five = createFocusSession({
+    topicId: 'topic_chem',
+    topicName: 'Metals',
+    subject: 'Chemistry',
+    plannedMinutes: 45,
+    breakMinutes: 10,
+    launchMode: 'five-minute',
+    tinyStep: 'Write the reactivity series',
+    now,
+    id: 'focus_five',
+  });
+
+  assert.equal(five.plannedFocusMinutes, 5);
+  assert.equal(timerIsComplete(five, now + 5 * MINUTE), true);
+
+  const extended = extendFiveMinuteLaunch(five, now + 6 * MINUTE);
+  assert.equal(extended.plannedFocusMinutes, 45);
+  assert.equal(timerRemainingMs(extended, now + 6 * MINUTE), 40 * MINUTE);
+  assert.equal(timerIsComplete(extended, now + 45 * MINUTE), false);
+  assert.equal(timerIsComplete(extended, now + 46 * MINUTE), true);
+
+  const finishedFocus = pauseFocusTimer(
+    createFocusSession({
+      topicId: 'topic_bio',
+      topicName: 'Life Processes',
+      subject: 'Biology',
+      plannedMinutes: 25,
+      breakMinutes: 8,
+      launchMode: 'full',
+      tinyStep: '',
+      now,
+      id: 'focus_bio',
+    }),
+    now + 18 * MINUTE,
+  );
+
+  assert.equal(focusActualMinutes(finishedFocus, now + 30 * MINUTE), 18);
+
+  const onBreak = beginBreak(finishedFocus, 18, now + 20 * MINUTE);
+  assert.equal(onBreak.phase, 'break');
+  assert.equal(onBreak.focusLogged, true);
+  assert.equal(onBreak.focusActualMinutes, 18);
+  assert.equal(breakActualMinutes(onBreak, now + 24 * MINUTE), 4);
+
+  assert.equal(formatTimer(65_000), '01:05');
+  assert.equal(formatTimer(0), '00:00');
+
+  // Compact layouts must not crop progress marks, while standard phones
+  // retain the existing 228dp dial. Both stages use the same sizing.
+  assert.equal(focusDialSize(360, 24), 228);
+  assert.equal(focusDialSize(280, 24), 208);
+  assert.equal(focusDialSize(240, 24), 168);
+  assert.equal(focusDialSize(200, 24), 128);
+  for (const width of [200, 216, 240, 280, 360, 480]) {
+    const size = focusDialSize(width, 24);
+    assert.ok(size + 20 <= width - 48, 'Dial and outer ring must fit inside screen padding.');
+    for (const index of [0, 10, 20, 30, 39]) {
+      const { left, top } = focusDialMarkPosition(size, index);
+      assert.ok(left >= 0 && top >= 0 && left + 3 <= size && top + 9 <= size,
+        'Circular progress marks must fit within the measured dial.');
+    }
+  }
+
+  const memory = new MemoryStore();
+  const storage = createFocusStorage(memory);
+
+  await storage.save('user:A', five);
+  assert.equal((await storage.load('user:A'))?.topicId, 'topic_chem');
+  await storage.save('user:TASK', standaloneTask);
+  const restoredTask = await storage.load('user:TASK');
+  assert.equal(restoredTask?.taskId, 'task_homework');
+  assert.equal(restoredTask?.topicId, undefined);
+  assert.equal(await storage.load('user:B'), null, 'Active focus state must be isolated by owner.');
+
+  const restored = await storage.load('user:A');
+  assert.ok(restored);
+  assert.equal(
+    timerRemainingMs(restored!, now + 3 * MINUTE),
+    2 * MINUTE,
+    'Timestamp-based timer should recover after the app was not running.',
+  );
+
+  await storage.clear('user:A');
+  assert.equal(await storage.load('user:A'), null);
+
+  await memory.setItem(
+    '@myelin/native/focus/user%3AA',
+    JSON.stringify({ format: 'wrong', version: 1 }),
+  );
+  assert.equal(await storage.load('user:A'), null, 'Invalid active-session data should be discarded safely.');
+
+  // Storage write errors must reach the caller, but must never poison
+  // future recovery saves or allow later writes to race ahead.
+  const persisted: Array<{ owner: string; id: string | null }> = [];
+  let failNext = true;
+  const durableQueue = createFocusWriteQueue<typeof five>(async (owner, next) => {
+    if (failNext) {
+      failNext = false;
+      throw new Error('simulated AsyncStorage disk write failure');
+    }
+    persisted.push({ owner, id: next?.id ?? null });
+  });
+  await assert.rejects(
+    durableQueue.write('user:retry', five),
+    /simulated AsyncStorage disk write failure/,
+    'Focus writes must not silently swallow device storage errors',
+  );
+  await durableQueue.write('user:retry', five);
+  await durableQueue.write('user:retry', null);
+  assert.deepEqual(persisted, [
+    { owner: 'user:retry', id: 'focus_five' },
+    { owner: 'user:retry', id: null },
+  ], 'Retry and clear must both succeed after a previous write failure');
+
+  let settle!: () => void;
+  const gate = new Promise<void>(resolve => { settle = resolve; });
+  let markStarted!: () => void;
+  const started = new Promise<void>(resolve => { markStarted = resolve; });
+  const order: string[] = [];
+  const serial = createFocusWriteQueue<typeof five>(async (owner, next) => {
+    order.push('start-' + (next?.id ?? 'clear'));
+    if (next) {
+      markStarted();
+      await gate;
+    }
+    order.push('finish-' + (next?.id ?? 'clear'));
+  });
+  const pendingSave = serial.write('user:A', five);
+  const pendingClear = serial.write('user:A', null);
+  await started;
+  assert.deepEqual(order, ['start-focus_five'], 'Queued clear cannot overtake active save');
+  settle();
+  await Promise.all([pendingSave, pendingClear]);
+  assert.deepEqual(order, [
+    'start-focus_five', 'finish-focus_five', 'start-clear', 'finish-clear',
+  ], 'Focus persistence must retain queued write ordering');
+
+  const workspace = createEmptyWorkspace(now);
+  workspace.topics.push({
+    id: 'topic_math',
+    name: 'Quadratic Equations',
+    subject: 'Mathematics',
+    createdAt: now,
+    status: 'learning',
+    priority: 2,
+    estimate: 45,
+    notes: '',
+    dueAt: 0,
+    intervalDays: 0,
+    lastGrade: 0,
+    lastReviewed: 0,
+    snoozeUntil: 0,
+    cards: [],
+  });
+
+  workspace.history.push({
+    id: 'session_focus',
+    topicId: 'topic_math',
+    at: now + 45 * MINUTE,
+    kind: 'study',
+    minutes: 38,
+    grade: 0,
+    effort: 4,
+    prompt: '',
+    response: '',
+    confidence: 'unsure',
+    plannedMinutes: 45,
+    startedAt: now,
+    endedAt: now + 38 * MINUTE,
+    launchMode: 'five-minute',
+    tinyStep: 'Start with question 1',
+  });
+
+  const retrievalWorkspace = createEmptyWorkspace(now);
+  retrievalWorkspace.topics.push({
+    id: 'retrieve_topic',
+    name: 'Light',
+    subject: 'Physics',
+    createdAt: now,
+    status: 'learning',
+    priority: 2,
+    estimate: 45,
+    notes: '',
+    dueAt: 0,
+    intervalDays: 0,
+    lastGrade: 0,
+    lastReviewed: 0,
+    snoozeUntil: 0,
+    cards: [
+      {
+        id: 'ready_1',
+        prompt: 'What is refraction?',
+        answer: 'Change in direction of light.',
+        hint: '',
+        dueAt: 0,
+        intervalDays: 0,
+        lastGrade: 0,
+        lastReviewed: 0,
+        reps: 0,
+      },
+      {
+        id: 'ready_2',
+        prompt: 'State Snell law.',
+        answer: 'Ratio of sines is constant.',
+        hint: '',
+        dueAt: now - MINUTE,
+        intervalDays: 1,
+        lastGrade: 2,
+        lastReviewed: now - 24 * 60 * MINUTE,
+        reps: 1,
+      },
+      {
+        id: 'ready_3',
+        prompt: 'Define refractive index.',
+        answer: 'Ratio of speeds.',
+        hint: '',
+        dueAt: now - MINUTE,
+        intervalDays: 1,
+        lastGrade: 2,
+        lastReviewed: now - 24 * 60 * MINUTE,
+        reps: 1,
+      },
+      {
+        id: 'ready_4',
+        prompt: 'Why does light bend?',
+        answer: 'Its speed changes between media.',
+        hint: '',
+        dueAt: now - MINUTE,
+        intervalDays: 1,
+        lastGrade: 2,
+        lastReviewed: now - 24 * 60 * MINUTE,
+        reps: 1,
+      },
+      {
+        id: 'future',
+        prompt: 'Future spaced card.',
+        answer: 'Do not force this early.',
+        hint: '',
+        dueAt: now + 5 * 24 * 60 * MINUTE,
+        intervalDays: 5,
+        lastGrade: 3,
+        lastReviewed: now,
+        reps: 3,
+      },
+    ],
+  });
+
+  const retrieval = buildPostFocusRetrievalSuggestion(
+    retrievalWorkspace,
+    'retrieve_topic',
+    25,
+    now,
+  );
+  assert.ok(retrieval);
+  assert.equal(retrieval!.count, POST_FOCUS_RETRIEVAL_LIMIT);
+  assert.equal(retrieval!.cardIds.length, 3);
+  assert.equal(
+    retrieval!.cardIds.includes('future'),
+    false,
+    'Post-focus retrieval must not pull future spaced cards forward.',
+  );
+  assert.equal(
+    buildPostFocusRetrievalSuggestion(
+      retrievalWorkspace,
+      'retrieve_topic',
+      4,
+      now,
+    ),
+    null,
+    'Tiny accidental focus should not trigger a retrieval handoff.',
+  );
+  assert.equal(
+    buildPostFocusRetrievalSuggestion(
+      retrievalWorkspace,
+      'missing_topic',
+      25,
+      now,
+    ),
+    null,
+  );
+
+  const validated = migrateAndValidateWorkspace(workspace);
+  const history = validated.history[0]!;
+  assert.equal(history.plannedMinutes, 45);
+  assert.equal(history.minutes, 38);
+  assert.equal(history.tinyStep, 'Start with question 1');
+
+  await verifyBreakTransitions();
+
+  console.log('✓ absolute timestamps survive background/app close');
+  console.log('✓ pause and resume preserve elapsed time');
+  console.log('✓ five-minute launch can extend into the full block');
+  console.log('✓ distraction parking stays in active-session state');
+  console.log('✓ break timing and partial duration are measurable');
+  console.log('✓ standalone task timers persist without a fake Topic');
+  console.log('✓ active sessions are isolated per workspace owner');
+  console.log('✓ invalid active-session state fails safely');
+  console.log('✓ planned-vs-actual focus metadata survives workspace validation');
+  console.log('✓ post-focus retrieval is capped, due-only and skipped for tiny/no-topic focus');
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+
+const focusProviderSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/focus/FocusProvider.tsx'),
+  'utf8',
+);
+assert.ok(
+  focusProviderSource.includes('await waitForSaves();'),
+  'Focus completion must persist workspace history before advancing recovery state.',
+);
+
+
+const focusProviderIdempotencySource = fs.readFileSync(
+  path.join(process.cwd(), 'src/features/focus/FocusProvider.tsx'),
+  'utf8',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('historyId(current.id)'),
+  'Focus history should use a stable ID so a save retry cannot duplicate the session.',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('draft.history.some((entry) => entry.id === stableHistoryId)'),
+  'Focus completion should detect an already-applied in-memory history record.',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('task.lastFocusSessionId === current.id') &&
+    focusProviderIdempotencySource.includes('task.lastFocusSessionId = current.id'),
+  'Standalone task focus completion should be idempotent across recovery retries.',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('task.focusMinutesForDay') &&
+    focusProviderIdempotencySource.includes('task.focusDayKey'),
+  'Standalone task focus should contribute to daily capacity accounting.',
+);
+assert.ok(
+  focusProviderIdempotencySource.includes('const stableBreakAt = current.phaseStartedAt'),
+  'Break logging should use a stable timestamp so retries remain idempotent.',
+);
+
+const focusScreenSource = fs.readFileSync(
+  path.join(process.cwd(), 'app/(app)/focus/index.tsx'),
+  'utf8',
+);
+
+assert.ok(
+  focusProviderSource.includes('await saveQueue.current.write(owner, next)') &&
+    focusProviderSource.includes('sessionRef.current = previous') &&
+    focusProviderSource.includes('setSaveError(') &&
+    focusProviderSource.includes('throw error;'),
+  'A focus state should roll back and show a warning rather than claim an unsaved timer is durable.',
+);
+assert.ok(
+  focusProviderSource.includes('await commitSession(addParkedDistraction(current, text))'),
+  'Parking a distraction must report save failure before the input text is removed.',
+);
+assert.ok(
+  focusScreenSource.includes('The thought could not be saved. Your text is still here') &&
+    focusScreenSource.indexOf('await park(value)') < focusScreenSource.indexOf("setDistraction('');") &&
+    focusScreenSource.includes('Could not save the Focus session.') &&
+    focusScreenSource.includes('Break progress could not be saved.') &&
+    focusScreenSource.includes('Could not clear this session.') &&
+    focusScreenSource.includes('accessibilityRole="alert"'),
+  'Focus must keep unsaved thought text and show actionable storage errors without navigating away.',
+);
+
+// A single hard-coded title offset makes Focus/Break headers overlap status
+// labels on narrow Android screens. Keep navigation truthful by destination.
+assert.ok(
+  focusScreenSource.includes("backLabel = 'Today'") &&
+    focusScreenSource.includes('backLabel="Review"') &&
+    focusScreenSource.includes('backLabel="Back"') &&
+    focusScreenSource.includes("accessibilityLabel={backLabel === 'Back' ? 'Go back' : 'Back to ' + backLabel}"),
+  'Focus back actions must accurately describe Today, Review, and previous-screen destinations.',
+);
+assert.ok(
+  focusScreenSource.includes('<View style={styles.topBarMain}>') &&
+    focusScreenSource.includes('styles.backButton') &&
+    focusScreenSource.includes('<View style={styles.topBarSpacer} accessible={false} />') &&
+    focusScreenSource.includes('{helper ? <Text style={styles.topHelper}>{helper}</Text> : null}') &&
+    focusScreenSource.includes('numberOfLines={1}>{label}</Text>') &&
+    !focusScreenSource.includes('translateX: -24') &&
+    !focusScreenSource.includes("position: 'absolute',\n    left: '50%'"),
+  'Focus navigation must use symmetric flexible header columns instead of an absolute title offset.',
+);
+const headerStyleStart = focusScreenSource.indexOf('  backButton: {');
+const headerStyleEnd = focusScreenSource.indexOf('\n  back:', headerStyleStart);
+assert.ok(
+  headerStyleStart > 0 &&
+    focusScreenSource.slice(headerStyleStart, headerStyleEnd).includes('minHeight: layout.minTouch'),
+  'Focus back control must meet the minimum touch target height.',
+);
+console.log('✓ Focus header is responsive with accurate back labels and accessible touch targets');
+
+// Resume after background and navigation returns must refresh only the
+// displayed clock. Never auto-resume a paused session or change saved minutes.
+assert.ok(
+  focusScreenSource.includes('AppState.addEventListener(\'change\'') &&
+    focusScreenSource.includes("nextState === 'active'") &&
+    focusScreenSource.includes('if (active) setNow(Date.now())') &&
+    focusScreenSource.includes('return () => listener.remove();'),
+  'Android foreground must update the Focus clock immediately and clean its listener.',
+);
+assert.ok(
+  focusScreenSource.includes('useFocusEffect(useCallback(() => {') &&
+    focusScreenSource.includes('setNow(Date.now());') &&
+    focusScreenSource.includes('if (session?.runningSince == null || !appIsActive) return;') &&
+    focusScreenSource.includes('clearInterval(timer)'),
+  'Navigation focus must recompute wall time and backgrounded screens must stop interval updates.',
+);
+assert.ok(
+  !focusScreenSource.includes('resumeFocusTimer(') &&
+    !focusScreenSource.includes('beginBreak(session,') &&
+    !focusScreenSource.includes("AppState.addEventListener('change', resume"),
+  'App foreground should never silently resume a paused focus session or advance to break.',
+);
+console.log('✓ Focus foreground/route return refreshes the display without mutating the session');
+
+// Break completion must be a single durable save-and-navigate operation.
+// Rapid taps on Retrieve/Finish/End may otherwise trigger two saves and two
+// different router replacements before React disables either button.
+const breakExitStart = focusScreenSource.indexOf("  async function runBreakTransition(");
+const breakExitEnd = focusScreenSource.indexOf("\n  if (!ready || !workspace)", breakExitStart);
+assert.ok(breakExitStart > 0 && breakExitEnd > breakExitStart, 'Expected shared break completion handler.');
+const breakExit = focusScreenSource.slice(breakExitStart, breakExitEnd);
+assert.ok(
+  breakExit.includes("if (breakTransitionLock.current || session?.phase !== 'break') return;") &&
+    breakExit.includes('breakTransitionLock.current = true;') &&
+    breakExit.includes('setBreakTransition(action);') &&
+    breakExit.indexOf('breakTransitionLock.current = true;') < breakExit.indexOf('await completeBreak(Date.now());'),
+  'Break transition must synchronously block repeat presses before awaiting storage.',
+);
+assert.ok(
+  breakExit.includes("const suggestion = action === 'retrieve' ? retrievalSuggestion : null;") &&
+    breakExit.includes("if (action === 'skip')") &&
+    breakExit.includes('await skipBreak(Date.now());') &&
+    breakExit.includes('await completeBreak(Date.now());') &&
+    breakExit.indexOf('await completeBreak(Date.now());') < breakExit.indexOf("router.replace({") &&
+    breakExit.indexOf('await skipBreak(Date.now());') < breakExit.indexOf("router.replace('/(app)/today');"),
+  'Break completion must save before routing and only retrieve when a matching queue exists.',
+);
+assert.ok(
+  breakExit.includes('breakTransitionLock.current = false;') &&
+    breakExit.includes('setBreakTransition(null);') &&
+    breakExit.includes('Break progress could not be saved. Stay here and retry.'),
+  'Break transition failure must re-enable actions, preserve screen, and report a retryable error.',
+);
+const breakUi = focusScreenSource.slice(
+  focusScreenSource.indexOf("  if (session.phase === 'break') {"),
+  focusScreenSource.indexOf("  const canExtend =", focusScreenSource.indexOf("  if (session.phase === 'break') {")),
+);
+assert.ok(
+  breakUi.includes('session.focusLogged ? (') &&
+    breakUi.includes('Focus logged · {session.focusActualMinutes} min') &&
+    breakUi.includes('styles.focusSavedCue'),
+  'After a successful durable completion, the Break stage should confirm logged minutes.',
+);
+assert.equal(
+  (breakUi.match(/disabled={Boolean\(breakTransition\)}/g) ?? []).length,
+  4,
+  'Retrieve, finish-without-recall, finish, and end-break controls must all disable during save.',
+);
+assert.ok(
+  breakUi.includes("runBreakTransition('retrieve')") &&
+    breakUi.includes("runBreakTransition('finish')") &&
+    breakUi.includes("runBreakTransition('skip')") &&
+    breakUi.includes('Saving break…') &&
+    !focusScreenSource.includes('async function finishBreakAndRetrieve()'),
+  'All break exits should share one busy/error/navigation flow, without the prior separate handlers.',
+);
+console.log('✓ Focus-to-Break confirms saved work and break exits are single-flight, retryable transitions');
+
+// Focus/Break timer UI should respond to narrower devices, including the
+// circular marks and the main time label. Effort chips need usable tap height.
+assert.ok(
+  focusScreenSource.includes('useWindowDimensions') &&
+    focusScreenSource.includes('focusDialSize(windowWidth, spacing.lg)') &&
+    focusScreenSource.includes('focusDialMarkPosition(size, index)') &&
+    (focusScreenSource.match(/size={timerDialSize}/g) ?? []).length === 2 &&
+    focusScreenSource.includes('width: size, height: size, borderRadius: size / 2') &&
+    focusScreenSource.includes('width: innerSize, height: innerSize, borderRadius: innerSize / 2'),
+  'Focus and Break dial must size both the ring and tick marks from available screen width.',
+);
+assert.ok(
+  focusScreenSource.includes('adjustsFontSizeToFit') &&
+    focusScreenSource.includes('minimumFontScale={0.64}') &&
+    focusScreenSource.includes('size < 196 && styles.timerValueCompact') &&
+    focusScreenSource.includes('size < 160 && styles.timerValueTiny') &&
+    focusScreenSource.includes('timerValueTiny: { fontSize: 27, lineHeight: 34') &&
+    focusScreenSource.includes('numberOfLines={2} style={styles.timerLabel}'),
+  'Timer value and caption should remain legible in the smaller dial.',
+);
+const effortStyleStart = focusScreenSource.indexOf('  effort: {');
+const effortStyleEnd = focusScreenSource.indexOf('\n  effortActive:', effortStyleStart);
+assert.ok(
+  effortStyleStart > 0 &&
+    focusScreenSource.slice(effortStyleStart, effortStyleEnd).includes('minHeight: layout.minTouch'),
+  'Focus effort rating chips must meet MYELIN minimum touch target height.',
+);
+console.log('✓ Focus dial adapts to narrow screens with accessible effort controls');
+
+const reviewScreenSource = fs.readFileSync(
+  path.join(process.cwd(), 'app/(app)/review/index.tsx'),
+  'utf8',
+);
+assert.ok(
+  breakExit.includes("pathname: '/(app)/review'") &&
+    breakExit.includes('topicId: suggestion.topicId') &&
+    breakExit.includes('limit: String(suggestion.count)') &&
+    breakExit.includes("autoStart: '1'") &&
+    breakExit.includes("source: 'focus'"),
+  'Focus must finish the break before handing a useful topic into short retrieval.',
+);
+assert.ok(
+  focusScreenSource.includes('Finish break without recall'),
+  'Post-focus retrieval must stay optional.',
+);
+assert.ok(
+  reviewScreenSource.includes('autoStartRequested') &&
+    reviewScreenSource.includes('requestedLimit') &&
+    reviewScreenSource.includes('limit: requestedLimit'),
+  'Review must auto-start only the bounded post-focus topic queue.',
+);
+assert.ok(
+  reviewScreenSource.includes('if (fromFocus)') &&
+    reviewScreenSource.includes("router.replace('/(app)/today')"),
+  'Completing post-focus retrieval must return to Today so Mileage can recalculate.',
+);
+
+========== END FILE: scripts/verify-focus.ts ==========
+
+========== BEGIN FILE: src/features/guides/useFocusGuide.ts ==========
+import { useMemo, useRef } from 'react';
+import { View } from 'react-native';
+import { FocusGuideState, focusGuideSteps } from './guide-registry';
+import { useScreenGuide } from './useScreenGuide';
+
+export function useFocusGuide(ready: boolean, ownerKey: string | null, state: FocusGuideState) {
+  const primary = useRef<View>(null);
+  const secondary = useRef<View>(null);
+  const support = useRef<View>(null);
+  const anchors = useMemo(() => ({ 'focus.primary': primary, 'focus.secondary': secondary, 'focus.support': support }), []);
+  const steps = useMemo(() => focusGuideSteps(state), [state]);
+  return useScreenGuide(ready, ownerKey, 'focus', anchors, steps);
+}
+
+========== END FILE: src/features/guides/useFocusGuide.ts ==========
+
+========== BEGIN FILE: src/features/guides/useScreenGuide.ts ==========
+import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { Keyboard, ScrollView, View } from 'react-native';
+import { useNavigation, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import type { NavigationProp } from 'expo-router/react-navigation';
+import { GuideStep, TutorialAnchor, TutorialId } from './guide-registry';
+import { measureGuideView } from './measure-guide-view';
+
+/** A virtualized list can provide the same measured viewport/offset behavior. */
+export type GuideScrollAdapter = {
+  measureNode: () => Pick<View, 'measureInWindow'> | null;
+  scrollTo: (y: number) => void;
+};
+
+/** Shared presentation state only: never starts, pauses or completes study sessions. */
+export function useScreenGuide<A extends TutorialAnchor>(ready: boolean, ownerKey: string | null,
+  tutorialId: TutorialId, anchors: Record<A, RefObject<View | null>>, steps: readonly GuideStep<A>[],
+  scrollAdapter?: GuideScrollAdapter) {
+  const navigation = useNavigation<NavigationProp<Record<string, { guide?: string | string[] }>>>();
+  const { guide: guideParam } = useLocalSearchParams<{ guide?: string | string[] }>();
+  const guide = Array.isArray(guideParam) ? guideParam[0] : guideParam;
+  const [open, setOpen] = useState(false);
+  const openRef = useRef(false);
+  const scroll = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  const originalOffset = useRef(0);
+  const start = useCallback(() => {
+    if (openRef.current || !ready) return;
+    Keyboard.dismiss();
+    originalOffset.current = offset.current;
+    openRef.current = true;
+    setOpen(true);
+  }, [ready]);
+  const close = useCallback(() => {
+    if (!openRef.current) return;
+    openRef.current = false;
+    setOpen(false);
+    if (scrollAdapter) scrollAdapter.scrollTo(originalOffset.current);
+    else scroll.current?.scrollTo({ y: originalOffset.current, animated: false });
+  }, [scrollAdapter]);
+  useFocusEffect(useCallback(() => () => close(), [close]));
+  useEffect(() => { close(); }, [ownerKey, close]);
+  useEffect(() => {
+    if (!ready) { close(); return; }
+    if (guide === tutorialId) {
+      // Consume on this screen, including inside a nested Library stack.
+      navigation.setParams({ guide: undefined });
+      start();
+    }
+  }, [guide, ready, close, start, tutorialId, navigation]);
+
+  const revealAnchor = useCallback(async (anchor: A, shouldContinue: () => boolean = () => true) => {
+    const [target, viewport] = await Promise.all([
+      measureGuideView(anchors[anchor].current), measureGuideView(scrollAdapter ? scrollAdapter.measureNode() : scroll.current?.getNativeScrollRef() ?? null),
+    ]);
+    if (!openRef.current || !shouldContinue() || !target || !viewport) return;
+    // Scrolling is immediate even when motion is enabled: the spotlight never chases a moving target.
+    const y = Math.max(0, offset.current + target.y - viewport.y - 16);
+    if (scrollAdapter) scrollAdapter.scrollTo(y);
+    else scroll.current?.scrollTo({ y, animated: false });
+    await new Promise<void>(resolve => setTimeout(resolve, 100));
+  }, [anchors, scrollAdapter]);
+
+  return { open, start, close, anchors, steps, scroll, offset, revealAnchor };
+}
+
+========== END FILE: src/features/guides/useScreenGuide.ts ==========
+
+========== BEGIN FILE: src/features/guides/guide-registry.ts ==========
+/** Shared, local product knowledge. Only advertise actions that exist in the app. */
+export type GuideRoute =
+  | '/(app)/today' | '/(app)/focus' | '/(app)/review' | '/(app)/progress'
+  | '/(app)/today/day-map' | '/(app)/mistakes' | '/(app)/settings'
+  | '/(app)/settings/reminders' | '/(app)/topics';
+export type TutorialId = 'today' | 'focus' | 'review' | 'progress' | 'library';
+export type TodayAnchor = 'today.next' | 'today.adjust' | 'today.day-map';
+export type FocusAnchor = 'focus.primary' | 'focus.secondary' | 'focus.support';
+export type ReviewAnchor = 'review.primary' | 'review.secondary' | 'review.support';
+export type ProgressAnchor = 'progress.map' | 'progress.practice' | 'progress.evidence';
+export type LibraryAnchor = 'library.search' | 'library.filters' | 'library.results';
+export type TutorialAnchor = TodayAnchor | FocusAnchor | ReviewAnchor | ProgressAnchor | LibraryAnchor;
+export type GuideAction =
+  | { type: 'navigate'; route: GuideRoute }
+  | { type: 'startTutorial'; tutorialId: TutorialId };
+export type FeatureGuide = {
+  id: string;
+  name: string;
+  description: string;
+  route: GuideRoute;
+  searchTerms: readonly string[];
+  helpSteps: readonly string[];
+  exampleQuery?: string;
+  anchors: readonly TutorialAnchor[];
+  supportedActions: readonly GuideAction[];
+};
+
+export const FEATURE_GUIDES = [
+  {
+    id: 'today', name: 'Today', route: '/(app)/today',
+    description: 'Choose one useful next action using your available time, deadlines, exams and recall history. Adjust the plan when your day changes.',
+    helpSteps: [
+      "Open Today and look at the NEXT card. Resume an active Focus or Review session if one is already running.",
+      "Use Why this? to understand the recommendation, or Adjust to change available time and energy.",
+      "Start from the card when ready. Not now moves the recommendation out of today; Undo restores its previous plan.",
+    ],
+    searchTerms: ['what should I do now', 'recommendation', 'why this', 'start studying', 'plan'],
+    anchors: ['today.next', 'today.adjust', 'today.day-map'],
+    supportedActions: [{ type: 'navigate', route: '/(app)/today' }, { type: 'startTutorial', tutorialId: 'today' }],
+  },
+  {
+    id: 'focus', name: 'Focus', route: '/(app)/focus',
+    description: 'Start from an open task or topic. Choose a timer or a five-minute launch, park distracting thoughts, then save your effort and take a break.',
+    helpSteps: [
+      "On Today, tap Focus on an open task card, or open a topic in Library and start Focus there.",
+      "Choose your block length and an optional first tiny step. Tap Start focus or Five-minute launch.",
+      "If a session is already active, resume it. Opening Focus from Help does not start a timer.",
+    ],
+    exampleQuery: "How do I start focus?",
+    searchTerms: ['how do I start focus', 'timer', 'five minutes', 'tiny step', 'distraction', 'break', 'effort'],
+    anchors: ['focus.primary', 'focus.secondary', 'focus.support'], supportedActions: [{ type: 'navigate', route: '/(app)/focus' }, { type: 'startTutorial', tutorialId: 'focus' }],
+  },
+  {
+    id: 'review', name: 'Review', route: '/(app)/review',
+    description: 'Attempt a saved question before revealing its reference answer. Grade your recall to help schedule the next review.',
+    helpSteps: [
+      "Open Review and choose a recall queue from your saved questions.",
+      "Try answering before revealing the reference answer. Record how confident you feel.",
+      "Compare your answer and choose Again, Practising or Good. Your result helps schedule the next review.",
+    ],
+    searchTerms: ['recall', 'retrieve', 'again', 'practising', 'good', 'question', 'answer', 'hint', 'memory'],
+    anchors: ['review.primary', 'review.secondary', 'review.support'], supportedActions: [{ type: 'navigate', route: '/(app)/review' }, { type: 'startTutorial', tutorialId: 'review' }],
+  },
+  {
+    id: 'confidence', name: 'Recall confidence', route: '/(app)/review',
+    description: 'Unsure means mostly guessing; Partly sure means some gaps; Sure means confident recall. Choose before checking. Confidence and correctness are recorded separately.',
+    helpSteps: [
+      "Choose confidence before checking the reference answer: Unsure = mostly guessing; Partly sure = some gaps; Sure = confident recall.",
+      "After checking, grade how well you recalled the answer. Being confident is different from being correct.",
+      "Progress can suggest practice for confident mistakes and answers you knew but doubted.",
+    ],
+    exampleQuery: "What does unsure mean?",
+    searchTerms: ['what does unsure mean', 'confidence', 'partly sure', 'sure', 'guessing', 'correctness'],
+    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/review' }],
+  },
+  {
+    id: 'tasks', name: 'Tasks and postponement', route: '/(app)/today',
+    description: 'Use Schedule in Today’s Tasks to choose when to study. Not now defers the recommended item until tomorrow without changing its deadline.',
+    helpSteps: [
+      "On Today, open Tasks, find the task, and tap Schedule.",
+      "Choose a suggested slot tomorrow, or enter tomorrow’s date and a time, then tap Schedule this task.",
+      "For the recommended item, Not now defers it until tomorrow with Undo available. This does not reserve a time or change its deadline. The Tomorrow chip in the task form changes the deadline, not the study schedule.",
+    ],
+    exampleQuery: "How do I move this to tomorrow?",
+    searchTerms: ['how do I move this to tomorrow', 'not now', 'postpone', 'reschedule', 'undo', 'overdue', 'tasks', 'tomorrow', 'move task', 'deadline', 'due date'],
+    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/today' }],
+  },
+  {
+    id: 'day-map', name: 'Day Map', route: '/(app)/today/day-map',
+    description: 'See fixed commitments and study blocks, find an open slot, or reschedule work. Sleep protection and available study capacity constrain suggested slots.',
+    helpSteps: [
+      "Open Day Map from Today to see commitments and scheduled study.",
+      "Use the scheduling controls to find an open study slot or move work. Suggestions respect available capacity and sleep protection.",
+    ],
+    searchTerms: ['where can my study fit', 'find study time', 'schedule', 'fixed time', 'recurring', 'skip one day', 'move'],
+    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/today/day-map' }],
+  },
+  {
+    id: 'mistakes', name: 'Mistakes', route: '/(app)/mistakes',
+    description: 'Keep corrections and retest them. Failed recall attempts with a saved reference answer can create a correction to revisit.',
+    helpSteps: [
+      "Open Mistakes to see corrections that need another attempt.",
+      "Use Retest for due corrections. Open Browse corrections to search or switch between due, open and resolved items.",
+      "If the notebook is empty, add a correction or save one after a failed recall attempt with a reference answer.",
+    ],
+    exampleQuery: "Where are my mistakes?",
+    searchTerms: ['where are my mistakes', 'correction', 'wrong answer', 'retest', 'notebook'],
+    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/mistakes' }],
+  },
+  {
+    id: 'progress', name: 'Progress and Neural Map', route: '/(app)/progress',
+    description: 'Find useful next steps from recall evidence and confidence mismatches. The Neural Map visualizes earned unhinted Good recalls; it does not measure your brain.',
+    helpSteps: [
+      "Open Progress for the next useful practice suggested by your recall evidence.",
+      "Use an insight’s practice action to review its questions, including confidence mismatches.",
+      "The Neural Map reflects recorded unhinted Good recalls. It is a visual metaphor, not a measurement of your brain.",
+    ],
+    searchTerms: ['progress', 'insights', 'neural map', 'evidence', 'milestone', 'confident mistake', 'retention'],
+    anchors: ['progress.map', 'progress.practice', 'progress.evidence'], supportedActions: [{ type: 'navigate', route: '/(app)/progress' }, { type: 'startTutorial', tutorialId: 'progress' }],
+  },
+  {
+    id: 'library', name: 'Library', route: '/(app)/topics',
+    description: 'Find your saved topics, notes and questions. Narrow by subject or topic status, then open a topic to edit material, Focus or practise.',
+    helpSteps: [
+      'Open Library. Search matches topic names, subjects, notes and saved question text, answers and hints.',
+      'Use Filters to narrow by topic status or subject. The result count and active filters stay visible; Clear all restores the whole Library.',
+      'Open a topic for its saved material and study actions, or use Add your first topic when Library is empty. Opening a guide never creates material or starts practice.',
+    ],
+    searchTerms: ['library', 'topics', 'find topic', 'search notes', 'search questions', 'subject filter', 'topic status', 'add topic'],
+    anchors: ['library.search', 'library.filters', 'library.results'],
+    supportedActions: [{ type: 'navigate', route: '/(app)/topics' }, { type: 'startTutorial', tutorialId: 'library' }],
+  },
+  {
+    id: 'reminders', name: 'Reminder Studio', route: '/(app)/settings/reminders',
+    description: 'Opt into local reminders and choose their voice, detail, timing and quiet hours. Sleep protection also applies.',
+    helpSteps: [
+      "Open Reminder Studio from Settings and opt into the reminder types you want.",
+      "Choose their voice, detail and timing. Set quiet hours and keep sleep times up to date in Settings.",
+    ],
+    searchTerms: ['notifications', 'reminders', 'quiet hours', 'sound', 'notification style'],
+    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/settings/reminders' }],
+  },
+  {
+    id: 'settings', name: 'Settings', route: '/(app)/settings',
+    description: 'Change study defaults, sleep times, reduced motion, account and privacy options. Replay the tutorial without resetting your study data.',
+    helpSteps: [
+      "Open a settings section to change its controls. Study defaults affect future planning.",
+      "Open Help & tutorial to search these guides, view the core-loop tutorial again, or choose Show me Today.",
+    ],
+    searchTerms: ['tutorial', 'help', 'sleep', 'login', 'delete account', 'reduced motion', 'defaults', 'sync'],
+    anchors: [], supportedActions: [{ type: 'navigate', route: '/(app)/settings' }],
+  },
+] as const satisfies readonly FeatureGuide[];
+
+export const CORE_GUIDE_STEPS = [
+  { eyebrow: 'PLAN → START', title: 'Choose one useful next move.',
+    lead: 'Today recommends what fits your time. Start that task, or adjust the plan when your day changes.',
+    flow: ['Choose', 'Adjust', 'Start'], note: 'Not now moves work out of today. Undo brings its previous plan back.' },
+  { eyebrow: 'FOCUS → RETRIEVE', title: 'Work, then try to remember.',
+    lead: 'Use Focus for a timed block, or promise just five minutes. In Review, attempt a question before checking its answer.',
+    flow: ['Focus', 'Break', 'Recall'], note: 'Park distractions during Focus. Your saved questions supply the recall material.' },
+  { eyebrow: 'FEEDBACK → ADAPT', title: 'Let evidence shape what comes next.',
+    lead: 'Grade your recall honestly. MYELIN adapts the next review and uses your study history to guide Today.',
+    flow: ['Check', 'Grade', 'Adapt'], note: 'Progress highlights useful next steps. Confidence is recorded separately from correctness.' },
+] as const;
+
+export type TodayGuideState = 'ready' | 'empty' | 'rest' | 'focus' | 'review';
+export type GuideStep<A extends TutorialAnchor = TutorialAnchor> = { anchor: A; title: string; explanation: string };
+const nextActionCopy: Record<TodayGuideState, Pick<GuideStep, 'title' | 'explanation'>> = {
+  ready: { title: 'Start with this one action', explanation: 'Use this card to start work, review, or complete a task. “Why this?” explains the recommendation. “Not now” moves it out of today, with Undo available.' },
+  empty: { title: 'Give Today something to work with', explanation: 'Use Add something to create a task or topic. Today can then recommend a useful next action. This tour will not add sample data.' },
+  rest: { title: 'Leave room for rest', explanation: 'There is no study capacity left right now, or your sleep window is protected. Use this control to adjust your time or plan a slot after rest.' },
+  focus: { title: 'Return to your focus session', explanation: 'Resume the existing timer or break here. Leaving Today does not create a second session or lose your place.' },
+  review: { title: 'Continue your recall queue', explanation: 'Resume the questions you were reviewing. Your saved place comes first, before a new recommendation.' },
+};
+export function todayGuideSteps(state: TodayGuideState): readonly GuideStep<TodayAnchor>[] {
+  return [
+    { anchor: 'today.next', ...nextActionCopy[state] },
+    { anchor: 'today.adjust', title: 'Tell MYELIN what fits today', explanation: 'Adjust opens your study-time and energy controls. A smaller plan or a short focus block is available when time is tight.' },
+    { anchor: 'today.day-map', title: 'Find a place in your day', explanation: 'Day Map shows your commitments and scheduled work. Open it to find a free slot or move work to another time. This tour leaves your plan unchanged.' },
+  ];
+}
+
+export function tutorialDestination(id: TutorialId) {
+  if (id === 'library') return { pathname: '/(app)/topics' as const, params: { guide: id } };
+  if (id === 'review') return { pathname: '/(app)/review' as const, params: { guide: id, autoStart: '0' } };
+  if (id === 'progress') return { pathname: '/(app)/progress' as const, params: { guide: id } };
+  return { pathname: id === 'focus' ? '/(app)/focus' as const : '/(app)/today' as const, params: { guide: id } };
+}
+
+export type FocusGuideState = 'empty' | 'review' | 'setup' | 'active' | 'checkpoint' | 'finish' | 'break' | 'break-done';
+const FOCUS_GUIDE_STEPS: Record<FocusGuideState, readonly GuideStep<FocusAnchor>[]> = {
+  empty: [{ anchor: 'focus.primary', title: 'Choose what you want to work on', explanation: 'Go to Today and tap Focus on an open task, or start from a topic in Library. Help never picks work or starts a timer for you.' }],
+  review: [{ anchor: 'focus.primary', title: 'Finish the recall loop first', explanation: 'A Review queue is already active. Resume it here before starting a separate Focus timer. This tour leaves your answers and place unchanged.' }],
+  setup: [
+    { anchor: 'focus.primary', title: 'Choose a block that fits', explanation: 'These controls change the length of your next block. Choosing a length does not start the timer; use the Start button when ready.' },
+    { anchor: 'focus.secondary', title: 'Make the first step concrete', explanation: 'Optionally name one small action, such as opening your notes or solving the first question. It stays visible during your session.' },
+    { anchor: 'focus.support', title: 'Five minutes is enough to begin', explanation: 'Start with a five-minute promise when the full block feels too much. At the checkpoint, continue the same session or finish and record your effort.' },
+  ],
+  active: [
+    { anchor: 'focus.primary', title: 'You control the session', explanation: 'Pause or resume here. Finish early opens the effort check before saving. A running timer keeps running during this tour and when you leave this screen.' },
+    { anchor: 'focus.support', title: 'Save the thought for later', explanation: 'Open distraction parking, write the thought and tap +. It is saved with this session for your break; you do not have to act on it now.' },
+  ],
+  checkpoint: [
+    { anchor: 'focus.primary', title: 'Continue if it feels useful', explanation: 'Extend this same session toward the original target. Your first five minutes already count; this does not create a second timer.' },
+    { anchor: 'focus.secondary', title: 'Stopping here still counts', explanation: 'Finish the five-minute launch here, then rate the effort and save it. Continuing is optional.' },
+  ],
+  finish: [
+    { anchor: 'focus.primary', title: 'Rate the demand, not yourself', explanation: 'Choose how demanding the block felt, from 1 to 5. This records workload, not correctness or how good a student you are.' },
+    { anchor: 'focus.secondary', title: 'Save the work you actually did', explanation: 'Complete focus records this block and opens the break. If saving fails, the screen offers a retry. The tutorial itself saves no study evidence.' },
+  ],
+  break: [{ anchor: 'focus.primary', title: 'Give the work a little space', explanation: 'Pause or resume the break, or end it when ready. Rest your eyes, stretch or get water. Any parked thoughts are shown above. A running break keeps running during this tour.' }],
+  'break-done': [{ anchor: 'focus.primary', title: 'Return when you are ready', explanation: 'Finish break returns to Today. If due questions are offered, you can choose short recall instead; it is optional. Your focus block is already saved. A save failure keeps you here to retry.' }],
+};
+
+export function focusGuideSteps(state: FocusGuideState) { return FOCUS_GUIDE_STEPS[state]; }
+
+export type ReviewGuideState = 'blocked' | 'empty' | 'empty-topic' | 'waiting' | 'ready' | 'topic-ready' | 'practice' | 'attempt' | 'reference';
+const REVIEW_GUIDE_STEPS: Record<ReviewGuideState, readonly GuideStep<ReviewAnchor>[]> = {
+  blocked: [{ anchor: 'review.primary', title: 'Finish Focus before recall', explanation: 'Return to the active timer or break here. Your saved Review question, answer draft and stage stay intact. This tour does not end either session.' }],
+  empty: [{ anchor: 'review.primary', title: 'Give recall a real question', explanation: 'Open Library and add a prompt with a reference answer to a topic. Review uses your saved material; this tour does not create examples or start a queue.' }],
+  'empty-topic': [{ anchor: 'review.primary', title: 'Add a prompt to this topic', explanation: 'Add a question with its reference answer before starting recall. The guide does not add a question or edit this topic for you.' }],
+  waiting: [{ anchor: 'review.secondary', title: 'Nothing needs an early review', explanation: 'No saved questions are due right now. You can revisit corrections here, or practise from a topic in Library. Opening this guide never brings future reviews forward.' }],
+  ready: [
+    { anchor: 'review.primary', title: 'Start with what is due', explanation: 'Start mixed review draws from saved questions ready now. You choose when to begin; the tutorial never starts or advances a queue.' },
+    { anchor: 'review.secondary', title: 'Keep corrections close', explanation: 'Mistake notebook keeps corrections for another attempt. An Again grade can create a correction when a saved reference answer exists.' },
+  ],
+  'topic-ready': [{ anchor: 'review.primary', title: 'Recall this topic when ready', explanation: 'Start due recall uses questions ready in this topic. Practise all questions is a separate optional choice. This tour leaves review dates unchanged.' }],
+  practice: [{ anchor: 'review.primary', title: 'Early practice is your choice', explanation: 'Nothing in this topic is due. Practise all questions can open an optional queue; simply opening this tutorial never starts it or changes review dates.' }],
+  attempt: [
+    { anchor: 'review.primary', title: 'Try before checking', explanation: 'Write what you can recall before seeing the reference. A saved hint is optional when available, and its use is recorded. This tour keeps your current draft and hint state.' },
+    { anchor: 'review.secondary', title: 'Confidence is separate from correctness', explanation: 'Unsure means mostly guessing; Partly sure means some gaps; Sure means confident recall. Choose before checking. The guide does not choose for you.' },
+    { anchor: 'review.support', title: 'Reveal only after your attempt', explanation: 'Show reference answer becomes available after typing an attempt. If you answered mentally, use that separate action. The tutorial itself never reveals the answer.' },
+  ],
+  reference: [
+    { anchor: 'review.primary', title: 'Compare what you retrieved', explanation: 'Compare your saved attempt with the reference already revealed. Notice missing ideas and errors; familiarity after reading is different from successful recall.' },
+    { anchor: 'review.secondary', title: 'Grade recall honestly', explanation: 'Again means unreliable recall; Practising means partial recall; Good means successful recall. Hint use affects spacing. A grade saves evidence and advances the queue; this tour never chooses a grade.' },
+  ],
+};
+
+export function reviewGuideSteps(state: ReviewGuideState) { return REVIEW_GUIDE_STEPS[state]; }
+
+export type ProgressGuideState = {
+  hasTopics: boolean;
+  practice: 'none' | 'available' | 'focus' | 'review';
+  expanded: boolean;
+  enoughConfidence: boolean;
+};
+
+export function progressGuideSteps(state: ProgressGuideState): readonly GuideStep<ProgressAnchor>[] {
+  const practiceCopy = {
+    none: { title: 'Read the evidence you recorded', explanation: 'These totals count recorded study and review minutes, active days, graded reviews and due corrections. Minutes are not mastery. Practice suggestions appear when your saved material supports them.' },
+    available: { title: 'Choose useful practice', explanation: 'This insight explains which saved questions may benefit from practice. Tap its action when ready; it can include questions that are not due yet. The tour never starts practice or changes review dates.' },
+    focus: { title: 'Return to your active Focus first', explanation: 'This action resumes your existing timer or break before starting insight practice. Your Focus session keeps its place; a running timer keeps running during this tour.' },
+    review: { title: 'Finish your existing recall first', explanation: 'This action resumes your saved Review queue before starting insight practice. Your answer, confidence, hint state and current question stay intact during this tour.' },
+  }[state.practice];
+  return [
+    { anchor: 'progress.map', title: state.hasTopics ? 'A map of earned recalls' : 'Begin with your own material',
+      explanation: state.hasTopics
+        ? 'Select a node above, then open its topic here. Bright nodes mark Good recalls without hints, once per question per day. Earned progress stays when a review becomes due. The map is a metaphor, not a measurement of your brain.'
+        : 'Add a topic and a recall question here to begin. The Neural Map grows from your saved, unhinted Good recalls; this guide does not add sample material or evidence.' },
+    { anchor: 'progress.practice', ...practiceCopy },
+    { anchor: 'progress.evidence', title: state.expanded ? 'Confidence and recall are different' : 'Look deeper when useful',
+      explanation: state.expanded
+        ? `This summary compares confidence before checking with self-reported recall grades. ${state.enoughConfidence ? 'Read the sample size before drawing conclusions; these results do not measure mastery.' : 'The sample is still small; at least five graded recall attempts are recommended.'} Below, time calibration compares planned and completed focus blocks. The guide leaves this section open.`
+        : 'See deeper evidence opens confidence and time calibration, recorded outcomes and topic activity. Small samples stay provisional; minutes are not mastery. This tour leaves the section closed, so you choose when to explore it.' },
+  ];
+}
+
+
+export type LibraryGuideState = { hasTopics: boolean; hasResults: boolean; filtered: boolean; expanded: boolean };
+export function libraryGuideSteps(state: LibraryGuideState): readonly GuideStep<LibraryAnchor>[] {
+  return [
+    { anchor: 'library.search', title: 'Find your saved material', explanation: 'Search topic names, subjects, notes and saved question text, answers or hints. Searching only narrows this list; it does not change your material.' },
+    { anchor: 'library.filters', title: state.expanded ? 'Narrow by subject or status' : 'Use filters when useful', explanation: state.expanded
+      ? 'The open filters let you choose a subject and New, Learning or Review topic status. These labels are saved topic states, not mastery scores. The tour keeps your selections and the panel open.'
+      : 'Open Filters to narrow by subject or saved topic status. Active selections appear beside the result count even with the panel closed. This tour leaves the panel as you found it.' },
+    { anchor: 'library.results', title: !state.hasTopics ? 'Start with one real topic' : !state.hasResults ? 'Bring your topics back' : 'Open the topic you need',
+      explanation: !state.hasTopics
+        ? 'Add your first topic opens a blank form for your own chapter, concept or skill. The tour never adds examples or starts study.'
+        : !state.hasResults
+          ? 'No topics match this combination. Clear all removes only the search and filters, so your saved topics reappear. It does not delete material.'
+          : state.filtered
+            ? 'The count shows how many of your saved topics match. Clear all restores the full list. Open a topic below for notes, questions and explicit Focus or practice actions; the guide starts none of them.'
+            : 'Open a topic below for notes, questions and explicit Focus or practice actions. Add lets you capture more material. The tour never opens a topic or starts a session for you.' },
+  ];
+}
+
+========== END FILE: src/features/guides/guide-registry.ts ==========
+
+========== BEGIN FILE: src/features/guides/ScreenGuide.tsx ==========
+import { RefObject, useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { Reveal } from '@/src/components/motion/Reveal';
+import { colors, radius } from '@/src/theme/tokens';
+import { GuideStep, TutorialAnchor } from './guide-registry';
+import { GuideRect, guideCardMaxHeight, guideCardTop, spotlightRect } from './guide-geometry';
+import { measureGuideView } from './measure-guide-view';
+
+type Props<A extends TutorialAnchor> = {
+  title?: string;
+  steps: readonly GuideStep<A>[];
+  anchors: Record<A, RefObject<View | null>>;
+  revealAnchor: (anchor: A, shouldContinue?: () => boolean) => Promise<void>;
+  onClose: () => void;
+};
+
+export function ScreenGuide<A extends TutorialAnchor>({ title = 'Today', steps, anchors, revealAnchor, onClose }: Props<A>) {
+  const [index, setIndex] = useState(0);
+  const [shown, setShown] = useState(false);
+  const [target, setTarget] = useState<GuideRect | null>(null);
+  const [measuring, setMeasuring] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const [cardHeight, setCardHeight] = useState(240);
+  const [hostSize, setHostSize] = useState({ width: 0, height: 0 });
+  const hostRef = useRef<View>(null);
+  const reduced = useReducedMotion();
+  const dimensions = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const step = steps[Math.min(index, steps.length - 1)];
+  const width = hostSize.width || dimensions.width;
+  const height = hostSize.height || dimensions.height;
+
+  useEffect(() => {
+    // Wait for the modal layout before scrolling; a superseded measurement must not move the screen.
+    if (!shown || !step || hostSize.width <= 0 || hostSize.height <= 0) return;
+    let cancelled = false;
+    setMeasuring(true); setTarget(null);
+    void (async () => {
+      try {
+        await revealAnchor(step.anchor, () => !cancelled);
+        if (cancelled) return;
+        const [anchor, host] = await Promise.all([measureGuideView(anchors[step.anchor].current), measureGuideView(hostRef.current)]);
+        if (cancelled) return;
+        setTarget(anchor && host ? spotlightRect(anchor, host) : null);
+        AccessibilityInfo.announceForAccessibility(`Step ${index + 1} of ${steps.length}. ${step.title}. ${step.explanation}`);
+      } catch {
+        if (!cancelled) setTarget(null);
+      } finally { if (!cancelled) setMeasuring(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [shown, step, index, steps.length, anchors, revealAnchor, dimensions.width, dimensions.height, dimensions.fontScale, retry, hostSize.width, hostSize.height]);
+
+  if (!step) return null;
+  const maxHeight = guideCardMaxHeight(target, height, insets.top, insets.bottom);
+  const top = guideCardTop(target, height, Math.min(cardHeight, maxHeight), insets.top, insets.bottom);
+  return <Modal transparent visible animationType={reduced ? 'none' : 'fade'} statusBarTranslucent onShow={() => setShown(true)} onRequestClose={onClose}>
+    <View ref={hostRef} collapsable={false} style={styles.overlay} onLayout={event => setHostSize(event.nativeEvent.layout)}>
+      <View pointerEvents="none" style={StyleSheet.absoluteFill} accessible={false} importantForAccessibility="no-hide-descendants">
+        {target ? <>
+          <View style={[styles.shade, { top: 0, left: 0, right: 0, height: target.y }]} />
+          <View style={[styles.shade, { top: target.y, left: 0, width: target.x, height: target.height }]} />
+          <View style={[styles.shade, { top: target.y, left: target.x + target.width, right: 0, height: target.height }]} />
+          <View style={[styles.shade, { top: target.y + target.height, left: 0, right: 0, bottom: 0 }]} />
+          <View testID="guide-spotlight" style={[styles.ring, { left: target.x, top: target.y, width: target.width, height: target.height }]} />
+        </> : <View style={[styles.shade, StyleSheet.absoluteFill]} />}
+      </View>
+      <View testID="guide-card" accessibilityViewIsModal style={[styles.card, { top, left: Math.max(12, (width - 420) / 2), width: Math.min(width - 24, 420), maxHeight }]} onLayout={event => setCardHeight(event.nativeEvent.layout.height)}>
+        <View style={styles.heading}>
+          <Text style={styles.step}>{title.toUpperCase()} · {index + 1}/{steps.length}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Skip tutorial" onPress={onClose} style={styles.skip}><Text style={styles.secondaryText}>Skip</Text></Pressable>
+        </View>
+        <ScrollView style={styles.copyScroll} contentContainerStyle={styles.copy}>
+          <Reveal key={step.anchor} distance={4} duration={160}>
+            <Text accessibilityRole="header" style={styles.title}>{step.title}</Text>
+            <Text style={styles.explanation}>{step.explanation}</Text>
+            {!measuring && !target ? <Text accessibilityLiveRegion="polite" style={styles.fallback}>This control is not visible right now. Retry its highlight, or continue the explanation.</Text> : null}
+          </Reveal>
+        </ScrollView>
+        {!measuring && !target ? <Pressable accessibilityRole="button" onPress={() => setRetry(v => v + 1)} style={styles.retry}><Text style={styles.secondaryText}>Retry highlight</Text></Pressable> : null}
+        <View style={styles.actions}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Previous tutorial step" disabled={index === 0} onPress={() => setIndex(i => Math.max(0, i - 1))} style={[styles.back, index === 0 && styles.disabled]}><Text style={styles.secondaryText}>Back</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={index === steps.length - 1 ? 'Finish tutorial' : 'Next tutorial step'} onPress={() => index === steps.length - 1 ? onClose() : setIndex(i => i + 1)} style={styles.next}><Text style={styles.nextText}>{index === steps.length - 1 ? 'Done' : 'Next'}</Text></Pressable>
+        </View>
+      </View>
+    </View>
+  </Modal>;
+}
+const styles = StyleSheet.create({
+  overlay: { flex: 1 }, shade: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.78)' },
+  ring: { position: 'absolute', borderWidth: 2, borderColor: colors.accent, borderRadius: radius.md },
+  card: { position: 'absolute', backgroundColor: colors.panelRaised, borderWidth: 1, borderColor: colors.accentLine, borderRadius: radius.lg, paddingHorizontal: 16, paddingBottom: 14, overflow: 'hidden' },
+  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  step: { color: colors.accent, fontSize: 11, letterSpacing: 1.2, fontWeight: '800' },
+  skip: { minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center' },
+  copyScroll: { flexShrink: 1 }, copy: { paddingBottom: 14 },
+  title: { color: colors.text, fontSize: 19, lineHeight: 25, fontWeight: '700' },
+  explanation: { color: colors.textDim, fontSize: 14, lineHeight: 21, marginTop: 8 },
+  fallback: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 10 },
+  actions: { flexDirection: 'row', gap: 10, paddingTop: 2 },
+  back: { minHeight: 48, flex: 1, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
+  next: { minHeight: 48, flex: 1, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  nextText: { color: colors.bg, fontSize: 14, fontWeight: '800' }, secondaryText: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  disabled: { opacity: 0.35 }, retry: { minHeight: 48, justifyContent: 'center' },
+});
+
+========== END FILE: src/features/guides/ScreenGuide.tsx ==========
+
+========== BEGIN FILE: src/features/guides/useGuideOffer.ts ==========
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createGuideOfferController, emptyGuideOfferState, GuideOfferChoice } from './guide-offer-state';
+import { guideOfferStorage } from './guide-offer-storage';
+import type { TutorialId } from './guide-registry';
+
+export function useGuideOffer(tutorialId: TutorialId, ownerKey: string | null, eligible: boolean, tutorialOpen: boolean) {
+  const [state, setState] = useState(() => ({ ...emptyGuideOfferState(), tutorialId }));
+  const controller = useMemo(() => createGuideOfferController(guideOfferStorage, tutorialId, next => setState({ ...next, tutorialId })), [tutorialId]);
+  const currentOwner = !!ownerKey && state.ownerKey === ownerKey && state.tutorialId === tutorialId;
+
+  useEffect(() => {
+    void controller.activate(ownerKey);
+    return () => controller.deactivate();
+  }, [controller, ownerKey]);
+  useEffect(() => {
+    // Explicit header/Help replay also counts as seeing this screen's guide.
+    if (currentOwner && tutorialOpen && !state.choice) void controller.choose(ownerKey, 'shown');
+  }, [controller, currentOwner, ownerKey, state.choice, tutorialOpen]);
+
+  const choose = useCallback((choice: GuideOfferChoice) => {
+    void controller.choose(ownerKey, choice);
+  }, [controller, ownerKey]);
+  const retry = useCallback(() => {
+    if (state.choice) void controller.choose(ownerKey, state.choice);
+  }, [controller, ownerKey, state.choice]);
+
+  return {
+    visible: currentOwner && state.ready && !state.choice && eligible && !tutorialOpen,
+    saveFailed: currentOwner && state.saveFailed,
+    choose,
+    retry,
+  };
+}
+
+========== END FILE: src/features/guides/useGuideOffer.ts ==========
+
+========== BEGIN FILE: src/features/guides/GuideOffer.tsx ==========
+import { StyleSheet, Text, View } from 'react-native';
+import { AppButton } from '@/src/components/app/AppButton';
+import { colors, radius, space, type } from '@/src/theme/tokens';
+import type { TutorialId } from './guide-registry';
+
+export type GuideOfferProps = {
+  visible: boolean;
+  saveFailed: boolean;
+  onShow: () => void;
+  onLater: () => void;
+  onRetry: () => void;
+};
+
+export function GuideOffer({ tutorialId, screenName, description, visible, saveFailed, onShow, onLater, onRetry }: GuideOfferProps & { tutorialId: TutorialId; screenName: string; description: string }) {
+  if (saveFailed) return <View testID={`${tutorialId}-guide-choice-error`} style={styles.card}>
+    <Text accessibilityRole="alert" style={styles.copy}>Couldn’t remember your tutorial choice.</Text>
+    <AppButton label="Retry" accessibilityLabel="Retry saving tutorial choice" variant="quiet" onPress={onRetry} />
+  </View>;
+  if (!visible) return null;
+  return <View testID={`${tutorialId}-guide-offer`} style={styles.card}>
+    <Text accessibilityRole="header" style={styles.title}>A quick tour of {screenName}?</Text>
+    <Text style={styles.copy}>{description}</Text>
+    <View style={styles.actions}>
+      <AppButton label="Show me" accessibilityLabel={`Show me ${screenName}’s tutorial`} variant="secondary" onPress={onShow} style={styles.action} />
+      <AppButton label="Later" accessibilityLabel={`Maybe later for ${screenName}’s tutorial`} variant="quiet" onPress={onLater} style={styles.action} />
+    </View>
+  </View>;
+}
+
+const styles = StyleSheet.create({
+  card: { marginTop: space.md, padding: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel },
+  title: { color: colors.text, ...type.body, fontWeight: '700' },
+  copy: { color: colors.muted, ...type.meta, marginTop: space.xs },
+  actions: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
+  action: { flex: 1 },
+});
+
+========== END FILE: src/features/guides/GuideOffer.tsx ==========

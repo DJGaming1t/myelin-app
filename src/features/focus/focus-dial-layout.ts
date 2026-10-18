@@ -3,7 +3,8 @@
 export const FOCUS_DIAL_MIN_SIZE = 128;
 export const FOCUS_DIAL_MAX_SIZE = 228;
 const DIAL_EDGE_RESERVE = 24;
-const PROGRESS_MARKS = 40;
+export const FOCUS_PROGRESS_MARKS = 40;
+const PROGRESS_MARKS = FOCUS_PROGRESS_MARKS;
 const BASE_DURATION_PRESETS = [10, 25, 45] as const;
 
 export type FocusDialTickState = 'complete' | 'lead' | 'lit' | 'unlit';
@@ -43,4 +44,48 @@ export function focusDurationPresets(suggestedMinutes: number): number[] {
     ? Math.max(5, Math.min(240, Math.round(suggestedMinutes)))
     : 45;
   return Array.from(new Set([...BASE_DURATION_PRESETS, clamped])).sort((a, b) => a - b);
+}
+
+
+export function focusDialMarkState(
+  index: number,
+  progress: number,
+  options: { complete?: boolean; paused?: boolean } = {},
+) {
+  const clamped = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
+  const complete = Boolean(options.complete) || clamped >= 1;
+  const paused = Boolean(options.paused);
+  const lit = complete || index / PROGRESS_MARKS < clamped;
+  const activeIndex =
+    !complete && clamped > 0
+      ? Math.min(PROGRESS_MARKS - 1, Math.floor(clamped * PROGRESS_MARKS))
+      : -1;
+  const isCurrent = index === activeIndex;
+  const isCardinal = index % 10 === 0;
+
+  const opacity = complete
+    ? 0.96
+    : isCurrent
+      ? 1
+      : lit
+        ? paused
+          ? 0.56
+          : 0.9
+        : isCardinal
+          ? 0.54
+          : 0.28;
+
+  return {
+    lit,
+    isCurrent,
+    isCardinal,
+    opacity,
+  };
+}
+
+
+export function focusPaceLabel(minutes: number): string {
+  if (minutes <= 15) return 'Quick start';
+  if (minutes <= 30) return 'Steady block';
+  return 'Deep block';
 }

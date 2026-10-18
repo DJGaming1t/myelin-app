@@ -459,3 +459,11 @@ Status: integrated and locally/browser verified on current development branch; p
 - **Integration repairs:** existing planning VM now understands SpringPressable; original Focus browser tests use one browser per case and optional host arguments. Assertions were retained. Native handlers/ownership logic, all guide anchors, M04m/M04n/M04o and saved data are preserved. Only optional AnimatedProgress tone and pure dial/preset helpers are new APIs.
 - **Remaining:** native Android TalkBack, font scaling, keyboard/insets/Back and signed-in transitions. Firestore/Worker tests are historical M04p evidence, not rerun. DistractionShield still opens system settings; no app/site enforcement. Runtime remains 0.2.13/appVersion, correcting the package's stale 0.2.7 note. No schema, provider, dependency, scheduler or native changes.
 - **Publication/Next:** not published; no EAS update or APK build invoked. Argon reviews the integration report; the user chooses the next bounded chunk or explicitly authorizes preview publication. Existing device QA and deferred retention decisions remain open. Stop after this chunk.
+
+
+## Focus Experience & Motion Redesign follow-up — 2026-10-18 IST
+
+- Completed the uploaded DOCX redesign as a follow-up to the earlier polish on live head 23b1e24. See `docs/beta/focus-redesign-sync-20261018.md`.
+- Preserved current behavior while adding cadence panels, pace feedback, cardinal markers/status dot, phase context, percentage and refreshed support surfaces. Repaired quarter-boundary marker, paused text contrast, narrow text wrapping and save-distraction label.
+- Fresh TypeScript and Focus/polish/visual/guides suites pass. Actual dial VM: 36 cases; rendered Chromium: four 320/390px normal/reduced-motion cases pass. Mutation/owner/save handler ASTs remain unchanged.
+- No dependency/native/runtime changes, paid service or deployment. Commit skips CI. Remaining: physical Android accessibility/font scaling/keyboard/Back QA and separately authorized publication. Focus Shield not started.

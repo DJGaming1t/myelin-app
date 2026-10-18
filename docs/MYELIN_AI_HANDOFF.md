@@ -1,6 +1,14 @@
 # MYELIN AI Handoff
 
-Current checkpoint: **2026-10-18 IST**. GitHub is the source of truth. Update this summary after each implementation; keep detailed evidence in linked records.
+Current checkpoint: **2026-10-18 IST, Focus redesign follow-up**. GitHub is the source of truth. Update this summary after each implementation; keep detailed evidence in linked records.
+
+## Latest Focus redesign follow-up
+
+- Integrated the user's complete DOCX package on verified head `23b1e24e4813b62a39cc805f005999dc10e384f6`; that head already included the earlier Argon polish. The latest source is the commit containing this entry, superseding the earlier application checkpoint below.
+- Added the new setup/cadence panels, pace labels, phase context, cardinal dial markers, status dot, percentage readout and revised support panels. Preserved existing success progress tones, animated completion layout, helper API and guarded handlers.
+- Fixed exact-quarter marker positioning, paused countdown contrast, narrow-screen text wrapping and the distraction save accessibility label.
+- Fresh passes: TypeScript, verify:focus (including 36 actual-dial VM combinations), verify:polish, verify:visual and verify:guides. Four rendered Chromium cases pass at 320/390px with normal/reduced motion; screenshots reviewed. Runtime 0.2.13 and dependencies are unchanged. This is not physical Android QA or an Android export.
+- **Not published.** No EAS update/build, paid AI review, or hosted workflow was requested. Commit uses `[skip ci]` to avoid push-triggered hosted CI. See [the sync report](beta/focus-redesign-sync-20261018.md) for details. Stop after this bounded chunk; Focus Shield remains deferred.
 
 ## Repository and baseline
 
@@ -81,3 +89,4 @@ Current checkpoint: **2026-10-18 IST**. GitHub is the source of truth. Update th
 - Current review: Argon Focus/motion Chunk 1 is integrated and verified. Review the concrete integration/test adjustments above before selecting another bounded chunk. Publishing this code requires explicit authorization. M04o boundary/retention review, published-preview device QA and the intermittent Worker test remain pending.
 - Deferred: first-attempt-only retention needs separate approval/versioning. Examples and expected historical effects are documented in progress-integrity.md; no filter-order change was made. Do not infer publication from committed source.
 - Then continue the existing checklist: device/account QA and release recovery, remaining guidance/reminder/scheduling audits. Keep optional model feasibility and quality work separate.
+

@@ -56,7 +56,7 @@ async function inside(child, parent, message) {
       const before = await page.evaluate(k => localStorage.getItem(k), wk);
       const launch = page.getByRole('button', { name: /Five-minute launch/ });
       await launch.scrollIntoViewIfNeeded(); await launch.click();
-      await page.getByText('5m launch · 35m target', { exact: true }).waitFor();
+      await page.getByText('5M LAUNCH · 35M TARGET', { exact: true }).waitFor();
       await page.waitForTimeout(700); // Let the existing Reveal entrance settle before measuring motion.
       const dial = page.getByText('05:00', { exact: true }); await dial.scrollIntoViewIfNeeded();
       assert.ok(await dial.evaluate(el => { for (let node = el; node; node = node.parentElement) if (Number(getComputedStyle(node).opacity) === 0) return false; return true; }), 'Dial remains visible after entrance');
@@ -69,7 +69,7 @@ async function inside(child, parent, message) {
       await page.getByRole('button', { name: 'Resume', exact: true }).click();
       await page.getByRole('button', { name: 'Distraction parking', exact: true }).click();
       await page.getByRole('textbox', { name: 'Park a distraction', exact: true }).fill('Check the diagram later');
-      await page.getByRole('button', { name: '+', exact: true }).click();
+      await page.getByRole('button', { name: 'Save distraction for later', exact: true }).click();
       const parking = page.getByRole('button', { name: 'Distraction parking', exact: true });
       await parking.getByText('1', { exact: true }).waitFor();
       await page.clock.setFixedTime(now + 6 * 60_000);
@@ -81,12 +81,12 @@ async function inside(child, parent, message) {
       const fillColor = await page.getByLabel('Focus progress: 100%', { exact: true }).locator(':scope > div').first().evaluate(el => getComputedStyle(el).backgroundColor);
       const successRgb = colors.success.match(/[a-f0-9]{2}/gi).map(value => parseInt(value, 16));
       assert.equal(fillColor, `rgb(${successRgb.join(', ')})`, 'Completed progress uses the success tone');
-      await page.getByText('5 · Very demanding', { exact: true }).waitFor();
+      await page.getByText('5 · Intense', { exact: true }).waitFor();
       await page.getByRole('button', { name: 'Effort 4 out of 5', exact: true }).click();
       await page.screenshot({ path: path.join(dir, `focus-finish-${width}-${reduced}.png`), fullPage: true });
       await page.getByRole('button', { name: 'Complete focus', exact: true }).click();
       await page.getByText('Leave the work alone.', { exact: true }).waitFor();
-      await page.getByText('10m recovery', { exact: true }).waitFor();
+      await page.getByText('RECOVERY · 10 MIN BREAK', { exact: true }).waitFor();
       const saved = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), wk);
       assert.equal(saved.focusOutcomes.filter(item => item.status === 'finished').length, 1);
       assert.equal(saved.tasks[0].actualMinutes, 5); assert.equal(saved.focusOutcomes[0].plannedMinutes, 5);
@@ -99,3 +99,4 @@ async function inside(child, parent, message) {
     } finally { await page.close(); await browser.close(); }
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
+

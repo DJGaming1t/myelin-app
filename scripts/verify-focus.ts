@@ -1,4 +1,5 @@
 import './verify-focus-start';
+import './verify-focus-dial-motion';
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,6 +11,8 @@ import { migrateAndValidateWorkspace } from '../src/data/migrations';
 import { createFocusWriteQueue } from '../src/features/focus/focus-write-queue';
 import {
   focusDialMarkPosition,
+  focusDialMarkState,
+  focusPaceLabel,
   focusDialSize,
   focusDialTickState,
   focusDurationPresets,
@@ -313,6 +316,31 @@ async function main() {
   assert.equal(focusDialTickState(1, 0.025), 'lead');
   assert.equal(focusDialTickState(39, 0.999), 'lead');
   assert.equal(focusDialTickState(39, 1), 'complete');
+
+  // Leading marker must land on the cardinal tick at exact quarter boundaries.
+  for (const [progress, index] of [[0.25, 10], [0.5, 20], [0.75, 30]]) {
+    assert.equal(focusDialMarkState(index, progress).isCurrent, true);
+    assert.equal(focusDialMarkState(index, progress).isCardinal, true);
+    assert.equal(focusDialMarkState(index - 1, progress).isCurrent, false);
+  }
+  for (const progress of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.equal(focusDialMarkState(0, progress).isCurrent, false);
+    assert.equal(focusDialMarkState(0, progress).lit, false);
+  }
+  for (const progress of [0.001, 0.26, 0.999]) {
+    const marks = Array.from({ length: 40 }, (_, index) => focusDialMarkState(index, progress));
+    assert.equal(marks.filter(mark => mark.isCurrent).length, 1);
+  }
+  for (const index of [0, 10, 20, 30, 39]) {
+    assert.equal(focusDialMarkState(index, 1).lit, true);
+    assert.equal(focusDialMarkState(index, 1).isCurrent, false);
+    assert.equal(focusDialMarkState(index, 0, { complete: true }).lit, true);
+  }
+  assert.ok(focusDialMarkState(2, 0.25, { paused: true }).opacity < focusDialMarkState(2, 0.25).opacity);
+  assert.equal(focusPaceLabel(15), 'Quick start');
+  assert.equal(focusPaceLabel(16), 'Steady block');
+  assert.equal(focusPaceLabel(30), 'Steady block');
+  assert.equal(focusPaceLabel(31), 'Deep block');
 
   const memory = new MemoryStore();
   const storage = createFocusStorage(memory);
@@ -756,7 +784,7 @@ assert.ok(
 );
 assert.ok(
   focusScreenSource.includes('<SpringPressable') &&
-    focusScreenSource.includes('focusDialTickState(index, progress, complete)') &&
+    focusScreenSource.includes('focusDialMarkState(index, progress, { complete, paused })') &&
     focusScreenSource.includes('focusDurationPresets(suggestedMinutes)') &&
     focusScreenSource.includes('effortLegendRow'),
   'Focus should use shared spring pressables, dynamic duration presets, leading tick state, and effort scale anchors.',
@@ -790,3 +818,4 @@ assert.ok(
     reviewScreenSource.includes("router.replace('/(app)/today')"),
   'Completing post-focus retrieval must return to Today so Mileage can recalculate.',
 );
+

@@ -1,3 +1,18 @@
+import './verify-focus-shield';
+import {
+  activeShieldSummary,
+  applyFocusShieldProfile,
+  createFocusShieldStorage,
+  defaultFocusShieldConfig,
+  evaluateFocusAwayReturn,
+  isValidAndroidPackageName,
+  normalizeWebsiteDomain,
+  setAccountabilityPin,
+  sha256Hex,
+  upsertInstalledAppTarget,
+  verifyAccountabilityChallenge,
+} from '../src/features/focus/focus-shield';
+
 import './verify-focus-start';
 import './verify-focus-dial-motion';
 /// <reference types="node" />
@@ -342,6 +357,57 @@ async function main() {
   assert.equal(focusPaceLabel(30), 'Steady block');
   assert.equal(focusPaceLabel(31), 'Deep block');
 
+
+  // Focus Shield Chunk A: real Android package validation, SHA-256 PIN hashing, installed app targets, and storage isolation.
+  assert.equal(isValidAndroidPackageName('com.google.android.youtube'), true);
+  assert.equal(isValidAndroidPackageName('custom:youtube'), false);
+  assert.equal(isValidAndroidPackageName('category:games'), false);
+  assert.equal(normalizeWebsiteDomain('https://www.YouTube.com/watch?v=1'), 'youtube.com');
+  assert.equal(
+    sha256Hex('s_test:4826'),
+    '525e132336b682d50078955fb377023273d371e9a7e57cbbed34b0223adb8e1b',
+  );
+
+  let shield = defaultFocusShieldConfig(now);
+  assert.equal(shield.mode, 'off');
+  shield = applyFocusShieldProfile(shield, 'exam', now + 1);
+  assert.equal(shield.mode, 'strict');
+  assert.equal(activeShieldSummary(shield).enabled, true);
+
+  const blockedDialer = upsertInstalledAppTarget(shield, {
+    packageName: 'com.google.android.dialer',
+    label: 'Phone',
+  });
+  assert.equal(blockedDialer.added, false, 'Emergency dialer must never be blocked.');
+
+  const addedSnap = upsertInstalledAppTarget(shield, {
+    packageName: 'com.snapchat.android',
+    label: 'Snapchat',
+  });
+  assert.equal(addedSnap.added, true);
+  shield = addedSnap.config;
+
+  const pinResult = setAccountabilityPin(shield, '4826', now + 2);
+  assert.equal(pinResult.ok, true);
+  shield = pinResult.config;
+  assert.equal(JSON.stringify(shield).includes('4826'), false, 'Plaintext PIN must never be stored.');
+  assert.equal(verifyAccountabilityChallenge(shield, '4826'), true);
+  assert.equal(verifyAccountabilityChallenge(shield, '9999'), false);
+
+  const awayNotice = evaluateFocusAwayReturn({
+    config: shield,
+    sessionRunning: true,
+    phase: 'focus',
+    backgroundedAt: now,
+    returnedAt: now + 30_000,
+  });
+  assert.ok(awayNotice);
+
+  const shieldStore = new MemoryStore();
+  const shieldStorage = createFocusShieldStorage(shieldStore);
+  await shieldStorage.save('user:A', shield);
+  assert.equal((await shieldStorage.load('user:A', now)).mode, 'strict');
+  assert.equal((await shieldStorage.load('user:B', now)).mode, 'off');
   const memory = new MemoryStore();
   const storage = createFocusStorage(memory);
 

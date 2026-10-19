@@ -43,6 +43,10 @@ import {
   focusDurationPresets,
   focusPaceLabel,
 } from '@/src/features/focus/focus-dial-layout';
+import {
+  FocusShieldActiveBanner,
+  useFocusShieldSession,
+} from '@/src/features/focus/FocusShieldStudio';
 import { buildPostFocusRetrievalSuggestion } from '@/src/features/focus/post-focus-retrieval';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
@@ -179,6 +183,13 @@ export default function FocusScreen() {
   const phaseProgress = session
     ? Math.max(0, Math.min(1, 1 - remaining / Math.max(1, phaseDurationMs)))
     : 0;
+  const shield = useFocusShieldSession({
+    ownerKey,
+    session,
+    remainingMs: remaining,
+    onParkThought: park,
+    onOpenParking: () => setShowParking(true),
+  });
   const retrievalSuggestion = useMemo(
     () =>
       workspace && session?.phase === 'break'
@@ -758,6 +769,7 @@ export default function FocusScreen() {
             ) : null}
           </View>
 
+          <FocusShieldActiveBanner shield={shield} />
           {saveError ? <Text accessibilityRole="alert" style={styles.storageWarning}>{saveError}</Text> : null}
           <TimerDial
             value={formatTimer(remaining)}

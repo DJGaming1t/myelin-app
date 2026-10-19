@@ -60,6 +60,7 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
     if(name.endsWith('/useScreenClock'))return{useScreenClock:()=>now};if(name.endsWith('/FocusProvider'))return{useFocus:()=>({session:activeFocus,ready:focusReady})};if(name.endsWith('/ReviewProvider'))return{useReview:()=>({session:activeReview,ready:reviewReady,startReview:async(input:any)=>{insightStarts.push(input);return insightStart?insightStart(input):null;}})};
     if(name.endsWith('/TaskQuickActions'))return{TaskQuickActions:'QuickActions',TaskDueLabel:'DueLabel',useTaskCompletion:()=>()=>false};
     if(name==='expo-router')return{router:{back:()=>{},push:(route:any)=>{routes.push(route)},replace:()=>{},setParams:()=>{}},useLocalSearchParams:()=>({}),useFocusEffect:(fn:any)=>react.useEffect(fn,[fn])};
+    if(name==='./FocusShieldSessionController')return{FocusShieldSessionController:'FocusShieldSessionController'};
     if(name==='react-native')return{KeyboardAvoidingView:'KeyboardAvoidingView',Platform:{OS:'web'},View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',ScrollView:'ScrollView',Modal:'Modal',StyleSheet:{create:(s:any)=>s},Alert:{alert:()=>{}}};
     if(name==='react-native-safe-area-context')return{SafeAreaView:'SafeAreaView'};
     // Keep the native-animation boundary inert while exercising the actual support handlers.

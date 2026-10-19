@@ -1,0 +1,10 @@
+{
+  "file": "MYELIN_Focus_Shield_0.2.14_debug_arm64.apk",
+  "size_bytes": 119377352,
+  "sha256": "cd547e7c9117772dcc15e0ffe6ed92e90286f40038fb21d7eb2d1159114d8c73",
+  "abis": [
+    "arm64-v8a"
+  ],
+  "embedded_js_bundle": false,
+  "focus_shield_classes_present": true
+}

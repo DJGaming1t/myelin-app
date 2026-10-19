@@ -1,0 +1,35 @@
+{
+  "source_commit": "f1509df903d5f84cbc603c7fa27232b0c7d227f7",
+  "base_commit": "7298b2b6ff1f261917d7027835019e0a15bcf7b2",
+  "native_sources_match_gradle_build": true,
+  "kotlin_sha256": {
+    "plugins/focus-shield-android/FocusShieldBlockerActivity.kt": "6a56bd07d6fdd5e8c6ac6af6492a0fc692e5c566d2187e4cca55c5b3f34f46b1",
+    "plugins/focus-shield-android/FocusShieldModule.kt": "071ee56faaa4a4327fdda0f71cf95fde65561b53090208294655b2c8ed1c6d1d",
+    "plugins/focus-shield-android/FocusShieldMonitorService.kt": "dd112c8190368dfe49e10e4356b8eb9cb193f3021d0fd7cc6dd67c2520b45a4d",
+    "plugins/focus-shield-android/FocusShieldPackage.kt": "cf713fd4e12ac686cd438e49727f21a6842393e2b039c977bddf296505a11821",
+    "plugins/focus-shield-android/FocusShieldStore.kt": "35ae8c8f2b2bafe2c1e5abb324bd7e6b8012d1e94642392309db9fffa6cac54e"
+  },
+  "checks": {
+    "focus": 0,
+    "polish": 0,
+    "visual": 0,
+    "guides": 0,
+    "typescript": 0
+  },
+  "gradle_exit_code": 0,
+  "gradle_result": "BUILD SUCCESSFUL in 11m 27s",
+  "apk": {
+    "file": "MYELIN_Focus_Shield_0.2.14_debug_arm64.apk",
+    "size_bytes": 119377352,
+    "sha256": "cd547e7c9117772dcc15e0ffe6ed92e90286f40038fb21d7eb2d1159114d8c73",
+    "abis": [
+      "arm64-v8a"
+    ],
+    "embedded_js_bundle": false,
+    "focus_shield_classes_present": true
+  },
+  "physical_device_tested": false,
+  "github_pushed": false,
+  "expo_published": false,
+  "paid_builds_started": false
+}

@@ -1,3 +1,4 @@
+import { FocusShieldSessionController } from './FocusShieldSessionController';
 import { recordFocusOutcome } from '@/src/features/adaptive/outcome-engine';
 import {
   PropsWithChildren,
@@ -407,7 +408,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
     [celebrate, commitSession, ready, saveError, session, start, transform, updateWorkspace, waitForSaves],
   );
 
-  return <FocusContext.Provider value={value}>{children}</FocusContext.Provider>;
+  return <FocusContext.Provider value={value}><FocusShieldSessionController ownerKey={ownerKey} session={ready ? session : null} />{children}</FocusContext.Provider>;
 }
 
 export function useFocus() {

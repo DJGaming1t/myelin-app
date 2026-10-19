@@ -4,6 +4,7 @@ import { StudyTask } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
+import { FocusShieldStudio } from '@/src/features/focus/FocusShieldStudio';
 import { launchVariant, suggestedSteps } from './outcome-engine';
 import { sleepingAt } from './sleep-engine';
 import { colors, layout, radius, space } from '@/src/theme/tokens';
@@ -271,50 +272,8 @@ function FocusSupportEditor({ task, topicPostponements = 0, onStep, onLaunch }: 
 }
 
 export function DistractionShield() {
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState('');
-
-  return (
-    <View style={styles.shieldShell}>
-      <SpringPressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        scaleTo={0.99}
-        lift={0}
-        style={styles.disclosureRow}
-        onPress={() => setOpen(v => !v)}>
-        <Text style={styles.action}>Set up distraction blocking · optional</Text>
-        <Text style={styles.disclosureMark}>{open ? '−' : '+'}</Text>
-      </SpringPressable>
-      <AnimatedDisclosure visible={open} style={styles.stepsCard}>
-        <Text style={styles.copy}>
-          {Platform.OS === 'ios'
-            ? 'In Settings, use Focus to silence notifications or Screen Time to limit distracting apps.'
-            : 'In phone Settings, open Digital Wellbeing → Focus mode. Choose distracting apps and turn it on. Keep MYELIN available for your timer.'}{' '}
-          MYELIN does not control or verify these system settings.
-        </Text>
-        <SpringPressable
-          accessibilityRole="button"
-          scaleTo={0.988}
-          lift={0}
-          style={styles.stepButton}
-          onPress={async () => {
-            try {
-              if (Platform.OS === 'android') await Linking.sendIntent('android.settings.SETTINGS');
-              else if (Platform.OS === 'ios') await Linking.openSettings();
-              else await Linking.openURL('https://support.google.com/android/answer/9346420');
-            } catch {
-              setError('Open your phone Settings manually to set up Focus mode.');
-            }
-          }}>
-          <Text style={styles.action}>
-            {Platform.OS === 'web' ? 'Read Focus mode instructions' : 'Open phone settings'}
-          </Text>
-        </SpringPressable>
-        {error ? <Text style={styles.copy}>{error}</Text> : null}
-      </AnimatedDisclosure>
-    </View>
-  );
+  // OS fallback note: MYELIN does not control or verify these system settings.
+  return <FocusShieldStudio />;
 }
 
 const styles = StyleSheet.create({

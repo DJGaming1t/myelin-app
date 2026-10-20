@@ -20,6 +20,7 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
+    ...(process.env.MYELIN_LOCAL_TEST_APK === '1' ? { updates: { ...config.updates, enabled: false } } : {}),
     icon: './assets/generated/myelin-icon.png',
     android: {
       ...config.android,

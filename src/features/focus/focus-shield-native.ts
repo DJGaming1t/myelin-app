@@ -4,6 +4,7 @@ import {
   FocusShieldAttemptEntry,
   FocusShieldCapabilities,
   FocusShieldConfig,
+  FocusShieldScheduleWindow,
   InstalledAndroidApp,
   activeShieldSummary,
   getFocusShieldCapabilities,
@@ -14,20 +15,40 @@ export type NativePermissionState = {
   usageStatsGranted: boolean;
   overlayGranted: boolean;
   batteryOptimizationIgnored: boolean;
+  privateDnsActive?: boolean;
+  vpnError?: string;
+  vpnPrepared: boolean;
+  vpnActive: boolean;
+  otherVpnActive: boolean;
+  scheduleActiveNow: boolean;
+  activeScheduleLabel: string;
   isInMultiWindowMode: boolean;
   isInPictureInPictureMode: boolean;
 };
 
+export type NativeVpnPrepResult = {
+  granted: boolean;
+  vpnPrepared: boolean;
+  otherVpnActive: boolean;
+};
+
 export type NativeSessionSyncPayload = {
   active: boolean;
+  ownerKey: string | null;
   sessionId: string | null;
   phase: 'focus' | 'break' | 'idle';
   sessionEndEpochMs: number;
   topicName: string;
   tinyStep: string;
   mode: FocusShieldConfig['mode'];
+  sessionOnly: boolean;
+  schedules: FocusShieldScheduleWindow[];
   blockedPackages: string[];
   allowlistedPackages: string[];
+  websiteBlockingEnabled: boolean;
+  blockedDomains: string[];
+  wildcardDomains: string[];
+  blockDohCanary: boolean;
   unlockDelaySeconds: number;
   maxBreakAllowances: number;
   breakPassMinutes: number;
@@ -41,6 +62,7 @@ export type NativeSessionSyncPayload = {
 
 type MyelinFocusShieldNativeModuleShape = {
   getPermissionStatus?: () => Promise<Partial<NativePermissionState>>;
+  prepareWebsiteVpn?: () => Promise<Partial<NativeVpnPrepResult>>;
   openPermissionSettings?: (kind: string) => Promise<boolean>;
   getInstalledApps?: () => Promise<InstalledAndroidApp[]>;
   syncSessionState?: (payloadJson: string) => Promise<boolean>;
@@ -72,6 +94,11 @@ export async function probeFocusShieldNativeStatus(): Promise<NativePermissionSt
       usageStatsGranted: false,
       overlayGranted: false,
       batteryOptimizationIgnored: false,
+      vpnPrepared: false,
+      vpnActive: false,
+      otherVpnActive: false,
+      scheduleActiveNow: false,
+      activeScheduleLabel: '',
       isInMultiWindowMode: false,
       isInPictureInPictureMode: false,
     };
@@ -83,6 +110,14 @@ export async function probeFocusShieldNativeStatus(): Promise<NativePermissionSt
       usageStatsGranted: raw?.usageStatsGranted === true,
       overlayGranted: raw?.overlayGranted === true,
       batteryOptimizationIgnored: raw?.batteryOptimizationIgnored === true,
+      vpnPrepared: raw?.vpnPrepared === true,
+      vpnActive: raw?.vpnActive === true,
+      privateDnsActive: raw?.privateDnsActive === true,
+      vpnError: typeof raw?.vpnError === 'string' ? raw.vpnError : '',
+      otherVpnActive: raw?.otherVpnActive === true,
+      scheduleActiveNow: raw?.scheduleActiveNow === true,
+      activeScheduleLabel:
+        typeof raw?.activeScheduleLabel === 'string' ? raw.activeScheduleLabel : '',
       isInMultiWindowMode: raw?.isInMultiWindowMode === true,
       isInPictureInPictureMode: raw?.isInPictureInPictureMode === true,
     };
@@ -92,8 +127,38 @@ export async function probeFocusShieldNativeStatus(): Promise<NativePermissionSt
       usageStatsGranted: false,
       overlayGranted: false,
       batteryOptimizationIgnored: false,
+      vpnPrepared: false,
+      vpnActive: false,
+      otherVpnActive: false,
+      scheduleActiveNow: false,
+      activeScheduleLabel: '',
       isInMultiWindowMode: false,
       isInPictureInPictureMode: false,
+    };
+  }
+}
+
+export async function requestWebsiteVpnAuthorization(): Promise<NativeVpnPrepResult> {
+  const nativeMod = getNativeModule();
+  if (!nativeMod?.prepareWebsiteVpn) {
+    return {
+      granted: false,
+      vpnPrepared: false,
+      otherVpnActive: false,
+    };
+  }
+  try {
+    const res = await nativeMod.prepareWebsiteVpn();
+    return {
+      granted: res?.granted === true,
+      vpnPrepared: res?.vpnPrepared === true,
+      otherVpnActive: res?.otherVpnActive === true,
+    };
+  } catch {
+    return {
+      granted: false,
+      vpnPrepared: false,
+      otherVpnActive: false,
     };
   }
 }
@@ -118,6 +183,7 @@ export async function fetchInstalledAndroidApps(): Promise<InstalledAndroidApp[]
 
 export async function syncFocusShieldNativeSession(input: {
   config: FocusShieldConfig;
+  ownerKey?: string | null;
   sessionId: string | null;
   sessionRunning: boolean;
   phase: 'focus' | 'break' | 'idle';
@@ -128,18 +194,27 @@ export async function syncFocusShieldNativeSession(input: {
   const nativeMod = getNativeModule();
   if (!nativeMod?.syncSessionState) return false;
 
-  const summary = activeShieldSummary(input.config);
   const now = Date.now();
+  const summary = activeShieldSummary(input.config, now);
   const payload: NativeSessionSyncPayload = {
-    active: summary.enabled && summary.apps.length > 0 && input.sessionRunning && input.phase === 'focus' && input.remainingMs > 0,
+    active: summary.enabled && input.sessionRunning && input.phase === 'focus' && input.remainingMs > 0,
     sessionId: input.sessionId,
+    ownerKey: input.ownerKey ?? null,
     phase: input.phase,
     sessionEndEpochMs: now + Math.max(0, input.remainingMs),
     topicName: input.topicName || 'Focus Session',
     tinyStep: input.tinyStep || '',
     mode: input.config.mode,
+    sessionOnly: input.config.sessionOnly,
+    schedules: input.config.schedules,
     blockedPackages: summary.apps.map((item) => item.identifier),
     allowlistedPackages: summary.allowlisted.map((item) => item.packageName),
+    websiteBlockingEnabled: input.config.websiteBlockingEnabled,
+    blockedDomains: summary.websites.map((item) => item.identifier),
+    wildcardDomains: summary.websites
+      .filter((item) => item.wildcardSubdomains !== false)
+      .map((item) => item.identifier),
+    blockDohCanary: input.config.blockDohCanary,
     unlockDelaySeconds: input.config.unlockDelaySeconds,
     maxBreakAllowances: input.config.maxBreakAllowances,
     breakPassMinutes: input.config.breakPassMinutes,
@@ -168,14 +243,21 @@ export async function drainNativeInterceptEvents(): Promise<FocusShieldAttemptEn
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item) => ({
       sessionId: typeof item.sessionId === 'string' ? item.sessionId : undefined,
+      ownerKey: typeof item.ownerKey === 'string' ? item.ownerKey : undefined,
       id: typeof item.id === 'string' ? item.id : `native_${Date.now()}`,
       timestamp: typeof item.timestamp === 'number' ? item.timestamp : Date.now(),
-      vector: item.vector === 'permission-revoked' ? 'permission-revoked' : 'blocked-app',
+      vector:
+        item.vector === 'permission-revoked'
+          ? 'permission-revoked'
+          : item.vector === 'blocked-website'
+            ? 'blocked-website'
+            : 'blocked-app',
       packageName: typeof item.packageName === 'string' ? item.packageName : undefined,
       targetLabel: typeof item.targetLabel === 'string' ? item.targetLabel : undefined,
       parkedThought: typeof item.parkedThought === 'string' ? item.parkedThought : undefined,
       awaySeconds: typeof item.awaySeconds === 'number' ? item.awaySeconds : 5,
       outcome:
+        item.outcome === 'blocked' ||
         item.outcome === 'parked' ||
         item.outcome === 'break-pass' ||
         item.outcome === 'bypassed'
@@ -191,6 +273,7 @@ export type FocusShieldPermissionKind =
   | 'usage-access'
   | 'overlay'
   | 'battery'
+  | 'vpn'
   | 'digital-wellbeing';
 
 export async function openFocusShieldPermissionSettings(
@@ -212,6 +295,7 @@ export async function openFocusShieldPermissionSettings(
         ? 'android.settings.USAGE_ACCESS_SETTINGS'
         : kind === 'overlay'
           ? 'android.settings.action.MANAGE_OVERLAY_PERMISSION'
+          : kind === 'vpn' ? 'android.settings.VPN_SETTINGS'
           : kind === 'battery'
             ? 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'
             : 'android.settings.ZEN_MODE_SETTINGS';
@@ -230,10 +314,15 @@ export async function openFocusShieldPermissionSettings(
 
 export function resolveFocusShieldCapabilities(
   permState: NativePermissionState,
+  websiteBlockingEnabled = true,
 ): FocusShieldCapabilities {
-  const ready =
+  const appReady =
     permState.nativeModuleInstalled &&
     permState.usageStatsGranted &&
     permState.overlayGranted;
-  return getFocusShieldCapabilities(Platform.OS, ready);
+  return getFocusShieldCapabilities(Platform.OS, appReady, {
+    websiteBlockingEnabled,
+    vpnPrepared: permState.vpnPrepared,
+    otherVpnActive: permState.otherVpnActive,
+  });
 }

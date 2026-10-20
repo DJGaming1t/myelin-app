@@ -3,6 +3,7 @@ const path = require('node:path');
 const {
   withAndroidManifest,
   withMainApplication,
+  withProjectBuildGradle,
   withDangerousMod,
 } = require('@expo/config-plugins');
 
@@ -16,10 +17,15 @@ const REQUIRED_PERMISSIONS = [
   { name: 'android.permission.FOREGROUND_SERVICE' },
   { name: 'android.permission.FOREGROUND_SERVICE_SPECIAL_USE' },
   { name: 'android.permission.POST_NOTIFICATIONS' },
+  { name: 'android.permission.ACCESS_NETWORK_STATE' },
+  { name: 'android.permission.RECEIVE_BOOT_COMPLETED' },
 ];
 
 const KOTLIN_FILES = [
   'FocusShieldStore.kt',
+  'FocusShieldDns.kt',
+  'FocusShieldDnsVpnService.kt',
+  'FocusShieldScheduleReceiver.kt',
   'FocusShieldBlockerActivity.kt',
   'FocusShieldMonitorService.kt',
   'FocusShieldModule.kt',
@@ -97,6 +103,20 @@ function ensurePermissionsAndQueries(manifest) {
     });
   }
 
+  const vpnName = '.focusshield.FocusShieldDnsVpnService';
+  if (!appNode.service.some(s => s?.$?.['android:name'] === vpnName)) appNode.service.push({
+    $: { 'android:name': vpnName, 'android:exported': 'false', 'android:permission': 'android.permission.BIND_VPN_SERVICE', 'android:foregroundServiceType': 'specialUse' },
+    'intent-filter': [{ action: [{ $: { 'android:name': 'android.net.VpnService' } }] }],
+    'meta-data': [{ $: { 'android:name': 'android.net.VpnService.SUPPORTS_ALWAYS_ON', 'android:value': 'false' } }],
+    property: [{ $: { 'android:name': 'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE', 'android:value': 'User-initiated local DNS website filter during Focus and scheduled study windows' } }],
+  });
+  appNode.receiver = appNode.receiver || [];
+  const receiverName = '.focusshield.FocusShieldScheduleReceiver';
+  if (!appNode.receiver.some(r => r?.$?.['android:name'] === receiverName)) appNode.receiver.push({
+    $: { 'android:name': receiverName, 'android:exported': 'false' },
+    'intent-filter': [{ action: ['android.intent.action.BOOT_COMPLETED', 'android.intent.action.MY_PACKAGE_REPLACED', 'android.intent.action.TIME_SET', 'android.intent.action.TIMEZONE_CHANGED'].map(name => ({ $: { 'android:name': name } })) }],
+  });
+
   appNode.activity = appNode.activity || [];
   const activityName = '.focusshield.FocusShieldBlockerActivity';
   if (!appNode.activity.some((a) => a?.$?.['android:name'] === activityName)) {
@@ -146,7 +166,22 @@ function registerPackageInMainApplication(contents) {
   return updated;
 }
 
+function alignKotlinBuildTools(contents) {
+  // LiteRT's existing plugin pins the compiler, but Expo's version catalog still
+  // selects KSP1 for Kotlin 2.1. Keep the compiler and KSP2 selection consistent.
+  if (contents.includes('// MYELIN Kotlin/KSP alignment')) return contents;
+  contents = contents.replace("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')", "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0')");
+  if (!contents.includes('kotlin-gradle-plugin:2.3.0')) return contents;
+  const marker = 'apply plugin: "expo-root-project"';
+  if (!contents.includes(marker)) throw new Error('Focus Shield: cannot align LiteRT Kotlin and Expo KSP in this build template.');
+  return contents.replace(marker, '// MYELIN Kotlin/KSP alignment\next.kotlinVersion = "2.3.0"\next.kspVersion = "2.3.0"\n' + marker);
+}
+
 function withFocusShieldAndroid(config) {
+  config = withProjectBuildGradle(config, modConfig => {
+    modConfig.modResults.contents = alignKotlinBuildTools(modConfig.modResults.contents);
+    return modConfig;
+  });
   config = withAndroidManifest(config, (modConfig) => {
     ensurePermissionsAndQueries(modConfig.modResults.manifest);
     return modConfig;
@@ -191,3 +226,5 @@ function withFocusShieldAndroid(config) {
 module.exports = withFocusShieldAndroid;
 module.exports.ensurePermissionsAndQueries = ensurePermissionsAndQueries;
 module.exports.registerPackageInMainApplication = registerPackageInMainApplication;
+
+module.exports.alignKotlinBuildTools = alignKotlinBuildTools;

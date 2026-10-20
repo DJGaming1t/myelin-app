@@ -22,16 +22,30 @@ import {
   FocusShieldConfig,
   FocusShieldMode,
   InstalledAndroidApp,
+  MOTIVATION_PRESETS,
+  SUGGESTED_DOMAIN_PACKS,
   activeShieldSummary,
+  addCustomScheduleWindow,
+  addCustomShieldTarget,
   applyFocusShieldProfile,
+  buildHistoricalTemptationAnalytics,
   buildSessionTemptationReport,
   canModifyShieldConfig,
   defaultFocusShieldConfig,
   evaluateFocusAwayReturn,
   focusShieldStorage,
+  formatMinuteOfDay,
+  importSuggestedDomainPack,
+  removeCustomScheduleWindow,
+  removeCustomShieldTarget,
   setAccountabilityPin,
   setFocusShieldMode,
+  toggleAllowlistApp,
+  toggleScheduleWindow,
   toggleShieldTarget,
+  toggleWebsiteWildcard,
+  updateFocusShieldCustomization,
+  upsertAllowlistApp,
   upsertInstalledAppTarget,
 } from './focus-shield';
 import {
@@ -40,6 +54,7 @@ import {
   fetchInstalledAndroidApps,
   openFocusShieldPermissionSettings,
   probeFocusShieldNativeStatus,
+  requestWebsiteVpnAuthorization,
 } from './focus-shield-native';
 
 const SHIELD_MODES: Array<{ value: FocusShieldMode; label: string; helper: string }> = [
@@ -48,6 +63,14 @@ const SHIELD_MODES: Array<{ value: FocusShieldMode; label: string; helper: strin
   { value: 'hard', label: 'Hard', helper: 'Delay + reflect' },
   { value: 'strict', label: 'Strict', helper: 'Locked session' },
 ];
+
+const UNLOCK_DELAY_OPTIONS = [5, 10, 20, 30] as const;
+const BREAK_ALLOWANCE_OPTIONS = [0, 1, 2] as const;
+const SCHEDULE_PRESET_SLOTS = [
+  { label: 'Morning (08:00–11:00)', start: 8 * 60, end: 11 * 60, days: [1, 2, 3, 4, 5] },
+  { label: 'Evening (19:00–22:00)', start: 19 * 60, end: 22 * 60, days: [1, 2, 3, 4, 5, 6] },
+  { label: 'Overnight (22:30–06:30)', start: 22 * 60 + 30, end: 6 * 60 + 30, days: [0, 1, 2, 3, 4, 5, 6] },
+] as const;
 
 export function FocusShieldStudio({
   onConfigChange,
@@ -58,32 +81,40 @@ export function FocusShieldStudio({
 } = {}) {
   const { ownerKey } = useWorkspace();
   const [open, setOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [config, setConfig] = useState<FocusShieldConfig>(() => defaultFocusShieldConfig());
+  const [historicalAttempts, setHistoricalAttempts] = useState<FocusShieldAttemptEntry[]>([]);
   const [permState, setPermState] = useState<NativePermissionState>({
     nativeModuleInstalled: false,
     usageStatsGranted: false,
     overlayGranted: false,
     batteryOptimizationIgnored: false,
+    vpnPrepared: false,
+    vpnActive: false,
+    otherVpnActive: false,
+    scheduleActiveNow: false,
+    activeScheduleLabel: '',
     isInMultiWindowMode: false,
     isInPictureInPictureMode: false,
   });
   const [installedApps, setInstalledApps] = useState<InstalledAndroidApp[]>([]);
   const [appSearch, setAppSearch] = useState('');
   const [showAppPicker, setShowAppPicker] = useState(false);
+  const [domainInput, setDomainInput] = useState('');
+  const [allowlistPkgInput, setAllowlistPkgInput] = useState('');
+  const [customScheduleLabel, setCustomScheduleLabel] = useState('');
+  const [selectedSlotIdx, setSelectedSlotIdx] = useState(0);
   const [pinDraft, setPinDraft] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
   const ownerRef = useRef<string | null>(ownerKey);
 
-  const appsLoadedRef = useRef(false);
-
   async function refreshPermissionsAndApps() {
     const status = await probeFocusShieldNativeStatus();
     setPermState(status);
-    if (status.nativeModuleInstalled && !appsLoadedRef.current) {
+    if (status.nativeModuleInstalled) {
       const apps = await fetchInstalledAndroidApps();
-      setInstalledApps(apps);
-      appsLoadedRef.current = true;
+      if (apps.length) setInstalledApps(apps);
     }
   }
 
@@ -100,10 +131,13 @@ export function FocusShieldStudio({
   useEffect(() => {
     let cancelled = false;
     let changed = false;
+    const unsubscribeAttempts = ownerKey ? focusShieldStorage.subscribeAttempts(ownerKey, items => { if (!cancelled) setHistoricalAttempts(items); }) : () => {};
     setConfig(defaultFocusShieldConfig());
     ownerRef.current = ownerKey;
     setError('');
     setStatusMessage('');
+    setHistoricalAttempts([]);
+    if (ownerKey) void focusShieldStorage.loadAttempts(ownerKey).then(items => { if (!cancelled) setHistoricalAttempts(items); });
     if (!ownerKey) {
       const fallback = defaultFocusShieldConfig();
       setConfig(fallback);
@@ -127,8 +161,15 @@ export function FocusShieldStudio({
     return () => {
       cancelled = true;
       unsubscribe();
+      unsubscribeAttempts();
     };
   }, [ownerKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => { void refreshPermissionsAndApps(); }, 5000);
+    return () => clearInterval(timer);
+  }, [open]);
 
   async function applyChange(next: FocusShieldConfig, feedback = '') {
     const guard = canModifyShieldConfig(config, sessionRunning);
@@ -151,6 +192,80 @@ export function FocusShieldStudio({
     }
   }
 
+  async function handleAuthorizeVpn() {
+    setError('');
+    const result = await requestWebsiteVpnAuthorization();
+    await refreshPermissionsAndApps();
+    if (ownerRef.current && result.vpnPrepared) await focusShieldStorage.save(ownerRef.current, config);
+    if (result.otherVpnActive) {
+      setStatusMessage(
+        'VPN authorized, but another VPN is currently active on this phone. Disconnect the other VPN to enable local DNS website blocking.',
+      );
+    } else if (result.vpnPrepared) {
+      setStatusMessage('Local DNS Website Filter authorized. It will activate automatically during Focus.');
+    } else {
+      setError('VPN authorization was not completed.');
+    }
+  }
+
+  function handleAddDomain() {
+    const outcome = addCustomShieldTarget(config, 'website', domainInput);
+    if (!outcome.added) {
+      setError(outcome.error ?? 'Enter a valid domain such as youtube.com.');
+      return;
+    }
+    setDomainInput('');
+    setError('');
+    void applyChange(outcome.config, 'Added domain to local DNS website shield.');
+  }
+
+  function handleImportDomainPack(packId: (typeof SUGGESTED_DOMAIN_PACKS)[number]['id']) {
+    const outcome = importSuggestedDomainPack(config, packId);
+    if (outcome.addedCount === 0) {
+      setStatusMessage('All domains in that pack are already enabled.');
+      return;
+    }
+    void applyChange(
+      outcome.config,
+      `Imported ${outcome.addedCount} distracting domain${outcome.addedCount === 1 ? '' : 's'}.`,
+    );
+  }
+
+  function handleAddCustomSchedule() {
+    const slot = SCHEDULE_PRESET_SLOTS[selectedSlotIdx] ?? SCHEDULE_PRESET_SLOTS[0];
+    const label = customScheduleLabel.trim() || slot.label.split(' (')[0];
+    const outcome = addCustomScheduleWindow(config, {
+      label,
+      days: [...slot.days],
+      startMinuteOfDay: slot.start,
+      endMinuteOfDay: slot.end,
+      profileId: config.profileId,
+    });
+    if (!outcome.added) {
+      setError(outcome.error ?? 'Could not add schedule window.');
+      return;
+    }
+    setCustomScheduleLabel('');
+    setError('');
+    void applyChange(outcome.config, `Added recurring schedule "${label}".`);
+  }
+
+  function handleAddAllowlistPkg() {
+    const clean = allowlistPkgInput.trim();
+    if (!clean) return;
+    const outcome = upsertAllowlistApp(config, {
+      packageName: clean,
+      label: clean.split('.').pop() || clean,
+    });
+    if (!outcome.added) {
+      setError(outcome.error ?? 'Enter a valid Android package ID.');
+      return;
+    }
+    setAllowlistPkgInput('');
+    setError('');
+    void applyChange(outcome.config, 'Added study app to Focus Shield allowlist.');
+  }
+
   function handleSavePin() {
     const outcome = setAccountabilityPin(config, pinDraft);
     if (!outcome.ok) {
@@ -161,13 +276,21 @@ export function FocusShieldStudio({
     void applyChange(
       outcome.config,
       outcome.config.pinHash
-        ? 'Accountability PIN saved.'
+        ? 'Accountability PIN saved (salted SHA-256 hash).'
         : 'Accountability PIN cleared.',
     );
   }
 
+  async function handleClearAnalytics() {
+    if (!ownerKey) return;
+    await focusShieldStorage.clearAttempts(ownerKey);
+    setHistoricalAttempts([]);
+    setStatusMessage('7-day temptation log cleared.');
+  }
+
   const summary = activeShieldSummary(config);
   const apps = config.targets.filter((item) => item.kind === 'app');
+  const websites = config.targets.filter((item) => item.kind === 'website');
   const blockedPkgSet = useMemo(
     () => new Set(summary.apps.map((item) => item.identifier.toLowerCase())),
     [summary.apps],
@@ -184,10 +307,20 @@ export function FocusShieldStudio({
       .slice(0, 30);
   }, [installedApps, appSearch]);
 
-  const nativeReady =
+  const analytics = useMemo(
+    () => buildHistoricalTemptationAnalytics(historicalAttempts),
+    [historicalAttempts],
+  );
+
+  const nativeAppReady =
     permState.nativeModuleInstalled &&
     permState.usageStatsGranted &&
     permState.overlayGranted;
+
+  const nativeVpnReady =
+    permState.nativeModuleInstalled &&
+    permState.vpnPrepared &&
+    !permState.otherVpnActive;
 
   return (
     <View style={styles.shieldShell}>
@@ -204,17 +337,18 @@ export function FocusShieldStudio({
             {summary.enabled ? (
               <View style={styles.shieldActivePill}>
                 <Text style={styles.shieldActivePillText}>
-                  {summary.mode.toUpperCase()} · {summary.apps.length} APPS
+                  {summary.mode.toUpperCase()} · {summary.apps.length} APPS · {summary.websites.length} SITES
+                  {summary.activeSchedule ? ' · SCHEDULED' : ''}
                 </Text>
               </View>
             ) : null}
           </View>
           <Text style={styles.shieldSubtitle}>
             {summary.enabled
-              ? nativeReady
-                ? `Native Focus Shield ready · Selected ${summary.apps.length} Android apps`
-                : `Grant Usage Access & Overlay permissions below to enable real app interception`
-              : 'Block distracting Android apps automatically during Focus sessions'}
+              ? nativeAppReady && nativeVpnReady
+                ? `Focus Shield ready · ${summary.apps.length} apps & ${summary.websites.length} domain rules selected${summary.enabledSchedules.length ? ` · ${summary.enabledSchedules.length} schedule(s)` : ''}`
+                : `Grant Usage Access, Overlay & Local DNS VPN below for full app + website blocking`
+              : 'Block distracting Android apps and websites during Focus or recurring schedules'}
           </Text>
         </View>
         <Text style={styles.disclosureMark}>{open ? '−' : '+'}</Text>
@@ -227,10 +361,10 @@ export function FocusShieldStudio({
             <View style={styles.permRow}>
               <View style={styles.permCopy}>
                 <Text style={styles.permTitle}>
-                  1. Usage Access {permState.usageStatsGranted ? '✓ Granted' : '· Required'}
+                  1. Usage Access {permState.usageStatsGranted ? '✓ Granted' : '· Required for Apps'}
                 </Text>
                 <Text style={styles.permDesc}>
-                  Detects when a blocked app opens during an active Focus timer. Checked locally on-device only while Focus is running.
+                  Detects when a blocked app opens during an active Focus timer or schedule window. Checked locally on-device.
                 </Text>
               </View>
               <Pressable
@@ -253,7 +387,7 @@ export function FocusShieldStudio({
             <View style={styles.permRow}>
               <View style={styles.permCopy}>
                 <Text style={styles.permTitle}>
-                  2. Display Over Other Apps {permState.overlayGranted ? '✓ Granted' : '· Required'}
+                  2. Display Over Other Apps {permState.overlayGranted ? '✓ Granted' : '· Required for Apps'}
                 </Text>
                 <Text style={styles.permDesc}>
                   Displays the MYELIN Focus Shield screen immediately over blocked apps.
@@ -279,10 +413,52 @@ export function FocusShieldStudio({
             <View style={styles.permRow}>
               <View style={styles.permCopy}>
                 <Text style={styles.permTitle}>
-                  3. Unrestricted Battery {permState.batteryOptimizationIgnored ? '✓ Ready' : '· Recommended'}
+                  3. Local DNS Website Filter (VPN){' '}
+                  {permState.otherVpnActive
+                    ? '· Conflict (Other VPN Active)'
+                    : permState.vpnActive
+                      ? '✓ Active Now'
+                      : permState.vpnPrepared
+                        ? '✓ Authorized'
+                        : '· Required for Websites'}
                 </Text>
                 <Text style={styles.permDesc}>
-                  May help on phones with aggressive battery management. Android can still stop enforcement.
+                  Runs an on-device loopback DNS sinkhole (10.215.173.2) during Focus so blocked domains fail to resolve across browsers while non-blocked sites connect directly at full speed.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void handleAuthorizeVpn()}
+                style={[
+                  styles.permButton,
+                  permState.vpnPrepared && !permState.otherVpnActive && styles.permButtonGranted,
+                ]}>
+                <Text
+                  style={[
+                    styles.permButtonText,
+                    permState.vpnPrepared && !permState.otherVpnActive && styles.permButtonTextGranted,
+                  ]}>
+                  {permState.vpnPrepared ? 'Authorized' : 'Authorize'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {permState.otherVpnActive ? (
+              <View style={styles.conflictNotice}>
+                <Text style={styles.conflictNoticeTitle}>Another VPN is active on this device</Text>
+                <Text style={styles.conflictNoticeText}>
+                  Android permits only one active VPN at a time. App blocking will still work, or you can disconnect the other VPN to enable MYELIN’s local DNS website filter.
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.permRow}>
+              <View style={styles.permCopy}>
+                <Text style={styles.permTitle}>
+                  4. Unrestricted Battery {permState.batteryOptimizationIgnored ? '✓ Ready' : '· Recommended'}
+                </Text>
+                <Text style={styles.permDesc}>
+                  May help on phones with aggressive battery management; Android can still stop enforcement.
                 </Text>
               </View>
               <Pressable
@@ -440,6 +616,389 @@ export function FocusShieldStudio({
           </View>
         ) : null}
 
+        <Text style={styles.helperCaption}>
+          Website filtering needs Android VPN approval. Browser Secure DNS, Android Private DNS, cached pages and existing connections can bypass it. Disable Secure DNS and Private DNS for this test. A blocked site shows a browser connection error.
+          {permState.privateDnsActive ? ' Android Private DNS is active on this phone.' : ''}
+          {permState.vpnError ? ` ${permState.vpnError}` : ''}
+          {permState.vpnActive ? ' Website VPN is running.' : ' Website VPN is currently stopped.'}
+        </Text>
+        <View style={styles.websiteSectionHeader}>
+          <Text style={styles.microLabel}>
+            BLOCKED WEBSITES & SUBDOMAINS (LOCAL DNS SINKHOLE)
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: config.websiteBlockingEnabled }}
+            onPress={() =>
+              void applyChange(
+                updateFocusShieldCustomization(config, {
+                  websiteBlockingEnabled: !config.websiteBlockingEnabled,
+                }),
+              )
+            }
+            style={[
+              styles.inlineTogglePill,
+              config.websiteBlockingEnabled && styles.inlineTogglePillActive,
+            ]}>
+            <Text
+              style={[
+                styles.inlineToggleText,
+                config.websiteBlockingEnabled && styles.inlineToggleTextActive,
+              ]}>
+              {config.websiteBlockingEnabled ? '✓ Enabled' : 'Paused'}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.chipGrid}>
+          {websites.map((item) => {
+            const wildcard = item.wildcardSubdomains !== false;
+            return (
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: item.enabled }}
+                onPress={() => void applyChange(toggleShieldTarget(config, item.id))}
+                onLongPress={() => {
+                  if (item.custom) {
+                    void applyChange(
+                      removeCustomShieldTarget(config, item.id),
+                      `Removed ${item.label}.`,
+                    );
+                  } else {
+                    void applyChange(
+                      toggleWebsiteWildcard(config, item.id),
+                      `Updated subdomain matching for ${item.label}.`,
+                    );
+                  }
+                }}
+                style={[styles.targetChip, item.enabled && styles.targetChipActive]}>
+                <Text style={[styles.targetChipText, item.enabled && styles.targetChipTextActive]}>
+                  {item.enabled ? '✓ ' : ''}
+                  {wildcard ? `*.${item.label}` : item.label}
+                  {item.custom ? ' ×' : ''}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.packRow}>
+          {SUGGESTED_DOMAIN_PACKS.map((pack) => (
+            <Pressable
+              key={pack.id}
+              accessibilityRole="button"
+              onPress={() => handleImportDomainPack(pack.id)}
+              style={styles.packPill}>
+              <Text style={styles.packPillText}>{pack.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.domainAddRow}>
+          <TextInput
+            accessibilityLabel="Add website domain to block"
+            value={domainInput}
+            onChangeText={setDomainInput}
+            onSubmitEditing={handleAddDomain}
+            placeholder="Add domain (e.g. twitch.tv or reddit.com)…"
+            placeholderTextColor={colors.subtle}
+            selectionColor={colors.accent}
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={120}
+            style={styles.searchInput}
+          />
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleAddDomain}
+            style={styles.pinSaveBtn}>
+            <Text style={styles.pinSaveText}>+ Site</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.chipGrid}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: config.blockDohCanary }}
+            onPress={() =>
+              void applyChange(
+                updateFocusShieldCustomization(config, {
+                  blockDohCanary: !config.blockDohCanary,
+                }),
+              )
+            }
+            style={[styles.targetChip, config.blockDohCanary && styles.targetChipActive]}>
+            <Text style={[styles.targetChipText, config.blockDohCanary && styles.targetChipTextActive]}>
+              {config.blockDohCanary ? '✓ ' : ''}Auto-downgrade browser DoH canary (use-application-dns.net)
+            </Text>
+          </Pressable>
+        </View>
+
+        <SpringPressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showAdvanced }}
+          scaleTo={0.99}
+          lift={0}
+          onPress={() => setShowAdvanced((v) => !v)}
+          style={styles.advancedToggleRow}>
+          <Text style={styles.advancedToggleText}>
+            {showAdvanced
+              ? 'Hide schedules, friction, allowlist & 7-day analytics'
+              : `Schedules (${summary.enabledSchedules.length}), friction (${config.unlockDelaySeconds}s · ${config.maxBreakAllowances} pass) & 7-day analytics`}
+          </Text>
+          <Text style={styles.disclosureMark}>{showAdvanced ? '−' : '+'}</Text>
+        </SpringPressable>
+
+        <AnimatedDisclosure visible={showAdvanced} style={styles.advancedPanel}>
+          <Text style={styles.microLabel}>RECURRING SCHEDULE WINDOWS (BOOT & ALARM RECOVERED)</Text>
+          <View style={styles.chipGrid}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: config.sessionOnly }}
+              onPress={() =>
+                void applyChange(
+                  updateFocusShieldCustomization(config, {
+                    sessionOnly: !config.sessionOnly,
+                  }),
+                )
+              }
+              style={[styles.targetChip, config.sessionOnly && styles.targetChipActive]}>
+              <Text style={[styles.targetChipText, config.sessionOnly && styles.targetChipTextActive]}>
+                {config.sessionOnly ? '✓ ' : ''}Only during manual Focus sessions
+              </Text>
+            </Pressable>
+            {config.schedules.map((sched) => (
+              <Pressable
+                key={sched.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sched.enabled }}
+                onPress={() => void applyChange(toggleScheduleWindow(config, sched.id))}
+                onLongPress={
+                  sched.custom
+                    ? () =>
+                        void applyChange(
+                          removeCustomScheduleWindow(config, sched.id),
+                          `Removed schedule ${sched.label}.`,
+                        )
+                    : undefined
+                }
+                style={[styles.targetChip, sched.enabled && styles.targetChipActive]}>
+                <Text style={[styles.targetChipText, sched.enabled && styles.targetChipTextActive]}>
+                  {sched.enabled ? '✓ ' : ''}
+                  {sched.label} ({formatMinuteOfDay(sched.startMinuteOfDay)}–{formatMinuteOfDay(sched.endMinuteOfDay)})
+                  {sched.custom ? ' ×' : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.packRow}>
+            {SCHEDULE_PRESET_SLOTS.map((slot, idx) => {
+              const active = selectedSlotIdx === idx;
+              return (
+                <Pressable
+                  key={slot.label}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setSelectedSlotIdx(idx)}
+                  style={[styles.packPill, active && styles.inlineTogglePillActive]}>
+                  <Text style={[styles.packPillText, active && styles.inlineToggleTextActive]}>
+                    {slot.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.domainAddRow}>
+            <TextInput
+              accessibilityLabel="Custom schedule label"
+              value={customScheduleLabel}
+              onChangeText={setCustomScheduleLabel}
+              onSubmitEditing={handleAddCustomSchedule}
+              placeholder="Schedule name (e.g. Evening Revision)…"
+              placeholderTextColor={colors.subtle}
+              selectionColor={colors.accent}
+              maxLength={60}
+              style={styles.searchInput}
+            />
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleAddCustomSchedule}
+              style={styles.pinSaveBtn}>
+              <Text style={styles.pinSaveText}>+ Schedule</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.microLabel}>PROGRESSIVE UNLOCK FRICTION DELAY (SCALES ON REPEATED ATTEMPTS)</Text>
+          <View style={styles.chipGrid}>
+            {UNLOCK_DELAY_OPTIONS.map((sec) => {
+              const selected = config.unlockDelaySeconds === sec;
+              return (
+                <Pressable
+                  key={sec}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() =>
+                    void applyChange(updateFocusShieldCustomization(config, { unlockDelaySeconds: sec }))
+                  }
+                  style={[styles.targetChip, selected && styles.targetChipActive]}>
+                  <Text style={[styles.targetChipText, selected && styles.targetChipTextActive]}>
+                    {sec}s base pause
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.microLabel}>EMERGENCY BREAK PASSES PER SESSION</Text>
+          <View style={styles.chipGrid}>
+            {BREAK_ALLOWANCE_OPTIONS.map((count) => {
+              const selected = config.maxBreakAllowances === count;
+              return (
+                <Pressable
+                  key={count}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() =>
+                    void applyChange(updateFocusShieldCustomization(config, { maxBreakAllowances: count }))
+                  }
+                  style={[styles.targetChip, selected && styles.targetChipActive]}>
+                  <Text style={[styles.targetChipText, selected && styles.targetChipTextActive]}>
+                    {count === 0 ? '0 passes (Locked)' : `${count} × ${config.breakPassMinutes}m pass`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.microLabel}>ANTI-BYPASS & MULTI-WINDOW PROTECTION</Text>
+          <View style={styles.chipGrid}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: config.blockFloatingWindows }}
+              onPress={() =>
+                void applyChange(
+                  updateFocusShieldCustomization(config, {
+                    blockFloatingWindows: !config.blockFloatingWindows,
+                  }),
+                )
+              }
+              style={[styles.targetChip, config.blockFloatingWindows && styles.targetChipActive]}>
+              <Text style={[styles.targetChipText, config.blockFloatingWindows && styles.targetChipTextActive]}>
+                {config.blockFloatingWindows ? '✓ ' : ''}Hide floating overlays (Android 12+)
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: config.blockSplitScreen }}
+              onPress={() =>
+                void applyChange(
+                  updateFocusShieldCustomization(config, {
+                    blockSplitScreen: !config.blockSplitScreen,
+                  }),
+                )
+              }
+              style={[styles.targetChip, config.blockSplitScreen && styles.targetChipActive]}>
+              <Text style={[styles.targetChipText, config.blockSplitScreen && styles.targetChipTextActive]}>
+                {config.blockSplitScreen ? '✓ ' : ''}Guard split-screen & PiP
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.microLabel}>MOTIVATIONAL INTERCEPTION MESSAGE</Text>
+          <View style={styles.chipGrid}>
+            {MOTIVATION_PRESETS.map((preset, idx) => {
+              const selected = config.customMotivation === preset;
+              return (
+                <Pressable
+                  key={idx}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() =>
+                    void applyChange(updateFocusShieldCustomization(config, { customMotivation: preset }))
+                  }
+                  style={[styles.targetChip, selected && styles.targetChipActive]}>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.targetChipText, selected && styles.targetChipTextActive]}>
+                    {selected ? '✓ ' : ''}“{preset.slice(0, 38)}…”
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.microLabel}>EMERGENCY & STUDY ALLOWLIST (NEVER BLOCKED OR DNS-FILTERED)</Text>
+          <View style={styles.chipGrid}>
+            {config.allowlist.map((item) => (
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                disabled={item.emergency}
+                accessibilityState={{ selected: item.enabled }}
+                onPress={() => void applyChange(toggleAllowlistApp(config, item.id))}
+                style={[styles.targetChip, item.enabled && styles.targetChipActive]}>
+                <Text style={[styles.targetChipText, item.enabled && styles.targetChipTextActive]}>
+                  {item.enabled ? '✓ ' : ''}{item.label}{item.emergency ? ' (Emergency)' : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.domainAddRow}>
+            <TextInput
+              accessibilityLabel="Add study app package to allowlist"
+              value={allowlistPkgInput}
+              onChangeText={setAllowlistPkgInput}
+              onSubmitEditing={handleAddAllowlistPkg}
+              placeholder="Allowlist study app ID (e.g. com.ankiweb.ankidroid)…"
+              placeholderTextColor={colors.subtle}
+              selectionColor={colors.accent}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.searchInput}
+            />
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleAddAllowlistPkg}
+              style={styles.pinSaveBtn}>
+              <Text style={styles.pinSaveText}>+ Allow</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.analyticsCard}>
+            <View style={styles.analyticsHeader}>
+              <Text style={styles.microLabel}>7-DAY FOCUS SHIELD TEMPTATION ANALYTICS</Text>
+              {analytics.totalAttempts > 0 ? (
+                <Pressable accessibilityRole="button" onPress={() => void handleClearAnalytics()}>
+                  <Text style={styles.clearAnalyticsText}>Clear log</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <Text style={styles.analyticsHeadline}>
+              {analytics.totalAttempts === 0
+                ? 'Zero blocked launches or domain pulls in the last 7 days'
+                : `${analytics.recoveryRatePercent}% Recovery Rate · ${analytics.recoveredCount}/${analytics.totalAttempts} pulls deflected`}
+            </Text>
+            <Text style={styles.analyticsSubtext}>
+              Apps intercepted: {analytics.appInterceptions} · Websites blocked: {analytics.websiteInterceptions} · Thoughts parked: {analytics.parkedCount}
+            </Text>
+            {analytics.topTargets.length > 0 ? (
+              <View style={styles.packRow}>
+                {analytics.topTargets.map((t) => (
+                  <View key={`${t.kind}:${t.label}`} style={styles.packPill}>
+                    <Text style={styles.packPillText}>
+                      {t.label} ×{t.count}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        </AnimatedDisclosure>
+
         <View style={styles.pinSection}>
           <Text style={styles.microLabel}>
             ACCOUNTABILITY PIN (OPTIONAL · SALTED SHA-256){summary.hasPin ? ' · SET ✓' : ''}
@@ -473,7 +1032,7 @@ export function FocusShieldStudio({
           MYELIN does not control or verify these system settings.
         </Text>
         <Text style={styles.helperCaption}>
-          Phone calls, emergency dialers, SMS, and system keyboards are always allowlisted. Website domain blocking is scheduled for Chunk B (local DNS VPN).
+          Local DNS VPN routes only DNS queries (10.111.222.1) on-device without inspecting HTTPS; allowed DNS queries use your network’s resolver. Schedules use inexact alarms. Android may delay them; after reboot or a cold start, tap the schedule notification to activate blocking.
         </Text>
 
         <SpringPressable
@@ -558,16 +1117,16 @@ export function useFocusShieldSession(input: {
       if (disposed) return;
       setOsMultiWindow(status.isInMultiWindowMode || status.isInPictureInPictureMode);
       const identity = identityRef.current;
-      if (!identity.ownerKey || !identity.sessionId) return;
+      if (!identity.ownerKey) return;
       const events = await drainNativeInterceptEvents();
       if (disposed || identityRef.current.ownerKey !== identity.ownerKey || identityRef.current.sessionId !== identity.sessionId) return;
-      const nativeEvents = events.filter(event => event.sessionId === `${identity.ownerKey}:${identity.sessionId}`);
+      const nativeEvents = events.filter(event => event.ownerKey === identity.ownerKey || (!event.ownerKey && event.sessionId?.startsWith(`${identity.ownerKey}:`)));
       if (!nativeEvents.length) return;
-      setAttempts((prev) => [...prev, ...nativeEvents]);
+      setAttempts((prev) => [...prev, ...nativeEvents.filter(event => event.sessionId === `${identity.ownerKey}:${identity.sessionId}`)]);
       for (const ev of nativeEvents) {
         // Account/session can change while a previous thought is being saved.
         if (disposed || identityRef.current.ownerKey !== identity.ownerKey || identityRef.current.sessionId !== identity.sessionId) return;
-        if (ev.parkedThought) {
+        if (ev.parkedThought && ev.sessionId === `${identity.ownerKey}:${identity.sessionId}`) {
           await parkRef.current(ev.parkedThought);
         }
         if (disposed || identityRef.current.ownerKey !== identity.ownerKey || identityRef.current.sessionId !== identity.sessionId) return;
@@ -758,7 +1317,7 @@ const styles = StyleSheet.create({
   permDesc: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 2 },
   permButton: {
     minHeight: 36,
-    minWidth: 74,
+    minWidth: 78,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.accentLine,
@@ -773,6 +1332,17 @@ const styles = StyleSheet.create({
   },
   permButtonText: { color: colors.accent, fontSize: 11.5, fontWeight: '800' },
   permButtonTextGranted: { color: colors.success },
+  conflictNotice: {
+    marginTop: 6,
+    marginBottom: 4,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    padding: 9,
+  },
+  conflictNoticeTitle: { color: colors.accent, fontSize: 11.5, fontWeight: '700' },
+  conflictNoticeText: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 2 },
   microLabel: {
     color: colors.subtle,
     fontSize: 9.5,
@@ -781,6 +1351,54 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginTop: 10,
     marginBottom: 7,
+  },
+  websiteSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  inlineTogglePill: {
+    minHeight: 28,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.bgRaised,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  inlineTogglePillActive: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+  },
+  inlineToggleText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
+  inlineToggleTextActive: { color: colors.accent },
+  packRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  packPill: {
+    minHeight: 32,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panelRaised,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  packPillText: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  domainAddRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 9,
+    marginBottom: 8,
   },
   chipGrid: {
     flexDirection: 'row',
@@ -895,6 +1513,57 @@ const styles = StyleSheet.create({
   installedPkg: { color: colors.subtle, fontSize: 10.5 },
   installedStatus: { color: colors.muted, fontSize: 11.5, fontWeight: '700' },
   installedStatusActive: { color: colors.accent },
+  advancedToggleRow: {
+    minHeight: 44,
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  advancedToggleText: {
+    flex: 1,
+    color: colors.textDim,
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  advancedPanel: {
+    marginTop: 4,
+    paddingBottom: 4,
+  },
+  analyticsCard: {
+    marginTop: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.bgRaised,
+    padding: 12,
+  },
+  analyticsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  clearAnalyticsText: {
+    color: colors.subtle,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  analyticsHeadline: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  analyticsSubtext: {
+    color: colors.muted,
+    fontSize: 11.5,
+    lineHeight: 17,
+    marginTop: 3,
+  },
   pinSection: {
     marginTop: 12,
     paddingTop: 10,
@@ -956,6 +1625,13 @@ const styles = StyleSheet.create({
   awayBannerDismiss: { color: colors.subtle, fontSize: 18, fontWeight: '600' },
   awayBannerTitle: { color: colors.text, fontSize: 14, lineHeight: 19, fontWeight: '700', marginTop: 4 },
   awayBannerText: { color: colors.muted, fontSize: 12.5, lineHeight: 18, marginTop: 3 },
+  awayReflectionText: {
+    color: colors.textDim,
+    fontSize: 12,
+    lineHeight: 17,
+    fontStyle: 'italic',
+    marginTop: 5,
+  },
   awayParkButton: {
     minHeight: 42,
     marginTop: 9,

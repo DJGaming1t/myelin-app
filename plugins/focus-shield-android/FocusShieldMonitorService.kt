@@ -122,7 +122,7 @@ class FocusShieldMonitorService : Service() {
 
     val state = FocusShieldStore.loadState(this)
     val now = System.currentTimeMillis()
-    if (!state.active || state.phase != "focus" || state.mode == "off" || now >= state.sessionEndEpochMs) {
+    if (!state.isEnforcementActive(now)) {
       removeOverlayOnMain()
       stopForeground(STOP_FOREGROUND_REMOVE)
       stopSelf()
@@ -138,7 +138,6 @@ class FocusShieldMonitorService : Service() {
       stopSelf()
       return START_NOT_STICKY
     }
-    removeOverlayOnMain()
     monitorHandler?.removeCallbacks(pollRunnable)
     monitorHandler?.post(pollRunnable)
     return START_STICKY
@@ -161,7 +160,7 @@ class FocusShieldMonitorService : Service() {
     }
 
     val notification = builder
-      .setContentTitle("Focus Shield active · ${state.topicName}")
+      .setContentTitle("Focus Shield active · ${state.effectiveTopicName}")
       .setContentText("Guarding ${state.blockedPackages.size} selected apps · Tap to return to MYELIN")
       .setSmallIcon(applicationInfo.icon)
       .setContentIntent(pendingIntent)
@@ -247,7 +246,7 @@ class FocusShieldMonitorService : Service() {
     val state = FocusShieldStore.loadState(this)
     val now = System.currentTimeMillis()
 
-    if (!state.active || state.phase != "focus" || state.mode == "off" || now >= state.sessionEndEpochMs) {
+    if (!state.isEnforcementActive(now)) {
       removeOverlayOnMain()
       stopForeground(STOP_FOREGROUND_REMOVE)
       stopSelf()
@@ -312,9 +311,7 @@ class FocusShieldMonitorService : Service() {
   private fun showInterceptionOnMain(state: ShieldSessionState, blockedPkg: String, blockedLabel: String) {
     mainHandler.post {
       val latest = FocusShieldStore.loadState(this)
-      if (destroyed || !latest.active || latest.sessionId != state.sessionId ||
-          latest.phase != "focus" || latest.mode == "off" ||
-          System.currentTimeMillis() >= latest.sessionEndEpochMs ||
+      if (destroyed || !latest.isEnforcementActive() || latest.sessionId != state.sessionId ||
           System.currentTimeMillis() < latest.breakPassExpiresAtMs ||
           blockedPkg !in latest.blockedPackages || !Settings.canDrawOverlays(this) ||
           !hasUsageStatsPermission(this)) return@post
@@ -327,7 +324,7 @@ class FocusShieldMonitorService : Service() {
       if (Settings.canDrawOverlays(this) && windowManager != null) {
         val (view, cleanup) = FocusShieldUiFactory.buildBlockingView(
           context = this,
-          state = state,
+          state = FocusShieldStore.recordInterceptionAttempt(this),
           blockedPackage = blockedPkg,
           blockedLabel = blockedLabel,
           onReturnToMyelin = { parkedThought ->

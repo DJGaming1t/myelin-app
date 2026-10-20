@@ -6,7 +6,8 @@ export const FOCUS_SHIELD_FORMAT = 'myelin.native.focus-shield' as const;
 export const FOCUS_SHIELD_VERSION = 2 as const;
 export const MAX_SHIELD_TARGETS = 80;
 export const MAX_ALLOWLIST_APPS = 24;
-export const MAX_ATTEMPT_LOG = 50;
+export const MAX_SCHEDULES = 12;
+export const MAX_ATTEMPT_LOG = 2000;
 export const DEFAULT_AWAY_THRESHOLD_SECONDS = 15;
 export const DEFAULT_UNLOCK_DELAY_SECONDS = 10;
 export const DEFAULT_RETRY_COOLDOWN_SECONDS = 30;
@@ -46,8 +47,20 @@ export type FocusShieldAllowlistItem = {
   custom?: boolean;
 };
 
+export type FocusShieldScheduleWindow = {
+  id: string;
+  label: string;
+  days: number[]; // 0 = Sun .. 6 = Sat
+  startMinuteOfDay: number; // 0..1439
+  endMinuteOfDay: number; // 0..1439
+  profileId: FocusShieldProfileId;
+  enabled: boolean;
+  custom?: boolean;
+};
+
 export type FocusShieldBypassVector =
   | 'blocked-app'
+  | 'blocked-website'
   | 'app-switch'
   | 'rapid-switch'
   | 'split-screen'
@@ -55,9 +68,10 @@ export type FocusShieldBypassVector =
   | 'permission-revoked'
   | 'early-exit';
 
-export type FocusShieldAttemptOutcome = 'returned' | 'parked' | 'break-pass' | 'bypassed';
+export type FocusShieldAttemptOutcome = 'returned' | 'parked' | 'break-pass' | 'bypassed' | 'blocked';
 
 export type FocusShieldAttemptEntry = {
+  ownerKey?: string;
   sessionId?: string;
   id: string;
   timestamp: number;
@@ -76,6 +90,9 @@ export type FocusShieldConfig = {
   profileId: FocusShieldProfileId;
   targets: FocusShieldTarget[];
   allowlist: FocusShieldAllowlistItem[];
+  schedules: FocusShieldScheduleWindow[];
+  websiteBlockingEnabled: boolean;
+  blockDohCanary: boolean;
   sessionOnly: boolean;
   awayThresholdSeconds: number;
   unlockDelaySeconds: number;
@@ -95,16 +112,34 @@ export type FocusShieldConfig = {
 export type FocusShieldEnforcementLevel =
   | 'none'
   | 'os-settings-handoff'
-  | 'native-usage-overlay';
+  | 'native-usage-overlay'
+  | 'native-vpn-dns';
+
+export type WebsiteBlockingStatus =
+  | 'native-dns-vpn-ready'
+  | 'vpn-conflict'
+  | 'permission-required'
+  | 'disabled';
 
 export type FocusShieldCapabilities = {
   platform: string;
   supportedLevels: FocusShieldEnforcementLevel[];
   activeLevel: FocusShieldEnforcementLevel;
   nativeAppBlockingActive: boolean;
-  websiteBlockingStatus: 'chunk-b-pending';
+  websiteBlockingStatus: WebsiteBlockingStatus;
   requiresNativeRebuildForInterception: boolean;
   honestDisclosure: string;
+};
+
+export type FocusShieldFrictionRequirement = {
+  lockedByStrictMode: boolean;
+  effectiveDelaySeconds: number;
+  cooldownRemainingSeconds: number;
+  requireReflection: boolean;
+  reflectionPrompt: string;
+  requirePinChallenge: boolean;
+  canUseBreakPass: boolean;
+  remainingBreakPasses: number;
 };
 
 export type FocusShieldAwayNotice = {
@@ -121,6 +156,7 @@ export type FocusShieldAwayNotice = {
 export type FocusShieldSessionSummary = {
   totalAttempts: number;
   nativeInterceptCount: number;
+  websiteInterceptCount: number;
   deflectedCount: number;
   parkedCount: number;
   breakPassesUsed: number;
@@ -130,6 +166,19 @@ export type FocusShieldSessionSummary = {
   integrityPercent: number;
   headline: string;
   detail: string;
+};
+
+export type FocusShieldHistoricalAnalytics = {
+  windowDays: number;
+  totalAttempts: number;
+  appInterceptions: number;
+  websiteInterceptions: number;
+  recoveredCount: number;
+  parkedCount: number;
+  breakPassCount: number;
+  bypassedCount: number;
+  recoveryRatePercent: number;
+  topTargets: Array<{ label: string; count: number; kind: 'app' | 'website' }>;
 };
 
 const ROOT = '@myelin/native/focus-shield';
@@ -142,6 +191,49 @@ function key(ownerKey: string) {
 function logKey(ownerKey: string) {
   return `${LOG_ROOT}/${encodeURIComponent(ownerKey)}`;
 }
+
+export const COMPANION_DOMAIN_MAP: Readonly<Record<string, readonly string[]>> = {
+  'youtube.com': ['youtu.be', 'ytimg.com', 'googlevideo.com', 'youtube-nocookie.com'],
+  'reddit.com': ['redd.it', 'redditmedia.com', 'redditstatic.com'],
+  'instagram.com': ['cdninstagram.com'],
+  'tiktok.com': ['tiktokv.com', 'tiktokcdn.com', 'musical.ly'],
+  'x.com': ['twitter.com', 't.co', 'twimg.com'],
+  'twitter.com': ['x.com', 't.co', 'twimg.com'],
+  'twitch.tv': ['ttvnw.net', 'jtvnw.net'],
+  'discord.com': ['discord.gg', 'discordapp.com', 'discordapp.net'],
+};
+
+export const SUGGESTED_DOMAIN_PACKS: ReadonlyArray<{
+  id: 'short-video' | 'social-feeds' | 'gaming-wikis' | 'shopping';
+  label: string;
+  category: FocusShieldCategory;
+  domains: readonly string[];
+}> = [
+  {
+    id: 'short-video',
+    label: '+ Video & Streams',
+    category: 'video',
+    domains: ['tiktok.com', 'twitch.tv', 'kick.com', 'netflix.com', 'bilibili.com'],
+  },
+  {
+    id: 'social-feeds',
+    label: '+ Social Feeds',
+    category: 'social',
+    domains: ['instagram.com', 'x.com', 'threads.net', 'snapchat.com', 'pinterest.com'],
+  },
+  {
+    id: 'gaming-wikis',
+    label: '+ Gaming & Forums',
+    category: 'gaming',
+    domains: ['discord.com', 'hoyolab.com', 'fandom.com', 'steamcommunity.com', 'itch.io'],
+  },
+  {
+    id: 'shopping',
+    label: '+ Shopping',
+    category: 'custom',
+    domains: ['amazon.in', 'flipkart.com', 'myntra.com'],
+  },
+];
 
 // Pure TypeScript SHA-256 implementation (matches java.security.MessageDigest("SHA-256") byte-for-byte)
 const SHA256_K = new Uint32Array([
@@ -190,7 +282,6 @@ export function sha256Hex(input: string): string {
   while ((bytes.length % 64) !== 56) {
     bytes.push(0);
   }
-  // Append 64-bit big-endian length
   const highBits = Math.floor(bitLen / 0x100000000);
   const lowBits = bitLen >>> 0;
   bytes.push(
@@ -279,6 +370,13 @@ export const DEFAULT_REFLECTION_PROMPT =
 export const DEFAULT_MOTIVATION_MESSAGE =
   'Protect this single block. Everything else can wait in Distraction Parking.';
 
+export const MOTIVATION_PRESETS: readonly string[] = [
+  'Protect this single block. Everything else can wait in Distraction Parking.',
+  'Five more focused minutes beats an hour of split attention.',
+  'Your future self is counting on this study block.',
+  'Park the urge now—check it guilt-free on your break.',
+];
+
 export const FOCUS_SHIELD_PROFILES: ReadonlyArray<{
   id: FocusShieldProfileId;
   label: string;
@@ -294,7 +392,7 @@ export const FOCUS_SHIELD_PROFILES: ReadonlyArray<{
     id: 'school',
     label: 'School',
     badge: 'BALANCED',
-    description: 'Blocks Social, Gaming & Video apps while keeping Messaging and emergency tools open.',
+    description: 'Blocks Social, Gaming & Video apps and sites while keeping Messaging open.',
     mode: 'gentle',
     categories: ['social', 'gaming', 'video'],
     unlockDelaySeconds: 5,
@@ -338,7 +436,7 @@ export const FOCUS_SHIELD_PROFILES: ReadonlyArray<{
     id: 'custom',
     label: 'Custom',
     badge: 'TUNED',
-    description: 'Your custom selection of installed Android apps, friction delay, and break rules.',
+    description: 'Your custom selection of installed Android apps, domains, friction delay, and break rules.',
     mode: 'strict',
     categories: ['social', 'gaming', 'video'],
     unlockDelaySeconds: 10,
@@ -347,7 +445,6 @@ export const FOCUS_SHIELD_PROFILES: ReadonlyArray<{
   },
 ];
 
-// All default app targets use real, verified Android package names (never fake custom:* or category:* strings)
 export const DEFAULT_SHIELD_TARGETS: readonly FocusShieldTarget[] = [
   {
     id: 'app_youtube',
@@ -455,6 +552,42 @@ export const DEFAULT_SHIELD_TARGETS: readonly FocusShieldTarget[] = [
     wildcardSubdomains: true,
     enabled: true,
   },
+  {
+    id: 'site_instagram',
+    kind: 'website',
+    category: 'social',
+    label: 'instagram.com',
+    identifier: 'instagram.com',
+    wildcardSubdomains: true,
+    enabled: true,
+  },
+  {
+    id: 'site_tiktok',
+    kind: 'website',
+    category: 'video',
+    label: 'tiktok.com',
+    identifier: 'tiktok.com',
+    wildcardSubdomains: true,
+    enabled: true,
+  },
+  {
+    id: 'site_x',
+    kind: 'website',
+    category: 'social',
+    label: 'x.com',
+    identifier: 'x.com',
+    wildcardSubdomains: true,
+    enabled: false,
+  },
+  {
+    id: 'site_twitch',
+    kind: 'website',
+    category: 'video',
+    label: 'twitch.tv',
+    identifier: 'twitch.tv',
+    wildcardSubdomains: true,
+    enabled: false,
+  },
 ];
 
 export const DEFAULT_EMERGENCY_ALLOWLIST: readonly FocusShieldAllowlistItem[] = [
@@ -488,6 +621,45 @@ export const DEFAULT_EMERGENCY_ALLOWLIST: readonly FocusShieldAllowlistItem[] = 
   },
 ];
 
+export const DEFAULT_SCHEDULES: readonly FocusShieldScheduleWindow[] = [
+  {
+    id: 'sched_after_school',
+    label: 'Afternoon Study Block',
+    days: [1, 2, 3, 4, 5, 6],
+    startMinuteOfDay: 16 * 60,
+    endMinuteOfDay: 19 * 60,
+    profileId: 'deep-work',
+    enabled: false,
+  },
+  {
+    id: 'sched_bedtime',
+    label: 'Late-Night Wind-Down',
+    days: [0, 1, 2, 3, 4, 5, 6],
+    startMinuteOfDay: 22 * 60 + 30,
+    endMinuteOfDay: 23 * 60 + 59,
+    profileId: 'bedtime',
+    enabled: false,
+  },
+  {
+    id: 'sched_morning_deep',
+    label: 'Morning Deep Work',
+    days: [1, 2, 3, 4, 5],
+    startMinuteOfDay: 8 * 60,
+    endMinuteOfDay: 11 * 60,
+    profileId: 'exam',
+    enabled: false,
+  },
+];
+
+export function formatMinuteOfDay(minuteOfDay: number): string {
+  const clamped = Math.max(0, Math.min(1439, Math.round(minuteOfDay)));
+  const hh = Math.floor(clamped / 60)
+    .toString()
+    .padStart(2, '0');
+  const mm = (clamped % 60).toString().padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 export function isValidAndroidPackageName(input: string): boolean {
   const clean = input.trim();
   if (!clean || clean.length > 160) return false;
@@ -501,10 +673,10 @@ export function normalizeWebsiteDomain(input: string): string | null {
   clean = clean.replace(/^[a-z]+:\/\//, '');
   clean = clean.split('/')[0]?.split('?')[0]?.split('#')[0] ?? '';
   if (/\s/.test(clean)) return null;
-  clean = clean.replace(/^\*\./, '').replace(/^www\./, '').replace(/:\d+$/, '');
-  if (!clean || clean.length > 120) return null;
+  clean = clean.replace(/^\*\./, '').replace(/^www\./, '').replace(/:\d+$/, '').replace(/\.+$/, '');
+  if (!clean || clean.length > 253 || /^[0-9.]+$/.test(clean)) return null;
   if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(clean)) return null;
-  if (clean.startsWith('-') || clean.endsWith('-') || clean.includes('..')) return null;
+  if (clean.split('.').some(label => label.length > 63 || label.startsWith('-') || label.endsWith('-'))) return null;
   return clean;
 }
 
@@ -516,6 +688,9 @@ export function defaultFocusShieldConfig(now = Date.now()): FocusShieldConfig {
     profileId: 'deep-work',
     targets: DEFAULT_SHIELD_TARGETS.map((item) => ({ ...item })),
     allowlist: DEFAULT_EMERGENCY_ALLOWLIST.map((item) => ({ ...item })),
+    schedules: DEFAULT_SCHEDULES.map((item) => ({ ...item, days: [...item.days] })),
+    websiteBlockingEnabled: true,
+    blockDohCanary: true,
     sessionOnly: true,
     awayThresholdSeconds: DEFAULT_AWAY_THRESHOLD_SECONDS,
     unlockDelaySeconds: DEFAULT_UNLOCK_DELAY_SECONDS,
@@ -536,20 +711,51 @@ export function defaultFocusShieldConfig(now = Date.now()): FocusShieldConfig {
 export function getFocusShieldCapabilities(
   platform: string,
   nativeAppBlockingReady = false,
+  options: {
+    websiteBlockingEnabled?: boolean;
+    vpnPrepared?: boolean;
+    otherVpnActive?: boolean;
+  } = {},
 ): FocusShieldCapabilities {
+  const {
+    websiteBlockingEnabled = true,
+    vpnPrepared = false,
+    otherVpnActive = false,
+  } = options;
+
   if (platform === 'android') {
+    const websiteStatus: WebsiteBlockingStatus = !websiteBlockingEnabled
+      ? 'disabled'
+      : otherVpnActive
+        ? 'vpn-conflict'
+        : vpnPrepared
+          ? 'native-dns-vpn-ready'
+          : 'permission-required';
+
+    const supportedLevels: FocusShieldEnforcementLevel[] = ['none', 'os-settings-handoff'];
+    if (nativeAppBlockingReady) supportedLevels.push('native-usage-overlay');
+    if (websiteStatus === 'native-dns-vpn-ready') supportedLevels.push('native-vpn-dns');
+
+    const activeLevel: FocusShieldEnforcementLevel =
+      websiteStatus === 'native-dns-vpn-ready'
+        ? 'native-vpn-dns'
+        : nativeAppBlockingReady
+          ? 'native-usage-overlay'
+          : 'os-settings-handoff';
+
     return {
       platform,
-      supportedLevels: nativeAppBlockingReady
-        ? ['none', 'os-settings-handoff', 'native-usage-overlay']
-        : ['none', 'os-settings-handoff'],
-      activeLevel: nativeAppBlockingReady ? 'native-usage-overlay' : 'os-settings-handoff',
+      supportedLevels,
+      activeLevel,
       nativeAppBlockingActive: nativeAppBlockingReady,
-      websiteBlockingStatus: 'chunk-b-pending',
-      requiresNativeRebuildForInterception: !nativeAppBlockingReady,
-      honestDisclosure: nativeAppBlockingReady
-        ? 'Native Android app blocking is active via Usage Access + MYELIN Overlay. Website domain blocking requires the Chunk B local DNS VPN module.'
-        : 'Grant Usage Access and Overlay permissions on Android to activate real app interception during Focus.',
+      websiteBlockingStatus: websiteStatus,
+      requiresNativeRebuildForInterception: !nativeAppBlockingReady && !vpnPrepared,
+      honestDisclosure:
+        websiteStatus === 'vpn-conflict'
+          ? 'Another VPN is currently active on this phone. Android allows only one VPN at a time, so MYELIN app blocking remains active while local DNS website filtering waits.'
+          : websiteStatus === 'native-dns-vpn-ready'
+            ? 'Native Android app blocking (Usage Access + Overlay) and local loopback DNS website blocking (VpnService) are ready. All DNS filtering happens 100% on-device.'
+            : 'Grant Usage Access, Overlay, and Local DNS VPN permissions on Android to activate both app and website interception during Focus.',
     };
   }
   return {
@@ -557,9 +763,9 @@ export function getFocusShieldCapabilities(
     supportedLevels: ['none', 'os-settings-handoff'],
     activeLevel: platform === 'ios' ? 'os-settings-handoff' : 'none',
     nativeAppBlockingActive: false,
-    websiteBlockingStatus: 'chunk-b-pending',
+    websiteBlockingStatus: 'disabled',
     requiresNativeRebuildForInterception: true,
-    honestDisclosure: 'Native Android app blocking requires an Android device with Usage Access granted.',
+    honestDisclosure: 'Native Android app and DNS VPN blocking require an Android device.',
   };
 }
 
@@ -567,7 +773,7 @@ export function matchesBlockedDomain(
   candidateHostOrUrl: string,
   config: FocusShieldConfig,
 ): FocusShieldTarget | null {
-  if (config.mode === 'off') return null;
+  if (config.mode === 'off' || !config.websiteBlockingEnabled) return null;
   const host = normalizeWebsiteDomain(candidateHostOrUrl);
   if (!host) return null;
 
@@ -575,9 +781,15 @@ export function matchesBlockedDomain(
     if (target.kind !== 'website' || !target.enabled) continue;
     const rule = normalizeWebsiteDomain(target.identifier);
     if (!rule) continue;
-    if (host === rule) return target;
-    if (target.wildcardSubdomains !== false && host.endsWith(`.${rule}`)) {
+    const wildcard = target.wildcardSubdomains !== false;
+    if (host === rule || (wildcard && host.endsWith(`.${rule}`))) {
       return target;
+    }
+    const companions: readonly string[] = COMPANION_DOMAIN_MAP[rule] ?? [];
+    for (const comp of companions) {
+      if (host === comp || (wildcard && host.endsWith(`.${comp}`))) {
+        return target;
+      }
     }
   }
   return null;
@@ -596,10 +808,10 @@ export function isAppAllowlisted(
 
 function inferCategory(kind: FocusShieldTargetKind, identifier: string, label: string): FocusShieldCategory {
   const combined = `${identifier} ${label}`.toLowerCase();
-  if (/youtube|tiktok|musically|twitch|netflix|video|shorts|stream/.test(combined)) return 'video';
-  if (/instagram|reddit|x\.com|twitter|snapchat|threads|social/.test(combined)) return 'social';
+  if (/youtube|youtu\.be|tiktok|musically|twitch|kick|netflix|video|shorts|stream/.test(combined)) return 'video';
+  if (/instagram|reddit|x\.com|twitter|snapchat|threads|pinterest|tumblr|social/.test(combined)) return 'social';
   if (/discord|whatsapp|telegram|signal|messenger|chat/.test(combined)) return 'messaging';
-  if (/game|minecraft|genshin|mihoyo|hoyoverse|hkrpg|nap|roblox|steam/.test(combined)) return 'gaming';
+  if (/game|minecraft|genshin|mihoyo|hoyoverse|hkrpg|nap|hoyolab|fandom|steam|itch\.io|roblox/.test(combined)) return 'gaming';
   return 'custom';
 }
 
@@ -648,6 +860,65 @@ function validateTarget(raw: unknown): FocusShieldTarget | null {
   };
 }
 
+function validateAllowlistItem(raw: unknown): FocusShieldAllowlistItem | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const item = raw as Record<string, unknown>;
+  if (typeof item.id !== 'string' || !item.id.trim() || item.id.length > 100) return null;
+  if (typeof item.label !== 'string' || !item.label.trim() || item.label.length > 100) return null;
+  if (
+    typeof item.packageName !== 'string' ||
+    !isValidAndroidPackageName(item.packageName)
+  ) {
+    return null;
+  }
+  const emergency = item.emergency === true;
+  return {
+    id: item.id.trim(),
+    label: item.label.trim(),
+    packageName: item.packageName.trim(),
+    emergency,
+    enabled: emergency ? true : item.enabled !== false,
+    ...(item.custom === true ? { custom: true } : {}),
+  };
+}
+
+function validateSchedule(raw: unknown): FocusShieldScheduleWindow | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const item = raw as Record<string, unknown>;
+  if (typeof item.id !== 'string' || !item.id.trim()) return null;
+  if (typeof item.label !== 'string' || !item.label.trim()) return null;
+  const days = Array.isArray(item.days)
+    ? item.days.filter((d): d is number => typeof d === 'number' && Number.isInteger(d) && d >= 0 && d <= 6)
+    : [1, 2, 3, 4, 5];
+  const startMinuteOfDay =
+    typeof item.startMinuteOfDay === 'number' && Number.isFinite(item.startMinuteOfDay)
+      ? Math.max(0, Math.min(1439, Math.round(item.startMinuteOfDay)))
+      : 16 * 60;
+  const endMinuteOfDay =
+    typeof item.endMinuteOfDay === 'number' && Number.isFinite(item.endMinuteOfDay)
+      ? Math.max(0, Math.min(1439, Math.round(item.endMinuteOfDay)))
+      : 19 * 60;
+  const profileId: FocusShieldProfileId =
+    item.profileId === 'school' ||
+    item.profileId === 'exam' ||
+    item.profileId === 'deep-work' ||
+    item.profileId === 'bedtime' ||
+    item.profileId === 'custom'
+      ? item.profileId
+      : 'deep-work';
+
+  return {
+    id: item.id.trim(),
+    label: item.label.trim().slice(0, 80),
+    days: days.length ? Array.from(new Set(days)).sort((a, b) => a - b) : [1, 2, 3, 4, 5],
+    startMinuteOfDay,
+    endMinuteOfDay,
+    profileId,
+    enabled: item.enabled === true,
+    ...(item.custom === true ? { custom: true } : {}),
+  };
+}
+
 export function validateFocusShieldConfig(raw: unknown, now = Date.now()): FocusShieldConfig {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error('Invalid focus shield config.');
@@ -684,6 +955,42 @@ export function validateFocusShieldConfig(raw: unknown, now = Date.now()): Focus
     if (!valid || seenIds.has(valid.id)) continue;
     seenIds.add(valid.id);
     targets.push(valid);
+  }
+
+  const allowlist: FocusShieldAllowlistItem[] = [];
+  const seenAllowPkg = new Set<string>();
+  // Ensure default emergency allowlist items are always present
+  for (const baseItem of DEFAULT_EMERGENCY_ALLOWLIST) {
+    if (baseItem.emergency) {
+      allowlist.push({ ...baseItem, enabled: true });
+      seenAllowPkg.add(baseItem.packageName.toLowerCase());
+    }
+  }
+  if (Array.isArray(obj.allowlist)) {
+    for (const candidate of obj.allowlist.slice(0, MAX_ALLOWLIST_APPS)) {
+      const valid = validateAllowlistItem(candidate);
+      if (!valid || seenAllowPkg.has(valid.packageName.toLowerCase())) continue;
+      seenAllowPkg.add(valid.packageName.toLowerCase());
+      allowlist.push(valid);
+    }
+  } else {
+    for (const baseItem of DEFAULT_EMERGENCY_ALLOWLIST) {
+      if (!seenAllowPkg.has(baseItem.packageName.toLowerCase())) {
+        allowlist.push({ ...baseItem });
+        seenAllowPkg.add(baseItem.packageName.toLowerCase());
+      }
+    }
+  }
+
+  const schedules: FocusShieldScheduleWindow[] = [];
+  if (Array.isArray(obj.schedules)) {
+    const seenSched = new Set<string>();
+    for (const candidate of obj.schedules.slice(0, MAX_SCHEDULES)) {
+      const valid = validateSchedule(candidate);
+      if (!valid || seenSched.has(valid.id)) continue;
+      seenSched.add(valid.id);
+      schedules.push(valid);
+    }
   }
 
   const awayThresholdSeconds =
@@ -741,7 +1048,10 @@ export function validateFocusShieldConfig(raw: unknown, now = Date.now()): Focus
     mode,
     profileId,
     targets: targets.length ? targets : DEFAULT_SHIELD_TARGETS.map((item) => ({ ...item })),
-    allowlist: DEFAULT_EMERGENCY_ALLOWLIST.map((item) => ({ ...item })),
+    allowlist,
+    schedules: Array.isArray(obj.schedules) ? schedules : DEFAULT_SCHEDULES.map((item) => ({ ...item, days: [...item.days] })),
+    websiteBlockingEnabled: obj.websiteBlockingEnabled !== false,
+    blockDohCanary: obj.blockDohCanary !== false,
     sessionOnly: obj.sessionOnly !== false,
     awayThresholdSeconds,
     unlockDelaySeconds,
@@ -827,6 +1137,22 @@ export function toggleShieldTarget(
   };
 }
 
+export function toggleWebsiteWildcard(
+  config: FocusShieldConfig,
+  targetId: string,
+  now = Date.now(),
+): FocusShieldConfig {
+  return {
+    ...config,
+    targets: config.targets.map((item) =>
+      item.id === targetId && item.kind === 'website'
+        ? { ...item, wildcardSubdomains: item.wildcardSubdomains === false }
+        : item,
+    ),
+    updatedAt: now,
+  };
+}
+
 export function upsertInstalledAppTarget(
   config: FocusShieldConfig,
   app: { packageName: string; label: string; category?: FocusShieldCategory },
@@ -892,6 +1218,7 @@ export function addCustomShieldTarget(
   kind: FocusShieldTargetKind,
   rawInput: string,
   now = Date.now(),
+  categoryOverride?: FocusShieldCategory,
 ): { config: FocusShieldConfig; added: boolean; error?: string } {
   if (config.targets.length >= MAX_SHIELD_TARGETS) {
     return {
@@ -907,7 +1234,7 @@ export function addCustomShieldTarget(
       return {
         config,
         added: false,
-        error: 'Enter a valid domain such as youtube.com or reddit.com.',
+        error: 'Enter a valid domain such as youtube.com, reddit.com, or tiktok.com.',
       };
     }
     const existing = config.targets.find(
@@ -920,9 +1247,9 @@ export function addCustomShieldTarget(
       };
     }
     const nextTarget: FocusShieldTarget = {
-      id: `site_custom_${now.toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+      id: `site_${domain.replace(/[^a-z0-9]/g, '_')}_${now.toString(36).slice(-4)}`,
       kind: 'website',
-      category: inferCategory('website', domain, domain),
+      category: categoryOverride ?? inferCategory('website', domain, domain),
       label: domain,
       identifier: domain,
       wildcardSubdomains: true,
@@ -939,7 +1266,6 @@ export function addCustomShieldTarget(
     };
   }
 
-  // For apps, require a real Android package name or match a known installed/default app label
   const clean = rawInput.trim();
   const matchedByLabel = config.targets.find(
     (item) => item.kind === 'app' && item.label.toLowerCase() === clean.toLowerCase(),
@@ -967,9 +1293,35 @@ export function addCustomShieldTarget(
     {
       packageName: clean,
       label: clean.split('.').pop() || clean,
+      category: categoryOverride,
     },
     now,
   );
+}
+
+export function importSuggestedDomainPack(
+  config: FocusShieldConfig,
+  packId: (typeof SUGGESTED_DOMAIN_PACKS)[number]['id'],
+  now = Date.now(),
+): { config: FocusShieldConfig; addedCount: number } {
+  const pack = SUGGESTED_DOMAIN_PACKS.find((item) => item.id === packId);
+  if (!pack) return { config, addedCount: 0 };
+
+  let next = config;
+  let addedCount = 0;
+  for (const domain of pack.domains) {
+    if (next.targets.length >= MAX_SHIELD_TARGETS) break;
+    const alreadyEnabled = next.targets.some(
+      (item) => item.kind === 'website' && item.identifier === domain && item.enabled,
+    );
+    if (alreadyEnabled) continue;
+    const outcome = addCustomShieldTarget(next, 'website', domain, now + addedCount, pack.category);
+    if (outcome.added) {
+      next = outcome.config;
+      addedCount++;
+    }
+  }
+  return { config: next, addedCount };
 }
 
 export function removeCustomShieldTarget(
@@ -981,6 +1333,249 @@ export function removeCustomShieldTarget(
     ...config,
     targets: config.targets.filter((item) => !(item.id === targetId && item.custom)),
     updatedAt: now,
+  };
+}
+
+export function toggleAllowlistApp(
+  config: FocusShieldConfig,
+  allowlistId: string,
+  now = Date.now(),
+): FocusShieldConfig {
+  return {
+    ...config,
+    allowlist: config.allowlist.map((item) => {
+      if (item.id !== allowlistId || item.emergency) return item;
+      return { ...item, enabled: !item.enabled };
+    }),
+    updatedAt: now,
+  };
+}
+
+export function upsertAllowlistApp(
+  config: FocusShieldConfig,
+  app: { packageName: string; label: string },
+  now = Date.now(),
+): { config: FocusShieldConfig; added: boolean; error?: string } {
+  const pkg = app.packageName.trim();
+  if (!isValidAndroidPackageName(pkg)) {
+    return {
+      config,
+      added: false,
+      error: 'Enter a valid Android package ID (e.g. com.ankiweb.ankidroid).',
+    };
+  }
+  const existing = config.allowlist.find(
+    (item) => item.packageName.toLowerCase() === pkg.toLowerCase(),
+  );
+  if (existing) {
+    return {
+      config: toggleAllowlistApp(config, existing.id, now),
+      added: true,
+    };
+  }
+  if (config.allowlist.length >= MAX_ALLOWLIST_APPS) {
+    return {
+      config,
+      added: false,
+      error: `Keep the allowlist under ${MAX_ALLOWLIST_APPS} apps.`,
+    };
+  }
+  const label = app.label.trim().slice(0, 80) || pkg;
+  const nextItem: FocusShieldAllowlistItem = {
+    id: `allow_${pkg.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+    label,
+    packageName: pkg,
+    emergency: false,
+    enabled: true,
+    custom: true,
+  };
+  return {
+    config: {
+      ...config,
+      allowlist: [...config.allowlist, nextItem],
+      // Automatically un-block if it was in blocked targets
+      targets: config.targets.map((t) =>
+        t.kind === 'app' && t.identifier.toLowerCase() === pkg.toLowerCase()
+          ? { ...t, enabled: false }
+          : t,
+      ),
+      updatedAt: now,
+    },
+    added: true,
+  };
+}
+
+export function toggleScheduleWindow(
+  config: FocusShieldConfig,
+  scheduleId: string,
+  now = Date.now(),
+): FocusShieldConfig {
+  const updatedSchedules = config.schedules.map((sched) =>
+    sched.id === scheduleId ? { ...sched, enabled: !sched.enabled } : sched,
+  );
+  const anyEnabled = updatedSchedules.some((sched) => sched.enabled);
+  return {
+    ...config,
+    schedules: updatedSchedules,
+    // When enabling a recurring schedule, automatically allow schedule enforcement outside manual sessions
+    sessionOnly: anyEnabled ? false : config.sessionOnly,
+    mode: anyEnabled && config.mode === 'off' ? 'hard' : config.mode,
+    updatedAt: now,
+  };
+}
+
+export function addCustomScheduleWindow(
+  config: FocusShieldConfig,
+  input: {
+    label: string;
+    days: number[];
+    startMinuteOfDay: number;
+    endMinuteOfDay: number;
+    profileId?: FocusShieldProfileId;
+  },
+  now = Date.now(),
+): { config: FocusShieldConfig; added: boolean; error?: string } {
+  if (config.schedules.length >= MAX_SCHEDULES) {
+    return {
+      config,
+      added: false,
+      error: `Keep recurring schedules under ${MAX_SCHEDULES} windows.`,
+    };
+  }
+  const cleanLabel = input.label.trim().slice(0, 60);
+  if (!cleanLabel) {
+    return {
+      config,
+      added: false,
+      error: 'Enter a schedule name such as Evening Revision.',
+    };
+  }
+  const validDays = Array.from(
+    new Set(input.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)),
+  ).sort((a, b) => a - b);
+  if (!validDays.length) {
+    return {
+      config,
+      added: false,
+      error: 'Select at least one day of the week.',
+    };
+  }
+  const startMin = Math.max(0, Math.min(1439, Math.round(input.startMinuteOfDay)));
+  const endMin = Math.max(0, Math.min(1439, Math.round(input.endMinuteOfDay)));
+  if (startMin === endMin) {
+    return {
+      config,
+      added: false,
+      error: 'Start and end time cannot be identical.',
+    };
+  }
+
+  const nextSchedule: FocusShieldScheduleWindow = {
+    id: `sched_custom_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+    label: cleanLabel,
+    days: validDays,
+    startMinuteOfDay: startMin,
+    endMinuteOfDay: endMin,
+    profileId: input.profileId ?? config.profileId,
+    enabled: true,
+    custom: true,
+  };
+
+  return {
+    config: {
+      ...config,
+      sessionOnly: false,
+      mode: config.mode === 'off' ? 'hard' : config.mode,
+      schedules: [...config.schedules, nextSchedule],
+      updatedAt: now,
+    },
+    added: true,
+  };
+}
+
+export function removeCustomScheduleWindow(
+  config: FocusShieldConfig,
+  scheduleId: string,
+  now = Date.now(),
+): FocusShieldConfig {
+  return {
+    ...config,
+    schedules: config.schedules.filter((s) => !(s.id === scheduleId && s.custom)),
+    updatedAt: now,
+  };
+}
+
+export function getActiveScheduleWindow(
+  config: FocusShieldConfig,
+  timestamp = Date.now(),
+): FocusShieldScheduleWindow | null {
+  if (config.sessionOnly || config.mode === 'off') return null;
+  const date = new Date(timestamp);
+  const currentDay = date.getDay(); // 0 = Sun .. 6 = Sat
+  const prevDay = (currentDay + 6) % 7;
+  const minuteOfDay = date.getHours() * 60 + date.getMinutes();
+
+  for (const sched of config.schedules) {
+    if (!sched.enabled) continue;
+    if (sched.startMinuteOfDay <= sched.endMinuteOfDay) {
+      if (
+        sched.days.includes(currentDay) &&
+        minuteOfDay >= sched.startMinuteOfDay &&
+        minuteOfDay < sched.endMinuteOfDay
+      ) {
+        return sched;
+      }
+    } else {
+      // Overnight schedule (e.g., 22:30 -> 06:00)
+      if (sched.days.includes(currentDay) && minuteOfDay >= sched.startMinuteOfDay) {
+        return sched;
+      }
+      if (sched.days.includes(prevDay) && minuteOfDay < sched.endMinuteOfDay) {
+        return sched;
+      }
+    }
+  }
+  return null;
+}
+
+export function isScheduleActiveAt(config: FocusShieldConfig, timestamp = Date.now()): boolean {
+  return getActiveScheduleWindow(config, timestamp) !== null;
+}
+
+export function computeFrictionRequirement(input: {
+  config: FocusShieldConfig;
+  attemptCount: number;
+  breakPassesUsed: number;
+  lastAttemptAt: number | null;
+  now?: number;
+}): FocusShieldFrictionRequirement {
+  const { config, attemptCount, breakPassesUsed, lastAttemptAt, now = Date.now() } = input;
+  const isHardOrStrict = config.mode === 'hard' || config.mode === 'strict';
+  const escalationMultiplier =
+    attemptCount <= 1 ? 1 : Math.pow(1.5, Math.min(30, attemptCount - 1));
+  const effectiveDelaySeconds = isHardOrStrict
+    ? Math.min(120, Math.round(config.unlockDelaySeconds * escalationMultiplier))
+    : 0;
+
+  let cooldownRemainingSeconds = 0;
+  if (isHardOrStrict && lastAttemptAt && now > lastAttemptAt) {
+    const elapsedSeconds = Math.floor((now - lastAttemptAt) / 1000);
+    if (elapsedSeconds < config.retryCooldownSeconds) {
+      cooldownRemainingSeconds = config.retryCooldownSeconds - elapsedSeconds;
+    }
+  }
+
+  const remainingBreakPasses = Math.max(0, config.maxBreakAllowances - breakPassesUsed);
+
+  return {
+    lockedByStrictMode: config.mode === 'strict',
+    effectiveDelaySeconds,
+    cooldownRemainingSeconds,
+    requireReflection: isHardOrStrict && config.requireReflection,
+    reflectionPrompt: config.reflectionPrompt || DEFAULT_REFLECTION_PROMPT,
+    requirePinChallenge: config.mode === 'strict' && Boolean(config.pinHash && config.pinSalt),
+    canUseBreakPass: remainingBreakPasses > 0 && cooldownRemainingSeconds === 0 && config.mode !== 'strict',
+    remainingBreakPasses,
   };
 }
 
@@ -1037,6 +1632,8 @@ export function updateFocusShieldCustomization(
   patch: Partial<
     Pick<
       FocusShieldConfig,
+      | 'websiteBlockingEnabled'
+      | 'blockDohCanary'
       | 'unlockDelaySeconds'
       | 'retryCooldownSeconds'
       | 'maxBreakAllowances'
@@ -1060,12 +1657,19 @@ export function updateFocusShieldCustomization(
   );
 }
 
-export function activeShieldSummary(config: FocusShieldConfig) {
+export function activeShieldSummary(config: FocusShieldConfig, now = Date.now()) {
   const apps = config.targets.filter(
     (item) => item.kind === 'app' && item.enabled && isValidAndroidPackageName(item.identifier),
   );
-  const websites = config.targets.filter((item) => item.kind === 'website' && item.enabled);
+  const websites = config.websiteBlockingEnabled
+    ? config.targets.filter(
+        (item) => item.kind === 'website' && item.enabled && Boolean(normalizeWebsiteDomain(item.identifier)),
+      )
+    : [];
   const allowlisted = config.allowlist.filter((item) => item.enabled);
+  const enabledSchedules = config.schedules.filter((item) => item.enabled);
+  const activeSchedule = getActiveScheduleWindow(config, now);
+
   return {
     enabled: config.mode !== 'off',
     mode: config.mode,
@@ -1073,6 +1677,10 @@ export function activeShieldSummary(config: FocusShieldConfig) {
     apps,
     websites,
     allowlisted,
+    enabledSchedules,
+    activeSchedule,
+    websiteBlockingEnabled: config.websiteBlockingEnabled,
+    blockDohCanary: config.blockDohCanary,
     total: apps.length + websites.length,
     hasPin: Boolean(config.pinHash && config.pinSalt),
     isStrict: config.mode === 'strict',
@@ -1119,11 +1727,19 @@ export function evaluateFocusAwayReturn(input: {
       ? `${awaySeconds}s`
       : `${Math.floor(awaySeconds / 60)}m ${awaySeconds % 60 ? `${awaySeconds % 60}s` : ''}`.trim();
 
-  const summary = activeShieldSummary(config);
-  const targetSample = summary.apps
+  const summary = activeShieldSummary(config, returnedAt);
+  const targetSample = [...summary.apps, ...summary.websites]
     .slice(0, 2)
     .map((item) => item.label)
     .join(', ');
+
+  const friction = computeFrictionRequirement({
+    config,
+    attemptCount: Math.max(1, recentSwitches),
+    breakPassesUsed: 0,
+    lastAttemptAt: null,
+    now: returnedAt,
+  });
 
   return {
     awaySeconds,
@@ -1136,14 +1752,11 @@ export function evaluateFocusAwayReturn(input: {
       config.mode === 'strict' || config.mode === 'hard'
         ? targetSample
           ? `Focus Shield is guarding ${targetSample}. Park what pulled you away and return to your step.`
-          : 'If another app pulled you away, park the thought below and return to your step.'
+          : 'If another app or site pulled you away, park the thought below and return to your step.'
         : 'Welcome back. Your timer kept running—park any lingering thought below if it helps.',
     motivationalCue: config.customMotivation || DEFAULT_MOTIVATION_MESSAGE,
-    reflectionQuestion:
-      (config.mode === 'hard' || config.mode === 'strict') && config.requireReflection
-        ? config.reflectionPrompt
-        : null,
-    unlockDelaySeconds: config.unlockDelaySeconds,
+    reflectionQuestion: friction.requireReflection ? friction.reflectionPrompt : null,
+    unlockDelaySeconds: friction.effectiveDelaySeconds,
   };
 }
 
@@ -1153,6 +1766,7 @@ export function buildSessionTemptationReport(
 ): FocusShieldSessionSummary {
   const totalAttempts = attempts.length;
   const nativeInterceptCount = attempts.filter((a) => a.vector === 'blocked-app').length;
+  const websiteInterceptCount = attempts.filter((a) => a.vector === 'blocked-website').length;
   const deflectedCount = attempts.filter((a) => a.outcome === 'returned').length;
   const parkedCount = attempts.filter((a) => a.outcome === 'parked').length;
   const breakPassesUsed = attempts.filter((a) => a.outcome === 'break-pass').length;
@@ -1175,12 +1789,13 @@ export function buildSessionTemptationReport(
 
   const detail =
     totalAttempts === 0
-      ? 'Zero blocked-app launches or unscheduled switches recorded during this block.'
-      : `Intercepted ${nativeInterceptCount} blocked app launch${nativeInterceptCount === 1 ? '' : 'es'}, deflected ${deflectedCount}, parked ${parkedCount} thought${parkedCount === 1 ? '' : 's'}.`;
+      ? 'Zero blocked-app launches, website requests, or unscheduled switches recorded during this block.'
+      : `Intercepted ${nativeInterceptCount} app${nativeInterceptCount === 1 ? '' : 's'} & ${websiteInterceptCount} site${websiteInterceptCount === 1 ? '' : 's'}, parked ${parkedCount} thought${parkedCount === 1 ? '' : 's'}.`;
 
   return {
     totalAttempts,
     nativeInterceptCount,
+    websiteInterceptCount,
     deflectedCount,
     parkedCount,
     breakPassesUsed,
@@ -1193,14 +1808,76 @@ export function buildSessionTemptationReport(
   };
 }
 
+export function buildHistoricalTemptationAnalytics(
+  attempts: readonly FocusShieldAttemptEntry[],
+  now = Date.now(),
+  windowDays = 7,
+): FocusShieldHistoricalAnalytics {
+  const cutoff = now - windowDays * 86_400_000;
+  const recent = attempts.filter((a) => Number.isFinite(a.timestamp) && a.timestamp >= cutoff && a.timestamp <= now);
+  const totalAttempts = recent.length;
+  const appInterceptions = recent.filter((a) => a.vector === 'blocked-app').length;
+  const websiteInterceptions = recent.filter((a) => a.vector === 'blocked-website').length;
+  const recoveredCount = recent.filter(
+    (a) => a.outcome === 'returned' || a.outcome === 'parked',
+  ).length;
+  const parkedCount = recent.filter((a) => a.outcome === 'parked').length;
+  const breakPassCount = recent.filter((a) => a.outcome === 'break-pass').length;
+  const bypassedCount = recent.filter((a) => a.outcome === 'bypassed').length;
+
+  const recoveryRatePercent =
+    totalAttempts === 0 ? 100 : Math.round((recoveredCount / totalAttempts) * 100);
+
+  const countsByTarget = new Map<string, { label: string; count: number; kind: 'app' | 'website' }>();
+  for (const entry of recent) {
+    if (entry.vector !== 'blocked-app' && entry.vector !== 'blocked-website') continue;
+    const label = (entry.targetLabel || entry.packageName || 'Distraction').trim();
+    if (!label) continue;
+    const keyName = `${entry.vector}:${label.toLowerCase()}`;
+    const existing = countsByTarget.get(keyName);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      countsByTarget.set(keyName, {
+        label,
+        count: 1,
+        kind: entry.vector === 'blocked-website' ? 'website' : 'app',
+      });
+    }
+  }
+
+  const topTargets = Array.from(countsByTarget.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  return {
+    windowDays,
+    totalAttempts,
+    appInterceptions,
+    websiteInterceptions,
+    recoveredCount,
+    parkedCount,
+    breakPassCount,
+    bypassedCount,
+    recoveryRatePercent,
+    topTargets,
+  };
+}
+
 export function createFocusShieldStorage(store: FocusKeyValueStore) {
   const listeners = new Map<string, Set<(config: FocusShieldConfig) => void>>();
+  const attemptListeners = new Map<string, Set<(entries: FocusShieldAttemptEntry[]) => void>>();
+  let logWrites: Promise<unknown> = Promise.resolve();
   let writes: Promise<unknown> = Promise.resolve();
   return {
     subscribe(ownerKey: string, listener: (config: FocusShieldConfig) => void) {
       const group = listeners.get(ownerKey) ?? new Set();
       group.add(listener); listeners.set(ownerKey, group);
       return () => { group.delete(listener); if (!group.size) listeners.delete(ownerKey); };
+    },
+    subscribeAttempts(ownerKey: string, listener: (entries: FocusShieldAttemptEntry[]) => void) {
+      const group = attemptListeners.get(ownerKey) ?? new Set(); group.add(listener); attemptListeners.set(ownerKey, group);
+      return () => { group.delete(listener); if (!group.size) attemptListeners.delete(ownerKey); };
     },
     async load(ownerKey: string, now = Date.now()): Promise<FocusShieldConfig> {
       const raw = await store.getItem(key(ownerKey));
@@ -1229,6 +1906,11 @@ export function createFocusShieldStorage(store: FocusKeyValueStore) {
       await store.removeItem(logKey(ownerKey));
     },
 
+    async clearAttempts(ownerKey: string): Promise<void> {
+      const write = logWrites.catch(() => undefined).then(async () => { await store.removeItem(logKey(ownerKey)); attemptListeners.get(ownerKey)?.forEach(fn => fn([])); });
+      logWrites = write; await write;
+    },
+
     async loadAttempts(ownerKey: string): Promise<FocusShieldAttemptEntry[]> {
       const raw = await store.getItem(logKey(ownerKey));
       if (!raw) return [];
@@ -1245,14 +1927,17 @@ export function createFocusShieldStorage(store: FocusKeyValueStore) {
       ownerKey: string,
       entry: Omit<FocusShieldAttemptEntry, 'id'>,
     ): Promise<FocusShieldAttemptEntry[]> {
-      const current = await this.loadAttempts(ownerKey);
-      const nextEntry: FocusShieldAttemptEntry = {
-        ...entry,
-        id: `attempt_${entry.timestamp.toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-      };
-      const updated = [...current, nextEntry].slice(-MAX_ATTEMPT_LOG);
-      await store.setItem(logKey(ownerKey), JSON.stringify(updated));
-      return updated;
+      const write = logWrites.catch(() => undefined).then(async () => {
+        const current = await this.loadAttempts(ownerKey);
+        const nextEntry: FocusShieldAttemptEntry = { ...entry,
+          id: `attempt_${entry.timestamp.toString(36)}_${Math.random().toString(36).slice(2, 6)}` };
+        const updated = [...current, nextEntry].filter(item => item.timestamp >= Date.now() - 7 * 86400000 && item.timestamp <= Date.now()).slice(-MAX_ATTEMPT_LOG);
+        await store.setItem(logKey(ownerKey), JSON.stringify(updated));
+        attemptListeners.get(ownerKey)?.forEach(fn => fn(updated));
+        return updated;
+      });
+      logWrites = write;
+      return await write;
     },
   };
 }

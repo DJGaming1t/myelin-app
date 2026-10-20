@@ -110,7 +110,7 @@ object FocusShieldUiFactory {
 
     // Eyebrow badge
     val eyebrow = TextView(context).apply {
-      text = "MYELIN FOCUS SHIELD · ${state.mode.uppercase()}"
+      text = "MYELIN FOCUS SHIELD · ${state.mode.uppercase()} · ATTEMPT #${state.attemptCountInSession}"
       setTextColor(Color.parseColor("#FF805B"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
       setTypeface(typeface, Typeface.BOLD)
@@ -153,8 +153,8 @@ object FocusShieldUiFactory {
       setTypeface(typeface, Typeface.BOLD)
     }
     val subView = TextView(context).apply {
-      val remainingMin = ((state.sessionEndEpochMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
-      text = "Active session: ${state.topicName} · ~${remainingMin}m left"
+      val remainingMin = ((state.effectiveEndEpochMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
+      text = "Active session: ${state.effectiveTopicName} · ~${remainingMin}m left"
       setTextColor(Color.parseColor("#A39C96"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
     }
@@ -276,7 +276,7 @@ object FocusShieldUiFactory {
     // Break Pass / Delayed Friction / Emergency Override section
     val remainingPasses = (state.maxBreakAllowances - state.breakPassesUsed).coerceAtLeast(0)
     val delaySec = if (state.mode == "hard" || state.mode == "strict") {
-      state.unlockDelaySeconds.coerceIn(5, 60)
+      state.effectiveUnlockDelaySeconds.coerceIn(5, 120)
     } else {
       0
     }

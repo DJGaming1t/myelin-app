@@ -38,7 +38,7 @@ async function verify() {
   const code=ts.transpileModule(fs.readFileSync('src/features/focus/FocusShieldSessionController.tsx','utf8'),{
     compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX},
   }).outputText;
-  vm.runInNewContext(code,{module:mod,exports:mod.exports,require:(name:string)=>{
+  vm.runInNewContext(code,{setInterval:()=>0,clearInterval:()=>{},module:mod,exports:mod.exports,require:(name:string)=>{
     if(name==='react')return react;if(name==='react/jsx-runtime')return{jsx:()=>null};
     if(name==='react-native')return{AppState:appState,Text:'Text'};
     if(name==='./focus-shield')return{defaultFocusShieldConfig,focusShieldStorage:storage};
@@ -122,6 +122,10 @@ async function verify() {
   assert.equal(await bridge.openFocusShieldPermissionSettings('usage-access'),false);
 
   const require=createRequire(import.meta.url),plugin=require('../plugins/withFocusShieldAndroid.js');
+  const buildTemplate = 'classpath(\'org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0\')\napply plugin: "expo-root-project"';
+  const aligned = plugin.alignKotlinBuildTools(buildTemplate);
+  assert.ok(aligned.includes('ext.kspVersion = "2.3.0"'));
+  assert.equal(plugin.alignKotlinBuildTools(aligned), aligned);
   const manifest:any={$:{},application:[{}]};plugin.ensurePermissionsAndQueries(manifest);const first=JSON.stringify(manifest);
   plugin.ensurePermissionsAndQueries(manifest);assert.equal(JSON.stringify(manifest),first);
   assert.equal(manifest.application[0].service[0].$['android:exported'],'false');

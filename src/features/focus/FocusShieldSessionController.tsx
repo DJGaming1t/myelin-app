@@ -36,18 +36,22 @@ export function FocusShieldSessionController({ ownerKey, session }: {
       const config = owner && preferences?.owner === owner ? preferences.config : defaultFocusShieldConfig();
       const running = !!owner && current?.runningSince != null && timerRemainingMs(current) > 0;
       // Native expiry handles background operation; new FGS starts require a visible app.
-      if (running && AppState.currentState !== 'active') return;
+      if (AppState.currentState !== 'active' && (running || !config.sessionOnly)) return;
       const ok = await syncFocusShieldNativeSession({
-        config, sessionId: owner && current ? `${owner}:${current.id}` : null,
+        config, ownerKey: owner, sessionId: owner && current ? `${owner}:${current.id}` : owner ? `${owner}:scheduled` : null,
         sessionRunning: running, phase: current?.phase ?? 'idle',
         remainingMs: current ? timerRemainingMs(current) : 0,
         topicName: current?.topicName ?? 'Focus Session', tinyStep: current?.tinyStep ?? '',
       });
-      if (!disposed) setError(config.mode !== 'off' && running && !ok);
+      if (!disposed) setError(config.mode !== 'off' && (running || !config.sessionOnly) && !ok);
     }
     void sync();
+    const scheduleTick = setInterval(() => {
+      const preferences = live.current.loaded;
+      if (AppState.currentState === 'active' && preferences?.config.mode !== 'off' && preferences?.config.sessionOnly === false) void sync();
+    }, 30_000);
     const subscription = AppState.addEventListener('change', state => { if (state === 'active') void sync(); });
-    return () => { disposed = true; subscription.remove(); };
+    return () => { disposed = true; clearInterval(scheduleTick); subscription.remove(); };
   }, [ownerKey, loaded, session]);
 
   useEffect(() => () => {
@@ -56,6 +60,6 @@ export function FocusShieldSessionController({ ownerKey, session }: {
   }, []);
 
   return error ? <Text accessibilityRole="alert" style={{ color: '#FF805B', padding: 12 }}>
-    Focus Shield is not running. Open Focus and check Usage Access and Display Over Other Apps.
+    Some Focus Shield protections could not start. Open Focus and check app permissions and the website VPN status.
   </Text> : null;
 }

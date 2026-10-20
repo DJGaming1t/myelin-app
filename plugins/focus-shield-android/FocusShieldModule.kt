@@ -1,5 +1,6 @@
 package com.djgaming1t.myelin.focusshield
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -9,11 +10,13 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.net.VpnService
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Base64
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -24,8 +27,43 @@ import java.util.concurrent.Executors
 class FocusShieldModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 
+  companion object {
+    private const val REQ_CODE_PREPARE_VPN = 4119
+  }
+
   private val bgExecutor = Executors.newSingleThreadExecutor()
   private val iconCache = mutableMapOf<String, String>()
+  private var pendingVpnPromise: Promise? = null
+
+  private val activityEventListener = object : BaseActivityEventListener() {
+    override fun onActivityResult(
+      activity: Activity,
+      requestCode: Int,
+      resultCode: Int,
+      data: Intent?
+    ) {
+      if (requestCode != REQ_CODE_PREPARE_VPN) return
+      val promise = pendingVpnPromise ?: return
+      pendingVpnPromise = null
+      try {
+        val context = reactContext.applicationContext
+        val prepared = VpnService.prepare(context) == null
+        val otherVpn = FocusShieldDnsVpnService.isOtherVpnActive(context)
+        val map = Arguments.createMap().apply {
+          putBoolean("granted", resultCode == Activity.RESULT_OK && prepared)
+          putBoolean("vpnPrepared", prepared)
+          putBoolean("otherVpnActive", otherVpn)
+        }
+        promise.resolve(map)
+      } catch (e: Exception) {
+        promise.reject("ERR_VPN_RESULT", e)
+      }
+    }
+  }
+
+  init {
+    reactContext.addActivityEventListener(activityEventListener)
+  }
 
   override fun getName(): String = "MyelinFocusShield"
 
@@ -37,6 +75,15 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
       val overlayGranted = Settings.canDrawOverlays(context)
       val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
       val batteryIgnored = pm?.isIgnoringBatteryOptimizations(context.packageName) ?: false
+
+      val vpnPrepared = try {
+        VpnService.prepare(context) == null
+      } catch (_: Exception) {
+        false
+      }
+      val vpnActive = FocusShieldDnsVpnService.isRunning
+      val otherVpnActive = FocusShieldDnsVpnService.isOtherVpnActive(context)
+      val state = FocusShieldStore.loadState(context)
 
       val act = reactContext.currentActivity
       val isMultiWindow = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && act != null) {
@@ -55,12 +102,56 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
         putBoolean("usageStatsGranted", usageGranted)
         putBoolean("overlayGranted", overlayGranted)
         putBoolean("batteryOptimizationIgnored", batteryIgnored)
+        putBoolean("vpnPrepared", vpnPrepared)
+        putBoolean("vpnActive", vpnActive)
+        putBoolean("privateDnsActive", FocusShieldDnsVpnService.privateDnsActive(context))
+        putString("vpnError", FocusShieldDnsVpnService.lastError)
+        putBoolean("otherVpnActive", otherVpnActive)
+        putBoolean("scheduleActiveNow", state.scheduleActiveNow)
+        putString("activeScheduleLabel", state.activeScheduleLabel)
         putBoolean("isInMultiWindowMode", isMultiWindow)
         putBoolean("isInPictureInPictureMode", isPip)
       }
       promise.resolve(map)
     } catch (e: Exception) {
       promise.reject("ERR_PERMISSION_STATUS", e)
+    }
+  }
+
+  @ReactMethod
+  fun prepareWebsiteVpn(promise: Promise) {
+    try {
+      val context = reactContext.applicationContext
+      val otherVpn = FocusShieldDnsVpnService.isOtherVpnActive(context)
+      if (otherVpn) {
+        promise.resolve(Arguments.createMap().apply { putBoolean("granted", false); putBoolean("vpnPrepared", false); putBoolean("otherVpnActive", true) })
+        return
+      }
+      val prepIntent = VpnService.prepare(context)
+      if (prepIntent == null) {
+        val map = Arguments.createMap().apply {
+          putBoolean("granted", true)
+          putBoolean("vpnPrepared", true)
+          putBoolean("otherVpnActive", otherVpn)
+        }
+        promise.resolve(map)
+        return
+      }
+
+      val activity = reactContext.currentActivity
+      if (activity == null) {
+        promise.reject("ERR_NO_ACTIVITY", "Open MYELIN in the foreground to authorize the local DNS VPN.")
+        return
+      }
+
+      activity.runOnUiThread {
+        if (pendingVpnPromise != null) promise.reject("ERR_VPN_PENDING", "A VPN authorization request is already open.")
+        else try { pendingVpnPromise = promise; activity.startActivityForResult(prepIntent, REQ_CODE_PREPARE_VPN) }
+        catch (e: Exception) { pendingVpnPromise = null; promise.reject("ERR_PREPARE_VPN", e) }
+      }
+    } catch (e: Exception) {
+      pendingVpnPromise = null
+      promise.reject("ERR_PREPARE_VPN", e)
     }
   }
 
@@ -75,6 +166,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
         }
         "overlay" -> Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkgUri)
         "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        "vpn" -> Intent(Settings.ACTION_VPN_SETTINGS)
         else -> Intent("android.settings.ZEN_MODE_SETTINGS")
       }
       primaryIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -87,6 +179,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
           "usage-access" -> Settings.ACTION_USAGE_ACCESS_SETTINGS
           "overlay" -> Settings.ACTION_MANAGE_OVERLAY_PERMISSION
           "battery" -> Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+          "vpn" -> Settings.ACTION_VPN_SETTINGS
           else -> Settings.ACTION_SETTINGS
         }
         val fallbackIntent = Intent(fallbackAction).apply {
@@ -179,48 +272,22 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
     try {
       val context = reactContext.applicationContext
       val state = FocusShieldStore.saveSessionPayload(context, payloadJson)
+      val enforcementActive = state.isEnforcementActive()
 
       // Apply Android 12+ HIDE_OVERLAY_WINDOWS on MYELIN's own activity while active
       val act = reactContext.currentActivity
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && act != null) {
         act.runOnUiThread {
           try {
-            act.window.setHideOverlayWindows(state.active && state.blockFloatingWindows)
+            act.window.setHideOverlayWindows(enforcementActive && state.blockFloatingWindows)
           } catch (_: Exception) {}
         }
       }
 
-      val shouldRunService =
-        state.active &&
-          state.phase == "focus" &&
-          state.mode != "off" &&
-          state.blockedPackages.isNotEmpty() &&
-          System.currentTimeMillis() < state.sessionEndEpochMs
+      // Delegate service start/stop and AlarmManager.setWindow boundary scheduling to FocusShieldScheduleReceiver
+      val ready = FocusShieldScheduleReceiver.evaluateAndScheduleNext(context, allowStart = true)
 
-      val serviceIntent = Intent(context, FocusShieldMonitorService::class.java).apply {
-        action = if (shouldRunService) {
-          FocusShieldMonitorService.ACTION_START_OR_SYNC
-        } else {
-          FocusShieldMonitorService.ACTION_STOP
-        }
-      }
-
-      if (shouldRunService && (!FocusShieldMonitorService.hasUsageStatsPermission(context) || !Settings.canDrawOverlays(context))) {
-        context.stopService(serviceIntent)
-        promise.resolve(false)
-        return
-      }
-      if (shouldRunService) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-          context.startForegroundService(serviceIntent)
-        } else {
-          context.startService(serviceIntent)
-        }
-      } else {
-        context.stopService(serviceIntent)
-      }
-
-      promise.resolve(true)
+      promise.resolve(ready)
     } catch (e: Exception) {
       promise.reject("ERR_SYNC_SESSION", e)
     }
@@ -237,6 +304,9 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
   }
 
   override fun invalidate() {
+    reactContext.removeActivityEventListener(activityEventListener)
+    pendingVpnPromise?.reject("ERR_MODULE_CLOSED", "VPN request closed with the app.")
+    pendingVpnPromise = null
     bgExecutor.shutdownNow()
     super.invalidate()
   }

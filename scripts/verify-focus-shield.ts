@@ -54,6 +54,10 @@ async function verify() {
   await storage.save('A',applyFocusShieldProfile(defaultFocusShieldConfig(),'exam'));render();await flush();
   assert.equal(syncs.at(-1).config.mode,'strict');assert.equal(syncs.at(-1).sessionRunning,true);assert.match(syncs.at(-1).sessionId,/^A:/);
   session={...session,plannedFocusMinutes:25};render();await flush();assert.ok(syncs.at(-1).remainingMs>24*60_000);
+  await storage.save('A',{...applyFocusShieldProfile(defaultFocusShieldConfig(),'exam'),focusBlockingEnabled:false,sessionOnly:false});render();await flush();
+  assert.equal(syncs.at(-1).sessionRunning,false);assert.equal(syncs.at(-1).phase,'idle');assert.equal(syncs.at(-1).sessionId,'A:scheduled');
+  session={...session,id:'unrelated-timer'};render();await flush();assert.equal(syncs.at(-1).sessionId,'A:scheduled');
+  await storage.save('A',applyFocusShieldProfile(defaultFocusShieldConfig(),'exam'));render();await flush();
   session={...session,runningSince:null};render();await flush();assert.equal(syncs.at(-1).sessionRunning,false);
   session={...session,runningSince:Date.now(),phase:'break'};render();await flush();assert.equal(syncs.at(-1).phase,'break');
   ownerKey='B';render();await flush();assert.equal(syncs.at(-1).config.mode,'off');
@@ -117,6 +121,7 @@ async function verify() {
   for(const change of [{sessionRunning:false},{phase:'break'},{remainingMs:0}]){
     await bridge.syncFocusShieldNativeSession({...syncInput,...change});assert.equal(payloads.at(-1).active,false);
   }
+  await bridge.syncFocusShieldNativeSession({...syncInput,config:{...syncInput.config,focusBlockingEnabled:false}});assert.equal(payloads.at(-1).active,false);
   nativeModules.MyelinFocusShield.syncSessionState=async()=>{throw Error('permission/start denied');};
   assert.equal(await bridge.syncFocusShieldNativeSession(syncInput),false);
   assert.equal(await bridge.openFocusShieldPermissionSettings('usage-access'),false);

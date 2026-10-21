@@ -9,6 +9,7 @@ Version/runtime: **0.2.16**, Android version code **13**. Runtime policy remains
 - DNS parsing bounds packet lengths and questions, verifies upstream transaction/question identity, uses connected protected sockets, retries resolvers with bounded workers/queue, supports DNS over TCP, and discards replies from a superseded owner/session/tunnel. Responses exceeding the UDP budget trigger TCP retry.
 - The VPN is independent of Usage Access/overlay permissions. A conflicting VPN is reported without replacing it. Permission denial, revoke, pause/break/expiry, owner changes and teardown stop or gate the relevant protection. An idle session expires without waiting for another DNS packet.
 - Recurring daytime/overnight schedules, custom study-app allowlists, progressive friction and bounded seven-day local analytics are integrated from Argon's cumulative package. The verified Chunk A timer, motion, owner-scoped synchronization, native event handling, PIN safeguards and emergency-app protection are retained.
+- Native counts, event writes, break passes and overrides reject stale account/session/enforcement-window snapshots. Queued DNS work and overlays are refreshed or discarded when that identity changes.
 - A blocked DNS request is recorded as `blocked`, not as a successful return to studying. This prevents background requests from inflating recovery statistics. Concurrent local log writes are serialized; future-dated records are excluded.
 
 ## Corrections to the supplied package
@@ -29,7 +30,9 @@ TypeScript `npx tsc --noEmit` passes. Existing Focus, Polish, Visual, Guides and
 
 All native Kotlin sources compile directly against the actual Android API 36 and React Native 0.86.3 classes. JVM tests execute the DNS codec/TCP state machine and native schedule evaluator, including packet checksums, malformed packets, split TCP framing, duplicate segments and DST.
 
-Expo Android prebuild passes. **Full Gradle APK assembly is blocked.** The initial build was terminated when network policy denied `https://dl.google.com:443`. A retry using only cached Google Maven artifacts progressed through configuration with aligned Kotlin/KSP, then failed because three Compose 1.7.6 dependencies were absent: `androidx.compose.animation:animation`, `androidx.compose.runtime:runtime`, and `androidx.compose.ui:ui`. No dependency was replaced with a different version merely to use the cache. **No B+C APK has been produced.** No physical handset or emulator interception test has been performed.
+Expo Android prebuild passes. The restored eight-file native implementation compiles directly against Android API 36 and React Native 0.86.3. A native JVM test additionally executes the actual store and rejects stale-owner, stale-session and stale-schedule-window counts, analytics, break passes and overrides.
+
+**Full Gradle APK assembly is in progress after restoring the temporary build environment. No B+C APK is verified yet.** The local environment downloads the original published Android/Gradle artifacts with TLS verification. Dependency versions are preserved. No physical handset or emulator interception test has been performed.
 
 ## Standalone build
 

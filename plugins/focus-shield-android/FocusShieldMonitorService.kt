@@ -81,6 +81,7 @@ class FocusShieldMonitorService : Service() {
   private var overlayView: View? = null
   private var overlayCleanup: (() -> Unit)? = null
   private var currentlyInterceptedPkg: String? = null
+  private var interceptedState: ShieldSessionState? = null
   private var lastKnownForegroundPkg: String? = null
   @Volatile private var destroyed = false
   private var hasScannedEvents = false
@@ -261,7 +262,8 @@ class FocusShieldMonitorService : Service() {
           packageName = packageName,
           appLabel = "Focus Shield permission revoked",
           vector = "permission-revoked",
-          outcome = "bypassed"
+          outcome = "bypassed",
+          expected = state
         )
       }
       removeOverlayOnMain()
@@ -311,40 +313,47 @@ class FocusShieldMonitorService : Service() {
   private fun showInterceptionOnMain(state: ShieldSessionState, blockedPkg: String, blockedLabel: String) {
     mainHandler.post {
       val latest = FocusShieldStore.loadState(this)
-      if (destroyed || !latest.isEnforcementActive() || latest.sessionId != state.sessionId ||
+      if (destroyed || !latest.isEnforcementActive() || !latest.sameIdentity(state) ||
           System.currentTimeMillis() < latest.breakPassExpiresAtMs ||
-          blockedPkg !in latest.blockedPackages || !Settings.canDrawOverlays(this) ||
+          blockedPkg !in latest.blockedPackages || blockedPkg in latest.allowlistedPackages ||
+          isSystemOrEssentialPackage(blockedPkg) || !Settings.canDrawOverlays(this) ||
           !hasUsageStatsPermission(this)) return@post
-      if (currentlyInterceptedPkg == blockedPkg && overlayView != null) {
+      if (currentlyInterceptedPkg == blockedPkg && overlayView != null && interceptedState?.sameIdentity(latest) == true) {
         return@post
       }
       removeOverlayImmediate()
       currentlyInterceptedPkg = blockedPkg
 
       if (Settings.canDrawOverlays(this) && windowManager != null) {
+        val countedState = FocusShieldStore.recordInterceptionAttempt(this, latest) ?: return@post
+        interceptedState = countedState
         val (view, cleanup) = FocusShieldUiFactory.buildBlockingView(
           context = this,
-          state = FocusShieldStore.recordInterceptionAttempt(this),
+          state = countedState,
           blockedPackage = blockedPkg,
           blockedLabel = blockedLabel,
-          onReturnToMyelin = { parkedThought ->
-            FocusShieldStore.appendInterceptEvent(
+          onReturnToMyelin = returnToMyelin@ { parkedThought ->
+            if (interceptedState?.sameIdentity(countedState) != true) return@returnToMyelin
+            val recorded = FocusShieldStore.appendInterceptEvent(
               context = this,
               packageName = blockedPkg,
               appLabel = blockedLabel,
               vector = "blocked-app",
               outcome = if (parkedThought.isNullOrBlank()) "returned" else "parked",
-              parkedThought = parkedThought
+              parkedThought = parkedThought,
+              expected = countedState
             )
             removeOverlayImmediate()
-            FocusShieldUiFactory.bringMyelinToFront(this)
+            if (recorded) FocusShieldUiFactory.bringMyelinToFront(this)
           },
-          onGrantBreakPass = {
-            FocusShieldStore.grantTemporaryBreakPass(this, blockedPkg, blockedLabel)
+          onGrantBreakPass = grantBreak@ {
+            if (interceptedState?.sameIdentity(countedState) != true) return@grantBreak
+            FocusShieldStore.grantTemporaryBreakPass(this, blockedPkg, blockedLabel, countedState)
             removeOverlayImmediate()
           },
-          onEmergencyOverride = {
-            FocusShieldStore.grantEmergencyOverride(this, blockedPkg, blockedLabel)
+          onEmergencyOverride = emergencyOverride@ {
+            if (interceptedState?.sameIdentity(countedState) != true) return@emergencyOverride
+            FocusShieldStore.grantEmergencyOverride(this, blockedPkg, blockedLabel, countedState)
             removeOverlayImmediate()
           }
         )
@@ -375,7 +384,7 @@ class FocusShieldMonitorService : Service() {
       }
 
       // Overlay failure must not cause unreliable repeated background launches.
-      FocusShieldStore.appendInterceptEvent(this, blockedPkg, blockedLabel, "permission-revoked", "bypassed")
+      FocusShieldStore.appendInterceptEvent(this, blockedPkg, blockedLabel, "permission-revoked", "bypassed", expected = latest)
       stopSelf()
     }
   }
@@ -392,6 +401,7 @@ class FocusShieldMonitorService : Service() {
     val view = overlayView
     overlayView = null
     currentlyInterceptedPkg = null
+    interceptedState = null
     if (view != null) {
       try {
         windowManager?.removeViewImmediate(view)

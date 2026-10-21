@@ -15,20 +15,21 @@
     "native-test": "passed",
     "schedule-native-test": "passed",
     "kotlin-compile": "passed",
-    "prebuild": "passed"
+    "prebuild": "passed",
+    "owner-native-test": "passed"
   },
   "physicalDeviceTested": false,
-  "gradleApk": "blocked: missing Compose 1.7.6 artifacts; dl.google.com denied by network policy",
+  "gradleApk": "pending: local build environment restored; full assembly in progress",
   "apkProduced": false,
   "nativeSourceHashes": {
+    "FocusShieldBlockerActivity.kt": "8ea0bbd24eceb03a653ea6eedbad641aee3b8696fce0e22182a8df2ed9ead393",
     "FocusShieldDns.kt": "e2968b5a09baf7f6961840cbbb4fb8a0b0cc9cb41cb1a4154dcaa41c92fc711a",
+    "FocusShieldDnsVpnService.kt": "f63f172132a2db49fa0f2e5099dd674db5d5151a5e496bff975c1a3988f6e341",
+    "FocusShieldModule.kt": "54600ed623c74aa3fc8f1e63ee4f42594c796f56b57a82c8301a3c935ef012c8",
+    "FocusShieldMonitorService.kt": "e96c647fa67e8cc5e86e5946d828045ea449902adb2f1ca876e18a59f4d1c81b",
     "FocusShieldPackage.kt": "cf713fd4e12ac686cd438e49727f21a6842393e2b039c977bddf296505a11821",
     "FocusShieldScheduleReceiver.kt": "58351522deb2974dc09d33c6bb89a2526542097b99b24c2486c2fe2b71e9f8f6",
-    "FocusShieldBlockerActivity.kt": "f818c3626ece43d4c1c1b261c583e0e1a58e089669744d9664d66b0131fedc8d",
-    "FocusShieldModule.kt": "54600ed623c74aa3fc8f1e63ee4f42594c796f56b57a82c8301a3c935ef012c8",
-    "FocusShieldStore.kt": "10e2e874dcef4a6c7c41b9ddd78a9917a2802bd43fce84ba8a4dcc72f3e00e21",
-    "FocusShieldMonitorService.kt": "ea8ec71348729f317dfd789016281ef67fe01cb2479a93034a33cfdc5b2d7a11",
-    "FocusShieldDnsVpnService.kt": "4b354c01d748c5618585abf5acf2d5b2e388015dcaebc63203d3b136fc431de7"
+    "FocusShieldStore.kt": "9ddfcc75ba9776c8bdd5a5597514ad24ff2965b854c19b1a0b22cbcab096f0c2"
   },
   "toolchain": {
     "kotlin": "2.3.0",

@@ -52,7 +52,7 @@ class FocusShieldDnsVpnService : VpnService() {
   private val writeLock = Any()
   @Volatile private var stopped = false
   @Volatile private var generation = 0L
-  private var tunnel: ParcelFileDescriptor? = null
+  @Volatile private var tunnel: ParcelFileDescriptor? = null
   private var reader: Thread? = null
   private var output: FileOutputStream? = null
   private var pool: ThreadPoolExecutor? = null
@@ -64,7 +64,7 @@ class FocusShieldDnsVpnService : VpnService() {
     override fun onAvailable(network: Network) { updateUnderlying() }
     override fun onLost(network: Network) { updateUnderlying() }
   }
-  private val tcp = FocusShieldDnsTcp(::writePacket) { query, complete -> submit(query, complete) }
+  private val tcp = FocusShieldDnsTcp({ bytes -> writePacket(bytes) }) { query, complete -> submit(query, complete) }
   private val expiry = object : Runnable {
     override fun run() {
       if (stopped) return
@@ -135,10 +135,12 @@ class FocusShieldDnsVpnService : VpnService() {
         if (Os.poll(arrayOf(poll), 1000) <= 0) continue
         if (poll.revents.toInt() and (OsConstants.POLLERR or OsConstants.POLLHUP or OsConstants.POLLNVAL) != 0) break
         val length = try { input.read(bytes) } catch (e: java.io.IOException) { if (!stopped) throw e else break }
+        if (stopped || tunnel !== fd) break
         if (length <= 0) continue
+        val packetGeneration = generation
         val packet = FocusShieldDns.parsePacket(bytes, length) ?: continue
         if (packet.protocol == 6) tcp.accept(packet, System.nanoTime() / 1_000_000)
-        else submit(packet.body) { answer -> writePacket(FocusShieldDns.reply(packet, if (answer.size > 1232) FocusShieldDns.error(packet.body, 0, truncated = true) else answer)) }
+        else submit(packet.body) { answer -> writePacket(FocusShieldDns.reply(packet, if (answer.size > 1232) FocusShieldDns.error(packet.body, 0, truncated = true) else answer), packetGeneration) }
       }
     } catch (_: Exception) { if (!stopped) lastError = "Website VPN stopped after a tunnel error. Reopen Focus to retry." }
     finally { if (!stopped && tunnel === fd) handler.post { stopSelf() } }
@@ -152,7 +154,7 @@ class FocusShieldDnsVpnService : VpnService() {
       var answer = resolve(query, start)
       // Do not deliver results from an old owner/session or bypass newly activated rules.
       val live = FocusShieldStore.loadState(this)
-      if (stopped || requestGeneration != generation || live.ownerKey != start.ownerKey || live.sessionId != start.sessionId || !live.isEnforcementActive()) return@execute
+      if (stopped || requestGeneration != generation || !live.sameIdentity(start) || !live.isEnforcementActive()) return@execute
       if (isBlocked(query, live)) answer = FocusShieldDns.error(query, 3)
       complete(answer)
     } } catch (_: java.util.concurrent.RejectedExecutionException) { complete(FocusShieldDns.error(query, 2)) }
@@ -170,14 +172,12 @@ class FocusShieldDnsVpnService : VpnService() {
       val host = FocusShieldDns.question(query)!!.host
       if (host != "use-application-dns.net") synchronized(logged) {
         val now = System.currentTimeMillis()
-        val key = "${state.ownerKey}:${state.sessionId}:$host"
+        val key = "${state.ownerKey}:${state.sessionId}:${state.enforcementRunKey}:$host"
         val previous = logged[key] ?: 0
         if (now - previous > 15_000) {
           if (logged.size >= 160) logged.remove(logged.keys.first())
-          logged[key] = now
-          FocusShieldStore.recordInterceptionAttempt(this)
-          // A DNS request is not proof the person returned to studying.
-          FocusShieldStore.appendInterceptEvent(this, "domain:$host", host, "blocked-website", "blocked")
+          // Count and log together under the store's owner/session/window guard.
+          if (FocusShieldStore.recordDomainInterception(this, state, host)) logged[key] = now
         }
       }
       return FocusShieldDns.error(query, 3)
@@ -209,8 +209,8 @@ class FocusShieldDnsVpnService : VpnService() {
     }
     return FocusShieldDns.error(query, 2)
   }
-  private fun writePacket(bytes: ByteArray) {
-    synchronized(writeLock) { if (!stopped) try { output?.write(bytes) } catch (_: Exception) { handler.post { stopSelf() } } }
+  private fun writePacket(bytes: ByteArray, expectedGeneration: Long = generation) {
+    synchronized(writeLock) { if (!stopped && expectedGeneration == generation) try { output?.write(bytes) } catch (_: Exception) { handler.post { stopSelf() } } }
   }
   private fun closeTunnel() {
     stopped = true; generation++; isRunning = false; tcp.clear()

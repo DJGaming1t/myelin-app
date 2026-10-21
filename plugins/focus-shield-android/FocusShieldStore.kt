@@ -33,6 +33,7 @@ data class ShieldSessionState(
   val activeScheduleLabel: String,
   val effectiveTopicName: String,
   val effectiveEndEpochMs: Long,
+  val enforcementRunKey: String,
   val nextScheduleTransitionEpochMs: Long,
   val blockedPackages: Set<String>,
   val allowlistedPackages: Set<String>,
@@ -55,6 +56,9 @@ data class ShieldSessionState(
   val blockFloatingWindows: Boolean,
   val blockSplitScreen: Boolean
 ) {
+  fun sameIdentity(other: ShieldSessionState): Boolean =
+    ownerKey == other.ownerKey && sessionId == other.sessionId && enforcementRunKey == other.enforcementRunKey
+
   fun isEnforcementActive(nowMs: Long = System.currentTimeMillis()): Boolean {
     if (mode == "off" || ownerKey.isEmpty()) return false
     val manualFocusRunning = active && phase == "focus" && nowMs < sessionEndEpochMs
@@ -166,7 +170,9 @@ object FocusShieldStore {
 
     val incomingSessionId = if (obj.isNull("sessionId")) "" else obj.optString("sessionId", "")
     val previousSessionId = p.getString("sessionId", "") ?: ""
-    val sameSession = incomingSessionId.isNotEmpty() && incomingSessionId == previousSessionId
+    val incomingOwnerKey = if (obj.isNull("ownerKey")) "" else obj.optString("ownerKey", "")
+    val sameSession = incomingSessionId.isNotEmpty() && incomingSessionId == previousSessionId &&
+      incomingOwnerKey == p.getString("ownerKey", "")
 
     val active = obj.optBoolean("active", false)
     val phase = obj.optString("phase", "idle")
@@ -250,7 +256,7 @@ object FocusShieldStore {
     val attemptCountInSession = if (sameSession) p.getInt("attemptCountInSession", 0) else 0
 
     p.edit()
-      .putString("ownerKey", if (obj.isNull("ownerKey")) "" else obj.optString("ownerKey", ""))
+      .putString("ownerKey", incomingOwnerKey)
       .putBoolean("active", active)
       .putString("sessionId", incomingSessionId)
       .putString("phase", phase)
@@ -349,6 +355,7 @@ object FocusShieldStore {
       activeScheduleLabel = schedEval.activeLabel,
       effectiveTopicName = effectiveTopicName,
       effectiveEndEpochMs = effectiveEndEpochMs,
+      enforcementRunKey = runKey,
       nextScheduleTransitionEpochMs = schedEval.nextTransitionEpochMs,
       blockedPackages = p.getStringSet("blockedPackages", emptySet())?.toSet() ?: emptySet(),
       allowlistedPackages = p.getStringSet("allowlistedPackages", emptySet())?.toSet() ?: emptySet(),
@@ -380,20 +387,29 @@ object FocusShieldStore {
   }
 
   @Synchronized
-  fun recordInterceptionAttempt(context: Context): ShieldSessionState {
+  fun recordInterceptionAttempt(context: Context, expected: ShieldSessionState? = null): ShieldSessionState? {
     val p = prefs(context)
-    loadState(context)
+    val state = loadState(context)
+    if (!state.isEnforcementActive() || (expected != null && !state.sameIdentity(expected)) ||
+        System.currentTimeMillis() < state.breakPassExpiresAtMs) return null
     val nextCount = p.getInt("attemptCountInSession", 0).coerceIn(0, 99999) + 1
     p.edit().putInt("attemptCountInSession", nextCount).apply()
     return loadState(context)
   }
 
   @Synchronized
-  fun grantTemporaryBreakPass(context: Context, packageName: String, appLabel: String): Boolean {
+  fun recordDomainInterception(context: Context, expected: ShieldSessionState, host: String): Boolean {
+    val state = recordInterceptionAttempt(context, expected) ?: return false
+    return appendInterceptEvent(context, "domain:$host", host, "blocked-website", "blocked", expected = state)
+  }
+
+  @Synchronized
+  fun grantTemporaryBreakPass(context: Context, packageName: String, appLabel: String, expected: ShieldSessionState? = null): Boolean {
     val p = prefs(context)
     val state = loadState(context)
     val remaining = state.maxBreakAllowances - state.breakPassesUsed
-    if (!state.isEnforcementActive() || state.mode == "strict" || remaining <= 0) {
+    if (!state.isEnforcementActive() || (expected != null && !state.sameIdentity(expected)) ||
+        state.mode == "strict" || remaining <= 0) {
       return false
     }
     val durationMs = state.breakPassMinutes.coerceAtLeast(1) * 60_000L
@@ -408,14 +424,17 @@ object FocusShieldStore {
       appLabel = appLabel,
       vector = "blocked-app",
       outcome = "break-pass",
-      parkedThought = null
+      parkedThought = null,
+      expected = state
     )
     return true
   }
 
   @Synchronized
-  fun grantEmergencyOverride(context: Context, packageName: String, appLabel: String) {
+  fun grantEmergencyOverride(context: Context, packageName: String, appLabel: String, expected: ShieldSessionState? = null): Boolean {
     val p = prefs(context)
+    val state = loadState(context)
+    if (!state.isEnforcementActive() || (expected != null && !state.sameIdentity(expected))) return false
     val expiresAt = System.currentTimeMillis() + 5L * 60_000L
     p.edit()
       .putLong("breakPassExpiresAtMs", expiresAt)
@@ -426,8 +445,10 @@ object FocusShieldStore {
       appLabel = appLabel,
       vector = "blocked-app",
       outcome = "bypassed",
-      parkedThought = null
+      parkedThought = null,
+      expected = state
     )
+    return true
   }
 
   fun verifyPin(state: ShieldSessionState, candidatePin: String): Boolean {
@@ -455,8 +476,11 @@ object FocusShieldStore {
     appLabel: String,
     vector: String,
     outcome: String,
-    parkedThought: String? = null
-  ) {
+    parkedThought: String? = null,
+    expected: ShieldSessionState? = null
+  ): Boolean {
+    val state = loadState(context)
+    if (state.ownerKey.isEmpty() || (expected != null && !state.sameIdentity(expected))) return false
     val p = prefs(context)
     val raw = p.getString("interceptEventsJson", "[]") ?: "[]"
     val arr = try {
@@ -487,6 +511,7 @@ object FocusShieldStore {
       trimmed.put(arr.get(i))
     }
     p.edit().putString("interceptEventsJson", trimmed.toString()).apply()
+    return true
   }
 
   @Synchronized

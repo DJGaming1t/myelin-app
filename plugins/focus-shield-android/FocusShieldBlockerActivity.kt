@@ -453,17 +453,18 @@ class FocusShieldBlockerActivity : Activity() {
           appLabel = blockedLabel,
           vector = "blocked-app",
           outcome = if (parkedThought.isNullOrBlank()) "returned" else "parked",
-          parkedThought = parkedThought
+          parkedThought = parkedThought,
+          expected = state
         )
         FocusShieldUiFactory.bringMyelinToFront(this)
         finish()
       },
       onGrantBreakPass = {
-        FocusShieldStore.grantTemporaryBreakPass(this, blockedPkg, blockedLabel)
+        FocusShieldStore.grantTemporaryBreakPass(this, blockedPkg, blockedLabel, state)
         finish()
       },
       onEmergencyOverride = {
-        FocusShieldStore.grantEmergencyOverride(this, blockedPkg, blockedLabel)
+        FocusShieldStore.grantEmergencyOverride(this, blockedPkg, blockedLabel, state)
         finish()
       }
     )

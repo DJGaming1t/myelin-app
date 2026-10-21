@@ -34,14 +34,15 @@ export function FocusShieldSessionController({ ownerKey, session }: {
     async function sync() {
       const { ownerKey: owner, session: current, loaded: preferences } = live.current;
       const config = owner && preferences?.owner === owner ? preferences.config : defaultFocusShieldConfig();
-      const running = !!owner && current?.runningSince != null && timerRemainingMs(current) > 0;
+      const focusSession = config.focusBlockingEnabled ? current : null;
+      const running = !!owner && focusSession?.runningSince != null && timerRemainingMs(focusSession) > 0;
       // Native expiry handles background operation; new FGS starts require a visible app.
       if (AppState.currentState !== 'active' && (running || !config.sessionOnly)) return;
       const ok = await syncFocusShieldNativeSession({
-        config, ownerKey: owner, sessionId: owner && current ? `${owner}:${current.id}` : owner ? `${owner}:scheduled` : null,
-        sessionRunning: running, phase: current?.phase ?? 'idle',
-        remainingMs: current ? timerRemainingMs(current) : 0,
-        topicName: current?.topicName ?? 'Focus Session', tinyStep: current?.tinyStep ?? '',
+        config, ownerKey: owner, sessionId: owner && focusSession ? `${owner}:${focusSession.id}` : owner ? `${owner}:scheduled` : null,
+        sessionRunning: running, phase: focusSession?.phase ?? 'idle',
+        remainingMs: focusSession ? timerRemainingMs(focusSession) : 0,
+        topicName: focusSession?.topicName ?? 'App blocking', tinyStep: focusSession?.tinyStep ?? '',
       });
       if (!disposed) setError(config.mode !== 'off' && (running || !config.sessionOnly) && !ok);
     }
@@ -60,6 +61,6 @@ export function FocusShieldSessionController({ ownerKey, session }: {
   }, []);
 
   return error ? <Text accessibilityRole="alert" style={{ color: '#FF805B', padding: 12 }}>
-    Some Focus Shield protections could not start. Open Focus and check app permissions and the website VPN status.
+    Some Focus Shield protections could not start. Open App blocking in Settings to check permissions.
   </Text> : null;
 }

@@ -48,7 +48,8 @@ object FocusShieldUiFactory {
         setClassName(context.packageName, "${context.packageName}.MainActivity")
       }
     launchIntent.action = Intent.ACTION_VIEW
-    launchIntent.data = Uri.parse("myelin://focus")
+    val current = FocusShieldStore.loadState(context)
+    launchIntent.data = Uri.parse(if (current.active && current.phase == "focus") "myelin://focus" else "myelin://blocking")
     launchIntent.addFlags(
       Intent.FLAG_ACTIVITY_NEW_TASK or
         Intent.FLAG_ACTIVITY_CLEAR_TOP or
@@ -110,7 +111,7 @@ object FocusShieldUiFactory {
 
     // Eyebrow badge
     val eyebrow = TextView(context).apply {
-      text = "MYELIN FOCUS SHIELD · ${state.mode.uppercase()} · ATTEMPT #${state.attemptCountInSession}"
+      text = "MYELIN · APP BLOCKING"
       setTextColor(Color.parseColor("#FF805B"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
       setTypeface(typeface, Typeface.BOLD)
@@ -147,14 +148,14 @@ object FocusShieldUiFactory {
     }
 
     val titleView = TextView(context).apply {
-      text = "$blockedLabel is paused during Focus"
+      text = "$blockedLabel is blocked"
       setTextColor(Color.parseColor("#F5F2EE"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
       setTypeface(typeface, Typeface.BOLD)
     }
     val subView = TextView(context).apply {
       val remainingMin = ((state.effectiveEndEpochMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
-      text = "Active session: ${state.effectiveTopicName} · ~${remainingMin}m left"
+      text = "${state.effectiveTopicName} · about ${remainingMin}m left"
       setTextColor(Color.parseColor("#A39C96"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
     }
@@ -164,7 +165,7 @@ object FocusShieldUiFactory {
     card.addView(headerRow)
 
     // Tiny Step Box if present
-    if (state.tinyStep.isNotBlank()) {
+    if (state.active && state.tinyStep.isNotBlank()) {
       val stepBox = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         background = roundedBg("#1A1715", "#2E2925", 1, 14, context)
@@ -216,15 +217,16 @@ object FocusShieldUiFactory {
 
     // Primary CTA: Return to MYELIN Focus
     val returnBtn = Button(context).apply {
-      text = "Return to MYELIN Focus →"
+      text = "Return to MYELIN"
       isAllCaps = false
+      minimumHeight = dp(context, 48)
       setTextColor(Color.parseColor("#25140E"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
       setTypeface(typeface, Typeface.BOLD)
       background = roundedBg("#FF805B", null, 0, 14, context)
       layoutParams = LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
-        dp(context, 54)
+        LinearLayout.LayoutParams.WRAP_CONTENT
       ).apply {
         topMargin = dp(context, 18)
       }
@@ -250,18 +252,23 @@ object FocusShieldUiFactory {
         topMargin = dp(context, 12)
       }
     }
-    card.addView(parkInput)
+    val parkContainer = LinearLayout(context).apply {
+      orientation = LinearLayout.VERTICAL
+      visibility = View.GONE
+    }
+    parkContainer.addView(parkInput)
 
     val parkBtn = Button(context).apply {
-      text = "Park thought & return to study"
+      text = "Save thought & return"
       isAllCaps = false
+      minimumHeight = dp(context, 48)
       setTextColor(Color.parseColor("#FF805B"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
       setTypeface(typeface, Typeface.BOLD)
       background = roundedBg("#1F1613", "#523025", 1, 12, context)
       layoutParams = LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
-        dp(context, 46)
+        LinearLayout.LayoutParams.WRAP_CONTENT
       ).apply {
         topMargin = dp(context, 8)
       }
@@ -271,7 +278,19 @@ object FocusShieldUiFactory {
         onReturnToMyelin(finalThought)
       }
     }
-    card.addView(parkBtn)
+    parkContainer.addView(parkBtn)
+    val parkToggle = Button(context).apply {
+      text = "Park a thought for later"
+      isAllCaps = false
+      minimumHeight = dp(context, 48)
+      setTextColor(Color.parseColor("#C6C2BC"))
+      background = roundedBg("#17171B", null, 0, 12, context)
+      setOnClickListener {
+        parkContainer.visibility = if (parkContainer.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+      }
+    }
+    card.addView(parkToggle)
+    card.addView(parkContainer)
 
     // Break Pass / Delayed Friction / Emergency Override section
     val remainingPasses = (state.maxBreakAllowances - state.breakPassesUsed).coerceAtLeast(0)
@@ -286,12 +305,13 @@ object FocusShieldUiFactory {
     if (remainingPasses > 0 && state.mode != "strict") {
       val passBtn = Button(context).apply {
         isAllCaps = false
+      minimumHeight = dp(context, 48)
         setTextColor(Color.parseColor("#A39C96"))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
         background = roundedBg("#171717", "#2B2B2B", 1, 12, context)
         layoutParams = LinearLayout.LayoutParams(
           LinearLayout.LayoutParams.MATCH_PARENT,
-          dp(context, 44)
+          LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
           topMargin = dp(context, 12)
         }
@@ -331,8 +351,9 @@ object FocusShieldUiFactory {
       }
     }
 
+    val confirmationPhrase = if (state.active) "pause focus" else "pause blocking"
     val pinInput = EditText(context).apply {
-      hint = if (state.pinHash.isNotEmpty()) "Enter Accountability PIN" else "Type: pause focus"
+      hint = if (state.pinHash.isNotEmpty()) "Enter Accountability PIN" else "Type: $confirmationPhrase"
       setHintTextColor(Color.parseColor("#6E6762"))
       setTextColor(Color.parseColor("#F5F2EE"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -351,14 +372,15 @@ object FocusShieldUiFactory {
     }
 
     val confirmEmergencyBtn = Button(context).apply {
-      text = "Confirm 5-min Emergency Override"
+      text = "Confirm 5-minute access"
       isAllCaps = false
+      minimumHeight = dp(context, 48)
       setTextColor(Color.parseColor("#E06C6C"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
       background = roundedBg("#1F1414", "#4A2424", 1, 10, context)
       layoutParams = LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
-        dp(context, 42)
+        LinearLayout.LayoutParams.WRAP_CONTENT
       ).apply {
         topMargin = dp(context, 8)
       }
@@ -367,7 +389,7 @@ object FocusShieldUiFactory {
         val valid = if (state.pinHash.isNotEmpty()) {
           FocusShieldStore.verifyPin(state, candidate)
         } else {
-          candidate.equals("pause focus", ignoreCase = true)
+          candidate.equals(confirmationPhrase, ignoreCase = true)
         }
         if (valid) {
           onEmergencyOverride()
@@ -376,7 +398,7 @@ object FocusShieldUiFactory {
           emergencyStatus.text = if (state.pinHash.isNotEmpty()) {
             "Incorrect Accountability PIN."
           } else {
-            "Type 'pause focus' to confirm emergency override."
+            "Type '$confirmationPhrase' to confirm emergency override."
           }
         }
       }
@@ -389,7 +411,10 @@ object FocusShieldUiFactory {
     val toggleEmergencyBtn = TextView(context).apply {
       text = "Need emergency access?"
       gravity = Gravity.CENTER
-      setTextColor(Color.parseColor("#78706A"))
+      setTextColor(Color.parseColor("#C6C2BC"))
+      minimumHeight = dp(context, 48)
+      isFocusable = true
+      contentDescription = "Show emergency access confirmation"
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
       setPadding(0, dp(context, 14), 0, dp(context, 4))
       setOnClickListener {
@@ -423,7 +448,6 @@ class FocusShieldBlockerActivity : Activity() {
         window.setHideOverlayWindows(true)
       } catch (_: Exception) {}
     }
-    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     renderFromIntent(intent)
   }
 

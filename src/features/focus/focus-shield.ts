@@ -94,6 +94,8 @@ export type FocusShieldConfig = {
   websiteBlockingEnabled: boolean;
   blockDohCanary: boolean;
   sessionOnly: boolean;
+  focusBlockingEnabled: boolean;
+  requireDeviceUnlock: boolean;
   awayThresholdSeconds: number;
   unlockDelaySeconds: number;
   retryCooldownSeconds: number;
@@ -692,6 +694,8 @@ export function defaultFocusShieldConfig(now = Date.now()): FocusShieldConfig {
     websiteBlockingEnabled: true,
     blockDohCanary: true,
     sessionOnly: true,
+    focusBlockingEnabled: true,
+    requireDeviceUnlock: false,
     awayThresholdSeconds: DEFAULT_AWAY_THRESHOLD_SECONDS,
     unlockDelaySeconds: DEFAULT_UNLOCK_DELAY_SECONDS,
     retryCooldownSeconds: DEFAULT_RETRY_COOLDOWN_SECONDS,
@@ -1053,6 +1057,8 @@ export function validateFocusShieldConfig(raw: unknown, now = Date.now()): Focus
     websiteBlockingEnabled: obj.websiteBlockingEnabled !== false,
     blockDohCanary: obj.blockDohCanary !== false,
     sessionOnly: obj.sessionOnly !== false,
+    focusBlockingEnabled: obj.focusBlockingEnabled !== false,
+    requireDeviceUnlock: obj.requireDeviceUnlock === true,
     awayThresholdSeconds,
     unlockDelaySeconds,
     retryCooldownSeconds,
@@ -1641,6 +1647,8 @@ export function updateFocusShieldCustomization(
       | 'reflectionPrompt'
       | 'customMotivation'
       | 'sessionOnly'
+      | 'focusBlockingEnabled'
+      | 'requireDeviceUnlock'
       | 'blockFloatingWindows'
       | 'blockSplitScreen'
     >
@@ -1706,6 +1714,7 @@ export function evaluateFocusAwayReturn(input: {
   } = input;
   if (
     config.mode === 'off' ||
+    !config.focusBlockingEnabled ||
     !sessionRunning ||
     phase !== 'focus' ||
     backgroundedAt === null ||

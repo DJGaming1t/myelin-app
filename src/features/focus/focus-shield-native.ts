@@ -197,7 +197,7 @@ export async function syncFocusShieldNativeSession(input: {
   const now = Date.now();
   const summary = activeShieldSummary(input.config, now);
   const payload: NativeSessionSyncPayload = {
-    active: summary.enabled && input.sessionRunning && input.phase === 'focus' && input.remainingMs > 0,
+    active: summary.enabled && input.config.focusBlockingEnabled && input.sessionRunning && input.phase === 'focus' && input.remainingMs > 0,
     sessionId: input.sessionId,
     ownerKey: input.ownerKey ?? null,
     phase: input.phase,

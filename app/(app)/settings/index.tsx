@@ -30,6 +30,7 @@ import { authErrorMessage } from '@/src/features/auth/auth-errors';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useCloudSync } from '@/src/features/cloud-sync/CloudSyncProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { BlockingShortcut } from '@/src/features/focus/BlockingShortcut';
 import { useReminders } from '@/src/features/notifications/ReminderProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
@@ -283,6 +284,7 @@ export default function SettingsScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
+          <BlockingShortcut />
           <AdaptiveSettings />
           <Section
             title="Study defaults"

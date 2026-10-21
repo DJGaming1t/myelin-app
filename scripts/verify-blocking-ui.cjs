@@ -5,7 +5,7 @@ const {createEmptyWorkspace}=require(process.cwd()+'/src/data/schema.ts');
 const {defaultFocusShieldConfig}=require(process.cwd()+'/src/features/focus/focus-shield.ts');
 const output=process.env.MYELIN_UI_OUTPUT || '/tmp/myelin-blocking-ui';fs.mkdirSync(output,{recursive:true});
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,headless:true,args:['--no-sandbox']});
-try{for(const width of [320,390]){
+try{for(const width of [320,390,720]){
  const page=await browser.newPage({viewport:{width,height:780},timezoneId:'Asia/Kolkata',reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const now=new Date('2026-10-21T12:00:00+05:30').getTime(),workspace=createEmptyWorkspace(now);workspace.settings.reduceMotion=true;
  const config=defaultFocusShieldConfig(now);config.mode='gentle';config.schedules=[];
@@ -15,7 +15,10 @@ try{for(const width of [320,390]){
  await page.goto((process.env.MYELIN_TEST_BASE_URL || 'http://127.0.0.1:8081')+'/blocking',{waitUntil:'networkidle',timeout:180000});
  await page.getByText('Choose apps',{exact:true}).waitFor();
  for(const tab of ['Apps','Websites','When','Settings']){
-  await page.getByRole('tab',{name:tab,exact:true}).click();await page.screenshot({path:`${output}/blocking-${tab.toLowerCase()}-${width}.png`,fullPage:true});
+  await page.getByRole('tab',{name:tab,exact:true}).click();
+  const heading={Apps:'Choose apps',Websites:'A quieter internet',When:'Find your rhythm',Settings:'How firm should it be?'}[tab];
+  await page.getByText(heading,{exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${output}/blocking-${tab.toLowerCase()}-${width}.png`,fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${tab}: no horizontal overflow at ${width}px`);
  }
  await page.getByRole('tab',{name:'When',exact:true}).click();await page.getByRole('switch',{name:'Block during Focus',exact:true}).click();

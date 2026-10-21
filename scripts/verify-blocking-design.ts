@@ -31,6 +31,7 @@ async function main() {
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     '@/src/components/app/AppIcon': { AppIcon: 'AppIcon' }, '@/src/components/app/AmbientBackdrop': { AmbientBackdrop: 'AmbientBackdrop' }, '@/src/components/app/ScreenHeader': { ScreenHeader: 'ScreenHeader' },
     '@/src/data/WorkspaceProvider': { useWorkspace: () => ({ ownerKey: 'local:device' }) }, '@/src/theme/tokens': { colors, layout, radius, space },
+    './BlockingVisuals': { BlockingGlyph: 'BlockingGlyph', ShieldEmblem: 'ShieldEmblem', AppAvatar: 'AppAvatar', StrengthMark: 'StrengthMark', WeekStrip: 'WeekStrip' },
     './focus-shield': { ...engine, focusShieldStorage: { subscribeAttempts: () => () => {}, loadAttempts: async () => [] } },
     './focus-shield-native': { probeFocusShieldNativeStatus: async () => status, fetchInstalledAndroidApps: async () => apps, openFocusShieldPermissionSettings: async () => true, requestWebsiteVpnAuthorization: async () => ({ vpnPrepared: false }) },
     './useBlockingSettings': {
@@ -49,7 +50,7 @@ async function main() {
   async function press(role: string, name: string) { const el = by(role, name); (el.props.onPress || el.props.onValueChange)(!el.props.value); await render(); }
   async function fill(name: string, value: string) { by('textbox', name).props.onChangeText(value); await render(); }
   await render();
-  assert.ok(nodes.some(n => text(n) === 'One more step.'));
+  assert.ok(nodes.some(n => text(n).startsWith('One more step. Allow Android')));
   assert.ok(by('button', 'Allow usage access'));
   assert.equal(nodes.filter(n => n.props.accessibilityRole === 'checkbox').length, 50);
   await press('button', 'Show more apps (15 remaining)');

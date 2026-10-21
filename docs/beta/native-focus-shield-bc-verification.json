@@ -1,5 +1,5 @@
 {
-  "implementationCommit": "e785321e264a78bd57630c994bf187a8544f98fd",
+  "implementationCommit": "6b65e0f7d4de529142b201ff2f3f97e9ce96d1d0",
   "base": "90a39517c86250e301d6113cd6395c8733752198",
   "version": "0.2.16",
   "versionCode": 13,
@@ -16,19 +16,22 @@
     "schedule-native-test": "passed",
     "kotlin-compile": "passed",
     "prebuild": "passed",
-    "owner-native-test": "passed"
+    "owner-native-test": "passed",
+    "gradle-kotlin-java-native": "passed",
+    "android-release-lint": "passed",
+    "apk-signature-manifest-zipalign-bundle": "passed"
   },
   "physicalDeviceTested": false,
-  "gradleApk": "pending: local build environment restored; full assembly in progress",
-  "apkProduced": false,
+  "gradleApk": "passed: :app:assembleRelease, BUILD SUCCESSFUL in 12m 28s",
+  "apkProduced": true,
   "nativeSourceHashes": {
-    "FocusShieldBlockerActivity.kt": "8ea0bbd24eceb03a653ea6eedbad641aee3b8696fce0e22182a8df2ed9ead393",
-    "FocusShieldDns.kt": "e2968b5a09baf7f6961840cbbb4fb8a0b0cc9cb41cb1a4154dcaa41c92fc711a",
-    "FocusShieldDnsVpnService.kt": "7dcc24380546698787f258f876ce5bf449ec3be611e2fc327301b8b519428e17",
     "FocusShieldModule.kt": "54600ed623c74aa3fc8f1e63ee4f42594c796f56b57a82c8301a3c935ef012c8",
     "FocusShieldMonitorService.kt": "e96c647fa67e8cc5e86e5946d828045ea449902adb2f1ca876e18a59f4d1c81b",
-    "FocusShieldPackage.kt": "cf713fd4e12ac686cd438e49727f21a6842393e2b039c977bddf296505a11821",
     "FocusShieldScheduleReceiver.kt": "58351522deb2974dc09d33c6bb89a2526542097b99b24c2486c2fe2b71e9f8f6",
+    "FocusShieldDnsVpnService.kt": "7dcc24380546698787f258f876ce5bf449ec3be611e2fc327301b8b519428e17",
+    "FocusShieldBlockerActivity.kt": "8ea0bbd24eceb03a653ea6eedbad641aee3b8696fce0e22182a8df2ed9ead393",
+    "FocusShieldDns.kt": "e2968b5a09baf7f6961840cbbb4fb8a0b0cc9cb41cb1a4154dcaa41c92fc711a",
+    "FocusShieldPackage.kt": "cf713fd4e12ac686cd438e49727f21a6842393e2b039c977bddf296505a11821",
     "FocusShieldStore.kt": "9ddfcc75ba9776c8bdd5a5597514ad24ff2965b854c19b1a0b22cbcab096f0c2"
   },
   "toolchain": {
@@ -36,6 +39,44 @@
     "ksp": "2.3.0",
     "androidApi": 36,
     "gradle": "9.3.1",
-    "jdk": 17
+    "jdk": 17,
+    "agp": "8.12.0"
+  },
+  "latestIntegrationBase": "c8ee57a9eb3eb812b8e94945200b4020fde65f9a",
+  "verifiedDate": "2026-10-21",
+  "generatedFilesMatch": true,
+  "apk": {
+    "sourceCommit": "6b65e0f7d4de529142b201ff2f3f97e9ce96d1d0",
+    "package": "com.djgaming1t.myelin",
+    "version": "0.2.16",
+    "versionCode": 13,
+    "minSdk": 26,
+    "targetSdk": 36,
+    "abi": "arm64-v8a",
+    "variant": "release, signed with local debug certificate",
+    "sizeBytes": 74240291,
+    "sha256": "484253fe141a90bd1014a616e28874e0981a61f9a9750e25e4502159c5189cd9",
+    "certificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+    "embeddedJsBytes": 6069192,
+    "hermesBytecode": true,
+    "zipCrcPassed": true,
+    "signatureVerified": true,
+    "zipAlign16KbPassed": true,
+    "nativeClassesPresent": true,
+    "expoUpdatesEnabled": false,
+    "elf16KbIncompatibleLibraries": [],
+    "physicalDeviceTested": false
+  },
+  "buildLimits": {
+    "gradleWorkers": 1,
+    "metroWorkers": 2,
+    "nativeCompileJobs": 2,
+    "expoCliTelemetryDisabled": true,
+    "expoCliOffline": true
+  },
+  "publication": {
+    "expo": false,
+    "eas": false,
+    "hostedWorkflowsStarted": false
   }
 }

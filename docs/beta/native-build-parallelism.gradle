@@ -1,4 +1,8 @@
 gradle.beforeProject { project ->
+    // Gradle's worker limit does not limit Metro's separate Node worker pool.
+    project.plugins.withId('com.facebook.react') {
+        project.extensions.getByName('react').extraPackagerArgs.addAll(['--max-workers', '2'])
+    }
     ['com.android.application', 'com.android.library'].each { pluginId ->
         project.plugins.withId(pluginId) {
             project.extensions.getByName('android').defaultConfig.externalNativeBuild.cmake.arguments.addAll([

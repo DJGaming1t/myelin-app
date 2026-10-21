@@ -32,7 +32,9 @@ All native Kotlin sources compile directly against the actual Android API 36 and
 
 Expo Android prebuild passes. The restored eight-file native implementation compiles directly against Android API 36 and React Native 0.86.3. A native JVM test additionally executes the actual store and rejects stale-owner, stale-session and stale-schedule-window counts, analytics, break passes and overrides.
 
-**Full Gradle APK assembly is in progress after restoring the temporary build environment. No B+C APK is verified yet.** The local environment downloads the original published Android/Gradle artifacts with TLS verification. Dependency versions are preserved. No physical handset or emulator interception test has been performed.
+**Full local Gradle assembly passed on 2026-10-21: `:app:assembleRelease`, `BUILD SUCCESSFUL in 12m 28s`.** This includes actual app Kotlin 2.3.0/Java/C++ compilation, JavaScript bundling and Android release lint. The local environment downloaded original published Android/Gradle artifacts with TLS verification. Dependency versions were preserved. Gradle/native concurrency and Metro workers are bounded to fit the local build environment; Expo CLI telemetry and networking were disabled during bundling. No physical handset or emulator interception test has been performed.
+
+Verified source: `6b65e0f7d4de529142b201ff2f3f97e9ce96d1d0`. The standalone arm64 APK is 74,240,291 bytes; SHA-256 `484253fe141a90bd1014a616e28874e0981a61f9a9750e25e4502159c5189cd9`. Package/version, unexported native components and VPN permission, embedded Hermes bundle, native DEX classes, ZIP integrity, signing certificate, ZIP alignment and all native ELF 16 KB segment alignments were checked. Expo Updates is disabled in this testing binary. The APK uses a local debug certificate. Compilation and these checks do not establish on-device blocking.
 
 ## Standalone build
 

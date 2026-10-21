@@ -1,0 +1,93 @@
+{
+  "verifiedDate": "2026-10-21",
+  "compiledSourceCommit": "469fea2e2b6ad145d52186430a61158627be858d",
+  "baseCommit": "d9eb48fd003ad773f0ddbba109ed18a7509cced4",
+  "version": "0.2.17",
+  "versionCode": 14,
+  "checks": {
+    "tsc-noEmit": "passed",
+    "focus-shield-A": "passed",
+    "focus-shield-BC": "passed",
+    "blocking-settings-lifecycle": "passed",
+    "auth": "passed",
+    "focus": "passed",
+    "polish": "passed",
+    "visual": "passed",
+    "guides": "passed",
+    "onboarding": "passed",
+    "release": "passed",
+    "runtime-boundary": "passed",
+    "preview-guard": "passed",
+    "expo-android-prebuild": "passed",
+    "gradle-assembleRelease": "passed",
+    "release-lint": "passed",
+    "apk-verification": "passed"
+  },
+  "browserChecks": {
+    "blockingViewports": [
+      320,
+      390
+    ],
+    "existingFocusScenarios": 12,
+    "physicalDeviceQA": false
+  },
+  "gradleResult": "BUILD SUCCESSFUL in 19m 36s",
+  "apk": {
+    "sourceCommit": "469fea2e2b6ad145d52186430a61158627be858d",
+    "package": "com.djgaming1t.myelin",
+    "version": "0.2.17",
+    "versionCode": 14,
+    "minSdk": 26,
+    "targetSdk": 36,
+    "abi": "arm64-v8a",
+    "variant": "standalone release variant signed with local debug certificate",
+    "sizeBytes": 74361004,
+    "sha256": "dc18b1aceb0e9a2d7eec7309b69b58508b7b1017cb4eb2e7fc0e411a3659e28b",
+    "certificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+    "certificateSha1": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625",
+    "embeddedJsBytes": 6075572,
+    "hermesBytecode": true,
+    "zipCrcPassed": true,
+    "signatureVerified": true,
+    "zipAlign16KbPassed": true,
+    "nativeClassesPresent": true,
+    "deviceAuthenticationModulePresent": true,
+    "deviceAuthenticationModuleRegistered": true,
+    "expoUpdatesEnabled": false,
+    "elf16KbIncompatibleLibraries": [],
+    "physicalDeviceTested": false,
+    "generatedNativeFilesMatch": true,
+    "nativeSourceHashes": {
+      "FocusShieldMonitorService.kt": "e96c647fa67e8cc5e86e5946d828045ea449902adb2f1ca876e18a59f4d1c81b",
+      "FocusShieldDnsVpnService.kt": "7dcc24380546698787f258f876ce5bf449ec3be611e2fc327301b8b519428e17",
+      "FocusShieldBlockerActivity.kt": "e2bfd399c543cf6fdbf37a2227203d34f85f908afef59353d9fb8f4a735ebfff",
+      "FocusShieldStore.kt": "9ddfcc75ba9776c8bdd5a5597514ad24ff2965b854c19b1a0b22cbcab096f0c2",
+      "FocusShieldDns.kt": "e2968b5a09baf7f6961840cbbb4fb8a0b0cc9cb41cb1a4154dcaa41c92fc711a",
+      "FocusShieldPackage.kt": "cf713fd4e12ac686cd438e49727f21a6842393e2b039c977bddf296505a11821",
+      "FocusShieldScheduleReceiver.kt": "58351522deb2974dc09d33c6bb89a2526542097b99b24c2486c2fe2b71e9f8f6",
+      "FocusShieldModule.kt": "54600ed623c74aa3fc8f1e63ee4f42594c796f56b57a82c8301a3c935ef012c8"
+    }
+  },
+  "toolchain": {
+    "jdk": 17,
+    "gradle": "9.3.1",
+    "agp": "8.12.0",
+    "kotlin": "2.3.0",
+    "ksp": "2.3.0",
+    "androidApi": 36,
+    "ndk": "27.1.12297006",
+    "cmake": "3.22.1"
+  },
+  "publication": {
+    "expo": false,
+    "eas": false,
+    "hostedWorkflowsStarted": false
+  },
+  "remaining": [
+    "Physical Android rendering/insets/keyboard/font scaling",
+    "Fingerprint/device credential prompt and cancellation on handset",
+    "Blocked-app lifecycle and essential system access on handset",
+    "DNS filtering bypasses and OEM background restrictions",
+    "Firebase test signing fingerprint registration / actual Google login"
+  ]
+}

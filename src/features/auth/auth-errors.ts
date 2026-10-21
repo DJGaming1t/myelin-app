@@ -1,7 +1,11 @@
-type FirebaseLikeError = { code?: string };
+type FirebaseLikeError = { code?: string | number; message?: string };
 
 export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | 'reset' | 'google' | 'delete') {
-  const code = (error as FirebaseLikeError | undefined)?.code ?? '';
+  const details = error as FirebaseLikeError | null | undefined;
+  const code = typeof details?.code === 'string' || typeof details?.code === 'number'
+    ? String(details.code)
+    : '';
+  const message = typeof details?.message === 'string' ? details.message : '';
 
   if (code.includes('network-request-failed')) {
     return 'MYELIN cannot reach the sign-in service right now. Check your connection and try again.';
@@ -28,20 +32,23 @@ export function authErrorMessage(error: unknown, action: 'signin' | 'signup' | '
   if (
     code.includes('developer-error') ||
     code.includes('DEVELOPER_ERROR') ||
-    code === '10'
+    code === '10' ||
+    (action === 'google' && /DEVELOPER_ERROR|developer console is not set up correctly/i.test(message))
   ) {
-    return 'Google sign-in is not configured for this Android signing certificate yet. Register this APK’s SHA-1/SHA-256 in Firebase, download the updated google-services.json, and rebuild.';
+    return 'Google sign-in is not configured for this build yet. You can use email sign-in while the app’s Google setup is corrected.';
   }
 
   if (code === 'auth/native-google-setup-required') {
     return 'Google sign-in needs the Android development-build setup before it can run natively. Email sign-in is already available.';
   }
 
-  if (
-    code.includes('popup-closed-by-user') ||
-    code.includes('cancelled-popup-request') ||
-    code === 'auth/google-cancelled'
-  ) {
+  // Android Credential Manager can report a configuration failure as cancelled
+  // after account selection. Hiding it makes the button appear to do nothing.
+  if (code === 'auth/google-cancelled' || code === 'SIGN_IN_CANCELLED') {
+    return 'Google sign-in closed before completing. If you selected an account, this build’s Google setup may need checking. You can also use email sign-in.';
+  }
+
+  if (code.includes('popup-closed-by-user') || code.includes('cancelled-popup-request')) {
     return '';
   }
 

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { authErrorMessage } from '../src/features/auth/auth-errors';
+
 const root = process.cwd();
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
 const google = JSON.parse(
@@ -234,4 +236,27 @@ assert.ok(
   'Top-level route groups must not run a second native transition underneath the circle.',
 );
 
-console.log('Authentication configuration and experience verification passed.');
+for (const code of ['auth/google-cancelled', 'SIGN_IN_CANCELLED']) {
+  const message = authErrorMessage({ code }, 'google');
+  assert.ok(message.length > 0, 'Native cancellation must not silently hide a possible setup failure.');
+  assert.ok(message.includes('If you selected an account'), 'Ambiguous cancellation must not be presented as a confirmed configuration failure.');
+}
+for (const error of [
+  { code: 'DEVELOPER_ERROR' },
+  { code: '10' },
+  { code: 10 },
+  new Error('DEVELOPER_ERROR: Check Android OAuth client'),
+  new Error('Developer console is not set up correctly'),
+]) {
+  assert.ok(authErrorMessage(error, 'google').includes('not configured for this build'));
+}
+assert.equal(authErrorMessage({ code: 'auth/popup-closed-by-user' }, 'google'), '');
+assert.equal(authErrorMessage({ code: 'auth/cancelled-popup-request' }, 'google'), '');
+assert.ok(authErrorMessage(null, 'google').includes('did not finish'));
+assert.equal(
+  authErrorMessage({ code: 'auth/user-not-found' }, 'signin'),
+  authErrorMessage({ code: 'auth/wrong-password' }, 'signin'),
+  'Sign-in errors must not reveal whether an account exists.',
+);
+
+console.log('Authentication configuration, native failure feedback and experience verification passed.');

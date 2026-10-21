@@ -24,7 +24,7 @@
   "nativeSourceHashes": {
     "FocusShieldBlockerActivity.kt": "8ea0bbd24eceb03a653ea6eedbad641aee3b8696fce0e22182a8df2ed9ead393",
     "FocusShieldDns.kt": "e2968b5a09baf7f6961840cbbb4fb8a0b0cc9cb41cb1a4154dcaa41c92fc711a",
-    "FocusShieldDnsVpnService.kt": "f63f172132a2db49fa0f2e5099dd674db5d5151a5e496bff975c1a3988f6e341",
+    "FocusShieldDnsVpnService.kt": "7dcc24380546698787f258f876ce5bf449ec3be611e2fc327301b8b519428e17",
     "FocusShieldModule.kt": "54600ed623c74aa3fc8f1e63ee4f42594c796f56b57a82c8301a3c935ef012c8",
     "FocusShieldMonitorService.kt": "e96c647fa67e8cc5e86e5946d828045ea449902adb2f1ca876e18a59f4d1c81b",
     "FocusShieldPackage.kt": "cf713fd4e12ac686cd438e49727f21a6842393e2b039c977bddf296505a11821",

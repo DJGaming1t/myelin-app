@@ -132,12 +132,12 @@ class FocusShieldDnsVpnService : VpnService() {
     val bytes = ByteArray(32767)
     try {
       while (!stopped && tunnel === fd) {
+        val packetGeneration = generation
         if (Os.poll(arrayOf(poll), 1000) <= 0) continue
         if (poll.revents.toInt() and (OsConstants.POLLERR or OsConstants.POLLHUP or OsConstants.POLLNVAL) != 0) break
         val length = try { input.read(bytes) } catch (e: java.io.IOException) { if (!stopped) throw e else break }
-        if (stopped || tunnel !== fd) break
+        if (stopped || tunnel !== fd || packetGeneration != generation) break
         if (length <= 0) continue
-        val packetGeneration = generation
         val packet = FocusShieldDns.parsePacket(bytes, length) ?: continue
         if (packet.protocol == 6) tcp.accept(packet, System.nanoTime() / 1_000_000)
         else submit(packet.body) { answer -> writePacket(FocusShieldDns.reply(packet, if (answer.size > 1232) FocusShieldDns.error(packet.body, 0, truncated = true) else answer), packetGeneration) }
@@ -148,9 +148,10 @@ class FocusShieldDnsVpnService : VpnService() {
   private fun submit(query: ByteArray, complete: (ByteArray) -> Unit) {
     if (stopped || FocusShieldDns.question(query) == null) return
     val requestGeneration = generation
+    // Capture identity before queueing: an old queued query must not count against a new owner/window.
+    val start = FocusShieldStore.loadState(this)
     try { pool?.execute {
-      if (stopped || requestGeneration != generation) return@execute
-      val start = FocusShieldStore.loadState(this)
+      if (stopped || requestGeneration != generation || !FocusShieldStore.loadState(this).sameIdentity(start)) return@execute
       var answer = resolve(query, start)
       // Do not deliver results from an old owner/session or bypass newly activated rules.
       val live = FocusShieldStore.loadState(this)

@@ -21,6 +21,12 @@ try{for(const width of [320,390,720]){
   await page.screenshot({path:`${output}/blocking-${tab.toLowerCase()}-${width}.png`,fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${tab}: no horizontal overflow at ${width}px`);
  }
+ await page.getByRole('button',{name:'More options & activity',exact:true}).click();
+ await page.getByText('Last 7 days',{exact:true}).scrollIntoViewIfNeeded();
+ const tabBounds=await page.getByRole('tab',{name:'Apps',exact:true}).boundingBox();
+ const headerBounds=await page.getByRole('heading',{name:'App blocking',exact:true}).boundingBox();
+ assert.ok(tabBounds && tabBounds.y+tabBounds.height<80 && headerBounds && headerBounds.y+headerBounds.height<80,
+  'Header and tabs must scroll away rather than follow the content');
  await page.getByRole('tab',{name:'When',exact:true}).click();await page.getByRole('switch',{name:'Block during Focus',exact:true}).click();
  await page.waitForFunction(k=>JSON.parse(localStorage.getItem(k)).focusBlockingEnabled===false,key);
  const add=page.getByRole('button',{name:'+ Add schedule',exact:true});await add.scrollIntoViewIfNeeded();await add.click();

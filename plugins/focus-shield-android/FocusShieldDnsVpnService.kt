@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.system.Os
 import android.system.OsConstants
 import android.system.StructPollfd
@@ -37,6 +38,14 @@ class FocusShieldDnsVpnService : VpnService() {
     @Volatile var isRunning = false; private set
     @Volatile var lastError = ""; private set
     const val ACTION_STOP = "com.djgaming1t.myelin.focusshield.VPN_STOP"
+    private const val PREFS_NAME = "myelin_focus_shield_native"
+    private const val FAILED_RUN_KEY = "vpnFailedRunKey"
+    fun canStart(context: Context, state: ShieldSessionState): Boolean =
+      context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(FAILED_RUN_KEY, null) != state.enforcementRunKey
+    fun retryAfterFailure(context: Context) {
+      context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().remove(FAILED_RUN_KEY).apply()
+      lastError = ""
+    }
     fun isOtherVpnActive(context: Context): Boolean {
       if (isRunning) return false
       val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
@@ -83,7 +92,11 @@ class FocusShieldDnsVpnService : VpnService() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     val state = FocusShieldStore.loadState(this)
     if (intent?.action == ACTION_STOP || !state.isEnforcementActive() || !state.websiteBlockingEnabled ||
-        state.blockedDomains.isEmpty() || prepare(this) != null) { stopSelf(); return START_NOT_STICKY }
+        state.blockedDomains.isEmpty() || prepare(this) != null || !canStart(this, state)) { stopSelf(); return START_NOT_STICKY }
+    if (privateDnsActive(this) || networks().none { !cm?.getLinkProperties(it)?.dnsServers.isNullOrEmpty() }) {
+      lastError = "Website filtering paused: Android Private DNS is active or no network DNS is available. App blocking still works."
+      stopSelf(); return START_NOT_STICKY
+    }
     try {
       foreground(state)
       if (tunnel != null && excluded != state.allowlistedPackages) closeTunnel()
@@ -184,12 +197,17 @@ class FocusShieldDnsVpnService : VpnService() {
       return FocusShieldDns.error(query, 3)
     }
     // Use the network's resolver; do not silently send browsing queries to a new third party.
+    // A broken or captive upstream must never hold the device's DNS hostage.
+    val deadline = SystemClock.elapsedRealtime() + 2500L
     for (network in networks().take(2)) {
       for (server in (cm?.getLinkProperties(network)?.dnsServers ?: emptyList()).take(2)) {
+        if (SystemClock.elapsedRealtime() >= deadline) break
         try {
           DatagramSocket().use { socket ->
             if (!protect(socket)) throw java.io.IOException("Unprotected DNS socket")
-            network.bindSocket(socket); socket.soTimeout = 1500; socket.connect(server, 53)
+            network.bindSocket(socket)
+            socket.soTimeout = (deadline - SystemClock.elapsedRealtime()).coerceIn(1, 850).toInt()
+            socket.connect(server, 53)
             socket.send(DatagramPacket(query, query.size))
             val response = DatagramPacket(ByteArray(32700), 32700); socket.receive(response)
             val answer = response.data.copyOf(response.length)
@@ -198,7 +216,9 @@ class FocusShieldDnsVpnService : VpnService() {
           }
           Socket().use { socket ->
             if (!protect(socket)) throw java.io.IOException("Unprotected DNS TCP socket")
-            network.bindSocket(socket); socket.soTimeout = 1500; socket.connect(InetSocketAddress(server, 53), 1500)
+            network.bindSocket(socket)
+            socket.soTimeout = (deadline - SystemClock.elapsedRealtime()).coerceIn(1, 850).toInt()
+            socket.connect(InetSocketAddress(server, 53), socket.soTimeout)
             DataOutputStream(socket.getOutputStream()).apply { writeShort(query.size); write(query); flush() }
             val input = DataInputStream(socket.getInputStream()); val size = input.readUnsignedShort()
             if (size !in 12..32700) throw java.io.IOException("DNS answer too large")
@@ -207,6 +227,12 @@ class FocusShieldDnsVpnService : VpnService() {
           }
         } catch (_: Exception) { /* Retry a resolver on the available underlying network. */ }
       }
+    }
+    // Fail open for ordinary browsing. App interception is an independent service.
+    if (FocusShieldStore.loadState(this).sameIdentity(state)) {
+      getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString(FAILED_RUN_KEY, state.enforcementRunKey).apply()
+      lastError = "Website filtering paused because this network's DNS did not respond. Retry the filter from App blocking when ready."
+      handler.post { if (!stopped && tunnel != null && FocusShieldStore.loadState(this).sameIdentity(state)) stopSelf() }
     }
     return FocusShieldDns.error(query, 2)
   }

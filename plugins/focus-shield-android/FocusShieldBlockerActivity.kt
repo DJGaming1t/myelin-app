@@ -87,21 +87,21 @@ object FocusShieldUiFactory {
 
     val scroll = ScrollView(context).apply {
       isFillViewport = true
-      setBackgroundColor(Color.parseColor("#F2070707"))
+      setBackgroundColor(Color.parseColor("#0D0D10"))
     }
 
     val root = LinearLayout(context).apply {
       orientation = LinearLayout.VERTICAL
-      gravity = Gravity.CENTER
-      val padH = dp(context, 22)
-      val padV = dp(context, 32)
+      gravity = Gravity.CENTER_VERTICAL
+      val padH = dp(context, 24)
+      val padV = dp(context, 28)
       setPadding(padH, padV, padH, padV)
     }
 
     val card = LinearLayout(context).apply {
       orientation = LinearLayout.VERTICAL
-      background = roundedBg("#121212", "#3D261E", 1, 22, context)
-      val pad = dp(context, 22)
+      background = roundedBg("#1A1717", "#4A2B24", 1, 28, context)
+      val pad = dp(context, 24)
       setPadding(pad, pad, pad, pad)
       layoutParams = LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
@@ -109,32 +109,52 @@ object FocusShieldUiFactory {
       )
     }
 
-    // Eyebrow badge
+    // A calm hierarchy: reason, app, one action. The permission and emergency
+    // controls are still reachable in the same scroll view at larger font sizes.
     val eyebrow = TextView(context).apply {
-      text = "MYELIN · APP BLOCKING"
-      setTextColor(Color.parseColor("#FF805B"))
-      setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+      text = "MYELIN  /  QUIET SPACE"
+      setTextColor(Color.parseColor("#FFA27F"))
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
       setTypeface(typeface, Typeface.BOLD)
-      letterSpacing = 0.08f
+      letterSpacing = 0.15f
     }
     card.addView(eyebrow)
 
-    // App Icon + Blocked Title row
+    val headline = TextView(context).apply {
+      text = "Stay with your plan."
+      setTextColor(Color.parseColor("#F8F3EF"))
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 29f)
+      setTypeface(typeface, Typeface.BOLD)
+      letterSpacing = -0.035f
+      setPadding(0, dp(context, 18), 0, dp(context, 6))
+    }
+    card.addView(headline)
+
+    val explanation = TextView(context).apply {
+      text = "You chose to pause distracting apps for now."
+      setTextColor(Color.parseColor("#B8ADA7"))
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+      setLineSpacing(dp(context, 3).toFloat(), 1f)
+    }
+    card.addView(explanation)
+
     val headerRow = LinearLayout(context).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER_VERTICAL
+      background = roundedBg("#26201F", "#40312D", 1, 18, context)
+      setPadding(dp(context, 13), dp(context, 13), dp(context, 13), dp(context, 13))
       val lp = LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
         LinearLayout.LayoutParams.WRAP_CONTENT
       )
-      lp.topMargin = dp(context, 14)
+      lp.topMargin = dp(context, 22)
       layoutParams = lp
     }
 
     if (appIcon != null) {
       val iconView = ImageView(context).apply {
         setImageDrawable(appIcon)
-        val size = dp(context, 44)
+        val size = dp(context, 42)
         layoutParams = LinearLayout.LayoutParams(size, size).apply {
           rightMargin = dp(context, 14)
         }
@@ -148,16 +168,16 @@ object FocusShieldUiFactory {
     }
 
     val titleView = TextView(context).apply {
-      text = "$blockedLabel is blocked"
+      text = blockedLabel
       setTextColor(Color.parseColor("#F5F2EE"))
-      setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
       setTypeface(typeface, Typeface.BOLD)
     }
     val subView = TextView(context).apply {
-      val remainingMin = ((state.effectiveEndEpochMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
-      text = "${state.effectiveTopicName} · about ${remainingMin}m left"
-      setTextColor(Color.parseColor("#A39C96"))
-      setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+      val remainingMin = ((state.effectiveEndEpochMs - System.currentTimeMillis() + 59_999L) / 60_000L).coerceAtLeast(0L)
+      text = if (remainingMin > 0) "Paused · about ${remainingMin}m left" else "Paused for this window"
+      setTextColor(Color.parseColor("#B8ADA7"))
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
     }
     titleCol.addView(titleView)
     titleCol.addView(subView)
@@ -168,18 +188,18 @@ object FocusShieldUiFactory {
     if (state.active && state.tinyStep.isNotBlank()) {
       val stepBox = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        background = roundedBg("#1A1715", "#2E2925", 1, 14, context)
+        background = roundedBg("#2C2420", "#514038", 1, 16, context)
         val p = dp(context, 14)
         setPadding(p, p, p, p)
         layoutParams = LinearLayout.LayoutParams(
           LinearLayout.LayoutParams.MATCH_PARENT,
           LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
-          topMargin = dp(context, 16)
+          topMargin = dp(context, 18)
         }
       }
       val stepKicker = TextView(context).apply {
-        text = "YOUR CURRENT TINY STEP"
+        text = "BACK TO YOUR NEXT STEP"
         setTextColor(Color.parseColor("#FF805B"))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
         setTypeface(typeface, Typeface.BOLD)
@@ -195,40 +215,20 @@ object FocusShieldUiFactory {
       card.addView(stepBox)
     }
 
-    // Motivational cue
-    val motivationView = TextView(context).apply {
-      text = "“${state.customMotivation}”"
-      setTextColor(Color.parseColor("#D6CFC9"))
-      setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
-      setPadding(0, dp(context, 14), 0, 0)
-    }
-    card.addView(motivationView)
-
-    // Reflection prompt for Hard / Strict modes
-    if (state.mode == "hard" || state.mode == "strict") {
-      val reflectView = TextView(context).apply {
-        text = "Reflection: ${state.reflectionPrompt}"
-        setTextColor(Color.parseColor("#A39C96"))
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
-        setPadding(0, dp(context, 8), 0, 0)
-      }
-      card.addView(reflectView)
-    }
-
-    // Primary CTA: Return to MYELIN Focus
+    // Return to the existing Focus or scheduled-blocking route.
     val returnBtn = Button(context).apply {
-      text = "Return to MYELIN"
+      text = "Back to MYELIN"
       isAllCaps = false
       minimumHeight = dp(context, 48)
       setTextColor(Color.parseColor("#25140E"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
       setTypeface(typeface, Typeface.BOLD)
-      background = roundedBg("#FF805B", null, 0, 14, context)
+      background = roundedBg("#FF9874", null, 0, 16, context)
       layoutParams = LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
         LinearLayout.LayoutParams.WRAP_CONTENT
       ).apply {
-        topMargin = dp(context, 18)
+        topMargin = dp(context, 22)
       }
       setOnClickListener {
         onReturnToMyelin(null)
@@ -238,7 +238,7 @@ object FocusShieldUiFactory {
 
     // Quick Park Thought Input + Button
     val parkInput = EditText(context).apply {
-      hint = "Or park what you wanted to check for break…"
+      hint = "What did you want to check?"
       setHintTextColor(Color.parseColor("#6E6762"))
       setTextColor(Color.parseColor("#F5F2EE"))
       setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
@@ -259,7 +259,7 @@ object FocusShieldUiFactory {
     parkContainer.addView(parkInput)
 
     val parkBtn = Button(context).apply {
-      text = "Save thought & return"
+      text = "Save thought and return"
       isAllCaps = false
       minimumHeight = dp(context, 48)
       setTextColor(Color.parseColor("#FF805B"))
@@ -280,17 +280,54 @@ object FocusShieldUiFactory {
     }
     parkContainer.addView(parkBtn)
     val parkToggle = Button(context).apply {
-      text = "Park a thought for later"
+      text = "Save a thought for later"
       isAllCaps = false
       minimumHeight = dp(context, 48)
       setTextColor(Color.parseColor("#C6C2BC"))
-      background = roundedBg("#17171B", null, 0, 12, context)
+      background = roundedBg("#26201F", "#40312D", 1, 14, context)
+      layoutParams = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+      ).apply { topMargin = dp(context, 10) }
       setOnClickListener {
         parkContainer.visibility = if (parkContainer.visibility == View.VISIBLE) View.GONE else View.VISIBLE
       }
     }
     card.addView(parkToggle)
     card.addView(parkContainer)
+
+    if (state.customMotivation.isNotBlank() || ((state.mode == "hard" || state.mode == "strict") && state.reflectionPrompt.isNotBlank())) {
+      val reminder = TextView(context).apply {
+        val lines = listOfNotNull(
+          state.customMotivation.takeIf { it.isNotBlank() },
+          state.reflectionPrompt.takeIf { (state.mode == "hard" || state.mode == "strict") && it.isNotBlank() }
+        )
+        text = lines.joinToString("\n\n")
+        setTextColor(Color.parseColor("#C9BDB6"))
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        setLineSpacing(dp(context, 3).toFloat(), 1f)
+        setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        background = roundedBg("#26201F", null, 0, 12, context)
+        visibility = View.GONE
+      }
+      val reminderToggle = TextView(context).apply {
+        text = "Your reminder  ·  show"
+        contentDescription = "Show your blocking reminder"
+        setTextColor(Color.parseColor("#B8ADA7"))
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        gravity = Gravity.CENTER
+        minimumHeight = dp(context, 48)
+        isFocusable = true
+        setOnClickListener {
+          val open = reminder.visibility != View.VISIBLE
+          reminder.visibility = if (open) View.VISIBLE else View.GONE
+          text = if (open) "Your reminder  ·  hide" else "Your reminder  ·  show"
+          contentDescription = if (open) "Hide your blocking reminder" else "Show your blocking reminder"
+        }
+      }
+      card.addView(reminderToggle)
+      card.addView(reminder)
+    }
 
     // Break Pass / Delayed Friction / Emergency Override section
     val remainingPasses = (state.maxBreakAllowances - state.breakPassesUsed).coerceAtLeast(0)
@@ -305,10 +342,10 @@ object FocusShieldUiFactory {
     if (remainingPasses > 0 && state.mode != "strict") {
       val passBtn = Button(context).apply {
         isAllCaps = false
-      minimumHeight = dp(context, 48)
+        minimumHeight = dp(context, 48)
         setTextColor(Color.parseColor("#A39C96"))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
-        background = roundedBg("#171717", "#2B2B2B", 1, 12, context)
+        background = roundedBg("#26201F", "#40312D", 1, 14, context)
         layoutParams = LinearLayout.LayoutParams(
           LinearLayout.LayoutParams.MATCH_PARENT,
           LinearLayout.LayoutParams.WRAP_CONTENT

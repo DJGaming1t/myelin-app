@@ -8,10 +8,13 @@ import { createFocusSession, timerRemainingMs } from '../src/features/focus/focu
 async function main() {
   const data = new Map<string, string>();
   const storage = engine.createFocusShieldStorage({ getItem: async k => data.get(k) ?? null, setItem: async (k,v) => { data.set(k,v); }, removeItem: async k => { data.delete(k); } });
-  const plain = engine.defaultFocusShieldConfig();
+  assert.equal(engine.defaultFocusShieldConfig().websiteBlockingEnabled, false, 'Website VPN requires an explicit opt-in.');
+  const plain = { ...engine.defaultFocusShieldConfig(), websiteBlockingEnabled: true };
   const legacy = { ...plain } as Record<string, unknown>; delete legacy.focusBlockingEnabled; delete legacy.requireDeviceUnlock;
   assert.equal(engine.validateFocusShieldConfig(legacy).focusBlockingEnabled, true);
   assert.equal(engine.validateFocusShieldConfig(legacy).requireDeviceUnlock, false);
+  delete legacy.websiteBlockingEnabled;
+  assert.equal(engine.validateFocusShieldConfig(legacy).websiteBlockingEnabled, false, 'Missing website consent must not activate the VPN.');
   const scheduled = engine.addCustomScheduleWindow({ ...plain, schedules: [], focusBlockingEnabled: false }, { label: 'Independent', days: [0,1,2,3,4,5,6], startMinuteOfDay: 0, endMinuteOfDay: 1439, profileId: 'custom' }).config;
   assert.equal(scheduled.sessionOnly, false);
   assert.ok(engine.getActiveScheduleWindow(scheduled, new Date(2026,9,21,12).getTime()));
@@ -48,7 +51,7 @@ async function main() {
   authReply={success:false};await state.change(patch);await flush();assert.equal((await storage.load('A')).websiteBlockingEnabled,true,'Cancelled auth cannot save');
   authReply={success:true};enrolled=0;await state.change(patch);await flush();assert.equal((await storage.load('A')).websiteBlockingEnabled,true,'Missing screen lock cannot save');
   enrolled=2;defer=true;let pending=state.change(patch);await flush();owner='B';render();await flush();resolveAuth!({success:true});await pending;await flush();
-  assert.equal((await storage.load('A')).websiteBlockingEnabled,true,'Old-owner prompt cannot save');assert.equal((await storage.load('B')).websiteBlockingEnabled,true);
+  assert.equal((await storage.load('A')).websiteBlockingEnabled,true,'Old-owner prompt cannot save');assert.equal((await storage.load('B')).websiteBlockingEnabled,false,'New owners must not start the VPN by default');
   owner='A';render();await flush();pending=state.change(patch);await flush();await storage.save('A',{...plain,requireDeviceUnlock:true,unlockDelaySeconds:30});await flush();resolveAuth!({success:true});await pending;await flush();
   assert.equal((await storage.load('A')).websiteBlockingEnabled,true,'Stale settings cannot overwrite a newer config');
   defer=false;for(const l of listeners)l('background');await state.change(patch);await flush();assert.equal((await storage.load('A')).websiteBlockingEnabled,false);

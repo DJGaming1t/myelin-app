@@ -105,7 +105,9 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
         putBoolean("vpnPrepared", vpnPrepared)
         putBoolean("vpnActive", vpnActive)
         putBoolean("privateDnsActive", FocusShieldDnsVpnService.privateDnsActive(context))
-        putString("vpnError", FocusShieldDnsVpnService.lastError)
+        putString("vpnError", if (!FocusShieldDnsVpnService.canStart(context, state))
+          "Website filter paused after a DNS failure. App blocking is still available. Tap Retry website filter when ready."
+          else FocusShieldDnsVpnService.lastError)
         putBoolean("otherVpnActive", otherVpnActive)
         putBoolean("scheduleActiveNow", state.scheduleActiveNow)
         putString("activeScheduleLabel", state.activeScheduleLabel)
@@ -129,6 +131,9 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
       }
       val prepIntent = VpnService.prepare(context)
       if (prepIntent == null) {
+        // This method is invoked by an explicit tap, so it is safe to retry a paused filter.
+        FocusShieldDnsVpnService.retryAfterFailure(context)
+        FocusShieldScheduleReceiver.evaluateAndScheduleNext(context, allowStart = true)
         val map = Arguments.createMap().apply {
           putBoolean("granted", true)
           putBoolean("vpnPrepared", true)

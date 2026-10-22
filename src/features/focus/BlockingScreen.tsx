@@ -121,13 +121,13 @@ export default function BlockingScreen() {
 
   return <SafeAreaView style={s.safe}>
     <AmbientBackdrop />
-    <View style={s.topbar}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(app)/focus')} style={({ pressed }) => [s.backButton, pressed && s.pressed]}><View style={{ transform: [{ rotate: '180deg' }] }}><BlockingGlyph name="arrow" size={24} /></View></Pressable>
-      <View style={s.flex}><Text style={s.topbarKicker}>MYELIN / YOUR SPACE</Text><Text accessibilityRole="header" style={s.topbarTitle}>App blocking</Text></View>
-      <View style={s.topbarMark}><BlockingGlyph name="shield" size={19} color={colors.accentBright} /></View>
-    </View>
     <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView ref={scroll} stickyHeaderIndices={[1]} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+    <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+      <View style={s.topbar}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(app)/focus')} style={({ pressed }) => [s.backButton, pressed && s.pressed]}><View style={{ transform: [{ rotate: '180deg' }] }}><BlockingGlyph name="arrow" size={24} /></View></Pressable>
+        <View style={s.flex}><Text style={s.topbarKicker}>MYELIN / YOUR SPACE</Text><Text accessibilityRole="header" style={s.topbarTitle}>App blocking</Text></View>
+        <View style={s.topbarMark}><BlockingGlyph name="shield" size={19} color={colors.accentBright} /></View>
+      </View>
       <View style={s.hero}>
         <View pointerEvents="none" style={s.heroGlow} />
         <View style={s.heroTop}>
@@ -189,9 +189,9 @@ export default function BlockingScreen() {
             </View>)}
           </Card>
           <Card icon="shield" title="Allow website filtering" detail="Uses Android’s VPN slot for a local website filter.">
-            <Permission title="Local website filter" granted={status?.vpnPrepared && !status.otherVpnActive} onPress={() => void authorizeWebsites()} detail={status?.vpnActive ? 'Running now' : status?.otherVpnActive ? 'Another VPN is active. Disconnect it first.' : 'No remote VPN server or browsing traffic inspection.'} />
-            <Disclosure title="What website filtering can and cannot do" open={showWebsiteHelp} onPress={() => setShowWebsiteHelp(value => !value)}><Text style={s.body}>Private DNS, browser Secure DNS, cached pages and existing connections can bypass filtering. Turn off Private DNS and Secure DNS when testing. Android allows one VPN at a time.</Text></Disclosure>
-            {status?.privateDnsActive ? <Text style={s.error}>Android Private DNS is currently active.</Text> : null}{status?.vpnError ? <Text style={s.error}>{status.vpnError}</Text> : null}
+            <Permission title={status?.vpnError ? 'Retry website filter' : 'Local website filter'} granted={Boolean(status?.vpnActive)} onPress={() => void authorizeWebsites()} detail={status?.vpnActive ? 'Running now' : status?.vpnError ? 'Paused to keep browsing working. Tap to retry.' : status?.otherVpnActive ? 'Another VPN is active. Disconnect it first.' : 'Uses the VPN slot only while a website block is active.'} />
+            <Disclosure title="What website filtering can and cannot do" open={showWebsiteHelp} onPress={() => setShowWebsiteHelp(value => !value)}><Text style={s.body}>Android Private DNS pauses this filter. Browser Secure DNS, cached pages and existing connections can bypass it. Android allows one VPN at a time. App blocking works independently.</Text></Disclosure>
+            {status?.privateDnsActive ? <Text style={s.error}>Private DNS is active; website filtering waits, while app blocking stays available.</Text> : null}{status?.vpnError ? <Text style={s.error}>{status.vpnError}</Text> : null}
           </Card>
         </> : null}
         {page === 'When' ? <>
@@ -266,7 +266,7 @@ function DeleteAction({ id, label, pending, onRequest, onConfirm }: { id: string
   return pending === id ? <View style={s.deleteConfirmation}><Text style={s.body}>Remove this rule? You can add it again later.</Text><Action label={label} onPress={onConfirm} /><Action label="Keep it" quiet onPress={() => onRequest(null)} /></View> : <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onRequest(id)} style={s.textAction}><Text style={s.deleteText}>Remove</Text></Pressable>;
 }
 const s = StyleSheet.create({
-  topbar: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 14 },
+  topbar: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: 0, paddingVertical: 10 },
   backButton: { width: 44, height: 44, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   topbarKicker: { color: colors.subtle, fontSize: 9, lineHeight: 14, letterSpacing: 1.5, fontWeight: '600' },
   topbarTitle: { color: colors.text, fontSize: 22, lineHeight: 29, letterSpacing: -0.6, fontWeight: '600' },

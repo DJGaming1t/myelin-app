@@ -31,7 +31,8 @@ class FocusShieldScheduleReceiver : BroadcastReceiver() {
       }
       if (!needsWeb) context.stopService(vpnIntent)
       else if (allowStart) {
-        if (VpnService.prepare(context) != null || FocusShieldDnsVpnService.isOtherVpnActive(context)) ready = false
+        if (VpnService.prepare(context) != null || FocusShieldDnsVpnService.isOtherVpnActive(context) ||
+            FocusShieldDnsVpnService.privateDnsActive(context) || !FocusShieldDnsVpnService.canStart(context, state)) ready = false
         else try { context.startForegroundService(vpnIntent) } catch (_: Exception) { ready = false }
       }
       if (!allowStart && active) notifyScheduled(context, state)

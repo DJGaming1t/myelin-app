@@ -3,7 +3,9 @@ import { addCustomScheduleWindow, defaultFocusShieldConfig, validateFocusShieldC
 
 async function verify() {
   const now = Date.now();
-  let config = applyFocusShieldProfile(defaultFocusShieldConfig(), 'exam');
+  const initial = defaultFocusShieldConfig();
+  assert.equal(initial.websiteBlockingEnabled, false, 'Website VPN is opt-in for new configurations.');
+  let config = applyFocusShieldProfile({...initial, websiteBlockingEnabled: true}, 'exam');
   for (const host of ['youtu.be', 'r1.googlevideo.com', 'i.redd.it']) assert.ok(matchesBlockedDomain(host, config));
   for (const host of ['notyoutube.com', 'youtube.com.evil.test']) assert.equal(matchesBlockedDomain(host, config), null);
   for (const host of ['127.0.0.1', 'bad-.example', '-bad.example', 'a'.repeat(64)+'.example']) assert.equal(normalizeWebsiteDomain(host), null);

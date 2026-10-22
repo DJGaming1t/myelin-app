@@ -691,7 +691,7 @@ export function defaultFocusShieldConfig(now = Date.now()): FocusShieldConfig {
     targets: DEFAULT_SHIELD_TARGETS.map((item) => ({ ...item })),
     allowlist: DEFAULT_EMERGENCY_ALLOWLIST.map((item) => ({ ...item })),
     schedules: DEFAULT_SCHEDULES.map((item) => ({ ...item, days: [...item.days] })),
-    websiteBlockingEnabled: true,
+    websiteBlockingEnabled: false,
     blockDohCanary: true,
     sessionOnly: true,
     focusBlockingEnabled: true,
@@ -722,7 +722,7 @@ export function getFocusShieldCapabilities(
   } = {},
 ): FocusShieldCapabilities {
   const {
-    websiteBlockingEnabled = true,
+    websiteBlockingEnabled = false,
     vpnPrepared = false,
     otherVpnActive = false,
   } = options;
@@ -1054,7 +1054,7 @@ export function validateFocusShieldConfig(raw: unknown, now = Date.now()): Focus
     targets: targets.length ? targets : DEFAULT_SHIELD_TARGETS.map((item) => ({ ...item })),
     allowlist,
     schedules: Array.isArray(obj.schedules) ? schedules : DEFAULT_SCHEDULES.map((item) => ({ ...item, days: [...item.days] })),
-    websiteBlockingEnabled: obj.websiteBlockingEnabled !== false,
+    websiteBlockingEnabled: obj.websiteBlockingEnabled === true,
     blockDohCanary: obj.blockDohCanary !== false,
     sessionOnly: obj.sessionOnly !== false,
     focusBlockingEnabled: obj.focusBlockingEnabled !== false,

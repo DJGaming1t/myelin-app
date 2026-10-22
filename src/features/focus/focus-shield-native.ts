@@ -314,7 +314,7 @@ export async function openFocusShieldPermissionSettings(
 
 export function resolveFocusShieldCapabilities(
   permState: NativePermissionState,
-  websiteBlockingEnabled = true,
+  websiteBlockingEnabled = false,
 ): FocusShieldCapabilities {
   const appReady =
     permState.nativeModuleInstalled &&

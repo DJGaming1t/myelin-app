@@ -1,6 +1,5 @@
 package com.djgaming1t.myelin.focusshield
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -16,7 +15,6 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.util.Base64
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -27,45 +25,15 @@ import java.util.concurrent.Executors
 class FocusShieldModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 
-  companion object {
-    private const val REQ_CODE_PREPARE_VPN = 4119
-  }
-
   private val bgExecutor = Executors.newSingleThreadExecutor()
   private val iconCache = mutableMapOf<String, String>()
-  private var pendingVpnPromise: Promise? = null
-
-  private val activityEventListener = object : BaseActivityEventListener() {
-    override fun onActivityResult(
-      activity: Activity,
-      requestCode: Int,
-      resultCode: Int,
-      data: Intent?
-    ) {
-      if (requestCode != REQ_CODE_PREPARE_VPN) return
-      val promise = pendingVpnPromise ?: return
-      pendingVpnPromise = null
-      try {
-        val context = reactContext.applicationContext
-        val prepared = VpnService.prepare(context) == null
-        val otherVpn = FocusShieldDnsVpnService.isOtherVpnActive(context)
-        val map = Arguments.createMap().apply {
-          putBoolean("granted", resultCode == Activity.RESULT_OK && prepared)
-          putBoolean("vpnPrepared", prepared)
-          putBoolean("otherVpnActive", otherVpn)
-        }
-        promise.resolve(map)
-      } catch (e: Exception) {
-        promise.reject("ERR_VPN_RESULT", e)
-      }
-    }
-  }
-
-  init {
-    reactContext.addActivityEventListener(activityEventListener)
-  }
 
   override fun getName(): String = "MyelinFocusShield"
+
+  override fun invalidate() {
+    bgExecutor.shutdown()
+    super.invalidate()
+  }
 
   @ReactMethod
   fun getPermissionStatus(promise: Promise) {

@@ -40,6 +40,12 @@ export default function QuickAddScreen() {
             />
             <ActionRow
               icon="calendar"
+              title="Project in parts"
+              detail="Break a project into work for different days"
+              onPress={() => router.push('/(app)/today/project/new')}
+            />
+            <ActionRow
+              icon="calendar"
               title="Exam"
               detail="A deadline that should change what MYELIN prioritises"
               onPress={() => router.push('/(app)/exams/new')}

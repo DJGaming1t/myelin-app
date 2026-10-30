@@ -252,7 +252,7 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
                 {[
                   task.subject || task.type,
                   dueLabel(task.dueAt),
-                  task.planState === 'postponed' ? 'Deferred' : task.planState === 'scheduled' ? 'Scheduled' : task.planState === 'today' ? 'Today' : 'Inbox',
+                  task.planState === 'postponed' ? 'Deferred' : task.planState === 'scheduled' ? 'Scheduled' : task.planState === 'today' && task.postponedUntil > Date.now() ? `Planned ${new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(new Date(task.postponedUntil))}` : task.planState === 'today' ? 'Today' : 'Inbox',
                   task.estimatedMinutes ? String(task.estimatedMinutes) + 'm' : 'No estimate',
                 ]
                   .filter(Boolean)

@@ -61,13 +61,14 @@ export function scenario(surface: 'inbox' | 'daymap' = 'inbox', state: 'postpone
     if(name.endsWith('/TaskQuickActions'))return{TaskQuickActions:'QuickActions',TaskDueLabel:'DueLabel',useTaskCompletion:()=>()=>false};
     if(name==='expo-router')return{router:{back:()=>{},push:(route:any)=>{routes.push(route)},replace:()=>{},setParams:()=>{}},useLocalSearchParams:()=>({}),useFocusEffect:(fn:any)=>react.useEffect(fn,[fn])};
     if(name==='./FocusShieldSessionController')return{FocusShieldSessionController:'FocusShieldSessionController'};
+    if(name.endsWith('/FocusShieldStudio'))return{FocusShieldStudio:'FocusShieldStudio'};
     if(name==='react-native')return{KeyboardAvoidingView:'KeyboardAvoidingView',Platform:{OS:'web'},View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',ScrollView:'ScrollView',Modal:'Modal',StyleSheet:{create:(s:any)=>s},Alert:{alert:()=>{}}};
     if(name==='react-native-safe-area-context')return{SafeAreaView:'SafeAreaView'};
     // Keep the native-animation boundary inert while exercising the actual support handlers.
     // SpringPressable forwards the same onPress/accessibility props; browser suites cover its rendering.
     if(name.endsWith('/SpringPressable'))return{SpringPressable:'Pressable'};
     if(name.endsWith('/Reveal'))return{Reveal:'Reveal'};if(name.endsWith('/ScreenHeader'))return{ScreenHeader:'Header'};if(name.endsWith('/AmbientBackdrop'))return{AmbientBackdrop:'Backdrop'};if(name.endsWith('/MotionItem'))return{MotionItem:'MotionItem'};if(name.endsWith('/AnimatedDisclosure'))return{AnimatedDisclosure:'Disclosure'};if(name.endsWith('/AutopilotReflowNotice'))return{AutopilotReflowNotice:'ReflowNotice'};
-    if(name.endsWith('/tokens'))return{colors:{},layout:{},radius:{},spacing:{}};throw Error('Unexpected '+name);
+    if(name.endsWith('/tokens'))return{colors:{},layout:{},radius:{},spacing:{},space:{}};throw Error('Unexpected '+name);
   }},{filename:file});return m.exports;}
   const p=load('src/data/WorkspaceProvider.tsx');provider=host(()=>p.WorkspaceProvider({children:null}),false);provider.slots[0].value='ready';provider.slots[1].value=owner;provider.slots[2].value=w;provider.refs[0].current=w;provider.refs[1].current=owner;
   hookModule=load('src/features/planning/useTaskPlanning.ts');const hook=host(()=>hookModule.useTaskPlanning());

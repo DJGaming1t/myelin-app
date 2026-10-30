@@ -38,6 +38,7 @@
     "eas:update:preview": "npx eas-cli@latest update --channel preview --environment preview",
     "eas:update:production": "npx eas-cli@latest update --channel production --environment production",
     "verify:planning": "tsx scripts/verify-planning.ts",
+    "verify:project-parts": "tsx scripts/verify-project-parts.ts",
     "verify:auth": "tsx scripts/verify-auth.ts",
     "verify:visual": "tsx scripts/verify-visual-overhaul.ts",
     "verify:exam-plan": "tsx scripts/verify-exam-plan.ts",

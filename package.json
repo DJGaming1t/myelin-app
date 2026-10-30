@@ -5,6 +5,9 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
+    "dev:phone": "expo start --dev-client --lan",
+    "android:local": "expo run:android --device",
+    "typecheck": "tsc --noEmit",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

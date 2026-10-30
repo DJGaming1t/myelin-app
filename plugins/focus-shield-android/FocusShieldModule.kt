@@ -249,14 +249,6 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
     }
   }
 
-  override fun invalidate() {
-    reactContext.removeActivityEventListener(activityEventListener)
-    pendingVpnPromise?.reject("ERR_MODULE_CLOSED", "VPN request closed with the app.")
-    pendingVpnPromise = null
-    bgExecutor.shutdownNow()
-    super.invalidate()
-  }
-
   private fun classifyPackage(pkg: String, label: String, appInfo: ApplicationInfo?): String {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appInfo != null) {
       when (appInfo.category) {

@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "MYELIN",
+    "slug": "myelin",
+    "version": "0.2.7",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "myelin",
+    "android": {
+      "package": "com.djgaming1t.myelin",
+      "googleServicesFile": "./google-services.json",
+      "blockedPermissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM"
+      ],
+      "versionCode": 4,
+      "backgroundColor": "#070707"
+    },
+    "ios": {
+      "bundleIdentifier": "com.djgaming1t.myelin",
+      "buildNumber": "1"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      "react-native-nitro-google-signin",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF805B",
+          "defaultChannel": "myelin-gentle"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2171936c-83f9-459f-9bb6-dddc4768484e"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2171936c-83f9-459f-9bb6-dddc4768484e"
+      }
+    }
+  }
+}

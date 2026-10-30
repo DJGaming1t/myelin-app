@@ -1,5 +1,5 @@
 import { TaskQuickActions, TaskDueLabel, useTaskCompletion } from '@/src/features/planning/TaskQuickActions';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Alert,
@@ -99,16 +99,19 @@ function dueChoice(task: StudyTask | null): DueChoice {
 }
 
 export function TaskForm({ taskId }: { taskId?: string }) {
+  const params = useLocalSearchParams<{ topicId?: string | string[] }>();
+  const requestedTopicId = Array.isArray(params.topicId) ? params.topicId[0] : params.topicId;
   const complete = useTaskCompletion();
   const { workspace, updateWorkspace } = useWorkspace();
   const existing = useMemo(
     () => workspace?.tasks.find((task) => task.id === taskId) ?? null,
     [taskId, workspace],
   );
+  const initialTopic = !taskId && requestedTopicId ? workspace?.topics.find(t => t.id === requestedTopicId) : undefined;
 
   const [title, setTitle] = useState(existing?.title ?? '');
-  const [subject, setSubject] = useState(existing?.subject ?? '');
-  const [topicId, setTopicId] = useState<string | null>(existing?.topicId ?? null);
+  const [subject, setSubject] = useState(existing?.subject ?? initialTopic?.subject ?? '');
+  const [topicId, setTopicId] = useState<string | null>(existing?.topicId ?? initialTopic?.id ?? null);
   const [examId, setExamId] = useState<string | null>(existing?.examId ?? null);
   const [type, setType] = useState<StudyTaskType>(existing?.type ?? 'homework');
   const [planState, setPlanState] = useState<'inbox' | 'today'>(

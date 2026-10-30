@@ -114,15 +114,20 @@ export function captureRecallMistake(
     prompt: string;
     response: string;
     correction: string;
+    reason?: MistakeReason;
     now?: number;
   },
 ) {
   const now = input.now ?? Date.now();
+  const reason: MistakeReason = input.reason ?? 'recall';
   const existing = findOpenMistakeForCard(workspace, input.topicId, input.cardId);
 
   if (existing) {
     existing.prompt = input.prompt.trim();
     existing.detail = input.response.trim();
+    if (input.reason) {
+      existing.reason = input.reason;
+    }
     if (existing.reason === 'recall' || !existing.correction.trim()) {
       existing.correction = input.correction.trim();
     }
@@ -141,7 +146,7 @@ export function captureRecallMistake(
       prompt: input.prompt,
       detail: input.response,
       correction: input.correction,
-      reason: 'recall',
+      reason,
     },
     now,
   );
@@ -250,9 +255,10 @@ export function deleteMistakeFromWorkspace(
 export function buildMistakeRetestQueue(
   workspace: WorkspaceState,
   now = Date.now(),
+  topicId?: string,
 ) {
   return workspace.mistakes
-    .filter((mistake) => mistake.resolvedAt === 0 && (mistake.dueAt === 0 || mistake.dueAt <= now))
+    .filter((mistake) => (!topicId || mistake.topicId === topicId) && mistake.resolvedAt === 0 && (mistake.dueAt === 0 || mistake.dueAt <= now))
     .sort((a, b) => {
       const aOverdue = a.dueAt > 0 ? Math.max(0, now - a.dueAt) : Number.MAX_SAFE_INTEGER;
       const bOverdue = b.dueAt > 0 ? Math.max(0, now - b.dueAt) : Number.MAX_SAFE_INTEGER;

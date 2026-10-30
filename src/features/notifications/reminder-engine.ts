@@ -780,9 +780,10 @@ export function buildReminderPlan(
   workspace: WorkspaceState,
   settingsInput: ReminderSettings,
   now = Date.now(),
+  options?: { focusActive?: boolean },
 ) {
   const settings = normalizeReminderSettings(settingsInput);
-  if (!settings.enabled) return [] as PlannedReminder[];
+  if (!settings.enabled || options?.focusActive) return [] as PlannedReminder[];
 
   return capPlan(adaptReminders([
     ...buildReviewReminders(workspace, settings, now),

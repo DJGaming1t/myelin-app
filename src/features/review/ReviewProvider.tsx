@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 
-import { Confidence, ReviewGrade } from '@/src/data/schema';
+import { Confidence, MistakeReason, ReviewGrade } from '@/src/data/schema';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { captureRecallMistake } from '@/src/features/mistakes/mistake-engine';
@@ -51,7 +51,7 @@ type ReviewContextValue = {
   setConfidence: (value: Confidence) => Promise<void>;
   useHint: () => Promise<void>;
   revealReference: () => Promise<void>;
-  gradeCurrent: (choice: ReviewChoice, now?: number) => Promise<GradeResult | null>;
+  gradeCurrent: (choice: ReviewChoice, now?: number, mistakeReason?: MistakeReason) => Promise<GradeResult | null>;
   discardReview: () => Promise<void>;
 };
 
@@ -271,7 +271,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
           stage: 'reference',
         })),
 
-      async gradeCurrent(choice, now = Date.now()) {
+      async gradeCurrent(choice, now = Date.now(), mistakeReason) {
         const current = sessionRef.current;
         const currentWorkspace = workspaceRef.current;
         if (!current || !currentWorkspace || current.stage !== 'reference') return null;
@@ -316,6 +316,7 @@ export function ReviewProvider({ children }: PropsWithChildren) {
                 prompt: targetCard.prompt,
                 response: answerDraft,
                 correction: targetCard.answer,
+                reason: mistakeReason,
                 now,
               });
             }

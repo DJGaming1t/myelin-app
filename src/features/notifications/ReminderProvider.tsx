@@ -12,6 +12,7 @@ import {
 import { Platform } from 'react-native';
 
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
 
 import {
   ReminderPermission,
@@ -83,6 +84,7 @@ function runtimeError(error: unknown) {
 
 export function ReminderProvider({ children }: PropsWithChildren) {
   const { ownerKey, workspace } = useWorkspace();
+  const { ready: focusReady, session: focusSession } = useFocus();
 
   const [state, setState] = useState<ReminderDeviceState>(freshState);
   const [ready, setReady] = useState(false);
@@ -97,6 +99,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const stateRef = useRef(state);
   const ownerRef = useRef<string | null>(null);
   const workspaceRef = useRef(workspace);
+  const focusRef = useRef(focusSession);
+  const focusReadyRef = useRef(focusReady);
+  focusRef.current = focusSession;
+  focusReadyRef.current = focusReady;
   const scheduleQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -228,6 +234,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
     if (
       Platform.OS === 'web' ||
+      !focusReadyRef.current ||
       !owner ||
       !currentWorkspace ||
       !current.settings.enabled
@@ -251,6 +258,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       currentWorkspace,
       current.settings,
       Date.now(),
+      { focusActive: focusRef.current?.phase === 'focus' },
     );
     const signature = reminderPlanSignature(plan);
 
@@ -279,7 +287,9 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       setMessage(
         ids.length
           ? `${ids.length} reminder${ids.length === 1 ? '' : 's'} scheduled from your current study data.`
-          : 'Reminders are on, but nothing currently needs a notification.',
+          : focusRef.current?.phase === 'focus'
+            ? 'Reminders are paused until this Focus session ends.'
+            : 'Reminders are on, but nothing currently needs a notification.',
       );
     } catch (error) {
       const next = {
@@ -302,7 +312,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (
-      !ready ||
+      !ready || !focusReady ||
       Platform.OS === 'web' ||
       !state.settings.enabled ||
       permission !== 'granted' ||
@@ -313,7 +323,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
     const timer = setTimeout(() => {
       void reschedule();
-    }, 900);
+    }, focusSession?.phase === 'focus' ? 0 : 900);
 
     return () => clearTimeout(timer);
   }, [
@@ -322,6 +332,9 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     reschedule,
     state.settings,
     workspace?.revision,
+    focusReady,
+    focusSession?.id,
+    focusSession?.phase,
   ]);
 
   const updateSettings = useCallback(

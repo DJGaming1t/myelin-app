@@ -92,6 +92,9 @@ w.history = [
   { id: 'h3', topicId: t.id, cardId: mate.id, at: now + 1000, kind: 'review', minutes: 1, grade: 3, effort: 3, prompt: '', response: '', confidence: 'unsure', elapsedDays: 0 },
 ];
 assert.equal(neuralEvidence(w).total, 1, 'Same-day repeats cannot farm connections.');
+w.history.push({ ...w.history[0], id: 'focus-history', kind: 'study', cardId: undefined, minutes: 25 });
+assert.equal(neuralEvidence(w).nodes.find(n => n.topic.id === t.id)?.focusMinutes, 25);
+w.history.pop();
 assert.deepEqual(learningInsights(w, now + 1000)[0].cardIds, [card.id]);
 assert.equal(outcomeSnapshot(w, now + 1000).retentionSamples, 2);
 assert.equal(outcomeSnapshot(w, now + 1000).recalled, 1);

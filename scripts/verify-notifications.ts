@@ -88,6 +88,7 @@ function main() {
 
   const due = makeDueWorkspace(now);
   const duePlan = buildReminderPlan(due, settings, now);
+  assert.deepEqual(buildReminderPlan(due, settings, now, { focusActive: true }), [], 'Active focus must suppress scheduled notifications');
   const reviews = duePlan.filter((item) => item.kind === 'review');
   assert.ok(reviews.length > 0);
   assert.equal(new Date(reviews[0]!.at).getHours(), 19);

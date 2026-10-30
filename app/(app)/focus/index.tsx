@@ -6,12 +6,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MyelinSpark } from '@/src/components/app/MyelinSpark';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
@@ -85,6 +87,7 @@ export default function FocusScreen() {
   const [tinyStep, setTinyStep] = useState('');
   const [distraction, setDistraction] = useState('');
   const [showParking, setShowParking] = useState(false);
+  const [quietView, setQuietView] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [finishing, setFinishing] = useState(false);
   const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -218,7 +221,7 @@ export default function FocusScreen() {
   if (!session && activeReview) {
     return (
       <SafeAreaView style={styles.safe}>
-        <AmbientBackdrop />
+        {!quietView ? <AmbientBackdrop /> : null}
         <View style={styles.setupPage}>
           <TopBar label="Focus" onBack={() => router.replace('/(app)/review')} />
           <View style={styles.missing}>
@@ -243,7 +246,7 @@ export default function FocusScreen() {
     if ((!topic && !task) || (task && task.status !== 'open')) {
       return (
         <SafeAreaView style={styles.safe}>
-          <AmbientBackdrop />
+          {!quietView ? <AmbientBackdrop /> : null}
           <View style={styles.setupPage}>
             <TopBar label="Focus" onBack={() => router.replace('/(app)/today')} />
             <ScrollView contentContainerStyle={styles.setupContent}>
@@ -267,7 +270,7 @@ export default function FocusScreen() {
 
     return (
       <SafeAreaView style={styles.safe}>
-        <AmbientBackdrop />
+        {!quietView ? <AmbientBackdrop /> : null}
         <View style={styles.setupPage}>
           <TopBar label="Focus" onBack={() => router.back()} />
 
@@ -350,7 +353,7 @@ export default function FocusScreen() {
   if (session.phase === 'break') {
     return (
       <SafeAreaView style={styles.safe}>
-        <AmbientBackdrop />
+        {!quietView ? <AmbientBackdrop /> : null}
         <View style={styles.sessionPage}>
           <TopBar
             label="Break"
@@ -359,6 +362,7 @@ export default function FocusScreen() {
           />
 
           <ScrollView contentContainerStyle={styles.sessionContent}>
+            {!quietView ? <MyelinSpark mood="rest" compact caption={timerDone ? "Your break is complete. Choose your next step below." : "Your study block is recorded. There is no need to rush back."} /> : null}
           <View style={{ alignItems: 'center' }}>
             <Text style={styles.eyebrow}>RECOVERY</Text>
             <Text style={styles.sessionTitle}>Leave the work alone.</Text>
@@ -436,7 +440,7 @@ export default function FocusScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      {!quietView ? <AmbientBackdrop /> : null}
       <View style={styles.sessionPage}>
         <TopBar
           label="Focus"
@@ -448,6 +452,11 @@ export default function FocusScreen() {
           contentContainerStyle={styles.sessionContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
+          {!quietView ? <MyelinSpark mood={timerDone ? 'consolidated' : session.runningSince ? 'focus' : 'rest'} compact caption={timerDone ? 'Block complete. Record your effort below to save it.' : session.runningSince ? 'Stay with your next small step. Park stray thoughts below.' : 'Timer paused. Your place is saved.'} /> : null}
+          <View style={styles.quietToggle}>
+            <Text style={styles.textButtonText}>Quiet view</Text>
+            <Switch accessibilityLabel="Quiet view" accessibilityHint="Hides the companion and background decoration" value={quietView} onValueChange={setQuietView} trackColor={{ false: colors.lineStrong, true: colors.accentLine }} thumbColor={quietView ? colors.accent : colors.muted} />
+          </View>
           <View style={styles.sessionHeading}>
             <Text style={styles.eyebrow}>{session.subject.toUpperCase()}</Text>
             <Text style={styles.sessionTitle}>{session.topicName}</Text>
@@ -772,7 +781,8 @@ const styles = StyleSheet.create({
   missing: { flex: 1, justifyContent: 'center', padding: spacing.xl },
   missingTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
   missingText: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 8 },
-  sessionContent: { padding: spacing.lg, paddingBottom: 56 },
+  sessionContent: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', padding: spacing.lg, paddingBottom: 56 },
+  quietToggle: { flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 48, paddingHorizontal: 16, alignSelf: 'flex-end', justifyContent: 'center', marginBottom: 8 },
   sessionHeading: { alignItems: 'center' },
   sessionTitle: { color: colors.text, fontSize: 22, lineHeight: 27, fontWeight: '700', textAlign: 'center', marginTop: 7 },
   stepCard: {

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MyelinSpark } from '@/src/components/app/MyelinSpark';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
@@ -163,6 +164,7 @@ export default function ReviewScreen() {
           />
 
           <ScrollView contentContainerStyle={styles.dashboard} showsVerticalScrollIndicator={false}>
+            <MyelinSpark mood={completedNotice ? 'consolidated' : counts.due > 0 ? 'recall' : 'idle'} caption={completedNotice ? 'Your answers are saved and the next review dates are set.' : counts.due > 0 ? 'Choose a review round. Try each answer before revealing it.' : 'No questions are due right now. Add a question or come back later.'} />
             <AnimatedDisclosure visible={completedNotice} style={styles.completeNotice}>
               <Text style={styles.completeMark}>✓</Text>
               <View style={styles.completeCopy}>

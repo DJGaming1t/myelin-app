@@ -5,7 +5,7 @@ import { useWorkspace } from '@/src/data/WorkspaceProvider';
 
 export function useReducedMotion() {
   const { workspace } = useWorkspace();
-  const [systemReduceMotion, setSystemReduceMotion] = useState(false);
+  const [systemReduceMotion, setSystemReduceMotion] = useState(true);
 
   useEffect(() => {
     let mounted = true;

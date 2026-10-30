@@ -58,7 +58,7 @@ function AchievementToast({ notice, dismiss }: { notice: Achievement; dismiss: (
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{notice.title}</Text>
-        <Text numberOfLines={2} style={styles.detail}>{notice.detail}</Text>
+        <Text style={styles.detail}>{notice.detail}</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Dismiss achievement" onPress={dismiss} style={styles.close}>
         <Text style={styles.closeText}>×</Text>
@@ -73,7 +73,7 @@ function AchievementToast({ notice, dismiss }: { notice: Achievement; dismiss: (
 export const useAchievement = () => useContext(Context);
 const styles = StyleSheet.create({
   overlay: { position: 'absolute', left: 16, right: 16, alignItems: 'center', zIndex: 100 },
-  toast: { width: '100%', maxWidth: layout.readingMax, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.success, backgroundColor: colors.panelRaised, padding: 12, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 18, elevation: 12 },
+  toast: { width: '100%', maxWidth: layout.readingMax, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.consolidated, backgroundColor: colors.panelRaised, padding: 12, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 12 },
   message: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   medal: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   check: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.success, alignItems: 'center', justifyContent: 'center' },

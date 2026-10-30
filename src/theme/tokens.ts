@@ -33,6 +33,26 @@ export const colors = {
   textTertiary: '#9F9A94',
   divider: 'rgba(255,255,255,0.075)',
   dividerStrong: 'rgba(255,255,255,0.15)',
+
+  // Bioluminescent Cognitive State Palette (MYELIN Identity)
+  synapse: '#4CE0D2',
+  synapseBright: '#80F5EA',
+  synapseSoft: 'rgba(76,224,210,0.14)',
+  synapseFaint: 'rgba(76,224,210,0.065)',
+  synapseLine: 'rgba(76,224,210,0.34)',
+  synapseGlow: 'rgba(76,224,210,0.22)',
+
+  consolidated: '#6EE7B7',
+  consolidatedSoft: 'rgba(110,231,183,0.14)',
+  consolidatedLine: 'rgba(110,231,183,0.32)',
+
+  pulseAmber: '#FBBF24',
+  pulseAmberSoft: 'rgba(251,191,36,0.14)',
+  pulseAmberLine: 'rgba(251,191,36,0.34)',
+
+  twilight: '#818CF8',
+  twilightSoft: 'rgba(129,140,248,0.14)',
+  twilightLine: 'rgba(129,140,248,0.32)',
 } as const;
 
 export const radius = {

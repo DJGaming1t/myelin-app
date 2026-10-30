@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="myelin_browser_service_description">Checks the address bar in supported browsers to pause websites you choose during study time.</string>
+</resources>

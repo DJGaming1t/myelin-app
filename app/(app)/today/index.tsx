@@ -163,6 +163,12 @@ export default function TodayScreen() {
   const quickSession = shortSession(currentPlan);
   const overdueCount = currentWorkspace.tasks.filter(task => taskUrgency(task, now)?.overdue).length;
   const openTaskCount = currentWorkspace.tasks.filter(task => task.status === 'open').length;
+  const needsFirstPlan = currentWorkspace.tasks.length === 0 && currentWorkspace.topics.length === 0 && currentWorkspace.exams.length === 0;
+  const nextDueTask = currentWorkspace.tasks.reduce<typeof currentWorkspace.tasks[number] | null>((earliest, task) =>
+    task.status === 'open' && task.dueAt > 0 && (!earliest || task.dueAt < earliest.dueAt) ? task : earliest, null);
+  const upcomingTask = nextDueTask && nextDueTask.dueAt <= now + 7 * 86400000 ? nextDueTask : null;
+  const upcomingExam = nextExam && examStatus(nextExam.date, now).days <= 7 ? nextExam : null;
+  const showTaskDeadline = upcomingTask && (!upcomingExam || upcomingTask.dueAt <= upcomingExam.date);
   const deadlineBreak = currentPlan.deadlineFeasibility.firstOverloadedDeadline;
   const deadlineRelief = deadlineBreak?.reliefCandidates[0] ?? null;
   const restCount = laterBlocks.length + (mistakeSummary.due > 0 ? 1 : 0) + (nextExam ? 1 : 0);
@@ -337,6 +343,19 @@ export default function TodayScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
+          {!activeFocus && !activeReview && (showTaskDeadline || upcomingExam) ? <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showTaskDeadline ? `Review deadline for ${upcomingTask!.title}` : `Review exam ${upcomingExam!.name}`}
+            onPress={() => showTaskDeadline
+              ? router.push({ pathname: '/(app)/today/task/[taskId]', params: { taskId: upcomingTask!.id } })
+              : router.push({ pathname: '/(app)/exams/[examId]', params: { examId: upcomingExam!.id } })}
+            style={styles.deadlineWarning}>
+            <View style={styles.deadlineWarningCopy}>
+              <Text style={styles.deadlineWarningKicker}>{showTaskDeadline ? taskUrgency(upcomingTask!, now)?.label ?? `DUE ${formatDeadline(upcomingTask!.dueAt)}` : `EXAM · ${examStatus(upcomingExam!.date, now).label}`}</Text>
+              <Text style={styles.deadlineWarningTitle} numberOfLines={1}>{showTaskDeadline ? upcomingTask!.title : upcomingExam!.name}</Text>
+            </View>
+            <Text style={styles.recoveredTodayArrow}>→</Text>
+          </Pressable> : null}
           <View style={styles.nextHeading}>
             <Text style={styles.nextLabel}>
               {activeReview || activeFocus ? 'CONTINUE' : 'NEXT'}
@@ -446,12 +465,12 @@ export default function TodayScreen() {
               </View>
             ) : (
               <View style={styles.heroQuiet}>
-                <Text style={styles.heroTitle}>Nothing urgent right now.</Text>
+                <Text style={styles.heroTitle}>{needsFirstPlan ? 'Let’s make a plan.' : 'Nothing urgent right now.'}</Text>
                 <Text style={styles.heroReason}>
-                  You can add something new or come back when the next study item is ready.
+                  {needsFirstPlan ? 'Start with one task, then add your deadlines and available time.' : 'You can add something new or come back when the next study item is ready.'}
                 </Text>
                 <View ref={guide.anchors['today.next']} collapsable={false} testID="guide-today-next">
-                  <AppButton label="Add something" onPress={() => router.push('/(app)/quick-add')} />
+                  <AppButton label={needsFirstPlan ? 'Set up my plan' : 'Add something'} onPress={() => router.push(needsFirstPlan ? '/(app)/settings/plan-setup' : '/(app)/quick-add')} />
                 </View>
               </View>
             )}

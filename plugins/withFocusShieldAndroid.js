@@ -28,6 +28,8 @@ const KOTLIN_FILES = [
   'FocusShieldScheduleReceiver.kt',
   'FocusShieldBlockerActivity.kt',
   'FocusShieldMonitorService.kt',
+  'FocusShieldBrowserService.kt',
+  'FocusShieldBrowserAddress.kt',
   'FocusShieldModule.kt',
   'FocusShieldPackage.kt',
 ];
@@ -105,10 +107,18 @@ function ensurePermissionsAndQueries(manifest) {
 
   const vpnName = '.focusshield.FocusShieldDnsVpnService';
   if (!appNode.service.some(s => s?.$?.['android:name'] === vpnName)) appNode.service.push({
-    $: { 'android:name': vpnName, 'android:exported': 'false', 'android:permission': 'android.permission.BIND_VPN_SERVICE', 'android:foregroundServiceType': 'specialUse' },
+    $: { 'android:name': vpnName, 'android:enabled': 'false', 'android:exported': 'false', 'android:permission': 'android.permission.BIND_VPN_SERVICE', 'android:foregroundServiceType': 'specialUse' },
     'intent-filter': [{ action: [{ $: { 'android:name': 'android.net.VpnService' } }] }],
     'meta-data': [{ $: { 'android:name': 'android.net.VpnService.SUPPORTS_ALWAYS_ON', 'android:value': 'false' } }],
     property: [{ $: { 'android:name': 'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE', 'android:value': 'User-initiated local DNS website filter during Focus and scheduled study windows' } }],
+  });
+  const existingVpn = appNode.service.find(s => s?.$?.['android:name'] === vpnName);
+  if (existingVpn) existingVpn.$['android:enabled'] = 'false';
+  const browserName = '.focusshield.FocusShieldBrowserService';
+  if (!appNode.service.some(s => s?.$?.['android:name'] === browserName)) appNode.service.push({
+    $: { 'android:name': browserName, 'android:label': 'MYELIN website blocker', 'android:exported': 'true', 'android:permission': 'android.permission.BIND_ACCESSIBILITY_SERVICE' },
+    'intent-filter': [{ action: [{ $: { 'android:name': 'android.accessibilityservice.AccessibilityService' } }] }],
+    'meta-data': [{ $: { 'android:name': 'android.accessibilityservice', 'android:resource': '@xml/myelin_browser_accessibility' } }],
   });
   appNode.receiver = appNode.receiver || [];
   const receiverName = '.focusshield.FocusShieldScheduleReceiver';
@@ -215,6 +225,12 @@ function withFocusShieldAndroid(config) {
         const fromPath = path.join(srcDir, file);
         const toPath = path.join(destDir, file);
         fs.copyFileSync(fromPath, toPath);
+      }
+      const resDir = path.join(modConfig.modRequest.platformProjectRoot, 'app', 'src', 'main', 'res');
+      for (const [folder, file] of [['xml', 'myelin_browser_accessibility.xml'], ['values', 'myelin_browser_strings.xml']]) {
+        const target = path.join(resDir, folder);
+        fs.mkdirSync(target, { recursive: true });
+        fs.copyFileSync(path.join(srcDir, file), path.join(target, file));
       }
       return modConfig;
     },

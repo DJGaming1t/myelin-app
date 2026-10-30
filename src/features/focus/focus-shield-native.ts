@@ -15,6 +15,7 @@ export type NativePermissionState = {
   usageStatsGranted: boolean;
   overlayGranted: boolean;
   batteryOptimizationIgnored: boolean;
+  browserAccessibilityGranted: boolean;
   privateDnsActive?: boolean;
   vpnError?: string;
   vpnPrepared: boolean;
@@ -94,6 +95,7 @@ export async function probeFocusShieldNativeStatus(): Promise<NativePermissionSt
       usageStatsGranted: false,
       overlayGranted: false,
       batteryOptimizationIgnored: false,
+      browserAccessibilityGranted: false,
       vpnPrepared: false,
       vpnActive: false,
       otherVpnActive: false,
@@ -110,6 +112,7 @@ export async function probeFocusShieldNativeStatus(): Promise<NativePermissionSt
       usageStatsGranted: raw?.usageStatsGranted === true,
       overlayGranted: raw?.overlayGranted === true,
       batteryOptimizationIgnored: raw?.batteryOptimizationIgnored === true,
+      browserAccessibilityGranted: raw?.browserAccessibilityGranted === true,
       vpnPrepared: raw?.vpnPrepared === true,
       vpnActive: raw?.vpnActive === true,
       privateDnsActive: raw?.privateDnsActive === true,
@@ -127,6 +130,7 @@ export async function probeFocusShieldNativeStatus(): Promise<NativePermissionSt
       usageStatsGranted: false,
       overlayGranted: false,
       batteryOptimizationIgnored: false,
+      browserAccessibilityGranted: false,
       vpnPrepared: false,
       vpnActive: false,
       otherVpnActive: false,
@@ -273,6 +277,7 @@ export type FocusShieldPermissionKind =
   | 'usage-access'
   | 'overlay'
   | 'battery'
+  | 'browser-accessibility'
   | 'vpn'
   | 'digital-wellbeing';
 
@@ -295,6 +300,7 @@ export async function openFocusShieldPermissionSettings(
         ? 'android.settings.USAGE_ACCESS_SETTINGS'
         : kind === 'overlay'
           ? 'android.settings.action.MANAGE_OVERLAY_PERMISSION'
+          : kind === 'browser-accessibility' ? 'android.settings.ACCESSIBILITY_SETTINGS'
           : kind === 'vpn' ? 'android.settings.VPN_SETTINGS'
           : kind === 'battery'
             ? 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'
@@ -322,7 +328,7 @@ export function resolveFocusShieldCapabilities(
     permState.overlayGranted;
   return getFocusShieldCapabilities(Platform.OS, appReady, {
     websiteBlockingEnabled,
-    vpnPrepared: permState.vpnPrepared,
-    otherVpnActive: permState.otherVpnActive,
+    browserAccessibilityGranted: permState.browserAccessibilityGranted,
+    nativeModuleInstalled: permState.nativeModuleInstalled,
   });
 }

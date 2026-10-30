@@ -102,6 +102,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
         putBoolean("usageStatsGranted", usageGranted)
         putBoolean("overlayGranted", overlayGranted)
         putBoolean("batteryOptimizationIgnored", batteryIgnored)
+        putBoolean("browserAccessibilityGranted", FocusShieldBrowserService.isEnabled(context))
         putBoolean("vpnPrepared", vpnPrepared)
         putBoolean("vpnActive", vpnActive)
         putBoolean("privateDnsActive", FocusShieldDnsVpnService.privateDnsActive(context))
@@ -122,42 +123,12 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun prepareWebsiteVpn(promise: Promise) {
-    try {
-      val context = reactContext.applicationContext
-      val otherVpn = FocusShieldDnsVpnService.isOtherVpnActive(context)
-      if (otherVpn) {
-        promise.resolve(Arguments.createMap().apply { putBoolean("granted", false); putBoolean("vpnPrepared", false); putBoolean("otherVpnActive", true) })
-        return
-      }
-      val prepIntent = VpnService.prepare(context)
-      if (prepIntent == null) {
-        // This method is invoked by an explicit tap, so it is safe to retry a paused filter.
-        FocusShieldDnsVpnService.retryAfterFailure(context)
-        FocusShieldScheduleReceiver.evaluateAndScheduleNext(context, allowStart = true)
-        val map = Arguments.createMap().apply {
-          putBoolean("granted", true)
-          putBoolean("vpnPrepared", true)
-          putBoolean("otherVpnActive", otherVpn)
-        }
-        promise.resolve(map)
-        return
-      }
-
-      val activity = reactContext.currentActivity
-      if (activity == null) {
-        promise.reject("ERR_NO_ACTIVITY", "Open MYELIN in the foreground to authorize the local DNS VPN.")
-        return
-      }
-
-      activity.runOnUiThread {
-        if (pendingVpnPromise != null) promise.reject("ERR_VPN_PENDING", "A VPN authorization request is already open.")
-        else try { pendingVpnPromise = promise; activity.startActivityForResult(prepIntent, REQ_CODE_PREPARE_VPN) }
-        catch (e: Exception) { pendingVpnPromise = null; promise.reject("ERR_PREPARE_VPN", e) }
-      }
-    } catch (e: Exception) {
-      pendingVpnPromise = null
-      promise.reject("ERR_PREPARE_VPN", e)
-    }
+    // Compatibility for older JavaScript: the VPN is retired and must never be requested.
+    promise.resolve(Arguments.createMap().apply {
+      putBoolean("granted", false)
+      putBoolean("vpnPrepared", false)
+      putBoolean("otherVpnActive", false)
+    })
   }
 
   @ReactMethod
@@ -171,6 +142,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
         }
         "overlay" -> Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkgUri)
         "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        "browser-accessibility" -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         "vpn" -> Intent(Settings.ACTION_VPN_SETTINGS)
         else -> Intent("android.settings.ZEN_MODE_SETTINGS")
       }
@@ -184,6 +156,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
           "usage-access" -> Settings.ACTION_USAGE_ACCESS_SETTINGS
           "overlay" -> Settings.ACTION_MANAGE_OVERLAY_PERMISSION
           "battery" -> Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+          "browser-accessibility" -> Settings.ACTION_ACCESSIBILITY_SETTINGS
           "vpn" -> Settings.ACTION_VPN_SETTINGS
           else -> Settings.ACTION_SETTINGS
         }

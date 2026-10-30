@@ -11,6 +11,8 @@ type Element = { type: any; props: any };
 async function main() {
   let config = { ...engine.defaultFocusShieldConfig(), mode: 'gentle' as const, schedules: [] } as engine.FocusShieldConfig;
   let error = '', noticeSaved = true, cursor = 0;
+  let disclosure: { title: string; message: string; buttons: any[] } | null = null;
+  const opened: string[] = [];
   const slots: any[] = [], effects: (() => void)[] = [];
   const apps = Array.from({ length: 65 }, (_, index) => ({ packageName: `org.test.app${index}`, label: `Test app ${index}` }));
   const status = { nativeModuleInstalled: true, usageStatsGranted: false, overlayGranted: false, vpnPrepared: false, otherVpnActive: false };
@@ -22,7 +24,7 @@ async function main() {
     useEffect(fn: () => void, deps: any[]) { const i = cursor++; if (!slots[i] || deps.some((v,j) => v !== slots[i][j])) { slots[i] = deps; effects.push(fn); } },
   };
   const jsx = (type: any, props: any) => ({ type, props: props || {} });
-  const native: any = { StyleSheet: { create: (x: any) => x, hairlineWidth: 1 }, Platform: { OS: 'android' }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } };
+  const native: any = { StyleSheet: { create: (x: any) => x, hairlineWidth: 1 }, Platform: { OS: 'android' }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) }, Alert: { alert: (title: string, message: string, buttons: any[]) => { disclosure = { title, message, buttons }; } } };
   for (const key of ['ActivityIndicator','Image','KeyboardAvoidingView','Pressable','ScrollView','Switch','Text','TextInput','View']) native[key] = key;
   const exports: any = {};
   const imports: Record<string, any> = {
@@ -33,7 +35,7 @@ async function main() {
     '@/src/data/WorkspaceProvider': { useWorkspace: () => ({ ownerKey: 'local:device' }) }, '@/src/theme/tokens': { colors, layout, radius, space },
     './BlockingVisuals': { BlockingGlyph: 'BlockingGlyph', ShieldEmblem: 'ShieldEmblem', AppAvatar: 'AppAvatar', StrengthMark: 'StrengthMark', WeekStrip: 'WeekStrip' },
     './focus-shield': { ...engine, focusShieldStorage: { subscribeAttempts: () => () => {}, loadAttempts: async () => [] } },
-    './focus-shield-native': { probeFocusShieldNativeStatus: async () => status, fetchInstalledAndroidApps: async () => apps, openFocusShieldPermissionSettings: async () => true, requestWebsiteVpnAuthorization: async () => ({ vpnPrepared: false }) },
+    './focus-shield-native': { probeFocusShieldNativeStatus: async () => status, fetchInstalledAndroidApps: async () => apps, openFocusShieldPermissionSettings: async (kind: string) => { opened.push(kind); return true; } },
     './useBlockingSettings': {
       invalidBlockingInput(message: string) { throw Error(message); },
       parseBlockingTime(value: string) { const m = /^(\d{1,2}):(\d{2})$/.exec(value); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; },
@@ -77,6 +79,12 @@ async function main() {
   await press('button', 'Keep it'); assert.equal(config.schedules.length, 1);
   await press('button', 'Delete Evening revision'); await press('button', 'Delete Evening revision'); assert.equal(config.schedules.length, 0);
   await press('tab', 'Websites');
+  await press('button', 'Allow browser accessibility');
+  assert.ok(disclosure && (disclosure as any).message.includes('screen content'));
+  assert.deepEqual(opened, [], 'Opening accessibility settings requires an explicit Continue.');
+  (disclosure as any).buttons.find((button: any) => button.text === 'Continue').onPress();
+  await Promise.resolve();
+  assert.deepEqual(opened, ['browser-accessibility']);
   assert.equal(by('button', 'Add website').props.disabled, true);
   await fill('Website domain', 'example.com'); await press('button', 'Add website');
   assert.ok(config.targets.some(t => t.identifier === 'example.com'));

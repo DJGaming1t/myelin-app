@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppAvatar, BlockingGlyph, BlockingGlyphName, ShieldEmblem, StrengthMark, WeekStrip } from './BlockingVisuals';
@@ -13,7 +13,7 @@ import {
   toggleAllowlistApp, toggleScheduleWindow, toggleShieldTarget, toggleWebsiteWildcard,
   updateFocusShieldCustomization, upsertInstalledAppTarget,
 } from './focus-shield';
-import { NativePermissionState, fetchInstalledAndroidApps, openFocusShieldPermissionSettings, probeFocusShieldNativeStatus, requestWebsiteVpnAuthorization } from './focus-shield-native';
+import { NativePermissionState, fetchInstalledAndroidApps, openFocusShieldPermissionSettings, probeFocusShieldNativeStatus } from './focus-shield-native';
 import { invalidBlockingInput, parseBlockingTime, useBlockingSettings } from './useBlockingSettings';
 
 type Page = 'Apps' | 'Websites' | 'When' | 'Settings';
@@ -104,10 +104,14 @@ export default function BlockingScreen() {
       if (!result.added) invalidBlockingInput(result.error); return result.config;
     }).then(saved => { if (saved) { setLabel(''); setShowScheduleForm(false); setNotice('Schedule saved'); } });
   }
-  async function authorizeWebsites() {
-    const result = await requestWebsiteVpnAuthorization(); setStatus(await probeFocusShieldNativeStatus());
-    if (!result.vpnPrepared) setError('VPN approval was not completed. Website blocking is still unavailable.');
-    else if (result.otherVpnActive) setError('Disconnect your other VPN first. App blocking can still be used.');
+  function authorizeWebsites() {
+    if (Platform.OS !== 'android' || !status?.nativeModuleInstalled) {
+      setError('Install the current Android build to enable browser blocking.'); return;
+    }
+    Alert.alert('Allow browser blocking?', 'Android accessibility lets MYELIN see screen content in supported browsers. During an active website block, MYELIN checks the address bar against your rules and stores the matched blocked domain on this device. Full addresses and page content are not saved or sent by MYELIN. Browser versions, other browsers and in-app pages can bypass this feature.', [
+      { text: 'Not now', style: 'cancel' },
+      { text: 'Continue', onPress: () => { void openFocusShieldPermissionSettings('browser-accessibility').then(opened => { if (!opened) setError('Could not open Android accessibility settings.'); }); } },
+    ]);
   }
 
   const selectedApps = config.targets.filter(t => t.kind === 'app' && t.enabled).length;
@@ -188,10 +192,10 @@ export default function BlockingScreen() {
               {item.custom ? <DeleteAction id={item.id} label={`Remove ${item.label}`} pending={pendingDelete} onRequest={setPendingDelete} onConfirm={() => void change(previous => removeCustomShieldTarget(previous, item.id)).then(saved => { if (saved) { setPendingDelete(null); setNotice('Website removed'); } })} /> : null}
             </View>)}
           </Card>
-          <Card icon="shield" title="Allow website filtering" detail="Uses Android’s VPN slot for a local website filter.">
-            <Permission title={status?.vpnError ? 'Retry website filter' : 'Local website filter'} granted={Boolean(status?.vpnActive)} onPress={() => void authorizeWebsites()} detail={status?.vpnActive ? 'Running now' : status?.vpnError ? 'Paused to keep browsing working. Tap to retry.' : status?.otherVpnActive ? 'Another VPN is active. Disconnect it first.' : 'Uses the VPN slot only while a website block is active.'} />
-            <Disclosure title="What website filtering can and cannot do" open={showWebsiteHelp} onPress={() => setShowWebsiteHelp(value => !value)}><Text style={s.body}>Android Private DNS pauses this filter. Browser Secure DNS, cached pages and existing connections can bypass it. Android allows one VPN at a time. App blocking works independently.</Text></Disclosure>
-            {status?.privateDnsActive ? <Text style={s.error}>Private DNS is active; website filtering waits, while app blocking stays available.</Text> : null}{status?.vpnError ? <Text style={s.error}>{status.vpnError}</Text> : null}
+          <Card icon="shield" title="Allow browser blocking" detail="Checks supported browsers without routing your internet through a VPN.">
+            <Permission title="Browser accessibility" granted={status?.browserAccessibilityGranted} onPress={authorizeWebsites} detail={status?.browserAccessibilityGranted ? 'Permission enabled. Blocking applies during your selected study times.' : 'Allow this in Android Accessibility settings to check selected websites.'} />
+            <Disclosure title="What browser blocking can and cannot do" open={showWebsiteHelp} onPress={() => setShowWebsiteHelp(value => !value)}><Text style={s.body}>Chrome, Chrome Beta, Brave and Edge are supported on a best-effort basis. Browser updates, other browsers, in-app pages and hidden address bars can bypass blocking. App blocking works separately.</Text></Disclosure>
+            {config.websiteBlockingEnabled && !status?.browserAccessibilityGranted ? <Text style={s.error}>Website blocking needs browser accessibility permission.</Text> : null}
           </Card>
         </> : null}
         {page === 'When' ? <>

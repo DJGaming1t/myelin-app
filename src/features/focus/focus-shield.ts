@@ -115,11 +115,10 @@ export type FocusShieldEnforcementLevel =
   | 'none'
   | 'os-settings-handoff'
   | 'native-usage-overlay'
-  | 'native-vpn-dns';
+  | 'native-browser-accessibility';
 
 export type WebsiteBlockingStatus =
-  | 'native-dns-vpn-ready'
-  | 'vpn-conflict'
+  | 'native-browser-ready'
   | 'permission-required'
   | 'disabled';
 
@@ -717,32 +716,28 @@ export function getFocusShieldCapabilities(
   nativeAppBlockingReady = false,
   options: {
     websiteBlockingEnabled?: boolean;
-    vpnPrepared?: boolean;
-    otherVpnActive?: boolean;
+    browserAccessibilityGranted?: boolean;
+    nativeModuleInstalled?: boolean;
   } = {},
 ): FocusShieldCapabilities {
   const {
     websiteBlockingEnabled = false,
-    vpnPrepared = false,
-    otherVpnActive = false,
+    browserAccessibilityGranted = false,
+    nativeModuleInstalled = false,
   } = options;
 
   if (platform === 'android') {
     const websiteStatus: WebsiteBlockingStatus = !websiteBlockingEnabled
       ? 'disabled'
-      : otherVpnActive
-        ? 'vpn-conflict'
-        : vpnPrepared
-          ? 'native-dns-vpn-ready'
-          : 'permission-required';
+      : browserAccessibilityGranted ? 'native-browser-ready' : 'permission-required';
 
     const supportedLevels: FocusShieldEnforcementLevel[] = ['none', 'os-settings-handoff'];
     if (nativeAppBlockingReady) supportedLevels.push('native-usage-overlay');
-    if (websiteStatus === 'native-dns-vpn-ready') supportedLevels.push('native-vpn-dns');
+    if (websiteStatus === 'native-browser-ready') supportedLevels.push('native-browser-accessibility');
 
     const activeLevel: FocusShieldEnforcementLevel =
-      websiteStatus === 'native-dns-vpn-ready'
-        ? 'native-vpn-dns'
+      websiteStatus === 'native-browser-ready'
+        ? 'native-browser-accessibility'
         : nativeAppBlockingReady
           ? 'native-usage-overlay'
           : 'os-settings-handoff';
@@ -753,13 +748,10 @@ export function getFocusShieldCapabilities(
       activeLevel,
       nativeAppBlockingActive: nativeAppBlockingReady,
       websiteBlockingStatus: websiteStatus,
-      requiresNativeRebuildForInterception: !nativeAppBlockingReady && !vpnPrepared,
-      honestDisclosure:
-        websiteStatus === 'vpn-conflict'
-          ? 'Another VPN is currently active on this phone. Android allows only one VPN at a time, so MYELIN app blocking remains active while local DNS website filtering waits.'
-          : websiteStatus === 'native-dns-vpn-ready'
-            ? 'Native Android app blocking (Usage Access + Overlay) and local loopback DNS website blocking (VpnService) are ready. All DNS filtering happens 100% on-device.'
-            : 'Grant Usage Access, Overlay, and Local DNS VPN permissions on Android to activate both app and website interception during Focus.',
+      requiresNativeRebuildForInterception: !nativeModuleInstalled,
+      honestDisclosure: websiteStatus === 'native-browser-ready'
+        ? 'Website blocking checks the address bar in supported browsers. Other browsers and in-app pages may not be blocked.'
+        : 'App blocking needs Usage Access and Overlay. Website blocking needs the separate browser accessibility permission.',
     };
   }
   return {
@@ -769,7 +761,7 @@ export function getFocusShieldCapabilities(
     nativeAppBlockingActive: false,
     websiteBlockingStatus: 'disabled',
     requiresNativeRebuildForInterception: true,
-    honestDisclosure: 'Native Android app and DNS VPN blocking require an Android device.',
+    honestDisclosure: 'Native app and browser blocking require an Android device.',
   };
 }
 

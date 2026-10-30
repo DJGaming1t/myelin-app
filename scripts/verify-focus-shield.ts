@@ -117,6 +117,10 @@ async function verify() {
   assert.equal(await bridge.syncFocusShieldNativeSession(syncInput),false);
   nativeModules.MyelinFocusShield={getPermissionStatus:async()=>({usageStatsGranted:false,overlayGranted:false}),syncSessionState:async(json:string)=>{payloads.push(JSON.parse(json));return true;}};
   const denied=await bridge.probeFocusShieldNativeStatus();assert.equal(denied.nativeModuleInstalled,true);assert.equal(denied.usageStatsGranted,false);assert.equal(denied.overlayGranted,false);
+  assert.equal(denied.browserAccessibilityGranted,false);
+  assert.equal(bridge.resolveFocusShieldCapabilities(denied,true).websiteBlockingStatus,'permission-required');
+  nativeModules.MyelinFocusShield.getPermissionStatus=async()=>({usageStatsGranted:true,overlayGranted:true,browserAccessibilityGranted:true});
+  assert.equal(bridge.resolveFocusShieldCapabilities(await bridge.probeFocusShieldNativeStatus(),true).websiteBlockingStatus,'native-browser-ready');
   await bridge.syncFocusShieldNativeSession(syncInput);assert.equal(payloads.at(-1).active,true);assert.ok(payloads.at(-1).blockedPackages.length>0);
   for(const change of [{sessionRunning:false},{phase:'break'},{remainingMs:0}]){
     await bridge.syncFocusShieldNativeSession({...syncInput,...change});assert.equal(payloads.at(-1).active,false);
@@ -133,7 +137,10 @@ async function verify() {
   assert.equal(plugin.alignKotlinBuildTools(aligned), aligned);
   const manifest:any={$:{},application:[{}]};plugin.ensurePermissionsAndQueries(manifest);const first=JSON.stringify(manifest);
   plugin.ensurePermissionsAndQueries(manifest);assert.equal(JSON.stringify(manifest),first);
-  assert.equal(manifest.application[0].service[0].$['android:exported'],'false');
+  const services=manifest.application[0].service;
+  assert.equal(services.find((s:any)=>s.$['android:name']==='.focusshield.FocusShieldMonitorService').$['android:exported'],'false');
+  assert.equal(services.find((s:any)=>s.$['android:name']==='.focusshield.FocusShieldDnsVpnService').$['android:enabled'],'false');
+  assert.equal(services.find((s:any)=>s.$['android:name']==='.focusshield.FocusShieldBrowserService').$['android:permission'],'android.permission.BIND_ACCESSIBILITY_SERVICE');
   const sample='package com.djgaming1t.myelin\nclass MainApplication { fun x() = PackageList(this).packages.apply { } }';
   const transformed=plugin.registerPackageInMainApplication(sample);assert.equal(plugin.registerPackageInMainApplication(transformed),transformed);
   assert.throws(()=>plugin.registerPackageInMainApplication('unsupported template'));

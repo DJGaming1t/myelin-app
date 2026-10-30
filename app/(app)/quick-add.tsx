@@ -25,6 +25,7 @@ export default function QuickAddScreen() {
           showsVerticalScrollIndicator={false}>
           <Text style={styles.section}>What are you adding?</Text>
           <View style={styles.list}>
+            <ActionRow icon="settings" title="Guide me through setup" detail="Add your work and available time one step at a time" accent onPress={() => router.push('/(app)/settings/plan-setup')} />
             <ActionRow
               icon="library"
               title="Topic"

@@ -9,7 +9,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.net.VpnService
 import android.provider.Settings
 
 /** Inexact alarms are reminders, not an exemption from Android's background FGS limits. */
@@ -29,12 +28,9 @@ class FocusShieldScheduleReceiver : BroadcastReceiver() {
         if (!Settings.canDrawOverlays(context) || !FocusShieldMonitorService.hasUsageStatsPermission(context)) ready = false
         else try { context.startForegroundService(appIntent) } catch (_: Exception) { ready = false }
       }
-      if (!needsWeb) context.stopService(vpnIntent)
-      else if (allowStart) {
-        if (VpnService.prepare(context) != null || FocusShieldDnsVpnService.isOtherVpnActive(context) ||
-            FocusShieldDnsVpnService.privateDnsActive(context) || !FocusShieldDnsVpnService.canStart(context, state)) ready = false
-        else try { context.startForegroundService(vpnIntent) } catch (_: Exception) { ready = false }
-      }
+      // Stop a tunnel left by an older version; this version never starts a VPN.
+      try { context.stopService(vpnIntent) } catch (_: Exception) { }
+      if (needsWeb && !FocusShieldBrowserService.isEnabled(context)) ready = false
       if (!allowStart && active) notifyScheduled(context, state)
       else if (!active) context.getSystemService(NotificationManager::class.java)?.cancel(4126)
       scheduleNext(context, state)

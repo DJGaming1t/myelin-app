@@ -83,6 +83,11 @@ function main() {
 
   assert.equal(workspace.mistakes.length, 2);
   assert.equal(recall.reason, 'recall');
+  const tagged = captureRecallMistake(workspace, { topicId: 'topic_math', cardId: 'tagged', prompt: 'Why?', response: '', correction: 'Because', reason: 'concept', now });
+  assert.equal(tagged.reason, 'concept');
+  captureRecallMistake(workspace, { topicId: 'topic_math', cardId: 'tagged', prompt: 'Why?', response: '', correction: 'Because', now: now + 1 });
+  assert.equal(tagged.reason, 'concept', 'An untagged retry preserves the existing classification');
+  workspace.mistakes.pop();
   assert.equal(findOpenMistakeForCard(workspace, 'topic_math', 'card_disc')?.id, recall.id);
 
   recall.wins = 1;
@@ -108,6 +113,10 @@ function main() {
   const dueQueue = buildMistakeRetestQueue(workspace, now + 2);
   assert.equal(dueQueue.length, 2);
   assert.equal(dueQueue[0]?.topicId, 'topic_math');
+  const other = createMistake({ topicId: 'other', cardId: null, prompt: 'Other', detail: '', correction: 'Answer', reason: 'recall' }, now, 'other');
+  workspace.mistakes.push(other);
+  assert.deepEqual(buildMistakeRetestQueue(workspace, now + 2, 'topic_math').map(m => m.topicId), ['topic_math', 'topic_math']);
+  workspace.mistakes.pop();
 
   const missOutcome = applyMistakeRetest(manual, 'miss', now + 10);
   assert.equal(missOutcome.wins, 0);

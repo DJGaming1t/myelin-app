@@ -1,6 +1,6 @@
 import { FocusSupport, DistractionShield } from '@/src/features/adaptive/FocusSupport';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -24,6 +24,7 @@ import {
   timerRemainingMs,
 } from '@/src/features/focus/focus-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { saveParkedThoughts } from '@/src/features/focus/parked-inbox';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { findTopic } from '@/src/features/topics/topic-operations';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -47,7 +48,7 @@ export default function FocusScreen() {
     breakMinutes?: string | string[];
   }>();
 
-  const { workspace } = useWorkspace();
+  const { workspace, updateWorkspace, waitForSaves } = useWorkspace();
   const {
     ready,
     session,
@@ -87,6 +88,9 @@ export default function FocusScreen() {
   const [now, setNow] = useState(Date.now());
   const [finishing, setFinishing] = useState(false);
   const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [parkingError, setParkingError] = useState('');
+  const [savingThought, setSavingThought] = useState(false);
+  const savingThoughtRef = useRef(false);
 
   useEffect(() => {
     if (!session?.runningSince) return;
@@ -135,12 +139,33 @@ export default function FocusScreen() {
     await park(value);
   }
 
+  async function saveThought(id: string) {
+    if (!session || savingThoughtRef.current) return;
+    const thought = session.distractions.find(item => item.id === id);
+    if (!thought) return;
+    savingThoughtRef.current = true;
+    setSavingThought(true);
+    setParkingError('');
+    try {
+      const updated = updateWorkspace(draft => saveParkedThoughts(draft, session.id, [thought], session.subject, session.topicId ?? null));
+      if (!updated) throw new Error('Workspace unavailable');
+      await waitForSaves();
+      await removeParked(id);
+    } catch {
+      setParkingError('Could not save this thought. It is still parked; try again.');
+    } finally {
+      savingThoughtRef.current = false;
+      setSavingThought(false);
+    }
+  }
+
   function requestFinishEarly() {
     setFinishing(true);
     void pause();
   }
 
   function requestDiscard() {
+    if (savingThoughtRef.current) return;
     Alert.alert(
       'Discard this focus session?',
       'The timer and parked distractions will be removed. No study time will be added to history.',
@@ -169,11 +194,13 @@ export default function FocusScreen() {
   }
 
   async function finishBreak() {
+    if (savingThoughtRef.current) return;
     await completeBreak(Date.now());
     router.replace('/(app)/today');
   }
 
   async function leaveBreak() {
+    if (savingThoughtRef.current) return;
     await skipBreak(Date.now());
     router.replace('/(app)/today');
   }
@@ -219,18 +246,20 @@ export default function FocusScreen() {
           <AmbientBackdrop />
           <View style={styles.setupPage}>
             <TopBar label="Focus" onBack={() => router.replace('/(app)/today')} />
-            <View style={styles.missing}>
+            <ScrollView contentContainerStyle={styles.setupContent}>
               <Text style={styles.missingTitle}>Choose an open task or topic.</Text>
               <Text style={styles.missingText}>
                 Start Focus from any task card or from a topic in Library.
               </Text>
+              {workspace.tasks.filter(item => item.status === 'open').slice(0, 3).map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => router.replace({ pathname: '/(app)/focus', params: { taskId: item.id } })} style={({ pressed }) => [styles.secondary, { marginTop: 8, padding: 12 }, pressed && styles.pressed]}><Text style={styles.secondaryText} numberOfLines={2}>{item.title}</Text></Pressable>)}
+              {workspace.topics.slice(0, 3).map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => router.replace({ pathname: '/(app)/focus', params: { topicId: item.id } })} style={({ pressed }) => [styles.secondary, { marginTop: 8, padding: 12 }, pressed && styles.pressed]}><Text style={styles.secondaryText} numberOfLines={2}>{item.name} · {item.subject}</Text></Pressable>)}
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.replace('/(app)/today')}
                 style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
                 <Text style={styles.primaryText}>Back to Today</Text>
               </Pressable>
-            </View>
+            </ScrollView>
           </View>
         </SafeAreaView>
       );
@@ -329,7 +358,8 @@ export default function FocusScreen() {
             helper="Timer stays active"
           />
 
-          <View style={styles.timerArea}>
+          <ScrollView contentContainerStyle={styles.sessionContent}>
+          <View style={{ alignItems: 'center' }}>
             <Text style={styles.eyebrow}>RECOVERY</Text>
             <Text style={styles.sessionTitle}>Leave the work alone.</Text>
 
@@ -350,12 +380,25 @@ export default function FocusScreen() {
               {session.focusActualMinutes >= 25 ? 'Step away from the screen. Walk a little, stretch gently, or get water.' : 'Let your eyes rest on something far away. Take a few unhurried breaths.'}
               {session.distractions.length ? ` You parked ${session.distractions.length} thought${session.distractions.length === 1 ? '' : 's'}. Check them before leaving this break.` : ' You do not need to earn the break.'}
             </Text>
-            {session.distractions.length ? <ScrollView style={{ maxHeight: 120, alignSelf: 'stretch' }}>{session.distractions.map(item => <Text key={item.id} style={styles.breakPrompt}>• {item.text}</Text>)}</ScrollView> : null}
+            {session.distractions.map(item => <View key={item.id} style={styles.parkedItem}>
+              <Text style={styles.parkedText}>{item.text}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Save ${item.text} to inbox`} disabled={savingThought} onPress={() => void saveThought(item.id)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 }}><Text style={styles.textButtonText}>Save to inbox</Text></Pressable>
+            </View>)}
+            {parkingError ? <Text accessibilityRole="alert" style={styles.breakPrompt}>{parkingError}</Text> : null}
 
-            <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6}>
+            {timerDone && session.topicId && workspace && findTopic(workspace, session.topicId) ? <Pressable
+              accessibilityRole="button"
+              disabled={savingThought}
+              onPress={async () => { const id = session.topicId!; await completeBreak(Date.now()); router.replace({ pathname: '/(app)/review', params: { topicId: id } }); }}
+              style={({ pressed }) => [styles.secondary, { marginTop: 12, width: '100%', maxWidth: 430, paddingHorizontal: 12 }, pressed && styles.pressed]}>
+              <Text style={styles.secondaryText}>Finish break and open recall</Text>
+            </Pressable> : null}
+
+            <Reveal key={timerDone ? 'break-done' : 'break-running'} distance={6} style={{ width: '100%', maxWidth: 430 }}>
               {timerDone ? (
                 <Pressable
                   accessibilityRole="button"
+                  disabled={savingThought}
                   onPress={finishBreak}
                   style={({ pressed }) => [styles.primary, styles.wideButton, pressed && styles.pressed]}>
                   <Text style={styles.primaryText}>Finish break</Text>
@@ -371,6 +414,7 @@ export default function FocusScreen() {
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
+                    disabled={savingThought}
                     onPress={leaveBreak}
                     style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
                     <Text style={styles.secondaryText}>End break</Text>
@@ -379,6 +423,7 @@ export default function FocusScreen() {
               )}
             </Reveal>
           </View>
+          </ScrollView>
         </View>
       </SafeAreaView>
     );
@@ -585,6 +630,7 @@ export default function FocusScreen() {
                   <MotionItem key={item.id} delay={Math.min(index * 25, 75)} style={styles.parkedItem}>
                     <View style={styles.parkDot} />
                     <Text style={styles.parkedText}>{item.text}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Save ${item.text} to inbox`} disabled={savingThought} onPress={() => void saveThought(item.id)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={styles.textButtonText}>Inbox</Text></Pressable>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Remove parked distraction"
@@ -594,11 +640,13 @@ export default function FocusScreen() {
                     </Pressable>
                   </MotionItem>
                 ))}
+                {parkingError ? <Text accessibilityRole="alert" style={styles.breakPrompt}>{parkingError}</Text> : null}
             </AnimatedDisclosure>
           </View>
 
           <Pressable
             accessibilityRole="button"
+            disabled={savingThought}
             onPress={requestDiscard}
             style={({ pressed }) => [styles.discard, pressed && styles.pressed]}>
             <Text style={styles.discardText}>Discard session</Text>

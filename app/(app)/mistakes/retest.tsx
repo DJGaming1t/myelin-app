@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Pressable,
@@ -24,6 +24,8 @@ function historyId(now: number) {
 }
 
 export default function MistakeRetestScreen() {
+  const params = useLocalSearchParams<{ topicId?: string | string[] }>();
+  const topicId = Array.isArray(params.topicId) ? params.topicId[0] : params.topicId;
   const { workspace, updateWorkspace, waitForSaves } = useWorkspace();
   const [answer, setAnswer] = useState('');
   const [revealed, setRevealed] = useState(false);
@@ -31,8 +33,8 @@ export default function MistakeRetestScreen() {
 
   const now = Date.now();
   const queue = useMemo(
-    () => (workspace ? buildMistakeRetestQueue(workspace, now) : []),
-    [workspace, now],
+    () => (workspace ? buildMistakeRetestQueue(workspace, now, topicId) : []),
+    [workspace, now, topicId],
   );
   const current = queue[0] ?? null;
   const topic = workspace?.topics.find((item) => item.id === current?.topicId) ?? null;

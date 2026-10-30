@@ -15,7 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
-import { Confidence } from '@/src/data/schema';
+import { Confidence, MistakeReason } from '@/src/data/schema';
+import { mistakeCounts } from '@/src/features/mistakes/mistake-engine';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { Reveal } from '@/src/components/motion/Reveal';
@@ -42,6 +43,13 @@ const CONFIDENCE: { value: Confidence; label: string; helper: string }[] = [
   { value: 'sure', label: 'Sure', helper: 'Confident recall' },
 ];
 
+const MISTAKE_REASONS: { value: MistakeReason; label: string }[] = [
+  { value: 'recall', label: 'Recall' },
+  { value: 'concept', label: 'Concept' },
+  { value: 'calculation', label: 'Calculation' },
+  { value: 'application', label: 'Application' },
+];
+
 export default function ReviewScreen() {
   const celebrate = useAchievement();
   const params = useLocalSearchParams<{ topicId?: string | string[] }>();
@@ -64,9 +72,13 @@ export default function ReviewScreen() {
   const [localAnswer, setLocalAnswer] = useState(session?.answerDraft ?? '');
   const [completedNotice, setCompletedNotice] = useState(false);
   const [grading, setGrading] = useState(false);
+  const [mistakeReason, setMistakeReason] = useState<MistakeReason | undefined>();
+  const [showMistakeReasons, setShowMistakeReasons] = useState(false);
 
   useEffect(() => {
     setLocalAnswer(session?.answerDraft ?? '');
+    setMistakeReason(undefined);
+    setShowMistakeReasons(false);
   }, [session?.id, session?.currentIndex, session?.stage]);
 
   useEffect(() => {
@@ -156,6 +168,20 @@ export default function ReviewScreen() {
               <View style={styles.completeCopy}>
                 <Text style={styles.completeTitle}>Review queue complete.</Text>
                 <Text style={styles.completeText}>Those cards are already rescheduled.</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+                  {mistakeCounts(workspace, Date.now()).due > 0 ? (
+                    <Pressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => router.push('/(app)/mistakes/retest')}>
+                      <Text style={{ color: colors.accent, fontSize: 14, fontWeight: '700' }}>
+                        Retest {mistakeCounts(workspace, Date.now()).due} due {mistakeCounts(workspace, Date.now()).due === 1 ? 'correction' : 'corrections'} →
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => router.push('/(app)/progress')}>
+                    <Text style={{ color: colors.success, fontSize: 14, fontWeight: '700' }}>
+                      View Neural Map →
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </AnimatedDisclosure>
 
@@ -330,7 +356,7 @@ export default function ReviewScreen() {
     if (grading) return;
     setGrading(true);
     try {
-      const result = await gradeCurrent(choice);
+      const result = await gradeCurrent(choice, Date.now(), mistakeReason);
       if (result?.completed) {
         setCompletedNotice(true);
         celebrate({ title: 'Recall complete!', detail: 'Another round remembered. Your next reviews are scheduled.' });
@@ -493,6 +519,42 @@ export default function ReviewScreen() {
               <Text style={styles.gradeHelp}>
                 Grade the recall, not how familiar the reference answer looks now. “Again” also adds this correction to Mistakes when a reference answer exists.
               </Text>
+
+              <View style={{ marginTop: 12 }}>
+                <Pressable accessibilityRole="button" accessibilityState={{ expanded: showMistakeReasons }} onPress={() => setShowMistakeReasons(v => !v)} style={{ minHeight: 44, justifyContent: 'center' }}>
+                  <Text style={{ color: colors.accent, fontSize: 14 }}> {showMistakeReasons ? 'Hide' : 'Optional: tag an Again answer'}</Text>
+                </Pressable>
+                {showMistakeReasons ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {MISTAKE_REASONS.map((reason) => (
+                    <Pressable
+                      key={reason.value}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: mistakeReason === reason.value }}
+                      onPress={() => setMistakeReason(reason.value)}
+                      style={{
+                        minHeight: 44,
+                        paddingHorizontal: 10,
+                        borderRadius: radius.pill,
+                        borderWidth: 1,
+                        borderColor: mistakeReason === reason.value ? colors.accentLine : colors.line,
+                        backgroundColor: mistakeReason === reason.value ? colors.accentSoft : colors.panel,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                      <Text
+                        style={{
+                          color: mistakeReason === reason.value ? colors.accent : colors.muted,
+                          fontSize: 14,
+                          fontWeight: '700',
+                        }}>
+                        {reason.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                ) : null}
+              </View>
 
               <View style={styles.gradeStack}>
                 {(['again', 'practising', 'good'] as const).map((choice) => (

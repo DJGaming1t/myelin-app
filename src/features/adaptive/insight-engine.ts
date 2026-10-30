@@ -17,15 +17,46 @@ export function learningInsights(workspace: WorkspaceState, now: number) {
 }
 export function neuralEvidence(workspace: WorkspaceState) {
   const wins = new Map<string, Set<string>>();
+  const focusByTopic = new Map<string, number>();
   for (const h of workspace.history) {
+    if (h.kind === 'study' && h.topicId && h.minutes > 0) {
+      focusByTopic.set(h.topicId, (focusByTopic.get(h.topicId) ?? 0) + Math.round(h.minutes));
+    }
     if (h.kind !== 'review' || h.grade !== 3 || h.hintUsed || !h.cardId) continue;
     const d = new Date(h.at);
     const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
     const evidence = wins.get(h.topicId) ?? new Set<string>();
     evidence.add(`${h.cardId}:${day}`); wins.set(h.topicId, evidence);
   }
-  const nodes = workspace.topics.map(topic => ({ topic, wins: wins.get(topic.id)?.size ?? 0 })).sort((a, b) => a.topic.createdAt - b.topic.createdAt || a.topic.id.localeCompare(b.topic.id));
+  const openTasksByTopic = new Map<string, number>();
+  for (const task of workspace.tasks) {
+    if (task.status === 'open' && task.topicId) {
+      openTasksByTopic.set(task.topicId, (openTasksByTopic.get(task.topicId) ?? 0) + 1);
+    }
+  }
+  const openMistakesByTopic = new Map<string, number>();
+  for (const mistake of workspace.mistakes) {
+    if (mistake.resolvedAt === 0 && mistake.topicId) {
+      openMistakesByTopic.set(mistake.topicId, (openMistakesByTopic.get(mistake.topicId) ?? 0) + 1);
+    }
+  }
+  const nodes = workspace.topics
+    .map(topic => ({
+      topic,
+      wins: wins.get(topic.id)?.size ?? 0,
+      focusMinutes: focusByTopic.get(topic.id) ?? 0,
+      openTasks: openTasksByTopic.get(topic.id) ?? 0,
+      openMistakes: openMistakesByTopic.get(topic.id) ?? 0,
+    }))
+    .sort((a, b) => a.topic.createdAt - b.topic.createdAt || a.topic.id.localeCompare(b.topic.id));
   const total = nodes.reduce((sum, n) => sum + n.wins, 0);
+  const totalFocusMinutes = nodes.reduce((sum, n) => sum + n.focusMinutes, 0);
   const milestones = [1, 10, 25, 50, 100, 250, 500, 1000];
-  return { nodes, total, earned: milestones.filter(n => total >= n), next: milestones.find(n => total < n) ?? null };
+  return {
+    nodes,
+    total,
+    totalFocusMinutes,
+    earned: milestones.filter(n => total >= n),
+    next: milestones.find(n => total < n) ?? null,
+  };
 }

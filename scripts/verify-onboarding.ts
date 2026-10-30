@@ -14,6 +14,7 @@ import {
   shouldShowOnboarding,
 } from '../src/features/onboarding/onboarding-engine';
 import { createTopic } from '../src/features/topics/topic-operations';
+import { createStudyTask } from '../src/features/planning/task-engine';
 
 function read(relative: string) {
   return fs.readFileSync(relative, 'utf8');
@@ -62,6 +63,15 @@ function main() {
   );
 
   const meaningfulCases = [
+    (workspace: ReturnType<typeof createEmptyWorkspace>) => {
+      workspace.tasks.push(createStudyTask({ title: 'Existing task' }));
+    },
+    (workspace: ReturnType<typeof createEmptyWorkspace>) => {
+      workspace.commitments.push({ id: 'c', title: 'Class', kind: 'school', startAt: now, endAt: now + 3600000, startMinutes: 0, endMinutes: 0, recurrenceDays: [], createdAt: now, updatedAt: now });
+    },
+    (workspace: ReturnType<typeof createEmptyWorkspace>) => {
+      workspace.focusOutcomes = [{ id: 'f', startedAt: now, endedAt: now, status: 'finished', plannedMinutes: 25, minutes: 25, launchMode: 'full', taskOnly: true, overdue: false }];
+    },
     (workspace: ReturnType<typeof createEmptyWorkspace>) => {
       workspace.topics.push(
         createTopic(

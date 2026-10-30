@@ -9,6 +9,7 @@ import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { TaskQuickActions, TaskDueLabel } from '@/src/features/planning/TaskQuickActions';
 import { buildReviewQueue } from '@/src/features/review/review-engine';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import {
@@ -48,6 +49,13 @@ export default function TopicDetailScreen() {
   const currentTopic = topic;
   const dueNow = buildReviewQueue(currentWorkspace, { topicId }).length;
   const recommendReview = dueNow > 0 && currentTopic.cards.length > 0;
+  const linkedTasks = currentWorkspace.tasks.filter(
+    (task) => task.topicId === topicId && task.status === 'open',
+  );
+  const openMistakes = currentWorkspace.mistakes.filter(
+    (mistake) => mistake.topicId === topicId && mistake.resolvedAt === 0,
+  );
+  const dueMistakes = openMistakes.filter(m => !m.dueAt || m.dueAt <= Date.now()).length;
 
   function openFocus() {
     if (activeReview) {
@@ -316,6 +324,76 @@ export default function TopicDetailScreen() {
             </Pressable>
           </View>
         )}
+
+        <SectionHeader
+          title="Study tasks"
+          action="+ Add task"
+          onAction={() =>
+            router.push({
+              pathname: '/(app)/today/task/new',
+              params: { topicId },
+            })
+          }
+        />
+
+        {linkedTasks.length ? (
+          <View style={styles.questions}>
+            {linkedTasks.slice(0, 3).map((task) => (
+              <View key={task.id} style={{ paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(app)/today/task/[taskId]',
+                      params: { taskId: task.id },
+                    })
+                  }>
+                  <Text style={styles.questionPrompt}>{task.title}</Text>
+                  <Text style={styles.questionMeta}>
+                    {task.estimatedMinutes ? `${task.actualMinutes}/${task.estimatedMinutes}m` : `${task.actualMinutes}m`} · {task.type}
+                  </Text>
+                </Pressable>
+                <TaskDueLabel task={task} />
+                <TaskQuickActions task={task} />
+              </View>
+            ))}
+            {linkedTasks.length > 3 ? <Pressable accessibilityRole="button" onPress={() => router.push('/(app)/today')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={styles.questionMeta}>View all tasks in Today</Text></Pressable> : null}
+          </View>
+        ) : (
+          <Text style={styles.notesEmpty}>
+            No open tasks linked to this topic. Link homework or practice tasks so focus time feeds this topic.
+          </Text>
+        )}
+
+        {openMistakes.length ? (
+          <>
+            <SectionHeader
+              title={`Open mistakes · ${openMistakes.length}`}
+              action={dueMistakes ? `Retest ${dueMistakes} due` : 'View notebook'}
+              onAction={() => dueMistakes ? router.push({ pathname: '/(app)/mistakes/retest', params: { topicId } }) : router.push('/(app)/mistakes')}
+            />
+            <View style={styles.questions}>
+              {openMistakes.slice(0, 3).map((mistake) => (
+                <Pressable
+                  key={mistake.id}
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(app)/mistakes/[mistakeId]',
+                      params: { mistakeId: mistake.id },
+                    })
+                  }
+                  style={styles.questionRow}>
+                  <View style={styles.questionCopy}>
+                    <Text style={styles.questionPrompt} numberOfLines={2}>{mistake.prompt}</Text>
+                    <Text style={styles.questionMeta}>{mistake.reason} · {mistake.wins}/2 spaced wins</Text>
+                  </View>
+                </Pressable>
+              ))}
+              {openMistakes.length > 3 ? <Pressable accessibilityRole="button" onPress={() => router.push('/(app)/mistakes')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={styles.questionMeta}>View all in Mistakes</Text></Pressable> : null}
+            </View>
+          </>
+        ) : null}
 
         {saveError ? <Text style={styles.saveError}>Save issue: {saveError}</Text> : null}
 

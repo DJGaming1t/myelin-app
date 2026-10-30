@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
 import { ActionRow } from '@/src/components/app/ActionRow';
+import { MyelinSpark } from '@/src/components/app/MyelinSpark';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppButton } from '@/src/components/app/AppButton';
 import { AppNav } from '@/src/components/app/AppNav';
@@ -251,6 +252,10 @@ export default function TodayScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
+          <MyelinSpark
+            mood={activeReview ? 'recall' : activeFocus ? (activeFocus.phase === 'break' || !activeFocus.runningSince ? 'rest' : 'focus') : budgetFinished ? 'rest' : overdueCount > 0 ? 'overdue' : 'idle'}
+            caption={activeReview ? 'Your review is saved at the current question.' : activeFocus ? (activeFocus.phase === 'break' ? 'Your study block is recorded. Take your break.' : !activeFocus.runningSince ? 'Your timer is paused. Resume when you are ready.' : 'Your focus timer is running. Return when you are ready.') : budgetFinished ? 'Your planned study time is complete. You can rest here.' : overdueCount > 0 ? 'Start with one due item below.' : undefined}
+          />
           <View style={styles.nextHeading}>
             <Text style={styles.nextLabel}>
               {activeReview || activeFocus ? 'CONTINUE' : 'NEXT'}

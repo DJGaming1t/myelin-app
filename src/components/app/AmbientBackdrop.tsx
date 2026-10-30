@@ -17,8 +17,12 @@ export function AmbientBackdrop() {
       </View>
       <View style={[styles.orb, styles.orbTop]} />
       <View style={[styles.orb, styles.orbSide]} />
+      <View style={[styles.orb, styles.orbSynapse]} />
       <View style={[styles.ring, styles.ringTop]} />
       <View style={[styles.ring, styles.ringSide]} />
+      <View style={[styles.ring, styles.ringSynapse]} />
+      <View style={[styles.node, styles.nodeTopRight]} />
+      <View style={[styles.node, styles.nodeMidLeft]} />
       <View style={styles.topHairline} />
     </View>
   );
@@ -40,14 +44,14 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    opacity: 0.12,
+    opacity: 0.14,
   },
   gridLine: {
     position: 'absolute',
     left: 22,
     right: 22,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.018)',
+    backgroundColor: 'rgba(255,255,255,0.022)',
   },
   orb: {
     position: 'absolute',
@@ -55,36 +59,69 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   orbTop: {
-    width: 340,
-    height: 340,
+    width: 360,
+    height: 360,
     top: -225,
-    right: -120,
-    opacity: 0.045,
+    right: -115,
+    opacity: 0.055,
   },
   orbSide: {
     width: 260,
     height: 260,
     top: '45%',
-    left: -210,
-    opacity: 0.022,
+    left: -200,
+    opacity: 0.028,
+  },
+  orbSynapse: {
+    width: 300,
+    height: 300,
+    bottom: -180,
+    right: -130,
+    backgroundColor: colors.synapse,
+    opacity: 0.032,
   },
   ring: {
     position: 'absolute',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,130,93,0.04)',
+    borderColor: 'rgba(255,130,93,0.055)',
   },
   ringTop: {
-    width: 250,
-    height: 250,
-    top: -94,
-    right: -78,
+    width: 256,
+    height: 256,
+    top: -92,
+    right: -74,
   },
   ringSide: {
-    width: 190,
-    height: 190,
+    width: 196,
+    height: 196,
     top: '52%',
-    left: -132,
+    left: -128,
+  },
+  ringSynapse: {
+    width: 220,
+    height: 220,
+    bottom: -110,
+    right: -84,
+    borderColor: 'rgba(76,224,210,0.05)',
+  },
+  node: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  nodeTopRight: {
+    top: 86,
+    right: 52,
+    backgroundColor: colors.accent,
+    opacity: 0.28,
+  },
+  nodeMidLeft: {
+    top: '56%',
+    left: 34,
+    backgroundColor: colors.synapse,
+    opacity: 0.24,
   },
   topHairline: {
     position: 'absolute',
@@ -93,6 +130,6 @@ const styles = StyleSheet.create({
     right: 32,
     height: 1,
     backgroundColor: colors.accentLine,
-    opacity: 0.24,
+    opacity: 0.3,
   },
 });

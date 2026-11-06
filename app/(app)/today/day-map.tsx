@@ -59,8 +59,8 @@ import {
   PlanBlock,
   buildTodayPlan,
 } from '@/src/features/today/planner';
-import { NativeLegoIcon } from '@/src/features/today/NativeProgressVisual';
-import { colors, layout, legoPalette, radius, spacing } from '@/src/theme/tokens';
+import { TimeBrick } from '@/src/features/planning/TimeBrick';
+import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function timeLabel(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -133,6 +133,8 @@ export default function DayMapScreen() {
     if (incoming) setReflow(incoming);
   }, [params.reflow]);
 
+  const tasksById = useMemo(() => new Map(workspace?.tasks.map(task => [task.id, task])), [workspace?.tasks]);
+  const commitmentsById = useMemo(() => new Map(workspace?.commitments.map(item => [item.id, item])), [workspace?.commitments]);
   const map = useMemo(
     () => (workspace ? buildDayMap(workspace, now) : null),
     [workspace, now],
@@ -959,7 +961,7 @@ export default function DayMapScreen() {
                         </Text>
                       </View>
                       <View style={styles.reclaimedRail}>
-                        <NativeLegoIcon colorIndex={index} color={legoPalette[index % legoPalette.length].baseColorFactor} size={34} />
+                        <TimeBrick size={34} />
                         <View style={styles.railLine} />
                       </View>
                       <View
@@ -1079,7 +1081,7 @@ export default function DayMapScreen() {
               const passed = entry.end < now;
               if (entry.kind === 'commitment') {
                 const sourceId = entry.commitmentId;
-                const commitment = workspace.commitments.find(item => item.id === sourceId);
+                const commitment = commitmentsById.get(sourceId);
                 return (
                   <MotionItem key={entry.id}>
                   <View style={[styles.timelineRow, passed && styles.passed]}>
@@ -1087,7 +1089,7 @@ export default function DayMapScreen() {
                       <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
                       <Text style={styles.timeEnd}>{timeLabel(entry.end)}</Text>
                     </View>
-                    <View style={styles.rail}><NativeLegoIcon colorIndex={entryIndex + 2} color={legoPalette[(entryIndex + 2) % legoPalette.length].baseColorFactor} size={34} /><View style={styles.railLine} /></View>
+                    <View style={styles.rail}><TimeBrick size={34} /><View style={styles.railLine} /></View>
                     <View style={[styles.block, styles.fixedBlock]}>
                       <Pressable accessibilityRole="button" accessibilityLabel={'Edit fixed block ' + entry.title}
                         onPress={() => router.push({ pathname: '/(app)/today/commitment/[commitmentId]', params: { commitmentId: sourceId } })} style={styles.blockCopy}>
@@ -1102,7 +1104,7 @@ export default function DayMapScreen() {
                 );
               }
 
-              const task = workspace.tasks.find((item) => item.id === entry.taskId);
+              const task = entry.taskId ? tasksById.get(entry.taskId) : undefined;
               if (!task) return null;
               const estimateMet = task.status === 'open' && task.estimatedMinutes > 0 &&
                 taskRemainingMinutes(task) <= 0;
@@ -1114,7 +1116,7 @@ export default function DayMapScreen() {
                     <Text style={styles.timeEnd}>{timeLabel(entry.end)}</Text>
                   </View>
                   <View style={styles.rail}>
-                    <NativeLegoIcon colorIndex={entryIndex} color={legoPalette[entryIndex % legoPalette.length].baseColorFactor} size={36} />
+                    <TimeBrick size={36} tone={entry.missed ? 'missed' : task.status === 'completed' ? 'done' : entry.start <= now && now < entry.end ? 'current' : 'fixed'} />
                     <View style={styles.railLine} />
                   </View>
                   <View style={[styles.block, entry.missed && styles.missedBlock]}>
@@ -1243,7 +1245,7 @@ export default function DayMapScreen() {
                       })
                     }
                     style={[styles.flexibleCopy, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
-                    <NativeLegoIcon colorIndex={index + 4} color={legoPalette[(index + 4) % legoPalette.length].baseColorFactor} size={36} />
+                    <TimeBrick size={36} />
                     <View style={{ flex: 1 }}>
                     <Text style={styles.flexibleTitle}>{task.title}</Text>
                     <Text style={styles.flexibleMeta}>
@@ -1740,9 +1742,9 @@ const styles = StyleSheet.create({
 
   blockCopy: { minHeight: 48 },
   blockKicker: { color: colors.subtle, fontSize: 10.5, lineHeight: 14, fontWeight: '700', letterSpacing: 0.45 },
-  blockTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: 4 },
+  blockTitle: { color: colors.text, fontSize: 16, lineHeight: 21, fontWeight: '700', marginTop: 4 },
   blockMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 4 },
-  passed: { opacity: 0.42 },
+  passed: { opacity: 0.82 },
   blockActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
   missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   mini: { minHeight: layout.minTouch, minWidth: 68, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },

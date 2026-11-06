@@ -647,43 +647,7 @@ export default function TodayScreen() {
 
             {/* Persistent Single-Context 3D Bottle / Stopwatch */}
             <View style={styles.glStageShift}>
-              <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={false} />
-            </View>
-
-            {/* Left Real Telemetry Pill Stack */}
-            <View style={styles.telemetryStack}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${totalTaskCount} ${totalTaskCount === 1 ? 'task' : 'tasks'} today`}
-                onPress={() => snapSheet(true)}
-                style={styles.telemetryPill}>
-                <AppIcon name="checkbox-checked" size={14} color={chalk.onStage} />
-                <Text style={styles.telemetryPillText}>
-                  {totalTaskCount} {totalTaskCount === 1 ? 'task' : 'tasks'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${formatCompletedFocusDuration(completedFocusMinutes)} completed focus time today`}
-                onPress={() => router.push('/(app)/progress')}
-                style={styles.telemetryPill}>
-                <AppIcon name="stopwatch" size={15} color={chalk.onStage} />
-                <Text style={styles.telemetryPillText}>
-                  {formatCompletedFocusDuration(completedFocusMinutes)} focus
-                </Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${streakDays} day study streak`}
-                onPress={() => router.push('/(app)/progress')}
-                style={styles.telemetryPill}>
-                <AppIcon name="flame" size={14} color={chalk.onStage} />
-                <Text style={styles.telemetryPillText}>
-                  {streakDays} {streakDays === 1 ? 'day' : 'days'} streak
-                </Text>
-              </Pressable>
+              <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={isSheetExpanded} />
             </View>
 
             {/* Right Progress Callout with Meniscus Dot & Progressbar Semantics */}
@@ -773,59 +737,6 @@ export default function TodayScreen() {
             ]}
             showsVerticalScrollIndicator={false}>
             {/* ===============================================================
-                DIAGONAL ISOMETRIC BRICK PATH (0, 1, or N Real Steps)
-               =============================================================== */}
-            {dayMapStepsSummary.totalSteps > 0 ? (
-              <View style={styles.brickTrailContainer}>
-                {/* Ascending Dashed Graphite Path */}
-                <View pointerEvents="none" style={styles.dashedTrailLine} />
-
-                {dayMapStepsSummary.previewSteps.map((step, index) => {
-                  const totalPreview = dayMapStepsSummary.previewSteps.length;
-                  const slotIndex =
-                    totalPreview === 1
-                      ? 1
-                      : Math.min(
-                          BRICK_TRAIL_SLOTS.length - 1,
-                          Math.round((index / Math.max(1, totalPreview - 1)) * (BRICK_TRAIL_SLOTS.length - 1)),
-                        );
-                  const slot = BRICK_TRAIL_SLOTS[slotIndex]!;
-                  return (
-                    <TactileDayBrick
-                      key={step.id}
-                      step={step}
-                      xPct={slot.xPct}
-                      yPx={slot.yPx}
-                      scale={slot.scale}
-                      onPress={() => handleStepPress(step)}
-                    />
-                  );
-                })}
-
-                {dayMapStepsSummary.totalSteps > dayMapStepsSummary.previewSteps.length ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more tasks in Day Map`}
-                    onPress={() => snapSheet(true)}
-                    style={styles.moreBricksBadge}>
-                    <Text style={styles.moreBricksBadgeText}>
-                      +{dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.emptyBrickTrailCard}>
-                <Text style={styles.emptyBrickTrailTitle}>
-                  No tasks mapped for today yet.
-                </Text>
-                <Text style={styles.emptyBrickTrailSub}>
-                  Tap + Add below or schedule a task to build your path.
-                </Text>
-              </View>
-            )}
-
-            {/* ===============================================================
                 TWO-COLUMN SPLIT DECK: NEXT UP (Left) | TODAY CHECKLIST (Right)
                =============================================================== */}
             <View style={styles.splitDeckRow}>
@@ -883,11 +794,8 @@ export default function TodayScreen() {
                 </Pressable>
               </View>
 
-              {/* Vertical Hairline Divider */}
-              <View style={styles.splitDivider} />
-
               {/* Right Column: TODAY Real Task Checklist */}
-              <View style={styles.splitRightCol}>
+              {isSheetExpanded && <View style={styles.splitRightCol}>
                 <Text style={styles.todayChecklistHeader}>TODAY</Text>
                 {dayMapStepsSummary.steps.length > 0 ? (
                   (isSheetExpanded
@@ -944,14 +852,71 @@ export default function TodayScreen() {
                     <Text style={styles.checklistEmptyText}>+ Add today’s first task</Text>
                   </Pressable>
                 )}
-              </View>
+              </View>}
             </View>
+            {/* ===============================================================
+                DIAGONAL ISOMETRIC BRICK PATH (0, 1, or N Real Steps)
+               =============================================================== */}
+            {dayMapStepsSummary.totalSteps > 0 ? (
+              <View style={styles.brickTrailContainer}>
+                {/* Ascending Dashed Graphite Path */}
+                <View pointerEvents="none" style={styles.dashedTrailLine} />
+
+                {dayMapStepsSummary.previewSteps.map((step, index) => {
+                  const totalPreview = dayMapStepsSummary.previewSteps.length;
+                  const slotIndex =
+                    totalPreview === 1
+                      ? 1
+                      : Math.min(
+                          BRICK_TRAIL_SLOTS.length - 1,
+                          Math.round((index / Math.max(1, totalPreview - 1)) * (BRICK_TRAIL_SLOTS.length - 1)),
+                        );
+                  const slot = BRICK_TRAIL_SLOTS[slotIndex]!;
+                  return (
+                    <TactileDayBrick
+                      key={step.id}
+                      step={step}
+                      xPct={slot.xPct}
+                      yPx={slot.yPx}
+                      scale={slot.scale}
+                      onPress={() => handleStepPress(step)}
+                    />
+                  );
+                })}
+
+                {dayMapStepsSummary.totalSteps > dayMapStepsSummary.previewSteps.length ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more tasks in Day Map`}
+                    onPress={() => snapSheet(true)}
+                    style={styles.moreBricksBadge}>
+                    <Text style={styles.moreBricksBadgeText}>
+                      +{dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.emptyBrickTrailCard}>
+                <Text style={styles.emptyBrickTrailTitle}>
+                  No tasks mapped for today yet.
+                </Text>
+                <Text style={styles.emptyBrickTrailSub}>
+                  Tap + Add below or schedule a task to build your path.
+                </Text>
+              </View>
+            )}
+
+
 
             {/* ===============================================================
                 FULL TODAY RECOMMENDATION, CAPACITY & PLANNING DETAILS
                 (Accessible via scrolling or expanding the Day Map sheet)
                =============================================================== */}
             <View style={styles.expandedDetailsSection}>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/(app)/progress')} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <Text style={styles.nextUpMeta}>{formatCompletedFocusDuration(completedFocusMinutes)} focused · {streakDays} day streak</Text>
+              </Pressable>
               <View style={styles.nextHeading}>
                 <Text style={styles.nextLabel}>
                   {activeReview || activeFocus ? 'CONTINUE' : 'UP NEXT'}

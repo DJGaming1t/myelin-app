@@ -214,6 +214,8 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   const active = useRef(true);
   const focused = useRef(true);
   const reduced = useRef(false);
+  const syncLoop = useRef(() => {});
+  useEffect(() => { syncLoop.current(); }, [paused]);
   const cleanup = useRef(() => {});
   const drag = useRef({ x: 0, y: 0 });
   const start = useRef({ x: 0, y: 0 });
@@ -232,8 +234,10 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   useFocusEffect(
     useCallback(() => {
       focused.current = true;
+      syncLoop.current();
       return () => {
         focused.current = false;
+        syncLoop.current();
       };
     }, []),
   );
@@ -244,9 +248,10 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
     if (modelRef.current === 'cycle') {
       preloadBrainBuffer().catch(() => {});
     }
-    preloadLegoBuffer().catch(() => {});
+
     const sub = AppState.addEventListener('change', s => {
       active.current = s === 'active';
+      syncLoop.current();
     });
     AccessibilityInfo.isReduceMotionEnabled().then(v => {
       reduced.current = v;
@@ -372,13 +377,18 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       engine.camera.updateProjectionMatrix();
 
       let last = 0;
-      function tick(now) {
-        if (disposed) return;
-        frame = requestAnimationFrame(tick);
-        if (!active.current || !focused.current || pausedRef.current) {
+      function sync() {
+        if (disposed || !active.current || !focused.current || pausedRef.current) {
+          cancelAnimationFrame(frame);
+          frame = 0;
           last = 0;
-          return;
+        } else if (!frame) {
+          frame = requestAnimationFrame(tick);
         }
+      }
+      function tick(now) {
+        frame = 0;
+        if (disposed || !active.current || !focused.current || pausedRef.current) return;
         try {
           const dt = last ? Math.min(64, now - last) : 16;
           last = now;
@@ -386,14 +396,16 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
           stage = 'frame rendering';
           renderer.render(engine.scene, engine.camera);
           gl.endFrameEXP();
+          sync();
         } catch (e) {
           report(e);
           dispose();
         }
       }
 
+      syncLoop.current = sync;
       if (live.current) setReady(true);
-      frame = requestAnimationFrame(tick);
+      sync();
     } catch (e) {
       report(e);
       dispose();

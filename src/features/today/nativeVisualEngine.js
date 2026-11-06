@@ -1930,9 +1930,18 @@ class StopwatchRenderer {
 }
 
 
- const brain=new BrainRenderer(),bottle=new BottleRenderer(),watch=new StopwatchRenderer(),cube=new CubeRenderer(cubeGroup,THREE,pointMaterial,{large:false}),chess=new ChessRenderer(chessGroup,THREE,pointMaterial,{large:false});
- bottle.build();watch.build();
- if(modelBuffer)brain.load();
+ const brain = new BrainRenderer(), bottle = new BottleRenderer(), watch = new StopwatchRenderer();
+ let cube, chess;
+ function prepareModels(mode) {
+  if (mode !== 'stopwatch' && !bottle.ready) bottle.build();
+  if (mode !== 'bottle' && !watch.ready) watch.build();
+  if (mode === 'cycle' && !cube) {
+   cube = new CubeRenderer(cubeGroup, THREE, pointMaterial, { large: false });
+   chess = new ChessRenderer(chessGroup, THREE, pointMaterial, { large: false });
+   if (modelBuffer) brain.load();
+  }
+ }
+ prepareModels(options.mode || 'cycle');
  const groups=[brainGroup,bottleGroup,stopwatchGroup,cubeGroup,chessGroup];
  const keys=['brain','bottle','stopwatch','cube','chess'];
  function resolveModeIndex(m){
@@ -2008,6 +2017,8 @@ class StopwatchRenderer {
  setModel(nextMode){
   const nextLocked=resolveModeIndex(nextMode);
   activeMode=nextLocked!==null?nextMode:'cycle';
+  prepareModels(activeMode);
+  lastProgress=NaN;
   if(nextLocked!==null&&nextLocked!==current){
    const from=current;current=nextLocked;localTime=0;
    transition={from,to:nextLocked,time:0};
@@ -2043,8 +2054,11 @@ class StopwatchRenderer {
    transition=null;idlePose(current,localTime,reduced,drag);
   }
   const visible=groups[displayed];visible.visible=true;frameObject(displayed);
-  if(progress!==lastProgress){bottle.setFill(progress);watch.setPercent(progress);cube.setProgress(progress,{animate:!reduced});chess.setProgress(progress,{animate:!reduced});lastProgress=progress;}
-  bottle.updateMotion(delta,bottleGroup.rotation.y,bottleGroup.rotation.x,reduced);watch.updateMotion(delta,reduced);cube.update(elapsed,reduced);chess.update(elapsed,reduced);
+  if(progress!==lastProgress){if(bottle.ready)bottle.setFill(progress);if(watch.ready)watch.setPercent(progress);cube?.setProgress(progress,{animate:!reduced});chess?.setProgress(progress,{animate:!reduced});lastProgress=progress;}
+  if(displayed===1)bottle.updateMotion(delta,bottleGroup.rotation.y,bottleGroup.rotation.x,reduced);
+  if(displayed===2)watch.updateMotion(delta,reduced);
+  if(displayed===3)cube?.update(elapsed,reduced);
+  if(displayed===4)chess?.update(elapsed,reduced);
   if(alpha<1)fade(visible,alpha);
  },dispose(){scene.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of (Array.isArray(o.material)?o.material:[o.material]))m.dispose();}});}
  };

@@ -73,11 +73,7 @@ function main() {
     false,
     'Legacy horizontal progress bar beneath hero must be removed',
   );
-  assert.equal(
-    today.includes('tasks complete'),
-    false,
-    'Redundant X of Y tasks complete label beneath hero must be removed',
-  );
+  assert.ok(today.includes('{progressSummary.done} of {totalTaskCount} tasks complete'), 'Progress rail shows real task counts');
   assert.ok(today.includes('computeTodayProgress'));
   assert.ok(today.includes('computeCompletedFocusMinutesToday'));
   assert.ok(today.includes('computeStudyStreakDays'));

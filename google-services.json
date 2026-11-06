@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "14373433855",
+    "project_id": "myelin-a0ba7",
+    "storage_bucket": "myelin-a0ba7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:14373433855:android:5762b4db901befeaecf7ca",
+        "android_client_info": {
+          "package_name": "com.djgaming1t.myelin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "14373433855-t9vhdj3tn2fsh8m4np4bmkh49v1o8gdq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.djgaming1t.myelin",
+            "certificate_hash": "05b6971ab92ea4928f71ed56689dda831e5ee724"
+          }
+        },
+        {
+          "client_id": "14373433855-i8ga5shv930h0mrhu66hvuuthf1mvnrd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPXyszwL6l8LdzTVussra7ttx1E1d1F8c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "14373433855-i8ga5shv930h0mrhu66hvuuthf1mvnrd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

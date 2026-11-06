@@ -1,0 +1,195 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+function read(relative: string) {
+  return fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
+}
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+const tokens = read('src/theme/tokens.ts');
+const motion = read('src/features/accessibility/useReducedMotion.ts');
+const root = read('app/_layout.tsx');
+const app = read('app/(app)/_layout.tsx');
+const nav = read('src/components/app/AppNav.tsx');
+const header = read('src/components/app/ScreenHeader.tsx');
+const appButton = read('src/components/app/AppButton.tsx');
+const actionRow = read('src/components/app/ActionRow.tsx');
+const disclosure = read('src/components/motion/AnimatedDisclosure.tsx');
+const motionItem = read('src/components/motion/MotionItem.tsx');
+const topicsLayout = read('app/(app)/topics/_layout.tsx');
+const states = read('src/components/app/ScreenState.tsx');
+const focus = read('app/(app)/focus/index.tsx');
+const workspaceProvider = read('src/data/WorkspaceProvider.tsx');
+const reveal = read('src/components/motion/Reveal.tsx');
+const planCard = read('src/features/today/PlanBlockCard.tsx');
+const ambient = read('src/components/app/AmbientBackdrop.tsx');
+const pulseHalo = read('src/components/motion/PulseHalo.tsx');
+const animatedProgress = read('src/components/motion/AnimatedProgress.tsx');
+const springPressable = read('src/components/motion/SpringPressable.tsx');
+const today = read('app/(app)/today/index.tsx');
+const review = read('app/(app)/review/index.tsx');
+const onboarding = read('app/(onboarding)/index.tsx');
+const onboardingShell = read('src/components/onboarding/OnboardingShell.tsx');
+const authWelcome = read('app/(auth)/index.tsx');
+const authScaffold = read('src/components/auth/AuthScaffold.tsx');
+const authButton = read('src/components/auth/AuthButton.tsx');
+const settings = read('app/(app)/settings/index.tsx');
+const settingsCloud = read('app/(app)/settings/cloud-sync.tsx');
+const settingsTransfer = read('app/(app)/settings/data-transfer.tsx');
+const settingsReminders = read('app/(app)/settings/reminders.tsx');
+const settingsTutorial = read('app/(app)/settings/tutorial.tsx');
+const taskForm = read('src/features/planning/TaskForm.tsx');
+const commitmentForm = read('src/features/planning/CommitmentForm.tsx');
+const examForm = read('src/features/exams/ExamForm.tsx');
+const questionForm = read('src/features/topics/QuestionForm.tsx');
+
+assert(tokens.includes('contentMax: 820'), 'Responsive content cap is missing.');
+assert(tokens.includes('minTouch: 48'), '48-point Android touch target token is missing.');
+assert(tokens.includes('pressSpring:'), 'Shared press spring tokens are missing.');
+assert(tokens.includes('releaseSpring:'), 'Shared release spring tokens are missing.');
+assert(tokens.includes('revealSpring:'), 'Shared reveal spring tokens are missing.');
+assert(motion.includes('AccessibilityInfo.isReduceMotionEnabled'), 'System reduced-motion preference is not read.');
+assert(motion.includes('workspace?.settings.reduceMotion || systemReduceMotion'), 'User and system motion preferences are not combined.');
+assert(
+  root.includes("animation: 'none'"),
+  'Root group navigation must stay motion-free so reduced motion and the circle handoff are not layered with a second transition.',
+);
+assert(
+  app.includes('PEER_ROUTE_NAMES.has(route.name)') &&
+    app.includes("? 'fade'") &&
+    app.includes(": 'fade_from_bottom'"),
+  'Peer tabs must crossfade without positional motion while deeper routes keep hierarchy motion.',
+);
+for (const routeName of [
+  "'today'",
+  "'today/index'",
+  "'topics'",
+  "'topics/index'",
+  "'review'",
+  "'review/index'",
+  "'progress'",
+  "'progress/index'",
+]) {
+  assert(
+    app.includes(routeName),
+    `Peer-route transition guard is missing ${routeName}.`,
+  );
+}
+assert(
+  app.includes('<Stack.Screen name="today/index" />') &&
+    app.includes('<Stack.Screen name="progress/index" />'),
+  'Today and Progress should stay explicit peer destinations in the app stack.',
+);
+assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
+assert(app.includes('actionLabel="Try again"'), 'Workspace error state is missing a retry action.');
+assert(app.includes('retryWorkspace()'), 'Workspace retry action is not wired to the provider.');
+assert(workspaceProvider.includes('retryWorkspace: () => Promise<void>'), 'Workspace retry API is missing.');
+assert(workspaceProvider.includes('workspaceStorage.load(currentOwner)'), 'Workspace retry does not reload durable storage.');
+assert(states.includes('accessibilityLiveRegion'), 'Shared loading/error states do not announce changes.');
+assert(nav.includes('accessibilityLabel={item.label}'), 'Bottom navigation labels are missing.');
+assert(nav.includes('minHeight: layout.minTouch'), 'Bottom navigation touch targets are too small.');
+assert(nav.includes('maxWidth: layout.contentMax'), 'Bottom navigation is not tablet/web bounded.');
+assert(nav.includes('if (active) return;'), 'Tapping the active tab should be a true no-op.');
+assert(!nav.includes('pressedMotion'), 'Bottom tabs should not scale on press.');
+assert(nav.includes('addButtonFrame'), 'Quick Add needs an explicit centered frame above its label.');
+assert(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'), 'Library nested index should not add a second transition.');
+assert(appButton.includes('<SpringPressable'), 'Shared buttons should use the same spring press primitive.');
+assert(header.includes('<SpringPressable'), 'Header controls should use the shared spring press primitive.');
+assert(actionRow.includes('<SpringPressable'), 'Shared action rows should use spring press feedback.');
+assert(actionRow.includes('scaleTo={0.985}'), 'Action-row spring feedback should remain subtle.');
+assert(disclosure.includes('FadeInDown.duration(motion.stateMs)'), 'Disclosures must share the same enter timing.');
+assert(disclosure.includes('FadeOutUp.duration(motion.pressMs + 20)'), 'Disclosures must share the same exit timing.');
+assert(disclosure.includes('useReducedMotion()'), 'Shared disclosure motion must respect reduced motion.');
+assert(motionItem.includes('FadeInDown'), 'Motion items need an enter transition.');
+assert(motionItem.includes('FadeOutUp'), 'Motion items need an exit transition.');
+assert(motionItem.includes('LinearTransition'), 'Motion items need layout reflow animation.');
+assert(motionItem.includes('useReducedMotion()'), 'Motion-item transitions must respect reduced motion.');
+assert(header.includes('accessibilityRole="header"'), 'Screen titles are not exposed as headers.');
+assert(header.includes('minHeight: layout.minTouch'), 'Header controls are too small.');
+assert(header.includes('maxWidth: layout.contentMax'), 'Screen header is not tablet/web bounded.');
+assert(focus.includes('setInterval(() => setNow(Date.now()), 1000)'), 'Focus timer redraw frequency was not reduced.');
+assert(reveal.includes("from 'react-native-reanimated'"), 'Shared entrance motion is not running through Reanimated.');
+assert(reveal.includes('withTiming') && reveal.includes('withSpring'), 'Shared entrance motion is missing timing/spring transitions.');
+assert(reveal.includes('if (reduceMotion)'), 'Shared entrance motion ignores reduced-motion.');
+assert(nav.includes('<AppIcon'), 'Bottom navigation is missing the shared icon treatment.');
+
+assert((nav.match(/\{ key: '(today|topics|review|progress)'/g) ?? []).length === 4, 'Bottom navigation should expose exactly four primary destinations.');
+assert(!nav.includes("key: 'settings'"), 'Settings should remain secondary.');
+assert(nav.includes("label: 'Library'"), 'Topics should be presented as the Library destination.');
+assert(!nav.includes("key: 'mistakes'"), 'Mistakes should be contextual to Review/Today rather than permanent navigation.');
+assert(!nav.includes("key: 'exams'"), 'Exams should be contextual rather than permanent navigation.');
+assert(nav.includes("router.push('/(app)/quick-add')"), 'Global Quick Add is missing from the navigation shell.');
+
+assert(!header.includes('<Reveal'), 'Shared screen headers should not replay entrance motion on every navigation.');
+assert(states.includes('<Reveal'), 'Shared states are missing entrance motion.');
+assert(planCard.includes('Math.min(index * 55, 220)'), 'Today plan cards are missing staggered reveal motion.');
+assert(ambient.includes('orbTop'), 'Ambient visual backdrop is missing.');
+assert(!ambient.includes('Animated.loop'), 'Ambient background should not run continuous decorative animation loops.');
+assert(!ambient.includes('Easing.'), 'Ambient background should remain static and quiet.');
+assert(pulseHalo.includes('reduceMotion'), 'Legacy halo primitive must remain accessibility-safe while it exists.');
+
+assert(animatedProgress.includes("from 'react-native-reanimated'"), 'Progress animation is not running through Reanimated.');
+assert(animatedProgress.includes('withSpring'), 'Animated progress spring primitive is missing.');
+assert(animatedProgress.includes('scaleX'), 'Progress should animate a transform instead of layout width.');
+assert(animatedProgress.includes('if (reduceMotion)'), 'Animated progress ignores reduced motion.');
+assert(springPressable.includes("from 'react-native-reanimated'"), 'Shared press feedback is not running through Reanimated.');
+assert(springPressable.includes('withSpring'), 'Shared spring press primitive is missing.');
+assert(springPressable.includes('useReducedMotion()'), 'Shared press motion ignores reduced motion.');
+assert(springPressable.includes('motion.pressSpring'), 'Shared press feedback is not driven by theme motion tokens.');
+assert(springPressable.includes('{ translateY: translateY.get() }'), 'Press transform should translate before scaling.');
+assert(nav.includes('<SpringPressable'), 'Quick Add should use the shared press-motion primitive.');
+assert(today.includes('<AmbientBackdrop />'), 'Today is missing the ambient backdrop.');
+assert(today.includes('Later today'), 'Today is missing the reduced later-today hierarchy.');
+assert(today.includes('showAdjust'), 'Today tuning should be progressively disclosed.');
+assert(focus.includes('<AnimatedProgress'), 'Focus must show explicit phase progress.');
+assert(focus.includes('phaseProgress'), 'Focus phase progress is not derived from the timer.');
+assert(!focus.includes('<PulseHalo'), 'Focus should not continuously pulse while the student is working.');
+assert(review.includes('<AnimatedProgress'), 'Review is missing animated queue progress.');
+assert(review.includes('<Reveal key='), 'Review card transitions are missing.');
+
+assert(onboarding.includes('How much focus fits in a normal day?'), 'Onboarding should ask for one useful setup decision.');
+assert(onboarding.includes('<SpringPressable'), 'Onboarding choices should use shared press motion.');
+assert(onboardingShell.includes('scrollable?: boolean'), 'Onboarding shell needs explicit scroll control.');
+assert(onboardingShell.includes('height < 740'), 'Onboarding shell should adapt to short phones.');
+assert(onboardingShell.includes('<Reveal'), 'Onboarding entrance hierarchy is missing.');
+assert(onboardingShell.includes('<SpringPressable'), 'Onboarding primary action should use shared press motion.');
+assert(authWelcome.includes('scrollable={false}'), 'Welcome must keep both actions in the first viewport.');
+assert(authWelcome.includes('I already use MYELIN'), 'Existing-user path is missing from the welcome screen.');
+assert(!authScaffold.includes('<Reveal'), 'Repeated auth screens should remain motion-quiet.');
+assert(authButton.includes('<SpringPressable'), 'Auth buttons should use shared press motion.');
+assert(!onboarding.includes('AnimatedProgress'), 'One-step onboarding should not show artificial multi-step progress.');
+assert(!onboarding.includes('TopicStep'), 'Onboarding should not require topic creation before entering the app.');
+assert(settings.includes('variant="compact"'), 'Settings should use the compact utility-screen header.');
+assert(settings.includes('sectionSubtitle: { color: colors.muted, fontSize: 12'), 'Settings section descriptions are too small.');
+assert(settings.includes('dataLabel: { color: colors.subtle, fontSize: 10'), 'Settings data labels regressed below the readability floor.');
+assert(settings.includes('accessibilityState={{ expanded: open }}'), 'Settings groups should use progressive disclosure.');
+assert(settings.includes('FadeInDown.duration(motion.stateMs)'), 'Settings disclosures should use shared open-motion timing.');
+assert(settings.includes('FadeOutUp.duration(motion.pressMs + 20)'), 'Settings disclosures should use shared close-motion timing.');
+assert(settings.includes('LinearTransition.duration(motion.stateMs)'), 'Settings layout motion should be theme-driven.');
+assert(settings.includes("label=\"Delete account\""), 'Settings should expose direct account deletion.');
+assert(settings.includes('transferCopy: { flex: 1, minWidth: 0 }'), 'Settings action copy must be constrained so arrows stay inside rows.');
+assert(settings.includes("onBack={() => router.back()}"), 'Settings should behave like a secondary screen.');
+assert(!settings.includes('<AppNav />'), 'Settings should not duplicate top-level navigation.');
+assert(settingsCloud.includes('<AmbientBackdrop />'), 'Cloud sync should use the shared visual shell.');
+assert(!settingsCloud.includes('Delete account & study data'), 'Cloud sync should not duplicate account deletion.');
+assert(settingsCloud.includes('actionCopy: { flex: 1, minWidth: 0 }'), 'Cloud sync action text must stay inside its row.');
+assert(settingsTransfer.includes('<AmbientBackdrop />'), 'Backup & migration should use the shared visual shell.');
+assert(settingsTransfer.includes('chooseCopy: { flex: 1, minWidth: 0 }'), 'Backup chooser text must stay inside its row.');
+assert(settingsTransfer.includes('chooseArrow: { color: colors.accent, fontSize: 20, flexShrink: 0 }'), 'Backup chooser arrow must stay inside its row.');
+assert(settingsReminders.includes('<AmbientBackdrop />'), 'Reminders should use the shared visual shell.');
+assert(settingsReminders.includes('previewButtonCopy: { flex: 1, minWidth: 0 }'), 'Reminder preview copy must stay inside its row.');
+assert(settingsTutorial.includes('Three ideas. About a minute.'), 'Tutorial replay should stay intentionally short.');
+assert(settingsTutorial.includes('signalStage'), 'Tutorial replay should include the MYELIN signal visual.');
+assert(settingsTutorial.includes('withRepeat'), 'Tutorial signal should animate.');
+assert(!settingsTutorial.includes('current.cards'), 'Tutorial replay should not return to dense explanation cards.');
+assert(taskForm.includes('variant="compact"'), 'Task form should use the compact form header.');
+assert(taskForm.includes("chipText: { color: colors.muted, fontSize: 12"), 'Task form chip labels are too small.');
+assert(commitmentForm.includes('variant="compact"'), 'Fixed-time form should use the compact form header.');
+assert(commitmentForm.includes("helper: { color: colors.muted, fontSize: 11.5"), 'Fixed-time helper text is too small.');
+assert(examForm.includes("dateHelp: { color: colors.muted, fontSize: 11.5"), 'Exam date helper is too small.');
+assert(questionForm.includes("label: { color: colors.textDim, fontSize: 12.5"), 'Recall form labels are too small.');
+assert(states.includes('fontSize: 13'), 'Shared state messages should remain readable.');
+
+console.log('Product polish verification passed.');

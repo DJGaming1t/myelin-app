@@ -85,7 +85,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
       val otherVpnActive = FocusShieldDnsVpnService.isOtherVpnActive(context)
       val state = FocusShieldStore.loadState(context)
 
-      val act = currentActivity
+      val act = reactContext.currentActivity
       val isMultiWindow = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && act != null) {
         act.isInMultiWindowMode
       } else {
@@ -132,7 +132,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
         return
       }
 
-      val activity = currentActivity
+      val activity = reactContext.currentActivity
       if (activity == null) {
         promise.reject("ERR_NO_ACTIVITY", "Open MYELIN in the foreground to authorize the local DNS VPN.")
         return
@@ -266,7 +266,7 @@ class FocusShieldModule(private val reactContext: ReactApplicationContext) :
       val enforcementActive = state.isEnforcementActive()
 
       // Apply Android 12+ HIDE_OVERLAY_WINDOWS on MYELIN's own activity while active
-      val act = currentActivity
+      val act = reactContext.currentActivity
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && act != null) {
         act.runOnUiThread {
           try {

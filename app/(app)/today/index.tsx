@@ -1,4 +1,5 @@
 import { ChalkGrain } from '@/src/components/app/ChalkGrain';
+import { DayMapSequence } from '@/src/features/today/DayMapSequence';
 import { TimeBrick } from '@/src/features/planning/TimeBrick';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import {
@@ -107,15 +108,6 @@ import {
 } from '@/src/theme/tokens';
 
 const BUDGETS = [10, 15, 30, 60, 90, 120, 180];
-
-// Ascending diagonal positions along the curved Day Map brick trail (normalized [x, y, scale])
-const BRICK_TRAIL_SLOTS: ReadonlyArray<{ xPct: number; yPx: number; scale: number }> = [
-  { xPct: 4, yPx: 61, scale: 1.02 },
-  { xPct: 24, yPx: 51, scale: 0.94 },
-  { xPct: 43, yPx: 41, scale: 0.89 },
-  { xPct: 62, yPx: 31, scale: 0.84 },
-  { xPct: 75, yPx: 21, scale: 0.80 },
-];
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -587,6 +579,14 @@ export default function TodayScreen() {
     });
   }
 
+  function openStepDetails(step: DayMapStep) {
+    if (step.taskId) {
+      router.push({ pathname: '/(app)/today/task/[taskId]', params: { taskId: step.taskId } });
+    } else if (step.topicId) {
+      router.push({ pathname: '/(app)/topics/[topicId]', params: { topicId: step.topicId } });
+    }
+  }
+
   function handleStepPress(step: DayMapStep) {
     if (step.taskId) {
       if (!step.completed) {
@@ -800,7 +800,7 @@ export default function TodayScreen() {
                 <TactileDayBrick
                   step={(dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0])!}
                   xPct={10} yPx={30} scale={1.05}
-                  onPress={() => handleStepPress((dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0])!)}
+                  onPress={() => openStepDetails((dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0])!)}
                 />
               </View>
             ) : null}
@@ -808,7 +808,7 @@ export default function TodayScreen() {
               {/* Left Column: NEXT UP */}
               <View style={styles.splitLeftCol}>
                 <View style={styles.nextUpPillBadge}>
-                  <Text style={styles.nextUpPillBadgeText}>NEXT UP</Text>
+                  <Text style={styles.nextUpPillBadgeText}>{activeReview || activeFocus ? 'CONTINUE' : next || dayMapStepsSummary.nextStep ? 'NEXT UP' : totalTaskCount > 0 ? 'TODAY' : 'A FRESH PAGE'}</Text>
                 </View>
 
                 <Pressable
@@ -824,7 +824,7 @@ export default function TodayScreen() {
                     if (activeReview) router.push('/(app)/review');
                     else if (activeFocus) router.push('/(app)/focus');
                     else if (next) startBlock(next);
-                    else if (dayMapStepsSummary.nextStep) handleStepPress(dayMapStepsSummary.nextStep);
+                    else if (dayMapStepsSummary.nextStep) openStepDetails(dayMapStepsSummary.nextStep);
                     else router.push('/(app)/quick-add');
                   }}
                   style={({ pressed }) => [
@@ -841,7 +841,7 @@ export default function TodayScreen() {
                             ? next.topicName
                             : dayMapStepsSummary.nextStep
                               ? dayMapStepsSummary.nextStep.title
-                              : 'Focus block'}
+                              : totalTaskCount > 0 ? 'Your day is clear' : 'Make room for a task'}
                     </Text>
                     <Text numberOfLines={2} maxFontSizeMultiplier={1.6} style={styles.nextUpMeta}>
                       {activeReview
@@ -852,7 +852,7 @@ export default function TodayScreen() {
                             ? `${next.minutes} min · ${next.mode === 'review' ? 'Active recall' : 'Deep work'}`
                             : dayMapStepsSummary.nextStep
                               ? `${dayMapStepsSummary.nextStep.minutes} min · Study task`
-                              : 'Tap to add your next step'}
+                              : totalTaskCount > 0 ? 'Add a step when you’re ready' : 'Tap to plan your first step'}
                     </Text>
                   </View>
                 </Pressable>
@@ -880,59 +880,6 @@ export default function TodayScreen() {
               { paddingBottom: 32 },
             ]}
             showsVerticalScrollIndicator={false}>
-            {/* ===============================================================
-                DIAGONAL ISOMETRIC BRICK PATH (0, 1, or N Real Steps)
-               =============================================================== */}
-            {dayMapStepsSummary.totalSteps > 0 ? (
-              <View style={[styles.brickTrailContainer, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickTrail]}>
-                {/* Ascending Dashed Graphite Path */}
-                <View pointerEvents="none" style={[styles.dashedTrailLine, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickLine]} />
-
-                {dayMapStepsSummary.previewSteps.map((step, index) => {
-                  const totalPreview = dayMapStepsSummary.previewSteps.length;
-                  const slotIndex =
-                    totalPreview === 1
-                      ? 0
-                      : Math.min(
-                          BRICK_TRAIL_SLOTS.length - 1,
-                          Math.round((index / Math.max(1, totalPreview - 1)) * (BRICK_TRAIL_SLOTS.length - 1)),
-                        );
-                  const slot = BRICK_TRAIL_SLOTS[slotIndex]!;
-                  return (
-                    <TactileDayBrick
-                      key={step.id}
-                      step={step}
-                      xPct={totalPreview === 1 ? 33 : slot.xPct}
-                      yPx={totalPreview === 1 ? 24 : slot.yPx}
-                      scale={slot.scale}
-                      onPress={() => handleStepPress(step)}
-                    />
-                  );
-                })}
-
-                {dayMapStepsSummary.totalSteps > dayMapStepsSummary.previewSteps.length ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more tasks in Day Map`}
-                    onPress={() => snapSheet(true)}
-                    style={styles.moreBricksBadge}>
-                    <Text style={styles.moreBricksBadgeText}>
-                      +{dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.emptyBrickTrailCard}>
-                <Text style={styles.emptyBrickTrailTitle}>
-                  No tasks mapped for today yet.
-                </Text>
-                <Text style={styles.emptyBrickTrailSub}>
-                  Tap + Add below or schedule a task to build your path.
-                </Text>
-              </View>
-            )}
-
             {/* ===============================================================
                 FULL TODAY RECOMMENDATION, CAPACITY & PLANNING DETAILS
                 (Accessible via scrolling or expanding the Day Map sheet)
@@ -1174,42 +1121,11 @@ export default function TodayScreen() {
               <View style={[styles.splitRightCol, styles.timelineColumn]}>
                 <Text style={styles.todayChecklistHeader}>DAY SEQUENCE</Text>
                 {dayMapStepsSummary.steps.length > 0 ? (
-                  dayMapStepsSummary.steps.map((step) => (
-                    <Pressable
-                      key={step.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${step.completed ? 'Completed' : 'Upcoming'}: ${step.title}, ${step.minutes} minutes`}
-                      accessibilityHint="Open task details"
-                      onPress={() => handleStepPress(step)}
-                      style={({ pressed }) => [
-                        styles.checklistItemRow,
-                        styles.timelineRow,
-                        pressed && styles.pressed,
-                      ]}>
-                      <AppIcon
-                        name={step.completed ? 'checkbox-checked' : 'checkbox'}
-                        size={16}
-                        color={step.completed ? chalkTheme.inkSoft : chalkTheme.graphite}
-                      />
-                      <View style={styles.timelineCopy}>
-                        <Text
-                          numberOfLines={2}
-                          style={[
-                            styles.checklistItemText,
-                            styles.timelineTitle,
-                            step.completed && styles.checklistItemDone,
-                          ]}>
-                          {step.title}
-                        </Text>
-                        <Text style={styles.timelineMeta}>
-                            {step.scheduledStart > 0
-                              ? `${new Date(step.scheduledStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · `
-                              : 'Any time · '}
-                            {step.minutes} min{step.completed ? ' · Done' : ''}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))
+                  <DayMapSequence
+                    steps={dayMapStepsSummary.steps}
+                    onOpen={openStepDetails}
+                    onComplete={handleStepPress}
+                  />
                 ) : currentPlan.blocks.length > 0 ? (
                   currentPlan.blocks.slice(0, 3).map((block) => (
                     <Pressable
@@ -2268,10 +2184,8 @@ const styles = StyleSheet.create({
 
   // Expanded Sheet Full Details & Support Area
   expandedDetailsSection: {
-    marginTop: 12,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: chalkTheme.paperLine,
+    marginTop: 6,
+    paddingTop: 8,
   },
   nextHeading: {
     flexDirection: 'row',
@@ -2289,7 +2203,12 @@ const styles = StyleSheet.create({
     ...type.meta,
   },
   hero: {
-    paddingVertical: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255,252,243,.32)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: chalkTheme.paperLine,
+    borderRadius: 18,
   },
   heroQuiet: {
     paddingVertical: 8,

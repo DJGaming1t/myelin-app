@@ -23,7 +23,6 @@ import { taskUrgency } from '@/src/features/planning/task-urgency';
 import {
   TaskQuickActions,
   TaskDueLabel,
-  useTaskCompletion,
 } from '@/src/features/planning/TaskQuickActions';
 import { buildDayMap } from '@/src/features/planning/day-engine';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -58,6 +57,7 @@ import { AppIcon } from '@/src/components/app/AppIcon';
 import { AppNav } from '@/src/components/app/AppNav';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
+import { useDayMapCompletion } from '@/src/features/today/useDayMapCompletion';
 import { dayMapSheetLayout } from '@/src/features/today/day-map-sheet-layout';
 import { shortSession } from '@/src/features/today/short-session';
 import { useRecommendationMotion } from '@/src/features/today/useRecommendationMotion';
@@ -121,7 +121,7 @@ export default function TodayScreen() {
     reminderKind?: string | string[];
   }>();
   const { status, workspace, updateWorkspace, saveError, ownerKey } = useWorkspace();
-  const completeTaskWithUndo = useTaskCompletion();
+  const dayMapCompletion = useDayMapCompletion();
   const { session: activeFocus, ready: focusReady } = useFocus();
   const { session: activeReview, ready: reviewReady } = useReview();
   const { ready: onboardingReady, shouldShow: onboardingPending } = useOnboarding();
@@ -306,9 +306,9 @@ export default function TodayScreen() {
     return () => sub.remove();
   }, [isSheetExpanded, expandDistance]);
 
-  const crestPanGesture = useMemo(
-    () =>
-      Gesture.Pan()
+  const [crestPanGesture, previewPanGesture] = useMemo(
+    () => {
+      const makePan = () => Gesture.Pan()
         .activeOffsetY([-8, 8])
         .onStart(() => {
           sheetDragActive.value = true;
@@ -335,7 +335,9 @@ export default function TodayScreen() {
           // A tap fails the pan recognizer; it must not override the header button.
           if (sheetDragActive.value && !success) runOnJS(snapSheet)(sheetTranslateY.value < -expandDistance / 2);
           sheetDragActive.value = false;
-        }),
+        });
+      return [makePan(), makePan()] as const;
+    },
     [expandDistance, reduceMotionEnabled],
   );
 
@@ -590,7 +592,7 @@ export default function TodayScreen() {
   function handleStepPress(step: DayMapStep) {
     if (step.taskId) {
       if (!step.completed) {
-        completeTaskWithUndo(step.taskId);
+        dayMapCompletion.complete(step.taskId);
       } else {
         router.push({
           pathname: '/(app)/today/task/[taskId]',
@@ -800,6 +802,7 @@ export default function TodayScreen() {
             </View>
           </GestureDetector>
 
+          <GestureDetector gesture={previewPanGesture}>
           <Animated.View
             pointerEvents={isSheetExpanded ? 'none' : 'auto'}
             accessibilityElementsHidden={isSheetExpanded}
@@ -873,6 +876,7 @@ export default function TodayScreen() {
               </View>
             </View>
           </Animated.View>
+          </GestureDetector>
 
           <Animated.View
             pointerEvents={isSheetExpanded ? 'auto' : 'none'}
@@ -889,7 +893,7 @@ export default function TodayScreen() {
             style={styles.scroll}
             contentContainerStyle={[
               styles.content,
-              { paddingBottom: 32 },
+              { paddingBottom: dayMapCompletion.receipt || dayMapCompletion.notice ? 104 : 32 },
             ]}
             showsVerticalScrollIndicator={false}>
             {/* ===============================================================
@@ -1046,6 +1050,7 @@ export default function TodayScreen() {
                         {next.taskId ? (
                           <TaskQuickActions
                             paper
+                            onComplete={dayMapCompletion.complete}
                             task={currentWorkspace.tasks.find((task) => task.id === next.taskId)!}
                           />
                         ) : (
@@ -1130,7 +1135,13 @@ export default function TodayScreen() {
               </Animated.View>
 
               <View style={[styles.splitRightCol, styles.timelineColumn]}>
-                <Text style={styles.todayChecklistHeader}>DAY SEQUENCE</Text>
+                <View style={styles.sequenceHeadingRow}>
+                  <Text style={styles.todayChecklistHeader}>DAY SEQUENCE</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Open schedule and adjust the day"
+                    onPress={() => router.push('/(app)/today/day-map')} style={styles.scheduleShortcut}>
+                    <Text style={styles.scheduleShortcutText}>Schedule & adjust  ›</Text>
+                  </Pressable>
+                </View>
                 {dayMapStepsSummary.steps.length > 0 ? (
                   <DayMapSequence
                     steps={dayMapStepsSummary.steps}
@@ -1138,7 +1149,7 @@ export default function TodayScreen() {
                     onComplete={handleStepPress}
                   />
                 ) : currentPlan.blocks.length > 0 ? (
-                  currentPlan.blocks.slice(0, 3).map((block) => (
+                  currentPlan.blocks.map((block) => (
                     <Pressable
                       key={block.id}
                       accessibilityRole="button"
@@ -1539,6 +1550,25 @@ export default function TodayScreen() {
               </View>
             </View>
           </ScrollView>
+          {dayMapCompletion.receipt ? (
+            <View accessibilityLiveRegion="polite" style={styles.completionFeedback}>
+              <Text numberOfLines={2} style={styles.completionFeedbackText}>Completed {dayMapCompletion.receipt.title}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Undo completing ${dayMapCompletion.receipt.title}`}
+                onPress={dayMapCompletion.undo} style={styles.completionUndo}>
+                <Text style={styles.completionUndoText}>Undo</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Dismiss completion message"
+                onPress={dayMapCompletion.dismiss} style={styles.completionDismiss}>
+                <Text style={styles.completionUndoText}>×</Text>
+              </Pressable>
+            </View>
+          ) : dayMapCompletion.notice ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Dismiss task change message"
+              accessibilityLiveRegion="polite" onPress={dayMapCompletion.dismiss} style={styles.completionFeedback}>
+              <Text style={styles.completionFeedbackText}>{dayMapCompletion.notice}</Text>
+              <Text style={styles.completionUndoText}>Dismiss</Text>
+            </Pressable>
+          ) : null}
           </Animated.View>
         </Animated.View>
 
@@ -1919,6 +1949,15 @@ const styles = StyleSheet.create({
   previewComposition: { flexDirection: 'row', alignItems: 'center', minHeight: 104, gap: 12 },
   previewTrail: { width: 82, height: 100, marginTop: 0, marginBottom: 0 },
   previewDetail: { flex: 1, minWidth: 0, paddingTop: 0, paddingBottom: 0 },
+  sequenceHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  scheduleShortcut: { minHeight: 44, justifyContent: 'center', alignItems: 'flex-end' },
+  scheduleShortcutText: { color: chalkTheme.nextUpBadge, fontSize: 12, fontWeight: '600' },
+  completionFeedback: { position: 'absolute', left: 18, right: 18, bottom: 4, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 12, paddingRight: 6, backgroundColor: '#E2DFD3', borderColor: chalkTheme.paperLine, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, elevation: 5 },
+  completionFeedbackText: { flex: 1, color: chalkTheme.graphite, fontSize: 13 },
+  completionUndo: { minWidth: 56, minHeight: 48, justifyContent: 'center', alignItems: 'center' },
+  completionDismiss: { minWidth: 44, minHeight: 48, justifyContent: 'center', alignItems: 'center' },
+  completionUndoText: { color: chalkTheme.nextUpBadge, fontWeight: '700', fontSize: 13 },
+  completionNotice: { marginTop: 8, color: chalkTheme.inkSoft, fontSize: 13, lineHeight: 18 },
   timelineColumn: { width: '100%', flex: 0, gap: 0, marginTop: 14, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: chalkTheme.paperLine },
   splitLeftCol: {
     width: '100%',

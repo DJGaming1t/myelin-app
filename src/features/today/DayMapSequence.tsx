@@ -32,7 +32,7 @@ export function DayMapSequence({ steps, onOpen, onComplete }: Props) {
           <View style={styles.copy}>
             <Text style={styles.meta}>
               {step.scheduledStart > 0
-                ? new Date(step.scheduledStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                ? `${new Date(step.scheduledStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${step.scheduledEnd > step.scheduledStart ? `–${new Date(step.scheduledEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`
                 : 'Any time'}
               {' · '}{step.minutes} min
             </Text>

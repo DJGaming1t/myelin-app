@@ -1,3 +1,4 @@
+import { isDayMapSuggestionCurrent } from '@/src/features/today/day-map-suggestion';
 import { useDaySkip } from '@/src/features/planning/useDaySkip';
 import { daySkipFailureMessage, restorableOccurrenceDates } from '@/src/features/planning/day-skip';
 import type { Commitment, StudyTask } from '@/src/data/schema';
@@ -94,7 +95,7 @@ export default function DayMapScreen() {
     recoveredEnd?: string | string[];
     recoveredHandoff?: string | string[];
   }>();
-  const { workspace, ownerKey, updateWorkspace } = useWorkspace();
+  const { workspace, ownerKey, readWorkspace, updateWorkspace } = useWorkspace();
   const planning = useTaskPlanning();
   const daySkip = useDaySkip();
   const moveOwnerRef = useRef(ownerKey); moveOwnerRef.current = ownerKey;
@@ -442,17 +443,31 @@ export default function DayMapScreen() {
 
   function moveTask(taskId: string) {
     if (!ownerKey || moveOwnerRef.current !== ownerKey) return;
-    const task = workspace!.tasks.find(item => item.id === taskId);
-    if (!task) return;
+    const latest = readWorkspace(ownerKey);
+    const task = latest?.tasks.find(item => item.id === taskId);
+    if (!latest || !task || task.status !== 'open') return;
     const offeredAt = Date.now();
-    const slot = suggestTaskSlots(workspace!, task, offeredAt, 1)[0];
+    const slot = suggestTaskSlots(latest, task, offeredAt, 1)[0];
     if (!slot) { setMoveNotice({ ownerKey, text: 'No open suggestion was found. Your current plan was kept.' }); return; }
-    const result = planning.schedule(task, { kind: 'suggested', start: slot.start, end: slot.end, offeredAt });
-    if (!result.ok && result.reason === 'consumed') return;
-    if (!result.ok) { setMoveNotice({ ownerKey, text: planningFailureMessage(result.reason, 'move') }); return; }
-    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
-    setMoveNotice({ ownerKey, text: 'Task scheduled in the next available gap · Deadline unchanged.' });
-    setNow(Date.now());
+    const date = new Date(slot.start).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const message = `${date} · ${timeLabel(slot.start)}–${timeLabel(slot.end)}\nYour deadline will stay the same.`;
+    Alert.alert('Schedule ' + task.title + '?', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Schedule', onPress: () => {
+        if (moveOwnerRef.current !== ownerKey) return;
+        const current = readWorkspace(ownerKey);
+        if (!current || !isDayMapSuggestionCurrent({ offeredRevision: latest.revision, currentRevision: current.revision, offeredAt, start: slot.start, end: slot.end, now: Date.now() })) {
+          setMoveNotice({ ownerKey, text: 'Your plan or the suggested time changed. Request a fresh suggestion.' });
+          return;
+        }
+        const result = planning.schedule(task, { kind: 'suggested', start: slot.start, end: slot.end, offeredAt });
+        if (!result.ok && result.reason === 'consumed') return;
+        if (!result.ok) { setMoveNotice({ ownerKey, text: planningFailureMessage(result.reason, 'move') }); return; }
+        setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+        setMoveNotice({ ownerKey, text: 'Task scheduled · Deadline unchanged.' });
+        setNow(Date.now());
+      } },
+    ]);
   }
 
   // A fully logged task can remain open after a sync or manual edit. Its

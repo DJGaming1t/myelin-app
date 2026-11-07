@@ -17,7 +17,7 @@ export function TaskDueLabel({ task, now = Date.now() }: { task: StudyTask; now?
   return <Text style={[styles.due, urgency.overdue && styles.overdue]}>{urgency.overdue ? '● ' : ''}{urgency.label}</Text>;
 }
 
-export function TaskQuickActions({ task, paper = true }: { task: StudyTask; paper?: boolean }) {
+export function TaskQuickActions({ task, paper = true, onComplete }: { task: StudyTask; paper?: boolean; onComplete?: (taskId: string) => void }) {
   const complete = useQuickTaskCompletion();
   const { session } = useFocus();
   const { session: review } = useReview();
@@ -34,7 +34,7 @@ export function TaskQuickActions({ task, paper = true }: { task: StudyTask; pape
     <SpringPressable accessibilityRole="button" accessibilityLabel={`Focus on ${task.title}`} onPress={focus} style={[styles.action, styles.focus, paper && {backgroundColor: '#FF9176', borderColor: '#FF9176', borderRadius:28}]}>
       <Text style={[styles.focusText, paper && {color:'#241B17'}]}>{session?.taskId === task.id ? 'Resume timer' : '▶ Focus'}</Text>
     </SpringPressable>
-    <SpringPressable accessibilityRole="button" accessibilityLabel={`Complete ${task.title}`} onPress={() => complete(task.id)} style={[styles.action, paper && {borderColor:'#B9B5AB',borderRadius:28}]}>
+    <SpringPressable accessibilityRole="button" accessibilityLabel={`Complete ${task.title}`} onPress={() => onComplete ? onComplete(task.id) : complete(task.id)} style={[styles.action, paper && {borderColor:'#B9B5AB',borderRadius:28}]}>
       <Text style={[styles.completeText, paper && {color:'#343D34'}]}>✓ Complete</Text>
     </SpringPressable>
   </View>;

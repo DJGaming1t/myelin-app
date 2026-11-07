@@ -1,7 +1,7 @@
 name: Day Map feature verification
 on:
   push:
-    branches: [codex/day-map-tactile-overhaul]
+    branches: [codex/day-map-tactile-overhaul, codex/day-map-chalk-summary]
   workflow_dispatch:
 permissions:
   contents: read

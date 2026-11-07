@@ -649,6 +649,17 @@ export default function TodayScreen() {
               <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={isSheetExpanded} />
             </View>
 
+            {/* Faint chalk typography and pencil marks frame the actual 3D object. */}
+            <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.heroSketchLayer}>
+              <Text maxFontSizeMultiplier={1} style={styles.chalkNumber}>{todayTaskProgress}</Text>
+              <View style={styles.chalkArc} />
+              <View style={styles.chalkGrid}>
+                {Array.from({ length: 9 }, (_, index) => <View key={index} style={styles.chalkDot} />)}
+              </View>
+              <View style={styles.chalkBox} />
+              <View style={styles.chalkBoxSmall} />
+            </View>
+
             {/* Progress readout stays separate from the moving bottle. */}
             <View
               style={[
@@ -706,10 +717,27 @@ export default function TodayScreen() {
 
         </Animated.View>
 
-        <Animated.View pointerEvents="none" style={[styles.expandedSummary, animatedSummaryStyle]}>
-          <Text style={styles.summaryDate}>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
-          <Text style={styles.summaryHeading}>A little progress, every day.</Text>
-          <Text style={styles.summaryDetail}>{progressSummary.done} of {totalTaskCount} tasks complete · {formatCompletedFocusDuration(completedFocusMinutes)} focus</Text>
+        <Animated.View
+          pointerEvents="none"
+          accessibilityElementsHidden={!isSheetExpanded}
+          importantForAccessibility={isSheetExpanded ? 'auto' : 'no-hide-descendants'}
+          style={[styles.expandedSummary, expandedSheetTop < 160 && styles.compactSummary, animatedSummaryStyle]}>
+          <View style={styles.summaryDateRow}>
+            <View style={styles.summaryDayGroup}>
+              <Text maxFontSizeMultiplier={1.2} style={[styles.summaryDay, expandedSheetTop < 160 && styles.compactSummaryDay]}>{String(new Date(now).getDate()).padStart(2, '0')}</Text>
+              <View style={styles.summaryRedDot} />
+            </View>
+            <Text style={styles.summaryDate}>
+              {new Date(now).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}{'\n'}
+              {new Date(now).toLocaleDateString(undefined, { weekday: 'long' })}
+            </Text>
+          </View>
+          <Text numberOfLines={2} maxFontSizeMultiplier={1.2} style={[styles.summarySentence, expandedSheetTop < 160 && styles.compactSummarySentence]}>
+            <Text style={styles.summaryMuted}>Today, </Text>
+            <Text style={styles.summaryBright}>{progressSummary.done} of {totalTaskCount} {totalTaskCount === 1 ? 'task' : 'tasks'}</Text>
+            <Text style={styles.summaryMuted}> complete · </Text>
+            <Text style={styles.summaryBright}>{formatCompletedFocusDuration(completedFocusMinutes)} focus</Text>
+          </Text>
         </Animated.View>
 
         {/* ===================================================================
@@ -1632,10 +1660,25 @@ const styles = StyleSheet.create({
   sheetHeadingMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   compactPreview: { position: 'absolute', top: 90, left: 22, right: 22 },
   expandedBody: { flex: 1 },
-  expandedSummary: { position: 'absolute', top: 65, left: 24, right: 24 },
-  summaryDate: { color: chalkTheme.mutedCream, fontSize: 12, marginBottom: 6 },
-  summaryHeading: { color: chalkTheme.onStage, fontSize: 23, lineHeight: 29 },
-  summaryDetail: { color: chalkTheme.mutedCream, fontSize: 13, marginTop: 8 },
+  expandedSummary: { position: 'absolute', top: 58, left: 24, right: 24 },
+  compactSummary: { top: 54 },
+  compactSummaryDay: { fontSize: 27, lineHeight: 32 },
+  compactSummarySentence: { fontSize: 13, lineHeight: 17, marginTop: 3 },
+  summaryDateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryDayGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  summaryDay: { color: chalkTheme.onStage, fontSize: 38, lineHeight: 44, fontWeight: '600', letterSpacing: -1 },
+  summaryRedDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#D46A5E', marginTop: 3 },
+  summaryDate: { color: chalkTheme.mutedCream, fontSize: 12, lineHeight: 16, textAlign: 'right' },
+  summarySentence: { marginTop: 8, fontSize: 16, lineHeight: 22 },
+  summaryMuted: { color: '#B7B0A1' },
+  summaryBright: { color: chalkTheme.onStage, fontWeight: '600' },
+  heroSketchLayer: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden' },
+  chalkNumber: { position: 'absolute', top: -4, left: 16, color: 'rgba(242,231,208,.10)', fontFamily: 'serif', fontWeight: '700', fontSize: 142, lineHeight: 160, letterSpacing: -5, textShadowColor: 'rgba(242,231,208,.05)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 1 },
+  chalkArc: { position: 'absolute', top: 8, right: 38, width: 220, height: 220, borderRadius: 110, borderWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,.23)' },
+  chalkGrid: { position: 'absolute', right: 24, top: 12, width: 27, height: 27, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignContent: 'space-between' },
+  chalkDot: { width: 2, height: 2, borderRadius: 1, backgroundColor: 'rgba(242,231,208,.55)', marginHorizontal: 3 },
+  chalkBox: { position: 'absolute', right: 32, bottom: 18, width: 10, height: 10, borderWidth: 1, borderColor: 'rgba(242,231,208,.26)' },
+  chalkBoxSmall: { position: 'absolute', right: 49, bottom: 33, width: 5, height: 5, borderWidth: 1, borderColor: 'rgba(242,231,208,.20)' },
   safe: {
     flex: 1,
     backgroundColor: chalkTheme.hero,

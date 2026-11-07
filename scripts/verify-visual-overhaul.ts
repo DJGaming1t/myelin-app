@@ -73,7 +73,7 @@ function main() {
     false,
     'Legacy horizontal progress bar beneath hero must be removed',
   );
-  assert.ok(today.includes('{progressSummary.done} of {totalTaskCount} tasks complete'), 'Progress rail shows real task counts');
+  assert.ok(today.includes('{progressSummary.done} of {totalTaskCount}') && today.includes('computeTodayProgress'), 'Expanded summary shows real task counts');
   assert.ok(today.includes('computeTodayProgress'));
   assert.ok(today.includes('computeCompletedFocusMinutesToday'));
   assert.ok(today.includes('computeStudyStreakDays'));

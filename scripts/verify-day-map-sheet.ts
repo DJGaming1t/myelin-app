@@ -14,6 +14,7 @@ for (const height of [568, 640, 740, 800, 920, 1024]) {
         assert(usable - g.expandedSheetTop - g.dockClearance - 68 >= 180,
           'expanded scrolling viewport must remain usable');
         assert(g.heroStageHeight >= 48, 'persistent visual must retain a drawable viewport');
+        if (g.expandedSheetTop < 160) assert(g.expandedSheetTop >= 123, 'compact summary must fit above the sheet');
       }
     }
   }

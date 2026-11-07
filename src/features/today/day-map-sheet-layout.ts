@@ -3,7 +3,7 @@ export function dayMapSheetLayout(height: number, topInset: number, bottomInset:
   const usableHeight = Math.max(320, height - topInset);
   const dockClearance = 80 + Math.max(bottomInset, 12);
   const previewHeight = 212 + Math.round(Math.max(0, Math.min(fontScale, 1.6) - 1) * 80);
-  const expandedSheetTop = Math.min(148, usableHeight * .22);
+  const expandedSheetTop = Math.max(0, Math.min(188, usableHeight * .26, usableHeight - dockClearance - 260));
   const collapsedSheetTop = Math.max(expandedSheetTop + 80, usableHeight - dockClearance - previewHeight);
   return {
     dockClearance, collapsedSheetTop, expandedSheetTop,

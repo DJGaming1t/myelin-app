@@ -147,7 +147,7 @@ export default function TodayScreen() {
     setReflow(null);
   }, [ownerKey]);
 
-  const [heroModel, setHeroModel] = useState<TodayHeroVisualModel>('bottle');
+  const [heroModel] = useState<TodayHeroVisualModel>('cycle');
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
 
   const activeThemeId: ThemePaletteId = workspace?.settings?.themePalette ?? 'editorial';
@@ -270,15 +270,7 @@ export default function TodayScreen() {
   const reduceMotionEnabled = Boolean(workspace?.settings?.reduceMotion);
   const { dockClearance, collapsedSheetTop, expandedSheetTop, expandDistance, heroStageHeight } =
     dayMapSheetLayout(screenHeight, insets.top, insets.bottom, fontScale);
-  // A circle much wider than the screen gives the cap a shallow, not domed, edge.
-  const sheetWidth = screenWidth - 20;
-  const arcRadius = screenWidth * 1.35;
-  const arcRise = Math.ceil(arcRadius - Math.sqrt(arcRadius * arcRadius - sheetWidth * sheetWidth / 4));
-  const arcBands = Array.from({ length: arcRise }, (_, index) => {
-    const y = index + 1;
-    return Math.min(sheetWidth, 2 * Math.sqrt(Math.max(0, 2 * arcRadius * y - y * y)));
-  });
-  const archBorderRadius = 28;
+  const archBorderRadius = Math.round(Math.min(46, screenWidth * .12));
 
   const sheetTranslateY = useSharedValue(0);
   const sheetStartY = useSharedValue(0);
@@ -358,22 +350,16 @@ export default function TodayScreen() {
     sheetTranslateY.value = isSheetExpanded ? -expandDistance : 0;
   }, [expandDistance]);
 
-  const animatedCapStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(-sheetTranslateY.value, [0, expandDistance * .7], [1, 0], Extrapolation.CLAMP),
-  }));
-  const animatedExpandedPaperStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(-sheetTranslateY.value, [0, expandDistance * .7], [0, 1], Extrapolation.CLAMP),
-  }));
   const animatedSheetStyle = useAnimatedStyle(() => ({
     height: screenHeight - insets.top - collapsedSheetTop - sheetTranslateY.value,
     transform: [{ translateY: sheetTranslateY.value }],
-    borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [0, 28], Extrapolation.CLAMP),
-    borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [0, 28], Extrapolation.CLAMP),
+    borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius, 28], Extrapolation.CLAMP),
+    borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius, 28], Extrapolation.CLAMP),
   }));
 
   const animatedSeamStyle = useAnimatedStyle(() => ({
-    borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [0, 25], Extrapolation.CLAMP),
-    borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [0, 25], Extrapolation.CLAMP),
+    borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius - 3, 25], Extrapolation.CLAMP),
+    borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius - 3, 25], Extrapolation.CLAMP),
   }));
 
   // Both compositions keep their own widths throughout a drag. Only opacity and
@@ -702,7 +688,6 @@ export default function TodayScreen() {
                 accessibilityRole="progressbar"
                 accessibilityLabel="Today's task progress"
                 accessibilityValue={{ min: 0, max: 100, now: todayTaskProgress }}
-                onPress={() => setHeroModel((m) => (m === 'bottle' ? 'stopwatch' : 'bottle'))}
                 style={styles.heroProgressCallout}>
                 <Text style={styles.heroProgressPercent}>{todayTaskProgress}%</Text>
                 <Text style={styles.heroProgressCaption}>of today’s tasks</Text>
@@ -786,11 +771,7 @@ export default function TodayScreen() {
             },
             animatedSheetStyle,
           ]}>
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, animatedCapStyle]}>
-            {arcBands.map((width, y) => <View key={y} style={{ position: 'absolute', top: y, width, height: 1.5, alignSelf: 'center', backgroundColor: chalkTheme.paper }} />)}
-            <View style={{ position: 'absolute', top: arcRise, left: 0, right: 0, bottom: 0, backgroundColor: chalkTheme.paper }}><ChalkGrain paper /></View>
-          </Animated.View>
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: chalkTheme.paper }, animatedExpandedPaperStyle]}><ChalkGrain paper /></Animated.View>
+          <ChalkGrain paper />
           {/* Inner Pencilled Contour Seam Following the Arch */}
           <Animated.View
             pointerEvents="none"
@@ -1868,8 +1849,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 10,
     right: 10,
-    backgroundColor: 'transparent',
-    borderTopWidth: 0,
+    backgroundColor: chalkTheme.paper,
+    borderTopWidth: 1.5,
+    borderColor: chalkTheme.paperContour,
     shadowColor: '#000000',
     shadowOpacity: 0.22,
     shadowRadius: 20,

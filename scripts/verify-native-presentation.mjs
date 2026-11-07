@@ -165,7 +165,7 @@ function bounds(group) {
 for (const aspect of [0.8, 1, 1.6]) {
   engine.camera.aspect = aspect;
   engine.camera.updateProjectionMatrix();
-  for (let frame = 0; frame < 2000; frame++) {
+  for (let frame = 0; frame < 3400; frame++) {
     elapsed += 16;
     engine.update(16, 50, false, drag);
     const visible = groups.filter((g) => g.visible);
@@ -180,7 +180,7 @@ for (const aspect of [0.8, 1, 1.6]) {
       maxFrameAngle = Math.max(maxFrameAngle, g.quaternion.angleTo(previous.quaternion));
     }
     previous = { index, quaternion: g.quaternion.clone() };
-    if (elapsed % 6000 > 800 && elapsed % 6000 < 820) {
+    if (elapsed % 10000 > 800 && elapsed % 10000 < 820) {
       const b = bounds(g);
       seen.add(index);
       assert.ok(Math.max(b.width, b.height) > 0.43, `${names[index]} is too small`);
@@ -203,7 +203,7 @@ assert.ok(maxFrameAngle < 0.02, `Abrupt orientation change ${maxFrameAngle}`);
 // Drag resets at a switch, then every model starts from its chosen resting angle.
 drag.x = 1;
 drag.y = 0.3;
-for (let i = 0; i < 390; i++) engine.update(16, 75, true, drag);
+for (let i = 0; i < 650; i++) engine.update(16, 75, true, drag);
 assert.equal(drag.x, 0);
 assert.equal(drag.y, 0);
 const g = groups.find((g) => g.visible),

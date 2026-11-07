@@ -399,7 +399,7 @@ class CubeRenderer{
     shader.fragmentShader=shader.fragmentShader.replace(
       'diffuseColor.a *= visibility;',
       'diffuseColor.a *= visibility * mix(0.48,1.0,smoothstep(-0.12,0.55,vFacing));\n' +
-      'diffuseColor.a *= 1.0 - smoothstep(.36,.50,length(gl_PointCoord.xy - vec2(.5)));'
+      'diffuseColor.a *= 1.0 - smoothstep(.44,.49,length(gl_PointCoord.xy - vec2(.5)));'
     );
    };
    material.customProgramCacheKey=()=> 'myelin-cube-front-grain-v5';
@@ -427,7 +427,7 @@ class CubeRenderer{
    const serial=cubie.home.reduce((a,v)=>a*7+v+2,19);
    const particles=buildCubieParticles(cubie.stickers,{density:this.large?1.65:1,seed:serial});
    unit.add(this.cloud(particles.edge,this.large?.0185:.016,.98,.18,true));
-   unit.add(this.cloud(particles.sticker,this.large?.019:.017,.99,.14,true));
+   unit.add(this.cloud(particles.sticker,this.large?.0165:.014,.99,.14,true));
    this.root.add(unit);this.meshes.set(cubie.id,unit);
   }
   this.stage=originalStage;this.targetStage=originalStage;this.active=null;this.ready=true;
@@ -1951,7 +1951,7 @@ class StopwatchRenderer {
  }
  let activeMode=options?.mode||'cycle';
  let lockedIndex=resolveModeIndex(activeMode);
- let current=lockedIndex!==null?lockedIndex:0,elapsed=0,localTime=0,transition=null,lastProgress=NaN;
+ let current=lockedIndex!==null?lockedIndex:1,elapsed=10000,localTime=0,transition=null,lastProgress=NaN;
  const framing=new Map(), fadedMaterials=new Map();
  // Compute framing once per object/aspect, after the offline model is ready.
  // Uniform scaling preserves the sculpture; camera distance fits its silhouette.
@@ -2036,7 +2036,7 @@ class StopwatchRenderer {
   restoreOpacity();
   const delta=Math.max(0,Math.min(64,dt));elapsed+=delta;localTime+=delta;
   progress=Math.max(0,Math.min(100,Number(progress)||0));state.progress=progress;
-  const next=lockedIndex!==null?lockedIndex:(Math.floor(elapsed/6000)%5);
+  const next=lockedIndex!==null?lockedIndex:(Math.floor(elapsed/10000)%5);
   if(next!==current){
    const from=current;current=next;localTime=0;
    transition=reduced?null:{from,to:next,time:0};

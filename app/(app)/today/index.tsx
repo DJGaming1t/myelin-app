@@ -796,9 +796,9 @@ export default function TodayScreen() {
                 DIAGONAL ISOMETRIC BRICK PATH (0, 1, or N Real Steps)
                =============================================================== */}
             {dayMapStepsSummary.totalSteps > 0 ? (
-              <View style={styles.brickTrailContainer}>
+              <View style={[styles.brickTrailContainer, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickTrail]}>
                 {/* Ascending Dashed Graphite Path */}
-                <View pointerEvents="none" style={styles.dashedTrailLine} />
+                <View pointerEvents="none" style={[styles.dashedTrailLine, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickLine]} />
 
                 {dayMapStepsSummary.previewSteps.map((step, index) => {
                   const totalPreview = dayMapStepsSummary.previewSteps.length;
@@ -815,7 +815,7 @@ export default function TodayScreen() {
                       key={step.id}
                       step={step}
                       xPct={slot.xPct}
-                      yPx={slot.yPx}
+                      yPx={totalPreview === 1 ? 32 : slot.yPx}
                       scale={slot.scale}
                       onPress={() => handleStepPress(step)}
                     />
@@ -2005,6 +2005,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 6,
   },
+  singleBrickTrail: { height: 65, marginBottom: 4 },
+  singleBrickLine: { right: '62%', top: 38 },
   dashedTrailLine: {
     position: 'absolute',
     left: '8%',

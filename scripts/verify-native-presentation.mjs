@@ -233,6 +233,24 @@ for (let f = 0; f < 1000; f++) {
   );
 }
 
+// Keep the animated shell inside the camera on both narrow and wide hero areas.
+for (const aspect of [0.85, 1.6, 2.1]) {
+  bottleEngine.camera.aspect = aspect;
+  bottleEngine.camera.updateProjectionMatrix();
+  const projected = new THREE.Vector3();
+  for (let frame = 0; frame < 80; frame++) {
+    bottleEngine.update(32, 43, false, { x: 0, y: 0 });
+    bottleEngine.scene.updateMatrixWorld(true);
+    bottleEngine.camera.updateMatrixWorld(true);
+    const shell = bottleEngine.bottle.shell;
+    const points = shell.geometry.attributes.position;
+    for (let point = 0; point < points.count; point += 10) {
+      projected.fromBufferAttribute(points, point).applyMatrix4(shell.matrixWorld).project(bottleEngine.camera);
+      assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1, `Bottle clipped at aspect ${aspect}`);
+    }
+  }
+}
+
 // Check 0%, 25%, 43%, 75%, 100% fill states on BottleRenderer
 for (const pct of [0, 25, 43, 75, 100]) {
   bottleEngine.update(16, pct, true, { x: 0, y: 0 });

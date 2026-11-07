@@ -1981,6 +1981,9 @@ class StopwatchRenderer {
       distance=Math.max(distance,vertex.z+Math.max(Math.abs(vertex.y)/(tan*.84),Math.abs(vertex.x)/(tan*camera.aspect*.84)));
      }
     });
+    // The bottle is the focal object; bring its camera closer while retaining
+    // a margin around the cap and lower edge for idle motion.
+    if(index===1)distance*=.90;
     frame={center,distance};framing.set(cacheKey,frame);
    }
    group.rotation.copy(rotation);group.scale.copy(scale);group.position.copy(position);

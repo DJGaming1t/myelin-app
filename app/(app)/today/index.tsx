@@ -1,4 +1,5 @@
 import { ChalkGrain } from '@/src/components/app/ChalkGrain';
+import { CHALK_DIGITS } from '@/src/features/today/chalkDigits';
 import { DayMapSequence } from '@/src/features/today/DayMapSequence';
 import { TimeBrick } from '@/src/features/planning/TimeBrick';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
@@ -30,6 +31,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -426,7 +428,11 @@ export default function TodayScreen() {
     recoveredWindow?.placements.find((placement) => placement.end > now) ?? null;
 
   const todayTaskProgress = progressSummary.percent;
+  const progressDigits = String(todayTaskProgress).split('');
+  const chalkDigitWidth = Math.min(94, Math.max(38, (screenWidth * .48) / progressDigits.length));
+  const chalkDigitHeight = chalkDigitWidth * 220 / 150;
   const totalTaskCount = progressSummary.total;
+  const allTasksComplete = totalTaskCount > 0 && progressSummary.done === totalTaskCount;
 
   function dismissExpiredReminderFallback() {
     router.replace('/(app)/today');
@@ -651,7 +657,12 @@ export default function TodayScreen() {
 
             {/* Faint chalk typography and pencil marks frame the actual 3D object. */}
             <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.heroSketchLayer}>
-              <Text maxFontSizeMultiplier={1} style={styles.chalkNumber}>{todayTaskProgress}</Text>
+              <View style={[styles.chalkNumber, { width: chalkDigitWidth * progressDigits.length, height: chalkDigitHeight }]}>
+                {progressDigits.map((digit, index) => (
+                  <Image key={`${index}-${digit}`} source={{ uri: CHALK_DIGITS[Number(digit)] }}
+                    resizeMode="stretch" fadeDuration={0} style={{ width: chalkDigitWidth, height: chalkDigitHeight }} />
+                ))}
+              </View>
               <View style={styles.chalkArc} />
               <View style={styles.chalkGrid}>
                 {Array.from({ length: 9 }, (_, index) => <View key={index} style={styles.chalkDot} />)}
@@ -888,7 +899,7 @@ export default function TodayScreen() {
             <View style={styles.expandedDetailsSection}>
               <View style={styles.nextHeading}>
                 <Text style={styles.nextLabel}>
-                  {activeReview || activeFocus ? 'CONTINUE' : 'UP NEXT'}
+                  {activeReview || activeFocus ? 'CONTINUE' : allTasksComplete && !next ? 'ALL DONE' : budgetFinished ? 'TODAY' : next ? 'UP NEXT' : 'TODAY'}
                 </Text>
                 <Text style={styles.todayDate}>
                   {new Date(now).toLocaleDateString(undefined, {
@@ -941,15 +952,15 @@ export default function TodayScreen() {
                     </View>
                   </View>
                 ) : budgetFinished ? (
-                  <View style={styles.heroQuiet}>
-                    <Text style={styles.heroTitle}>
+                  <View style={[styles.heroQuiet, styles.restNotice]}>
+                    <Text style={[styles.heroTitle, styles.restTitle]}>
                       {sleepingAt(currentWorkspace.settings, now)
-                        ? 'Your sleep window is protected.'
+                        ? allTasksComplete ? 'All tasks complete.' : 'Time to rest.'
                         : 'You have used today’s study capacity.'}
                     </Text>
                     <Text style={styles.heroReason}>
                       {sleepingAt(currentWorkspace.settings, now)
-                        ? 'Your tasks are saved. Day Map can find a slot after you wake.'
+                        ? allTasksComplete ? 'Your sleep window is protected. Plan again after you wake.' : 'Your tasks are saved. Plan again after you wake.'
                         : 'MYELIN will stay quiet unless your available time changes.'}
                     </Text>
                     <View
@@ -1673,7 +1684,7 @@ const styles = StyleSheet.create({
   summaryMuted: { color: '#B7B0A1' },
   summaryBright: { color: chalkTheme.onStage, fontWeight: '600' },
   heroSketchLayer: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden' },
-  chalkNumber: { position: 'absolute', top: -4, left: 16, color: 'rgba(242,231,208,.10)', fontFamily: 'serif', fontWeight: '700', fontSize: 142, lineHeight: 160, letterSpacing: -5, textShadowColor: 'rgba(242,231,208,.05)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 1 },
+  chalkNumber: { position: 'absolute', top: 4, left: 16, flexDirection: 'row', opacity: .14 },
   chalkArc: { position: 'absolute', top: 8, right: 38, width: 220, height: 220, borderRadius: 110, borderWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,.23)' },
   chalkGrid: { position: 'absolute', right: 24, top: 12, width: 27, height: 27, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignContent: 'space-between' },
   chalkDot: { width: 2, height: 2, borderRadius: 1, backgroundColor: 'rgba(242,231,208,.55)', marginHorizontal: 3 },
@@ -1898,13 +1909,17 @@ const styles = StyleSheet.create({
     width: 62,
     height: 15,
     borderRadius: 12,
-    backgroundColor: 'rgba(44, 43, 40, 0.10)',
+    backgroundColor: 'rgba(44, 43, 40, 0.13)',
+    shadowColor: '#50483D',
+    shadowOpacity: .22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
     transform: [{ rotate: '-8deg' }],
   },
   previewComposition: { flexDirection: 'row', alignItems: 'center', minHeight: 104, gap: 12 },
   previewTrail: { width: 82, height: 100, marginTop: 0, marginBottom: 0 },
   previewDetail: { flex: 1, minWidth: 0, paddingTop: 0, paddingBottom: 0 },
-  timelineColumn: { width: '100%', flex: 0, gap: 0, marginTop: 20, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: chalkTheme.paperLine },
+  timelineColumn: { width: '100%', flex: 0, gap: 0, marginTop: 14, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: chalkTheme.paperLine },
   splitLeftCol: {
     width: '100%',
     minWidth: 0,
@@ -2007,6 +2022,8 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 16,
   },
+  restNotice: { paddingTop: 2, paddingBottom: 0 },
+  restTitle: { fontSize: 21, lineHeight: 27 },
   heroQuiet: {
     paddingVertical: 8,
   },

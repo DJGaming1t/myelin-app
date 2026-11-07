@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   marker: { width: 52, alignItems: 'center', justifyContent: 'center' },
   railAbove: { position: 'absolute', top: 0, bottom: '50%', left: 25, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(63,56,46,.25)' },
   railBelow: { position: 'absolute', top: '50%', bottom: 0, left: 25, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(63,56,46,.25)' },
-  brick: { paddingVertical: 6, backgroundColor: chalkTheme.paper, borderRadius: 24 },
+  brick: { paddingVertical: 6, backgroundColor: 'transparent', shadowColor: '#50483D', shadowOpacity: .18, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },
   copy: { flex: 1, minWidth: 0, justifyContent: 'center', paddingVertical: 16, paddingLeft: 12, paddingRight: 4 },
   meta: { color: chalkTheme.inkSoft, fontSize: 11, lineHeight: 16, marginBottom: 4 },
   title: { color: chalkTheme.graphite, fontSize: 16, lineHeight: 22, fontWeight: '500' },

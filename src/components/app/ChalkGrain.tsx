@@ -17,7 +17,7 @@ const flecks = Array.from({ length: 120 }, (_, i) => ({
   transform: [{ rotate: `${Math.round(noise(i * 5 + 4) * 140 - 70)}deg` }],
 }));
 // Long, faint fibres sit over the fine grain without a noisy field of dots.
-const fibres = Array.from({ length: 56 }, (_, i) => ({
+const fibres = Array.from({ length: 72 }, (_, i) => ({
   left: `${noise(i * 7 + 1) * 100}%` as `${number}%`,
   top: `${noise(i * 7 + 2) * 100}%` as `${number}%`,
   width: 3 + noise(i * 7 + 3) * 7,
@@ -27,7 +27,7 @@ const fibres = Array.from({ length: 56 }, (_, i) => ({
 }));
 export const ChalkGrain = memo(function ChalkGrain({ paper = false }: { paper?: boolean }) {
   return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" renderToHardwareTextureAndroid shouldRasterizeIOS style={StyleSheet.absoluteFill}>
-    {paper ? <Image source={{ uri: paperTexture }} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: .56 }]} /> : null}
+    {paper ? <Image source={{ uri: paperTexture }} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: .62 }]} /> : null}
     {paper ? fibres.map((style, i) => <View key={`fibre-${i}`} style={[styles.fleck, style, { backgroundColor: '#655746' }]} />) : null}
     {flecks.map((style, i) => <View key={i} style={[styles.fleck, style, { backgroundColor: paper ? (i % 4 === 0 ? '#FFF9E8' : '#655746') : '#F2E7D0' }]} />)}
   </View>;

@@ -1540,7 +1540,7 @@ class BottleRenderer {
 
   // Interior + wall dusty-blue liquid point cloud; sorted by gravity-compensated height
   // (effectiveY = y - gravitySlope * x) so the water level sits horizontal inside the tilted bottle.
-  const nWater=state.large?23000:15500;
+  const nWater=state.large?16000:10500;
   const rawWater=[];
   for(let i=0;i<nWater;i++){
    const frac=(i+.1+rand()*.8)/nWater;
@@ -1570,13 +1570,13 @@ class BottleRenderer {
   }
   const waterGeo=this.makePointGeometry(waterPos,waterNormals,waterCols);
   this.water=new THREE.Points(waterGeo,pointMaterial({
-   size:state.large?.0114:.0106,opacity:.90,vertexColors:true,rear:.24
+   size:state.large?.0106:.0096,opacity:.70,vertexColors:true,rear:.12
   }));
   this.fluidRoot.add(this.water);this.waterPoints=nWater;
   this.water.userData.basePositions=this.water.geometry.attributes.position.array.slice();
 
   this.waterBody=new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(.33,this.yBottom),new THREE.Vector2(.33,this.yBottom+.01)],64),
-   new THREE.MeshBasicMaterial({color:CHALK_PROGRESS_RGB,side:THREE.DoubleSide,transparent:true,opacity:.14,depthTest:true,depthWrite:false,toneMapped:false}));
+   new THREE.MeshBasicMaterial({color:CHALK_PROGRESS_RGB,side:THREE.DoubleSide,transparent:true,opacity:.09,depthTest:true,depthWrite:false,toneMapped:false}));
   this.waterBody.renderOrder=0;this.fluidRoot.add(this.waterBody);
 
   this.surface=new THREE.Mesh(

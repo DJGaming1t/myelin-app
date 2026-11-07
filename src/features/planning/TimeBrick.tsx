@@ -9,6 +9,6 @@ export const TimeBrick = memo(function TimeBrick({ size, tone = 'fixed' }: Props
   const uri = brickRenders[toneIndex[tone] % brickRenders.length];
   return <View accessible={false} style={{ width: size, height: size * .8 }}>
     <Image source={{ uri }} resizeMode="contain" fadeDuration={0} style={{ width: size, height: size * .8 }} />
-    <Image source={{ uri }} resizeMode="contain" fadeDuration={0} style={{ position: 'absolute', width: size, height: size * .8, tintColor: tone === 'fixed' ? '#F2E7D0' : tone === 'missed' ? '#B89C88' : '#7E98A4', opacity: .44 }} />
+    <Image source={{ uri }} resizeMode="contain" fadeDuration={0} style={{ position: 'absolute', width: size, height: size * .8, tintColor: tone === 'fixed' ? '#F2E7D0' : tone === 'missed' ? '#B89C88' : '#7E98A4', opacity: .52 }} />
   </View>;
 });

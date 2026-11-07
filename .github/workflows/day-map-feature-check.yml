@@ -25,3 +25,5 @@ jobs:
         run: node --import tsx scripts/verify-day-map-sheet.ts
       - name: Check task opening and completion interactions
         run: node scripts/verify-day-map-sequence.mjs
+      - name: Check native visual engine
+        run: node scripts/verify-native-presentation.mjs

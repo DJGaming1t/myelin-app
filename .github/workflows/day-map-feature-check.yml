@@ -21,3 +21,5 @@ jobs:
       - run: npm run verify:today
       - run: npm run verify:focus
       - run: npm run verify:visual
+      - name: Check sheet geometry and dock clearance
+        run: node --import tsx scripts/verify-day-map-sheet.ts

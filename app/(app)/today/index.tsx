@@ -41,6 +41,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   Extrapolation,
   interpolate,
   runOnJS,
@@ -56,6 +57,7 @@ import { AppNav } from '@/src/components/app/AppNav';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { StudySignal } from '@/src/features/today/StudySignal';
+import { dayMapSheetLayout } from '@/src/features/today/day-map-sheet-layout';
 import { shortSession } from '@/src/features/today/short-session';
 import { useRecommendationMotion } from '@/src/features/today/useRecommendationMotion';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
@@ -120,7 +122,7 @@ function firstParam(value: string | string[] | undefined) {
 }
 
 export default function TodayScreen() {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     reminderExpired?: string | string[];
@@ -274,12 +276,9 @@ export default function TodayScreen() {
   // PERSISTENT CREAM DAY MAP SHEET GEOMETRY & REANIMATED GESTURE PHYSICS
   // ==========================================================================
   const reduceMotionEnabled = Boolean(workspace?.settings?.reduceMotion);
-  const collapsedSheetTop = Math.max(305, Math.min(screenHeight - 235, Math.round(screenHeight * .50)));
-  const heroStageHeight = Math.max(125, collapsedSheetTop - 196);
-  const expandedSheetTop = Math.min(180, screenHeight * .24);
-  const archBorderRadius = Math.round(Math.min(90, screenWidth * 0.23));
-  const expandDistance = Math.max(180, collapsedSheetTop - expandedSheetTop);
-  const dockClearance = 88 + Math.max(insets.bottom, 12);
+  const { dockClearance, collapsedSheetTop, expandedSheetTop, expandDistance, heroStageHeight } =
+    dayMapSheetLayout(screenHeight, insets.top, insets.bottom, fontScale);
+  const archBorderRadius = Math.round(Math.min(46, screenWidth * .12));
 
   const sheetTranslateY = useSharedValue(0);
   const sheetStartY = useSharedValue(0);
@@ -319,6 +318,7 @@ export default function TodayScreen() {
       Gesture.Pan()
         .activeOffsetY([-8, 8])
         .onBegin(() => {
+          cancelAnimation(sheetTranslateY);
           sheetStartY.value = sheetTranslateY.value;
         })
         .onUpdate((event) => {
@@ -336,9 +336,18 @@ export default function TodayScreen() {
             event.velocityY < -480 ||
             (event.velocityY < 480 && sheetTranslateY.value < -expandDistance * 0.42);
           runOnJS(snapSheet)(shouldExpand, event.velocityY);
+        })
+        .onFinalize((_event, success) => {
+          if (!success) runOnJS(snapSheet)(sheetTranslateY.value < -expandDistance / 2);
         }),
     [expandDistance, reduceMotionEnabled],
   );
+
+  // A rotation or resized window must not leave the sheet between old snap points.
+  useEffect(() => {
+    cancelAnimation(sheetTranslateY);
+    sheetTranslateY.value = isSheetExpanded ? -expandDistance : 0;
+  }, [expandDistance]);
 
   const animatedSheetStyle = useAnimatedStyle(() => ({
     height: screenHeight - insets.top - collapsedSheetTop - sheetTranslateY.value,
@@ -350,6 +359,17 @@ export default function TodayScreen() {
   const animatedSeamStyle = useAnimatedStyle(() => ({
     borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius - 3, 25], Extrapolation.CLAMP),
     borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius - 3, 25], Extrapolation.CLAMP),
+  }));
+
+  // Both compositions keep their own widths throughout a drag. Only opacity and
+  // translation follow the UI-thread position; task text never reflows mid-pull.
+  const animatedPreviewStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(-sheetTranslateY.value, [0, expandDistance * .35], [1, 0], Extrapolation.CLAMP),
+    transform: [{ translateY: interpolate(-sheetTranslateY.value, [0, expandDistance], [0, -12], Extrapolation.CLAMP) }],
+  }));
+  const animatedDetailsStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(-sheetTranslateY.value, [expandDistance * .25, expandDistance * .8], [0, 1], Extrapolation.CLAMP),
+    transform: [{ translateY: interpolate(-sheetTranslateY.value, [0, expandDistance], [24, 0], Extrapolation.CLAMP) }],
   }));
 
   const animatedSummaryStyle = useAnimatedStyle(() => ({
@@ -578,17 +598,6 @@ export default function TodayScreen() {
     if (next) startBlock(next);
   }
 
-  const primaryActionSubtitle = activeReview
-    ? 'Recall queue ready to resume'
-    : activeFocus
-      ? `${activeFocus.topicName} · Timer active`
-      : next
-        ? `Up next · ${next.topicName}`
-        : dayMapStepsSummary.nextStep
-          ? `Up next · ${dayMapStepsSummary.nextStep.title}`
-          : totalTaskCount > 0
-            ? 'All mapped steps finished'
-            : 'Open schedule · Add a task or block';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -603,7 +612,7 @@ export default function TodayScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Help with Today"
-              onPress={guide.start}
+              onPress={() => { snapSheet(true); guide.start(); }}
               style={styles.headerControl}>
               <Text style={styles.headerControlText}>?</Text>
             </Pressable>
@@ -628,13 +637,10 @@ export default function TodayScreen() {
           pointerEvents={isSheetExpanded ? 'none' : 'auto'}
           style={[styles.heroStageContainer, animatedHeroDimStyle]}>
           <View style={styles.headlineWrap}>
-            <Text accessibilityRole="header" style={styles.editorialTitle}>
-              Make room for{'\n'}a little progress.
+            <Text accessibilityRole="header" maxFontSizeMultiplier={1.2} style={styles.editorialTitle}>
+              A little progress,{'\n'}every day.
             </Text>
-            <View pointerEvents="none" style={styles.chalkUnderlineWrap}>
-              <View style={styles.chalkUnderlineMain} />
-              <View style={styles.chalkUnderlineSecondary} />
-            </View>
+
           </View>
 
           <View
@@ -644,8 +650,6 @@ export default function TodayScreen() {
             <View style={styles.glStageShift}>
               <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={isSheetExpanded} />
             </View>
-
-            <ChalkGrain />
 
             {/* Faint Dynamic Watermark Behind Left of Bottle */}
             <Text
@@ -658,6 +662,31 @@ export default function TodayScreen() {
             {/* Subtle Dotted Orbital Arc Behind Right of Bottle */}
             <View pointerEvents="none" style={styles.orbitArc} />
 
+            {/* Right Progress Callout with Meniscus Dot & Progressbar Semantics */}
+            <View
+              style={[
+                styles.meniscusCalloutRow,
+                { top: meniscusTopPx },
+              ]}>
+              {heroModel === 'bottle' ? (
+                <View pointerEvents="none" style={styles.meniscusLeaderWrap}>
+                  <View style={styles.meniscusAnchorDot} />
+                  <View style={styles.meniscusDashedLine} />
+                </View>
+              ) : null}
+
+              <Pressable
+                accessible
+                accessibilityRole="progressbar"
+                accessibilityLabel="Today's task progress"
+                accessibilityValue={{ min: 0, max: 100, now: todayTaskProgress }}
+                onPress={() => setHeroModel((m) => (m === 'bottle' ? 'stopwatch' : 'bottle'))}
+                style={styles.heroProgressCallout}>
+                <Text style={styles.heroProgressPercent}>{todayTaskProgress}%</Text>
+                <Text style={styles.heroProgressCaption}>PROGRESS</Text>
+              </Pressable>
+            </View>
+          </View>
             {/* Left Real Telemetry Pill Stack */}
             <View style={styles.telemetryStack}>
               <Pressable
@@ -694,37 +723,12 @@ export default function TodayScreen() {
               </Pressable>
             </View>
 
-            {/* Right Progress Callout with Meniscus Dot & Progressbar Semantics */}
-            <View
-              style={[
-                styles.meniscusCalloutRow,
-                { top: meniscusTopPx },
-              ]}>
-              {heroModel === 'bottle' ? (
-                <View pointerEvents="none" style={styles.meniscusLeaderWrap}>
-                  <View style={styles.meniscusAnchorDot} />
-                  <View style={styles.meniscusDashedLine} />
-                </View>
-              ) : null}
-
-              <Pressable
-                accessible
-                accessibilityRole="progressbar"
-                accessibilityLabel="Today's task progress"
-                accessibilityValue={{ min: 0, max: 100, now: todayTaskProgress }}
-                onPress={() => setHeroModel((m) => (m === 'bottle' ? 'stopwatch' : 'bottle'))}
-                style={styles.heroProgressCallout}>
-                <Text style={styles.heroProgressPercent}>{todayTaskProgress}%</Text>
-                <Text style={styles.heroProgressCaption}>PROGRESS</Text>
-              </Pressable>
-            </View>
-          </View>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${todayTaskProgress}%` }]} />
           </View>
           <View style={styles.progressLegend}>
             <Text style={styles.legendText}>{progressSummary.done} of {totalTaskCount} tasks complete</Text>
-            <Text style={styles.legendText}>{todayTaskProgress}%</Text>
+
           </View>
         </Animated.View>
 
@@ -768,91 +772,35 @@ export default function TodayScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={isSheetExpanded ? 'Collapse Day Map' : 'Expand Day Map'}
                 accessibilityHint="Tap or drag to toggle full Day Map details"
+                accessibilityState={{ expanded: isSheetExpanded }}
                 onPress={() => snapSheet(!isSheetExpanded)}
                 style={styles.archHeaderPressable}>
                 <View style={styles.dragHandlePill} />
                 <Text style={styles.dayMapTitle}>DAY MAP</Text>
                 <Text numberOfLines={1} style={styles.dayMapSubtitle}>
-                  {primaryActionSubtitle}
+                  {progressSummary.done} of {totalTaskCount} complete · Tap or pull
                 </Text>
               </Pressable>
             </View>
           </GestureDetector>
 
-          <ScrollView
-            ref={guide.scroll}
-            testID="today-scroll"
-            onScrollBeginDrag={() => {
-              if (!isSheetExpanded) snapSheet(true);
-            }}
-            onScroll={(event) => {
-              guide.offset.current = event.nativeEvent.contentOffset.y;
-            }}
-            scrollEventThrottle={16}
-            style={[styles.scroll, { marginBottom: dockClearance }]}
-            contentContainerStyle={[
-              styles.content,
-              { paddingBottom: 32 },
-            ]}
-            showsVerticalScrollIndicator={false}>
-            {/* ===============================================================
-                DIAGONAL ISOMETRIC BRICK PATH (0, 1, or N Real Steps)
-               =============================================================== */}
-            <View style={!isSheetExpanded && styles.previewComposition}>
-            {dayMapStepsSummary.totalSteps > 0 ? (
-              <View style={[styles.brickTrailContainer, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickTrail, !isSheetExpanded && styles.previewTrail]}>
-                {/* Ascending Dashed Graphite Path */}
-                <View pointerEvents="none" style={[styles.dashedTrailLine, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickLine]} />
-
-                {(isSheetExpanded ? dayMapStepsSummary.previewSteps : [dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0]]).map((step, index) => {
-                  const totalPreview = isSheetExpanded ? dayMapStepsSummary.previewSteps.length : 1;
-                  const slotIndex =
-                    totalPreview === 1
-                      ? 0
-                      : Math.min(
-                          BRICK_TRAIL_SLOTS.length - 1,
-                          Math.round((index / Math.max(1, totalPreview - 1)) * (BRICK_TRAIL_SLOTS.length - 1)),
-                        );
-                  const slot = BRICK_TRAIL_SLOTS[slotIndex]!;
-                  return (
-                    <TactileDayBrick
-                      key={step.id}
-                      step={step}
-                      xPct={totalPreview === 1 ? (isSheetExpanded ? 33 : 12) : slot.xPct}
-                      yPx={totalPreview === 1 ? (isSheetExpanded ? 35 : 24) : slot.yPx}
-                      scale={slot.scale}
-                      onPress={() => handleStepPress(step)}
-                    />
-                  );
-                })}
-
-                {isSheetExpanded && dayMapStepsSummary.totalSteps > dayMapStepsSummary.previewSteps.length ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more tasks in Day Map`}
-                    onPress={() => snapSheet(true)}
-                    style={styles.moreBricksBadge}>
-                    <Text style={styles.moreBricksBadgeText}>
-                      +{dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more
-                    </Text>
-                  </Pressable>
-                ) : null}
+          <Animated.View
+            pointerEvents={isSheetExpanded ? 'none' : 'auto'}
+            accessibilityElementsHidden={isSheetExpanded}
+            importantForAccessibility={isSheetExpanded ? 'no-hide-descendants' : 'auto'}
+            style={[styles.compactPreview, animatedPreviewStyle]}>
+            <View style={styles.previewComposition}>
+            {dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0] ? (
+              <View style={styles.previewTrail}>
+                <View pointerEvents="none" style={styles.previewPencilLine} />
+                <TactileDayBrick
+                  step={(dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0])!}
+                  xPct={10} yPx={30} scale={1.05}
+                  onPress={() => handleStepPress((dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0])!)}
+                />
               </View>
-            ) : (
-              <View style={styles.emptyBrickTrailCard}>
-                <Text style={styles.emptyBrickTrailTitle}>
-                  No tasks mapped for today yet.
-                </Text>
-                <Text style={styles.emptyBrickTrailSub}>
-                  Tap + Add below or schedule a task to build your path.
-                </Text>
-              </View>
-            )}
-
-            {/* ===============================================================
-                TWO-COLUMN SPLIT DECK: NEXT UP (Left) | TODAY CHECKLIST (Right)
-               =============================================================== */}
-            <View style={[styles.splitDeckRow, isSheetExpanded ? styles.splitDeckExpanded : styles.previewDetail]}>
+            ) : null}
+              <View style={styles.previewDetail}>
               {/* Left Column: NEXT UP */}
               <View style={styles.splitLeftCol}>
                 <View style={styles.nextUpPillBadge}>
@@ -879,9 +827,8 @@ export default function TodayScreen() {
                     styles.nextUpFocusCard,
                     pressed && styles.pressed,
                   ]}>
-                  <AppIcon name="target" size={26} color={chalkTheme.graphite} />
                   <View style={styles.nextUpCopy}>
-                    <Text numberOfLines={2} style={styles.nextUpTitle}>
+                    <Text numberOfLines={2} maxFontSizeMultiplier={1.6} style={styles.nextUpTitle}>
                       {activeReview
                         ? 'Recall queue'
                         : activeFocus
@@ -892,7 +839,7 @@ export default function TodayScreen() {
                               ? dayMapStepsSummary.nextStep.title
                               : 'Focus block'}
                     </Text>
-                    <Text numberOfLines={2} style={styles.nextUpMeta}>
+                    <Text numberOfLines={2} maxFontSizeMultiplier={1.6} style={styles.nextUpMeta}>
                       {activeReview
                         ? 'Resume active recall'
                         : activeFocus
@@ -907,82 +854,80 @@ export default function TodayScreen() {
                 </Pressable>
               </View>
 
-              {/* Vertical Hairline Divider */}
-              
+              </View>
+            </View>
+          </Animated.View>
 
-              {/* Right Column: TODAY Real Task Checklist */}
-              {isSheetExpanded ? <View style={[styles.splitRightCol, styles.timelineColumn]}>
-                <Text style={styles.todayChecklistHeader}>TODAY</Text>
-                {dayMapStepsSummary.steps.length > 0 ? (
-                  (isSheetExpanded
-                    ? dayMapStepsSummary.steps
-                    : dayMapStepsSummary.steps.slice(0, 4)
-                  ).map((step) => (
-                    <Pressable
+          <Animated.View
+            pointerEvents={isSheetExpanded ? 'auto' : 'none'}
+            accessibilityElementsHidden={!isSheetExpanded}
+            importantForAccessibility={isSheetExpanded ? 'auto' : 'no-hide-descendants'}
+            style={[styles.expandedBody, { marginBottom: dockClearance }, animatedDetailsStyle]}>
+          <ScrollView
+            ref={guide.scroll}
+            testID="today-scroll"
+            onScroll={(event) => {
+              guide.offset.current = event.nativeEvent.contentOffset.y;
+            }}
+            scrollEventThrottle={16}
+            style={styles.scroll}
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: 32 },
+            ]}
+            showsVerticalScrollIndicator={false}>
+            {/* ===============================================================
+                DIAGONAL ISOMETRIC BRICK PATH (0, 1, or N Real Steps)
+               =============================================================== */}
+            {dayMapStepsSummary.totalSteps > 0 ? (
+              <View style={[styles.brickTrailContainer, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickTrail]}>
+                {/* Ascending Dashed Graphite Path */}
+                <View pointerEvents="none" style={[styles.dashedTrailLine, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickLine]} />
+
+                {dayMapStepsSummary.previewSteps.map((step, index) => {
+                  const totalPreview = dayMapStepsSummary.previewSteps.length;
+                  const slotIndex =
+                    totalPreview === 1
+                      ? 0
+                      : Math.min(
+                          BRICK_TRAIL_SLOTS.length - 1,
+                          Math.round((index / Math.max(1, totalPreview - 1)) * (BRICK_TRAIL_SLOTS.length - 1)),
+                        );
+                  const slot = BRICK_TRAIL_SLOTS[slotIndex]!;
+                  return (
+                    <TactileDayBrick
                       key={step.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${step.completed ? 'Completed' : 'Upcoming'}: ${step.title}, ${step.minutes} minutes`}
-                      accessibilityHint="Open task details"
+                      step={step}
+                      xPct={totalPreview === 1 ? 33 : slot.xPct}
+                      yPx={totalPreview === 1 ? 24 : slot.yPx}
+                      scale={slot.scale}
                       onPress={() => handleStepPress(step)}
-                      style={({ pressed }) => [
-                        styles.checklistItemRow,
-                        isSheetExpanded && styles.timelineRow,
-                        pressed && styles.pressed,
-                      ]}>
-                      <AppIcon
-                        name={step.completed ? 'checkbox-checked' : 'checkbox'}
-                        size={16}
-                        color={step.completed ? chalkTheme.inkSoft : chalkTheme.graphite}
-                      />
-                      <View style={styles.timelineCopy}>
-                        <Text
-                          numberOfLines={isSheetExpanded ? 2 : 1}
-                          style={[
-                            styles.checklistItemText,
-                            isSheetExpanded && styles.timelineTitle,
-                            step.completed && styles.checklistItemDone,
-                          ]}>
-                          {step.title}
-                        </Text>
-                        {isSheetExpanded ? (
-                          <Text style={styles.timelineMeta}>
-                            {step.scheduledStart > 0
-                              ? `${new Date(step.scheduledStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · `
-                              : 'Any time · '}
-                            {step.minutes} min{step.completed ? ' · Done' : ''}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                  ))
-                ) : currentPlan.blocks.length > 0 ? (
-                  currentPlan.blocks.slice(0, 3).map((block) => (
-                    <Pressable
-                      key={block.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${block.topicName}, ${block.minutes} minutes`}
-                      onPress={() => startBlock(block)}
-                      style={({ pressed }) => [
-                        styles.checklistItemRow,
-                        pressed && styles.pressed,
-                      ]}>
-                      <AppIcon name="checkbox" size={16} color={chalkTheme.graphite} />
-                      <Text numberOfLines={1} style={styles.checklistItemText}>
-                        {block.topicName}
-                      </Text>
-                    </Pressable>
-                  ))
-                ) : (
+                    />
+                  );
+                })}
+
+                {dayMapStepsSummary.totalSteps > dayMapStepsSummary.previewSteps.length ? (
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => router.push('/(app)/today/task/new')}
-                    style={styles.checklistEmptyButton}>
-                    <Text style={styles.checklistEmptyText}>+ Add today’s first task</Text>
+                    accessibilityLabel={`${dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more tasks in Day Map`}
+                    onPress={() => snapSheet(true)}
+                    style={styles.moreBricksBadge}>
+                    <Text style={styles.moreBricksBadgeText}>
+                      +{dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more
+                    </Text>
                   </Pressable>
-                )}
-              </View> : null}
-            </View>
-            </View>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.emptyBrickTrailCard}>
+                <Text style={styles.emptyBrickTrailTitle}>
+                  No tasks mapped for today yet.
+                </Text>
+                <Text style={styles.emptyBrickTrailSub}>
+                  Tap + Add below or schedule a task to build your path.
+                </Text>
+              </View>
+            )}
 
             {/* ===============================================================
                 FULL TODAY RECOMMENDATION, CAPACITY & PLANNING DETAILS
@@ -1222,6 +1167,71 @@ export default function TodayScreen() {
                 )}
               </Animated.View>
 
+              <View style={[styles.splitRightCol, styles.timelineColumn]}>
+                <Text style={styles.todayChecklistHeader}>DAY SEQUENCE</Text>
+                {dayMapStepsSummary.steps.length > 0 ? (
+                  dayMapStepsSummary.steps.map((step) => (
+                    <Pressable
+                      key={step.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${step.completed ? 'Completed' : 'Upcoming'}: ${step.title}, ${step.minutes} minutes`}
+                      accessibilityHint="Open task details"
+                      onPress={() => handleStepPress(step)}
+                      style={({ pressed }) => [
+                        styles.checklistItemRow,
+                        styles.timelineRow,
+                        pressed && styles.pressed,
+                      ]}>
+                      <AppIcon
+                        name={step.completed ? 'checkbox-checked' : 'checkbox'}
+                        size={16}
+                        color={step.completed ? chalkTheme.inkSoft : chalkTheme.graphite}
+                      />
+                      <View style={styles.timelineCopy}>
+                        <Text
+                          numberOfLines={2}
+                          style={[
+                            styles.checklistItemText,
+                            styles.timelineTitle,
+                            step.completed && styles.checklistItemDone,
+                          ]}>
+                          {step.title}
+                        </Text>
+                        <Text style={styles.timelineMeta}>
+                            {step.scheduledStart > 0
+                              ? `${new Date(step.scheduledStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · `
+                              : 'Any time · '}
+                            {step.minutes} min{step.completed ? ' · Done' : ''}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))
+                ) : currentPlan.blocks.length > 0 ? (
+                  currentPlan.blocks.slice(0, 3).map((block) => (
+                    <Pressable
+                      key={block.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${block.topicName}, ${block.minutes} minutes`}
+                      onPress={() => startBlock(block)}
+                      style={({ pressed }) => [
+                        styles.checklistItemRow,
+                        pressed && styles.pressed,
+                      ]}>
+                      <AppIcon name="checkbox" size={16} color={chalkTheme.graphite} />
+                      <Text numberOfLines={1} style={styles.checklistItemText}>
+                        {block.topicName}
+                      </Text>
+                    </Pressable>
+                  ))
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push('/(app)/today/task/new')}
+                    style={styles.checklistEmptyButton}>
+                    <Text style={styles.checklistEmptyText}>+ Add today’s first task</Text>
+                  </Pressable>
+                )}
+              </View>
               <View style={styles.supportArea}>
                 {lastDeferred && lastDeferred.ownerKey === ownerKey ? (
                   <MotionItem key={`undo:${lastDeferred.source}:${lastDeferred.id}`} style={styles.undoRow}>
@@ -1598,6 +1608,7 @@ export default function TodayScreen() {
               </View>
             </View>
           </ScrollView>
+          </Animated.View>
         </Animated.View>
 
         {/* ===================================================================
@@ -1606,7 +1617,7 @@ export default function TodayScreen() {
             - Expanding cream Day Map sheet slides cleanly BEHIND this layer
            =================================================================== */}
         <View pointerEvents="box-none" style={styles.floatingDockOverlay}>
-          <AppNav floating />
+          <AppNav floating compact />
         </View>
       </View>
 
@@ -1671,7 +1682,7 @@ function TactileDayBrick({
       {/* Soft Graphite Paper Drop Shadow */}
       <View pointerEvents="none" style={styles.brickPaperShadow} />
 
-      <TimeBrick size={78} tone={isBlue ? 'current' : 'fixed'} />
+      <TimeBrick size={84} tone={isBlue ? 'current' : 'fixed'} />
     </Pressable>
   );
 }
@@ -1724,6 +1735,9 @@ function formatDeadline(timestamp: number) {
 }
 
 const styles = StyleSheet.create({
+  previewPencilLine: { position: 'absolute', left: 0, right: 0, top: 60, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(63,56,46,.3)', transform: [{ rotate: '-12deg' }] },
+  compactPreview: { position: 'absolute', top: 74, left: 22, right: 22 },
+  expandedBody: { flex: 1 },
   expandedSummary: { position: 'absolute', top: 65, left: 24, right: 24 },
   summaryDate: { color: chalkTheme.mutedCream, fontSize: 12, marginBottom: 6 },
   summaryHeading: { color: chalkTheme.onStage, fontSize: 23, lineHeight: 29 },
@@ -1810,8 +1824,8 @@ const styles = StyleSheet.create({
   },
   editorialTitle: {
     color: chalkTheme.onStage,
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 30,
+    lineHeight: 35,
     fontWeight: '500',
     letterSpacing: -0.5,
   },
@@ -1832,7 +1846,7 @@ const styles = StyleSheet.create({
     marginLeft: 14,
     backgroundColor: 'rgba(242, 231, 208, 0.28)',
   },
-  progressTrack: { height: 9, borderRadius: 6, borderWidth: 1, borderColor: chalkTheme.mutedCream, overflow: 'hidden' },
+  progressTrack: { height: 2, borderRadius: 1, backgroundColor: 'rgba(242,231,208,.14)', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 6, backgroundColor: chalkTheme.progressBlue },
   progressLegend: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 3 },
   legendText: { color: chalkTheme.onStage, fontSize: 12 },
@@ -1846,8 +1860,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     top: 4,
-    fontSize: 148,
-    lineHeight: 154,
+    fontSize: 120,
+    lineHeight: 130,
     fontFamily: 'serif',
     fontStyle: 'italic',
     fontWeight: '700',
@@ -1863,7 +1877,7 @@ const styles = StyleSheet.create({
     borderRadius: 120,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: 'rgba(242, 231, 208, 0.18)',
+    borderColor: 'rgba(242, 231, 208, 0.09)',
   },
   glStageShift: {
     flex: 1,
@@ -1871,30 +1885,13 @@ const styles = StyleSheet.create({
     marginRight: 26,
   },
   telemetryStack: {
-    position: 'absolute',
-    left: 22,
-    bottom: 24,
-    gap: 7,
-    zIndex: 5,
+    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6,
   },
   telemetryPill: {
-    minHeight: 29,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: chalkTheme.pillBorder,
-    backgroundColor: chalkTheme.pillBg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5,
   },
   telemetryPillText: {
-    color: chalkTheme.onStage,
-    fontSize: 12,
-    lineHeight: 18,
-    fontFamily: 'serif',
-    fontStyle: 'italic',
+    color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 16,
   },
   meniscusCalloutRow: {
     position: 'absolute',
@@ -1947,13 +1944,13 @@ const styles = StyleSheet.create({
   // Zone 3: Curved Cream Paper Day Map Sheet (zIndex: 10)
   curvedContent: {
     position: 'absolute',
-    left: 6,
-    right: 6,
+    left: 10,
+    right: 10,
     backgroundColor: chalkTheme.paper,
     borderTopWidth: 1.5,
     borderColor: chalkTheme.paperContour,
     shadowColor: '#000000',
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.22,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: -6 },
     elevation: 8,
@@ -1979,26 +1976,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    minHeight: 48,
+    minHeight: 58,
+    width: '100%',
   },
   dragHandlePill: {
-    width: 38,
-    height: 4.5,
+    width: 28,
+    height: 3,
     borderRadius: 3,
     backgroundColor: '#5B5850',
     marginBottom: 6,
   },
   dayMapTitle: {
     color: chalkTheme.graphite,
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
     fontWeight: '700',
-    letterSpacing: 5.5,
+    letterSpacing: 3,
   },
   dayMapSubtitle: {
     color: chalkTheme.inkSoft,
-    fontSize: 14.5,
-    lineHeight: 20,
+    fontSize: 11,
+    lineHeight: 16,
     fontFamily: 'serif',
     fontStyle: 'italic',
     marginTop: 3,
@@ -2022,16 +2020,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 6,
   },
-  singleBrickTrail: { height: 84, marginBottom: 4 },
-  singleBrickLine: { left: '8%', right: '55%', top: 53 },
+  singleBrickTrail: { height: 96, marginBottom: 8 },
+  singleBrickLine: { left: '18%', right: '35%', top: 32, height: 28 },
   dashedTrailLine: {
     position: 'absolute',
     left: '8%',
     right: '8%',
-    top: 58,
+    top: 30,
+    height: 38,
+    borderBottomLeftRadius: 100,
+    borderBottomRightRadius: 120,
     borderBottomWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: 'rgba(44, 43, 40, 0.42)',
+    borderColor: 'rgba(44, 43, 40, 0.32)',
     transform: [{ rotate: '-11deg' }],
   },
   tactileBrickAnchor: {
@@ -2057,11 +2058,11 @@ const styles = StyleSheet.create({
   },
   brickPaperShadow: {
     position: 'absolute',
-    bottom: 2,
-    width: 56,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'rgba(44, 43, 40, 0.16)',
+    bottom: -1,
+    width: 62,
+    height: 15,
+    borderRadius: 12,
+    backgroundColor: 'rgba(44, 43, 40, 0.10)',
     transform: [{ rotate: '-8deg' }],
   },
   brickBodyShell: {
@@ -2162,31 +2163,28 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     gap: 14,
   },
-  previewComposition: { flexDirection: 'row', alignItems: 'center', minHeight: 82 },
-  previewTrail: { width: '36%', height: 80, marginTop: 0, marginBottom: 0 },
+  previewComposition: { flexDirection: 'row', alignItems: 'center', minHeight: 104, gap: 12 },
+  previewTrail: { width: 92, height: 100, marginTop: 0, marginBottom: 0 },
   previewDetail: { flex: 1, minWidth: 0, paddingTop: 0, paddingBottom: 0 },
   splitDeckExpanded: { flexDirection: 'column', gap: 18, paddingBottom: 20 },
-  timelineColumn: { width: '100%', flex: 0, gap: 0 },
+  timelineColumn: { width: '100%', flex: 0, gap: 0, marginTop: 20, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: chalkTheme.paperLine },
   timelineRow: { minHeight: 60, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(63, 56, 46, 0.22)' },
   timelineCopy: { flex: 1, minWidth: 0 },
   timelineTitle: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
   timelineMeta: { color: chalkTheme.inkSoft, fontSize: 12, lineHeight: 17, marginTop: 2 },
   splitLeftCol: {
-    flex: 0.96,
+    width: '100%',
     minWidth: 0,
   },
   nextUpPillBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: chalkTheme.nextUpBadge,
-    paddingHorizontal: 10,
-    paddingVertical: 3.5,
-    borderRadius: 10,
-    marginBottom: 8,
+    paddingVertical: 2,
+    marginBottom: 4,
   },
   nextUpPillBadgeText: {
-    color: chalkTheme.onStage,
+    color: chalkTheme.inkSoft,
     fontSize: 9.5,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 1.8,
   },
   nextUpFocusCard: {

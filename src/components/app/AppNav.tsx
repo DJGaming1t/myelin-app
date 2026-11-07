@@ -21,9 +21,11 @@ const ITEMS: {
 export function AppNav({
   paper = true,
   floating = true,
+  compact = false,
 }: {
   paper?: boolean;
   floating?: boolean;
+  compact?: boolean;
 }) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -42,9 +44,10 @@ export function AppNav({
             }
           : paper && { backgroundColor: '#F2EFE6', borderTopColor: '#D7D4CA' },
       ]}>
-      <View style={[styles.wrap, floating && styles.dockCapsule]}>
+      <View style={[styles.wrap, floating && styles.dockCapsule, compact && styles.compactDock]}>
         {ITEMS.slice(0, 2).map((item) => (
           <NavItem
+            compact={compact}
             paper={paper}
             floating={floating}
             key={item.key}
@@ -53,8 +56,8 @@ export function AppNav({
           />
         ))}
 
-        <View style={styles.addSlot}>
-          <View style={styles.addArchHousing}>
+        <View style={[styles.addSlot, compact && styles.compactAddSlot]}>
+          <View style={[styles.addArchHousing, compact && styles.compactAddHousing]}>
             <View style={styles.addButtonFrame}>
               <SpringPressable
                 accessibilityRole="button"
@@ -68,13 +71,14 @@ export function AppNav({
               </SpringPressable>
             </View>
           </View>
-          <Text accessible={false} style={styles.addLabel}>
+          <Text accessible={false} style={[styles.addLabel, compact && { display: 'none' }]}>
             Add
           </Text>
         </View>
 
         {ITEMS.slice(2).map((item) => (
           <NavItem
+            compact={compact}
             paper={paper}
             floating={floating}
             key={item.key}
@@ -90,11 +94,13 @@ export function AppNav({
 function NavItem({
   item,
   active,
+  compact = false,
 }: {
   paper: boolean;
   floating: boolean;
   item: (typeof ITEMS)[number];
   active: boolean;
+  compact?: boolean;
 }) {
   return (
     <Pressable
@@ -110,7 +116,7 @@ function NavItem({
         styles.item,
         pressed && !active && styles.pressed,
       ]}>
-      <View style={[styles.itemInner, active && styles.itemActivePill]}>
+      <View style={[styles.itemInner, active && styles.itemActivePill, compact && styles.compactItem, compact && active && styles.compactActive]}>
         <View style={styles.iconBox}>
           <AppIcon
             name={item.icon}
@@ -132,6 +138,12 @@ function NavItem({
 }
 
 const styles = StyleSheet.create({
+  compactDock: { minHeight: 64, borderRadius: 25, shadowOpacity: .18, elevation: 8, paddingHorizontal: 5 },
+  compactItem: { minHeight: 48, borderRadius: 17, paddingVertical: 3 },
+  compactActive: { backgroundColor: '#D9D1BE' },
+  compactAddSlot: { width: 56, paddingBottom: 0, justifyContent: 'center' },
+  compactAddHousing: { width: 48, height: 48, marginTop: 0, marginBottom: 0, borderWidth: 0 },
+
   shell: {
     paddingHorizontal: space.sm,
     paddingTop: space.xs,

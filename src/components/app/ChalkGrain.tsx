@@ -8,7 +8,7 @@ function noise(seed: number) {
   const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return value - Math.floor(value);
 }
-const flecks = Array.from({ length: 300 }, (_, i) => ({
+const flecks = Array.from({ length: 120 }, (_, i) => ({
   left: `${noise(i * 5 + 1) * 100}%` as `${number}%`,
   top: `${noise(i * 5 + 2) * 100}%` as `${number}%`,
   width: i % 11 === 0 ? 2.4 : i % 3 === 0 ? 1.2 : .6,
@@ -16,9 +16,19 @@ const flecks = Array.from({ length: 300 }, (_, i) => ({
   opacity: .035 + noise(i * 5 + 3) * .10,
   transform: [{ rotate: `${Math.round(noise(i * 5 + 4) * 140 - 70)}deg` }],
 }));
+// Long, faint fibres sit over the fine grain without a noisy field of dots.
+const fibres = Array.from({ length: 56 }, (_, i) => ({
+  left: `${noise(i * 7 + 1) * 100}%` as `${number}%`,
+  top: `${noise(i * 7 + 2) * 100}%` as `${number}%`,
+  width: 3 + noise(i * 7 + 3) * 7,
+  height: .5,
+  opacity: .045 + noise(i * 7 + 4) * .04,
+  transform: [{ rotate: `${noise(i * 7 + 5) * 160 - 80}deg` }],
+}));
 export const ChalkGrain = memo(function ChalkGrain({ paper = false }: { paper?: boolean }) {
   return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" renderToHardwareTextureAndroid shouldRasterizeIOS style={StyleSheet.absoluteFill}>
-    {paper ? <Image source={{ uri: paperTexture }} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: .45 }]} /> : null}
+    {paper ? <Image source={{ uri: paperTexture }} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: .56 }]} /> : null}
+    {paper ? fibres.map((style, i) => <View key={`fibre-${i}`} style={[styles.fleck, style, { backgroundColor: '#655746' }]} />) : null}
     {flecks.map((style, i) => <View key={i} style={[styles.fleck, style, { backgroundColor: paper ? (i % 4 === 0 ? '#FFF9E8' : '#655746') : '#F2E7D0' }]} />)}
   </View>;
 });

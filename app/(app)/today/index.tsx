@@ -108,11 +108,11 @@ const BUDGETS = [10, 15, 30, 60, 90, 120, 180];
 
 // Ascending diagonal positions along the curved Day Map brick trail (normalized [x, y, scale])
 const BRICK_TRAIL_SLOTS: ReadonlyArray<{ xPct: number; yPx: number; scale: number }> = [
-  { xPct: 11, yPx: 62, scale: 1.04 },
-  { xPct: 30, yPx: 50, scale: 0.96 },
-  { xPct: 47, yPx: 38, scale: 0.90 },
-  { xPct: 63, yPx: 27, scale: 0.85 },
-  { xPct: 77, yPx: 15, scale: 0.80 },
+  { xPct: 4, yPx: 61, scale: 1.02 },
+  { xPct: 24, yPx: 51, scale: 0.94 },
+  { xPct: 43, yPx: 41, scale: 0.89 },
+  { xPct: 62, yPx: 31, scale: 0.84 },
+  { xPct: 75, yPx: 21, scale: 0.80 },
 ];
 
 function firstParam(value: string | string[] | undefined) {
@@ -296,9 +296,9 @@ export default function TodayScreen() {
       reduceMotionEnabled
         ? { damping: 32, stiffness: 260, overshootClamping: true }
         : {
-            damping: 26,
-            stiffness: 230,
-            mass: 0.78,
+            damping: 25,
+            stiffness: 210,
+            mass: 0.82,
             velocity: velocityY,
             overshootClamping: true,
           },
@@ -782,6 +782,9 @@ export default function TodayScreen() {
           <ScrollView
             ref={guide.scroll}
             testID="today-scroll"
+            onScrollBeginDrag={() => {
+              if (!isSheetExpanded) snapSheet(true);
+            }}
             onScroll={(event) => {
               guide.offset.current = event.nativeEvent.contentOffset.y;
             }}
@@ -814,8 +817,8 @@ export default function TodayScreen() {
                     <TactileDayBrick
                       key={step.id}
                       step={step}
-                      xPct={slot.xPct}
-                      yPx={totalPreview === 1 ? 32 : slot.yPx}
+                      xPct={totalPreview === 1 ? 33 : slot.xPct}
+                      yPx={totalPreview === 1 ? 35 : slot.yPx}
                       scale={slot.scale}
                       onPress={() => handleStepPress(step)}
                     />
@@ -848,7 +851,7 @@ export default function TodayScreen() {
             {/* ===============================================================
                 TWO-COLUMN SPLIT DECK: NEXT UP (Left) | TODAY CHECKLIST (Right)
                =============================================================== */}
-            <View style={styles.splitDeckRow}>
+            <View style={[styles.splitDeckRow, isSheetExpanded && styles.splitDeckExpanded]}>
               {/* Left Column: NEXT UP */}
               <View style={styles.splitLeftCol}>
                 <View style={styles.nextUpPillBadge}>
@@ -904,10 +907,10 @@ export default function TodayScreen() {
               </View>
 
               {/* Vertical Hairline Divider */}
-              <View style={styles.splitDivider} />
+              {!isSheetExpanded ? <View style={styles.splitDivider} /> : null}
 
               {/* Right Column: TODAY Real Task Checklist */}
-              <View style={styles.splitRightCol}>
+              <View style={[styles.splitRightCol, isSheetExpanded && styles.timelineColumn]}>
                 <Text style={styles.todayChecklistHeader}>TODAY</Text>
                 {dayMapStepsSummary.steps.length > 0 ? (
                   (isSheetExpanded
@@ -916,12 +919,13 @@ export default function TodayScreen() {
                   ).map((step) => (
                     <Pressable
                       key={step.id}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: step.completed }}
-                      accessibilityLabel={step.title}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${step.completed ? 'Completed' : 'Upcoming'}: ${step.title}, ${step.minutes} minutes`}
+                      accessibilityHint="Open task details"
                       onPress={() => handleStepPress(step)}
                       style={({ pressed }) => [
                         styles.checklistItemRow,
+                        isSheetExpanded && styles.timelineRow,
                         pressed && styles.pressed,
                       ]}>
                       <AppIcon
@@ -929,14 +933,25 @@ export default function TodayScreen() {
                         size={16}
                         color={step.completed ? chalkTheme.inkSoft : chalkTheme.graphite}
                       />
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.checklistItemText,
-                          step.completed && styles.checklistItemDone,
-                        ]}>
-                        {step.title}
-                      </Text>
+                      <View style={styles.timelineCopy}>
+                        <Text
+                          numberOfLines={isSheetExpanded ? 2 : 1}
+                          style={[
+                            styles.checklistItemText,
+                            isSheetExpanded && styles.timelineTitle,
+                            step.completed && styles.checklistItemDone,
+                          ]}>
+                          {step.title}
+                        </Text>
+                        {isSheetExpanded ? (
+                          <Text style={styles.timelineMeta}>
+                            {step.scheduledStart > 0
+                              ? `${new Date(step.scheduledStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · `
+                              : 'Any time · '}
+                            {step.minutes} min{step.completed ? ' · Done' : ''}
+                          </Text>
+                        ) : null}
+                      </View>
                     </Pressable>
                   ))
                 ) : currentPlan.blocks.length > 0 ? (
@@ -1654,7 +1669,7 @@ function TactileDayBrick({
       {/* Soft Graphite Paper Drop Shadow */}
       <View pointerEvents="none" style={styles.brickPaperShadow} />
 
-      <TimeBrick size={68} tone={isBlue ? 'current' : 'fixed'} />
+      <TimeBrick size={78} tone={isBlue ? 'current' : 'fixed'} />
     </Pressable>
   );
 }
@@ -1999,14 +2014,14 @@ const styles = StyleSheet.create({
 
   // Diagonal Isometric Brick Trail
   brickTrailContainer: {
-    height: 94,
+    height: 110,
     width: '100%',
     position: 'relative',
     marginTop: 2,
     marginBottom: 6,
   },
-  singleBrickTrail: { height: 65, marginBottom: 4 },
-  singleBrickLine: { right: '62%', top: 38 },
+  singleBrickTrail: { height: 84, marginBottom: 4 },
+  singleBrickLine: { left: '8%', right: '55%', top: 53 },
   dashedTrailLine: {
     position: 'absolute',
     left: '8%',
@@ -2019,8 +2034,8 @@ const styles = StyleSheet.create({
   },
   tactileBrickAnchor: {
     position: 'absolute',
-    width: 64,
-    height: 42,
+    width: 68,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2145,6 +2160,12 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     gap: 14,
   },
+  splitDeckExpanded: { flexDirection: 'column', gap: 18, paddingBottom: 20 },
+  timelineColumn: { width: '100%', flex: 0, gap: 0 },
+  timelineRow: { minHeight: 60, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(63, 56, 46, 0.22)' },
+  timelineCopy: { flex: 1, minWidth: 0 },
+  timelineTitle: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  timelineMeta: { color: chalkTheme.inkSoft, fontSize: 12, lineHeight: 17, marginTop: 2 },
   splitLeftCol: {
     flex: 0.96,
     minWidth: 0,

@@ -25,9 +25,9 @@ function flatten(node) {
 }
 const step = (id, extra = {}) => ({ id, kind: 'task', taskId: id, topicId: null, title: `Task ${id}`, subject: '', minutes: 35, completed: false, current: false, scheduledStart: 0, scheduledEnd: 0, mode: 'study', ...extra });
 for (const count of [0, 1, 12]) {
-  const opened = [], completed = [];
+  const opened = [], completed = [], reopened = [];
   const steps = Array.from({ length: count }, (_, i) => step(String(i), { completed: i > 0 && i % 2 === 0 }));
-  const nodes = flatten(DayMapSequence({ steps, onOpen: s => opened.push(s.id), onComplete: s => completed.push(s.id) }));
+  const nodes = flatten(DayMapSequence({ steps, onOpen: s => opened.push(s.id), onComplete: s => completed.push(s.id), onReopen: s => reopened.push(s.id) }));
   const open = nodes.filter(n => n.props?.testID?.startsWith('day-map-open-'));
   assert.equal(open.length, count, 'every real step must be available');
   open.forEach(n => n.props.onPress());
@@ -36,6 +36,8 @@ for (const count of [0, 1, 12]) {
   const complete = nodes.filter(n => n.props?.testID?.startsWith('day-map-complete-'));
   complete.forEach(n => n.props.onPress());
   assert.deepEqual(completed, steps.filter(s => !s.completed).map(s => s.id));
+  nodes.filter(n => n.props?.testID?.startsWith('day-map-reopen-')).forEach(n => n.props.onPress());
+  assert.deepEqual(reopened, steps.filter(s => s.completed).map(s => s.id));
   assert(open.every(n => !flatten(n.props.children).some(child => child.type === 'Pressable')), 'completion controls must not nest inside detail buttons');
 }
 const topic = flatten(DayMapSequence({ steps: [step('topic', { kind: 'topic', taskId: null, topicId: 't' })], onOpen() {}, onComplete() { throw Error('Topic must not use task completion'); } }));

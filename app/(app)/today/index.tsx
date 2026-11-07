@@ -277,7 +277,7 @@ export default function TodayScreen() {
   const collapsedSheetTop = Math.max(305, Math.min(screenHeight - 235, Math.round(screenHeight * .50)));
   const heroStageHeight = Math.max(125, collapsedSheetTop - 196);
   const expandedSheetTop = Math.min(180, screenHeight * .24);
-  const archBorderRadius = Math.round(Math.min(220, screenWidth * 0.47));
+  const archBorderRadius = Math.round(Math.min(90, screenWidth * 0.23));
   const expandDistance = Math.max(180, collapsedSheetTop - expandedSheetTop);
   const dockClearance = 88 + Math.max(insets.bottom, 12);
 
@@ -789,22 +789,23 @@ export default function TodayScreen() {
               guide.offset.current = event.nativeEvent.contentOffset.y;
             }}
             scrollEventThrottle={16}
-            style={styles.scroll}
+            style={[styles.scroll, { marginBottom: dockClearance }]}
             contentContainerStyle={[
               styles.content,
-              { paddingBottom: dockClearance + 24 },
+              { paddingBottom: 32 },
             ]}
             showsVerticalScrollIndicator={false}>
             {/* ===============================================================
                 DIAGONAL ISOMETRIC BRICK PATH (0, 1, or N Real Steps)
                =============================================================== */}
+            <View style={!isSheetExpanded && styles.previewComposition}>
             {dayMapStepsSummary.totalSteps > 0 ? (
-              <View style={[styles.brickTrailContainer, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickTrail]}>
+              <View style={[styles.brickTrailContainer, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickTrail, !isSheetExpanded && styles.previewTrail]}>
                 {/* Ascending Dashed Graphite Path */}
                 <View pointerEvents="none" style={[styles.dashedTrailLine, dayMapStepsSummary.previewSteps.length === 1 && styles.singleBrickLine]} />
 
-                {dayMapStepsSummary.previewSteps.map((step, index) => {
-                  const totalPreview = dayMapStepsSummary.previewSteps.length;
+                {(isSheetExpanded ? dayMapStepsSummary.previewSteps : [dayMapStepsSummary.nextStep || dayMapStepsSummary.previewSteps[0]]).map((step, index) => {
+                  const totalPreview = isSheetExpanded ? dayMapStepsSummary.previewSteps.length : 1;
                   const slotIndex =
                     totalPreview === 1
                       ? 0
@@ -817,15 +818,15 @@ export default function TodayScreen() {
                     <TactileDayBrick
                       key={step.id}
                       step={step}
-                      xPct={totalPreview === 1 ? 33 : slot.xPct}
-                      yPx={totalPreview === 1 ? 35 : slot.yPx}
+                      xPct={totalPreview === 1 ? (isSheetExpanded ? 33 : 12) : slot.xPct}
+                      yPx={totalPreview === 1 ? (isSheetExpanded ? 35 : 24) : slot.yPx}
                       scale={slot.scale}
                       onPress={() => handleStepPress(step)}
                     />
                   );
                 })}
 
-                {dayMapStepsSummary.totalSteps > dayMapStepsSummary.previewSteps.length ? (
+                {isSheetExpanded && dayMapStepsSummary.totalSteps > dayMapStepsSummary.previewSteps.length ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${dayMapStepsSummary.totalSteps - dayMapStepsSummary.previewSteps.length} more tasks in Day Map`}
@@ -851,7 +852,7 @@ export default function TodayScreen() {
             {/* ===============================================================
                 TWO-COLUMN SPLIT DECK: NEXT UP (Left) | TODAY CHECKLIST (Right)
                =============================================================== */}
-            <View style={[styles.splitDeckRow, isSheetExpanded && styles.splitDeckExpanded]}>
+            <View style={[styles.splitDeckRow, isSheetExpanded ? styles.splitDeckExpanded : styles.previewDetail]}>
               {/* Left Column: NEXT UP */}
               <View style={styles.splitLeftCol}>
                 <View style={styles.nextUpPillBadge}>
@@ -891,7 +892,7 @@ export default function TodayScreen() {
                               ? dayMapStepsSummary.nextStep.title
                               : 'Focus block'}
                     </Text>
-                    <Text numberOfLines={1} style={styles.nextUpMeta}>
+                    <Text numberOfLines={2} style={styles.nextUpMeta}>
                       {activeReview
                         ? 'Resume active recall'
                         : activeFocus
@@ -907,10 +908,10 @@ export default function TodayScreen() {
               </View>
 
               {/* Vertical Hairline Divider */}
-              {!isSheetExpanded ? <View style={styles.splitDivider} /> : null}
+              
 
               {/* Right Column: TODAY Real Task Checklist */}
-              <View style={[styles.splitRightCol, isSheetExpanded && styles.timelineColumn]}>
+              {isSheetExpanded ? <View style={[styles.splitRightCol, styles.timelineColumn]}>
                 <Text style={styles.todayChecklistHeader}>TODAY</Text>
                 {dayMapStepsSummary.steps.length > 0 ? (
                   (isSheetExpanded
@@ -979,7 +980,8 @@ export default function TodayScreen() {
                     <Text style={styles.checklistEmptyText}>+ Add today’s first task</Text>
                   </Pressable>
                 )}
-              </View>
+              </View> : null}
+            </View>
             </View>
 
             {/* ===============================================================
@@ -1945,8 +1947,8 @@ const styles = StyleSheet.create({
   // Zone 3: Curved Cream Paper Day Map Sheet (zIndex: 10)
   curvedContent: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 6,
+    right: 6,
     backgroundColor: chalkTheme.paper,
     borderTopWidth: 1.5,
     borderColor: chalkTheme.paperContour,
@@ -1970,21 +1972,21 @@ const styles = StyleSheet.create({
   archHeaderDragZone: {
     width: '100%',
     alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingTop: 8,
+    paddingBottom: 2,
   },
   archHeaderPressable: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    minHeight: 62,
+    minHeight: 48,
   },
   dragHandlePill: {
     width: 38,
     height: 4.5,
     borderRadius: 3,
     backgroundColor: '#5B5850',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   dayMapTitle: {
     color: chalkTheme.graphite,
@@ -2160,6 +2162,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     gap: 14,
   },
+  previewComposition: { flexDirection: 'row', alignItems: 'center', minHeight: 82 },
+  previewTrail: { width: '36%', height: 80, marginTop: 0, marginBottom: 0 },
+  previewDetail: { flex: 1, minWidth: 0, paddingTop: 0, paddingBottom: 0 },
   splitDeckExpanded: { flexDirection: 'column', gap: 18, paddingBottom: 20 },
   timelineColumn: { width: '100%', flex: 0, gap: 0 },
   timelineRow: { minHeight: 60, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(63, 56, 46, 0.22)' },

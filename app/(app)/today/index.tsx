@@ -270,7 +270,7 @@ export default function TodayScreen() {
   const reduceMotionEnabled = Boolean(workspace?.settings?.reduceMotion);
   const { dockClearance, collapsedSheetTop, expandedSheetTop, expandDistance, heroStageHeight } =
     dayMapSheetLayout(screenHeight, insets.top, insets.bottom, fontScale);
-  const archBorderRadius = Math.round(Math.min(46, screenWidth * .12));
+  const archBorderRadius = Math.round(Math.min(82, screenWidth * .21));
 
   const sheetTranslateY = useSharedValue(0);
   const sheetStartY = useSharedValue(0);
@@ -288,8 +288,8 @@ export default function TodayScreen() {
       reduceMotionEnabled
         ? { damping: 32, stiffness: 260, overshootClamping: true }
         : {
-            damping: 25,
-            stiffness: 210,
+            damping: 27,
+            stiffness: 190,
             mass: 0.82,
             velocity: velocityY,
             overshootClamping: true,
@@ -326,9 +326,12 @@ export default function TodayScreen() {
           }
         })
         .onEnd((event) => {
-          const shouldExpand =
-            event.velocityY < -480 ||
-            (event.velocityY < 480 && sheetTranslateY.value < -expandDistance * 0.42);
+          // A short deliberate pull opens or closes from the current snap point.
+          const threshold = Math.min(56, expandDistance * .18);
+          const shouldExpand = event.velocityY < -480 ? true : event.velocityY > 480 ? false :
+            sheetStartY.value < -expandDistance / 2
+              ? event.translationY < threshold
+              : event.translationY < -threshold;
           runOnJS(snapSheet)(shouldExpand, event.velocityY);
         })
         .onFinalize((_event, success) => {

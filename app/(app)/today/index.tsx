@@ -282,6 +282,7 @@ export default function TodayScreen() {
 
   const sheetTranslateY = useSharedValue(0);
   const sheetStartY = useSharedValue(0);
+  const sheetDragActive = useSharedValue(false);
 
   function snapSheet(expand: boolean, velocityY = 0) {
     setIsSheetExpanded(expand);
@@ -317,7 +318,8 @@ export default function TodayScreen() {
     () =>
       Gesture.Pan()
         .activeOffsetY([-8, 8])
-        .onBegin(() => {
+        .onStart(() => {
+          sheetDragActive.value = true;
           cancelAnimation(sheetTranslateY);
           sheetStartY.value = sheetTranslateY.value;
         })
@@ -338,7 +340,9 @@ export default function TodayScreen() {
           runOnJS(snapSheet)(shouldExpand, event.velocityY);
         })
         .onFinalize((_event, success) => {
-          if (!success) runOnJS(snapSheet)(sheetTranslateY.value < -expandDistance / 2);
+          // A tap fails the pan recognizer; it must not override the header button.
+          if (sheetDragActive.value && !success) runOnJS(snapSheet)(sheetTranslateY.value < -expandDistance / 2);
+          sheetDragActive.value = false;
         }),
     [expandDistance, reduceMotionEnabled],
   );

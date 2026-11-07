@@ -5,7 +5,6 @@ import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import {
   NativeProgressVisual as ProgressVisual,
   TodayHeroVisualModel,
-  getBottleMeniscusNormalizedY,
 } from '@/src/features/today/NativeProgressVisual';
 import {
   DayMapStep,
@@ -57,7 +56,6 @@ import { AppIcon } from '@/src/components/app/AppIcon';
 import { AppNav } from '@/src/components/app/AppNav';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
-import { StudySignal } from '@/src/features/today/StudySignal';
 import { dayMapSheetLayout } from '@/src/features/today/day-map-sheet-layout';
 import { shortSession } from '@/src/features/today/short-session';
 import { useRecommendationMotion } from '@/src/features/today/useRecommendationMotion';
@@ -429,10 +427,6 @@ export default function TodayScreen() {
 
   const todayTaskProgress = progressSummary.percent;
   const totalTaskCount = progressSummary.total;
-  const meniscusNormY = getBottleMeniscusNormalizedY(todayTaskProgress);
-  const meniscusTopPx = Math.round(
-    Math.max(44, Math.min(heroStageHeight - 82, meniscusNormY * heroStageHeight)),
-  );
 
   function dismissExpiredReminderFallback() {
     router.replace('/(app)/today');
@@ -622,19 +616,19 @@ export default function TodayScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Settings"
               onPress={() => router.push('/(app)/settings')}
               style={styles.headerControl}>
-              <Text style={styles.headerControlText}>Settings</Text>
+              <AppIcon name="settings" size={20} color={chalkTheme.mutedCream} />
             </Pressable>
           </View>
         </View>
 
         {/* ===================================================================
             ZONE 2: CHARCOAL HERO STAGE (zIndex: 1)
-            - Two-line headline + chalk underline
-            - Faint dynamic watermark
+            - Editorial heading and isolated progress visual
             - Persistent 3D Bottle / Stopwatch GLView
-            - Left real telemetry pills (tasks, completed focus, streak)
+            - Real task, completed-focus and streak summaries
             - Right visible progressbar callout (${todayTaskProgress}% PROGRESS)
            =================================================================== */}
         <Animated.View
@@ -655,29 +649,12 @@ export default function TodayScreen() {
               <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={isSheetExpanded} />
             </View>
 
-            {/* Faint Dynamic Watermark Behind Left of Bottle */}
-            <Text
-              accessible={false}
-              pointerEvents="none"
-              style={styles.watermarkNumber}>
-              {todayTaskProgress}
-            </Text>
-
-            {/* Subtle Dotted Orbital Arc Behind Right of Bottle */}
-            <View pointerEvents="none" style={styles.orbitArc} />
-
-            {/* Right Progress Callout with Meniscus Dot & Progressbar Semantics */}
+            {/* Progress readout stays separate from the moving bottle. */}
             <View
               style={[
                 styles.meniscusCalloutRow,
-                { top: meniscusTopPx },
+                { top: Math.max(20, heroStageHeight * .35) },
               ]}>
-              {heroModel === 'bottle' ? (
-                <View pointerEvents="none" style={styles.meniscusLeaderWrap}>
-                  <View style={styles.meniscusAnchorDot} />
-                  <View style={styles.meniscusDashedLine} />
-                </View>
-              ) : null}
 
               <Pressable
                 accessible
@@ -687,11 +664,11 @@ export default function TodayScreen() {
                 onPress={() => setHeroModel((m) => (m === 'bottle' ? 'stopwatch' : 'bottle'))}
                 style={styles.heroProgressCallout}>
                 <Text style={styles.heroProgressPercent}>{todayTaskProgress}%</Text>
-                <Text style={styles.heroProgressCaption}>PROGRESS</Text>
+                <Text style={styles.heroProgressCaption}>of today’s tasks</Text>
               </Pressable>
             </View>
           </View>
-            {/* Left Real Telemetry Pill Stack */}
+            {/* Three quiet shortcuts beneath the visual. */}
             <View style={styles.telemetryStack}>
               <Pressable
                 accessibilityRole="button"
@@ -727,13 +704,6 @@ export default function TodayScreen() {
               </Pressable>
             </View>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${todayTaskProgress}%` }]} />
-          </View>
-          <View style={styles.progressLegend}>
-            <Text style={styles.legendText}>{progressSummary.done} of {totalTaskCount} tasks complete</Text>
-
-          </View>
         </Animated.View>
 
         <Animated.View pointerEvents="none" style={[styles.expandedSummary, animatedSummaryStyle]}>
@@ -780,10 +750,13 @@ export default function TodayScreen() {
                 onPress={() => snapSheet(!isSheetExpanded)}
                 style={styles.archHeaderPressable}>
                 <View style={styles.dragHandlePill} />
-                <Text style={styles.dayMapTitle}>DAY MAP</Text>
-                <Text numberOfLines={1} style={styles.dayMapSubtitle}>
-                  {progressSummary.done} of {totalTaskCount} complete · Tap or pull
-                </Text>
+                <View style={styles.sheetHeadingRow}>
+                  <Text style={styles.dayMapTitle}>Day map</Text>
+                  <View style={styles.sheetHeadingMeta}>
+                    <Text style={styles.dayMapSubtitle}>{progressSummary.done}/{totalTaskCount} done</Text>
+                    <AppIcon name="chevron" size={16} color={chalkTheme.inkSoft} />
+                  </View>
+                </View>
               </Pressable>
             </View>
           </GestureDetector>
@@ -984,7 +957,6 @@ export default function TodayScreen() {
                           · {next.minutes} min
                         </Text>
                       </View>
-                      <StudySignal identity={next.id} />
                     </View>
 
                     <Text style={styles.heroTitle}>{next.topicName}</Text>
@@ -1656,7 +1628,9 @@ function formatDeadline(timestamp: number) {
 
 const styles = StyleSheet.create({
   previewPencilLine: { position: 'absolute', left: 0, right: 0, top: 60, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(63,56,46,.3)', transform: [{ rotate: '-12deg' }] },
-  compactPreview: { position: 'absolute', top: 74, left: 22, right: 22 },
+  sheetHeadingRow: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10 },
+  sheetHeadingMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  compactPreview: { position: 'absolute', top: 90, left: 22, right: 22 },
   expandedBody: { flex: 1 },
   expandedSummary: { position: 'absolute', top: 65, left: 24, right: 24 },
   summaryDate: { color: chalkTheme.mutedCream, fontSize: 12, marginBottom: 6 },
@@ -1703,21 +1677,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  modelSwitchChip: {
-    minHeight: 32,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: chalkTheme.pillBorder,
-    backgroundColor: chalkTheme.pillBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modelSwitchText: {
-    color: chalkTheme.mutedCream,
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
   headerControl: {
     minHeight: 44,
     minWidth: 44,
@@ -1744,68 +1703,25 @@ const styles = StyleSheet.create({
   },
   editorialTitle: {
     color: chalkTheme.onStage,
-    fontSize: 30,
-    lineHeight: 35,
-    fontWeight: '500',
-    letterSpacing: -0.5,
+    fontSize: 31,
+    lineHeight: 38,
+    fontFamily: 'serif',
+    fontWeight: '400',
+    letterSpacing: -0.6,
   },
-  chalkUnderlineWrap: {
-    marginTop: 5,
-    marginLeft: 108,
-    width: 170,
-    gap: 2,
-  },
-  chalkUnderlineMain: {
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: 'rgba(242, 231, 208, 0.55)',
-  },
-  chalkUnderlineSecondary: {
-    height: 1,
-    width: 138,
-    marginLeft: 14,
-    backgroundColor: 'rgba(242, 231, 208, 0.28)',
-  },
-  progressTrack: { height: 2, borderRadius: 1, backgroundColor: 'rgba(242,231,208,.14)', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 6, backgroundColor: chalkTheme.progressBlue },
-  progressLegend: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 3 },
-  legendText: { color: chalkTheme.onStage, fontSize: 12 },
   visualStage: {
     marginHorizontal: -22,
     backgroundColor: chalkTheme.hero,
     position: 'relative',
     overflow: 'hidden',
   },
-  watermarkNumber: {
-    position: 'absolute',
-    left: 16,
-    top: 4,
-    fontSize: 120,
-    lineHeight: 130,
-    fontFamily: 'serif',
-    fontStyle: 'italic',
-    fontWeight: '700',
-    color: chalkTheme.watermark,
-    letterSpacing: -5,
-  },
-  orbitArc: {
-    position: 'absolute',
-    right: 26,
-    top: 8,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(242, 231, 208, 0.09)',
-  },
   glStageShift: {
     flex: 1,
-    marginLeft: 36,
-    marginRight: 26,
+    marginLeft: -12,
+    marginRight: 94,
   },
   telemetryStack: {
-    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6,
+    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, paddingTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(242,231,208,.16)',
   },
   telemetryPill: {
     minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -1815,29 +1731,10 @@ const styles = StyleSheet.create({
   },
   meniscusCalloutRow: {
     position: 'absolute',
-    right: 20,
+    right: 22,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 5,
-  },
-  meniscusLeaderWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  meniscusAnchorDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: chalkTheme.onStage,
-  },
-  meniscusDashedLine: {
-    width: 34,
-    height: 1.5,
-    borderBottomWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: chalkTheme.mutedCream,
-    marginLeft: 4,
   },
   heroProgressCallout: {
     alignItems: 'flex-start',
@@ -1847,17 +1744,16 @@ const styles = StyleSheet.create({
   },
   heroProgressPercent: {
     color: chalkTheme.onStage,
-    fontSize: 38,
-    lineHeight: 42,
+    fontSize: 42,
+    lineHeight: 48,
     fontFamily: 'serif',
     fontStyle: 'italic',
   },
   heroProgressCaption: {
     color: chalkTheme.mutedCream,
-    fontSize: 10.5,
-    lineHeight: 14,
-    letterSpacing: 3.0,
-    fontWeight: '600',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '400',
     marginTop: 1,
   },
 
@@ -1895,31 +1791,30 @@ const styles = StyleSheet.create({
   archHeaderPressable: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    minHeight: 58,
+    paddingHorizontal: 22,
+    minHeight: 76,
     width: '100%',
   },
   dragHandlePill: {
     width: 28,
     height: 3,
     borderRadius: 3,
-    backgroundColor: '#5B5850',
+    backgroundColor: 'rgba(63,56,46,.35)',
     marginBottom: 6,
   },
   dayMapTitle: {
     color: chalkTheme.graphite,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '700',
-    letterSpacing: 3,
+    fontSize: 25,
+    lineHeight: 32,
+    fontFamily: 'serif',
+    fontWeight: '400',
+    letterSpacing: -0.4,
   },
   dayMapSubtitle: {
     color: chalkTheme.inkSoft,
     fontSize: 11,
     lineHeight: 16,
-    fontFamily: 'serif',
-    fontStyle: 'italic',
-    marginTop: 3,
+    marginTop: 0,
   },
 
   scroll: {
@@ -1933,28 +1828,6 @@ const styles = StyleSheet.create({
   },
 
   // Diagonal Isometric Brick Trail
-  brickTrailContainer: {
-    height: 110,
-    width: '100%',
-    position: 'relative',
-    marginTop: 2,
-    marginBottom: 6,
-  },
-  singleBrickTrail: { height: 96, marginBottom: 8 },
-  singleBrickLine: { left: '18%', right: '35%', top: 32, height: 28 },
-  dashedTrailLine: {
-    position: 'absolute',
-    left: '8%',
-    right: '8%',
-    top: 30,
-    height: 38,
-    borderBottomLeftRadius: 100,
-    borderBottomRightRadius: 120,
-    borderBottomWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(44, 43, 40, 0.32)',
-    transform: [{ rotate: '-11deg' }],
-  },
   tactileBrickAnchor: {
     position: 'absolute',
     width: 68,
@@ -1985,113 +1858,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(44, 43, 40, 0.10)',
     transform: [{ rotate: '-8deg' }],
   },
-  brickBodyShell: {
-    width: 58,
-    height: 30,
-    borderRadius: 6,
-    borderWidth: 1.2,
-    overflow: 'visible',
-    backgroundColor: chalkTheme.paperRaised,
-  },
-  brickTopFace: {
-    height: 10,
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(44, 43, 40, 0.25)',
-  },
-  brickLowerFacesRow: {
-    flex: 1,
-    flexDirection: 'row',
-    borderBottomLeftRadius: 5,
-    borderBottomRightRadius: 5,
-    overflow: 'hidden',
-  },
-  brickFrontLeftFace: {
-    flex: 1.15,
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: 'rgba(44, 43, 40, 0.28)',
-  },
-  brickFrontRightFace: {
-    flex: 0.85,
-  },
-  brickStudsRow: {
-    position: 'absolute',
-    top: -7,
-    left: 9,
-    right: 9,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  brickStudCylinder: {
-    width: 15,
-    height: 9,
-    borderRadius: 4.5,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  brickStudCap: {
-    height: 4,
-    width: '100%',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(44, 43, 40, 0.22)',
-  },
-  moreBricksBadge: {
-    position: 'absolute',
-    right: 4,
-    bottom: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    backgroundColor: chalkTheme.paperRaised,
-    borderWidth: 1,
-    borderColor: chalkTheme.paperLine,
-  },
-  moreBricksBadgeText: {
-    color: chalkTheme.inkSoft,
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  emptyBrickTrailCard: {
-    marginVertical: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(44, 43, 40, 0.26)',
-    alignItems: 'center',
-  },
-  emptyBrickTrailTitle: {
-    color: chalkTheme.graphite,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  emptyBrickTrailSub: {
-    color: chalkTheme.inkSoft,
-    fontSize: 12,
-    fontFamily: 'serif',
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-
-  // Two-Column Split Deck (NEXT UP | TODAY)
-  splitDeckRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingTop: 6,
-    paddingBottom: 14,
-    gap: 14,
-  },
   previewComposition: { flexDirection: 'row', alignItems: 'center', minHeight: 104, gap: 12 },
-  previewTrail: { width: 92, height: 100, marginTop: 0, marginBottom: 0 },
+  previewTrail: { width: 82, height: 100, marginTop: 0, marginBottom: 0 },
   previewDetail: { flex: 1, minWidth: 0, paddingTop: 0, paddingBottom: 0 },
-  splitDeckExpanded: { flexDirection: 'column', gap: 18, paddingBottom: 20 },
   timelineColumn: { width: '100%', flex: 0, gap: 0, marginTop: 20, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: chalkTheme.paperLine },
-  timelineRow: { minHeight: 60, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(63, 56, 46, 0.22)' },
-  timelineCopy: { flex: 1, minWidth: 0 },
-  timelineTitle: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
-  timelineMeta: { color: chalkTheme.inkSoft, fontSize: 12, lineHeight: 17, marginTop: 2 },
   splitLeftCol: {
     width: '100%',
     minWidth: 0,
@@ -2120,9 +1890,9 @@ const styles = StyleSheet.create({
   },
   nextUpTitle: {
     color: chalkTheme.graphite,
-    fontSize: 17,
-    lineHeight: 21,
-    fontWeight: '700',
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '600',
   },
   nextUpMeta: {
     color: chalkTheme.inkSoft,
@@ -2131,12 +1901,6 @@ const styles = StyleSheet.create({
     fontFamily: 'serif',
     fontStyle: 'italic',
     marginTop: 2,
-  },
-  splitDivider: {
-    width: 1,
-    alignSelf: 'stretch',
-    backgroundColor: chalkTheme.paperLine,
-    marginVertical: 2,
   },
   splitRightCol: {
     flex: 1.04,
@@ -2164,12 +1928,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '500',
-  },
-  checklistItemDone: {
-    color: chalkTheme.inkSoft,
-    textDecorationLine: 'line-through',
-    fontFamily: 'serif',
-    fontStyle: 'italic',
   },
   checklistEmptyButton: {
     minHeight: 36,
@@ -2203,12 +1961,8 @@ const styles = StyleSheet.create({
     ...type.meta,
   },
   hero: {
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(255,252,243,.32)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: chalkTheme.paperLine,
-    borderRadius: 18,
+    paddingTop: 6,
+    paddingBottom: 16,
   },
   heroQuiet: {
     paddingVertical: 8,
@@ -2235,7 +1989,10 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: chalkTheme.graphite,
-    ...type.hero,
+    fontSize: 27,
+    lineHeight: 34,
+    fontFamily: 'serif',
+    fontWeight: '400',
     marginTop: space.xs,
   },
   heroReason: {

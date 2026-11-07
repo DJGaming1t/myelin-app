@@ -66,8 +66,8 @@ export function AppNav({
                 onPress={() => router.push('/(app)/quick-add')}
                 scaleTo={0.96}
                 lift={1}
-                style={styles.addButton}>
-                <AppIcon name="add" size={22} color={chalkTheme.dock} />
+                style={[styles.addButton, compact && styles.compactAddButton]}>
+                <AppIcon name="add" size={22} color={compact ? chalkTheme.onStage : chalkTheme.dock} />
               </SpringPressable>
             </View>
           </View>
@@ -121,7 +121,7 @@ function NavItem({
           <AppIcon
             name={item.icon}
             size={20}
-            color={active ? chalkTheme.dock : chalkTheme.dockInactiveText}
+            color={compact && active ? chalkTheme.onStage : active ? chalkTheme.dock : chalkTheme.dockInactiveText}
           />
         </View>
         <Text
@@ -129,7 +129,7 @@ function NavItem({
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.85}
-          style={[styles.label, active && styles.activeText]}>
+          style={[styles.label, active && styles.activeText, compact && active && styles.compactActiveText]}>
           {item.label}
         </Text>
       </View>
@@ -138,9 +138,11 @@ function NavItem({
 }
 
 const styles = StyleSheet.create({
-  compactDock: { minHeight: 64, borderRadius: 25, shadowOpacity: .18, elevation: 8, paddingHorizontal: 5 },
+  compactDock: { minHeight: 64, borderRadius: 22, shadowOpacity: .14, elevation: 5, paddingHorizontal: 8 },
   compactItem: { minHeight: 48, borderRadius: 17, paddingVertical: 3 },
-  compactActive: { backgroundColor: '#D9D1BE' },
+  compactActive: { backgroundColor: 'transparent', borderBottomWidth: 2, borderBottomColor: '#CFC4AB', borderRadius: 0 },
+  compactActiveText: { color: chalkTheme.onStage },
+  compactAddButton: { width: 44, height: 44, borderRadius: 15, backgroundColor: '#526B75' },
   compactAddSlot: { width: 56, paddingBottom: 0, justifyContent: 'center' },
   compactAddHousing: { width: 48, height: 48, marginTop: 0, marginBottom: 0, borderWidth: 0 },
 

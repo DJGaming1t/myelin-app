@@ -120,6 +120,9 @@ function NavItem({
         </View>
         <Text
           accessible={false}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
           style={[styles.label, active && styles.activeText]}>
           {item.label}
         </Text>
@@ -166,9 +169,10 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   itemInner: {
-    minWidth: 64,
+    width: '100%',
+    minWidth: 0,
     minHeight: 54,
-    paddingHorizontal: 12,
+    paddingHorizontal: 3,
     paddingVertical: 6,
     borderRadius: 24,
     alignItems: 'center',

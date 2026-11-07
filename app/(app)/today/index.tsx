@@ -274,7 +274,7 @@ export default function TodayScreen() {
   // PERSISTENT CREAM DAY MAP SHEET GEOMETRY & REANIMATED GESTURE PHYSICS
   // ==========================================================================
   const reduceMotionEnabled = Boolean(workspace?.settings?.reduceMotion);
-  const collapsedSheetTop = Math.max(305, Math.min(screenHeight - 235, Math.round(screenHeight * .55)));
+  const collapsedSheetTop = Math.max(305, Math.min(screenHeight - 235, Math.round(screenHeight * .50)));
   const heroStageHeight = Math.max(125, collapsedSheetTop - 196);
   const expandedSheetTop = Math.min(180, screenHeight * .24);
   const archBorderRadius = Math.round(Math.min(220, screenWidth * 0.47));
@@ -341,6 +341,7 @@ export default function TodayScreen() {
   );
 
   const animatedSheetStyle = useAnimatedStyle(() => ({
+    height: screenHeight - insets.top - collapsedSheetTop - sheetTranslateY.value,
     transform: [{ translateY: sheetTranslateY.value }],
     borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius, 28], Extrapolation.CLAMP),
     borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius, 28], Extrapolation.CLAMP),
@@ -414,7 +415,7 @@ export default function TodayScreen() {
   const totalTaskCount = progressSummary.total;
   const meniscusNormY = getBottleMeniscusNormalizedY(todayTaskProgress);
   const meniscusTopPx = Math.round(
-    Math.max(44, Math.min(heroStageHeight - 54, meniscusNormY * heroStageHeight)),
+    Math.max(44, Math.min(heroStageHeight - 82, meniscusNormY * heroStageHeight)),
   );
 
   function dismissExpiredReminderFallback() {
@@ -599,15 +600,6 @@ export default function TodayScreen() {
         <View style={styles.editorialTop}>
           <Text style={styles.wordmark}>MYELIN</Text>
           <View style={styles.headerActionsRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Switch 3D view to ${heroModel === 'bottle' ? 'stopwatch' : 'bottle'}`}
-              onPress={() => setHeroModel((m) => (m === 'bottle' ? 'stopwatch' : 'bottle'))}
-              style={styles.modelSwitchChip}>
-              <Text style={styles.modelSwitchText}>
-                {heroModel === 'bottle' ? 'Bottle' : 'Watch'}
-              </Text>
-            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Help with Today"
@@ -812,7 +804,7 @@ export default function TodayScreen() {
                   const totalPreview = dayMapStepsSummary.previewSteps.length;
                   const slotIndex =
                     totalPreview === 1
-                      ? 1
+                      ? 0
                       : Math.min(
                           BRICK_TRAIL_SLOTS.length - 1,
                           Math.round((index / Math.max(1, totalPreview - 1)) * (BRICK_TRAIL_SLOTS.length - 1)),
@@ -1858,19 +1850,20 @@ const styles = StyleSheet.create({
   },
   glStageShift: {
     flex: 1,
-    marginLeft: 0,
+    marginLeft: 36,
+    marginRight: 26,
   },
   telemetryStack: {
     position: 'absolute',
     left: 22,
     bottom: 24,
-    gap: 9,
+    gap: 7,
     zIndex: 5,
   },
   telemetryPill: {
-    minHeight: 36,
-    paddingHorizontal: 13,
-    paddingVertical: 6,
+    minHeight: 29,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: 19,
     borderWidth: 1,
     borderColor: chalkTheme.pillBorder,
@@ -1881,7 +1874,7 @@ const styles = StyleSheet.create({
   },
   telemetryPillText: {
     color: chalkTheme.onStage,
-    fontSize: 13.5,
+    fontSize: 12,
     lineHeight: 18,
     fontFamily: 'serif',
     fontStyle: 'italic',
@@ -2006,7 +1999,7 @@ const styles = StyleSheet.create({
 
   // Diagonal Isometric Brick Trail
   brickTrailContainer: {
-    height: 112,
+    height: 94,
     width: '100%',
     position: 'relative',
     marginTop: 2,
@@ -2131,7 +2124,7 @@ const styles = StyleSheet.create({
   },
   emptyBrickTrailTitle: {
     color: chalkTheme.graphite,
-    fontSize: 13.5,
+    fontSize: 12,
     fontWeight: '700',
   },
   emptyBrickTrailSub: {
@@ -2222,7 +2215,7 @@ const styles = StyleSheet.create({
   checklistItemText: {
     flex: 1,
     color: chalkTheme.graphite,
-    fontSize: 13.5,
+    fontSize: 12,
     lineHeight: 18,
     fontWeight: '500',
   },

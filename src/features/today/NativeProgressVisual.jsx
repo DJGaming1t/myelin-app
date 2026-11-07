@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
-import { View, Text, Image, PanResponder, AppState, AccessibilityInfo, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Image, ActivityIndicator, Pressable, PanResponder, AppState, AccessibilityInfo, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { GLView } from 'expo-gl';
 import Animated, {
@@ -206,6 +206,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 }) {
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
+  const [contextKey, setContextKey] = useState(0);
   const latest = useRef(progress);
   const modelRef = useRef(model);
   const engineRef = useRef(null);
@@ -220,6 +221,16 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   const drag = useRef({ x: 0, y: 0 });
   const start = useRef({ x: 0, y: 0 });
   const contextInitialized = useRef(false);
+
+  useEffect(() => {
+    if (ready || error || paused) return;
+    const timer = setTimeout(() => {
+      if (!live.current || !active.current || !focused.current) return;
+      cleanup.current();
+      setError('Native 3D did not deliver its first frame. Tap retry to recreate the graphics context.');
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [ready, error, paused, contextKey]);
 
   latest.current = Math.max(0, Math.min(100, Number(progress) || 0));
   modelRef.current = model || 'bottle';
@@ -244,7 +255,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 
   useEffect(() => {
     live.current = true;
-    active.current = AppState.currentState === 'active';
+    active.current = AppState.currentState !== 'background' && AppState.currentState !== 'inactive';
     if (modelRef.current === 'cycle') {
       preloadBrainBuffer().catch(() => {});
     }
@@ -288,7 +299,6 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
     if (contextInitialized.current) return;
     contextInitialized.current = true;
 
-    patchGlContextForThree(gl);
 
     let engine;
     let renderer;
@@ -316,6 +326,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
     cleanup.current = dispose;
 
     try {
+      patchGlContextForThree(gl);
       const version = gl.getParameter(gl.VERSION);
       const rawVersion = gl.getParameter(0x1f02);
       const units = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
@@ -366,7 +377,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
           const progLog = glCtx.getProgramInfoLog(program);
           report(
             new Error(
-              `GLSL shader error: program="${progLog.trim()}" vertex="${vsLog.trim()}" fragment="${fsLog.trim()}"`,
+              `GLSL shader error: program="${String(progLog || '').trim()}" vertex="${String(vsLog || '').trim()}" fragment="${String(fsLog || '').trim()}"`,
             ),
           );
         };
@@ -377,6 +388,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       engine.camera.updateProjectionMatrix();
 
       let last = 0;
+      let firstFrame = true;
       function sync() {
         if (disposed || !active.current || !focused.current || pausedRef.current) {
           cancelAnimationFrame(frame);
@@ -396,6 +408,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
           stage = 'frame rendering';
           renderer.render(engine.scene, engine.camera);
           gl.endFrameEXP();
+          if (firstFrame && live.current) { firstFrame = false; setReady(true); }
           sync();
         } catch (e) {
           report(e);
@@ -404,7 +417,6 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       }
 
       syncLoop.current = sync;
-      if (live.current) setReady(true);
       sync();
     } catch (e) {
       report(e);
@@ -414,10 +426,18 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 
   return (
     <View style={styles.stageContainer} {...pan.panHandlers}>
-      <GLView style={styles.glView} onContextCreate={onContextCreate} />
-      {(!ready || error) ? (
-        <StaticChalkVisualFallback progress={progress} model={model} />
+      <GLView key={contextKey} style={styles.glView} onContextCreate={onContextCreate} />
+      {!ready && !error ? (
+        <View pointerEvents="none" style={styles.fallbackWrap}>
+          <ActivityIndicator color="#F2E7D0" />
+          <Text style={{ color: '#F2E7D0', marginTop: 8 }}>Starting 3D…</Text>
+        </View>
       ) : null}
+      {error ? <Pressable accessibilityRole="button" accessibilityLabel="Retry native 3D visual" onPress={() => {
+        cleanup.current(); setReady(false); setError(null); setContextKey(key => key + 1);
+      }} style={{ position: 'absolute', top: 8, alignSelf: 'center', padding: 12, backgroundColor: '#252520' }}>
+        <Text style={{ color: '#F2E7D0' }}>3D unavailable · Tap to retry</Text>
+      </Pressable> : null}
       {error ? (
         <ScrollView style={styles.diagnosticOverlay}>
           <Text

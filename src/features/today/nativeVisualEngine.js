@@ -2004,7 +2004,7 @@ class StopwatchRenderer {
  }
  function idlePose(index,time,reduced,drag){
   const p=DEFAULT_POSES[keys[index]],g=groups[index],t=reduced?0:time/1000;
-  const yaw=reduced?0:.045*Math.sin(t*.65),pitch=reduced?0:.018*Math.sin(t*.82);
+  const yaw=reduced?0:.14*Math.sin(t*.65),pitch=reduced?0:.018*Math.sin(t*.82);
   const pulse=reduced?1:1+.014*Math.sin(t*(index===0?1.9:1.25));
   const roll=index===1?-.35+(reduced?0:.022*Math.sin(t*.8)):(reduced?0:.012*Math.sin(t*.7));
   g.rotation.set(p.pitch+drag.y+pitch,p.yaw+drag.x+yaw,roll);

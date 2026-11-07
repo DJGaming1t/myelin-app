@@ -1,18 +1,14 @@
 import { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, View } from 'react-native';
+import { brickRenders } from './brickRenders';
 
 type Props = { size: number; tone?: 'current' | 'done' | 'missed' | 'fixed' };
-const tones = { current: '#7E98A4', done: '#909F86', missed: '#B67E68', fixed: '#B3A58F' };
-
+const toneIndex = { current: 2, done: 2, missed: 4, fixed: 1 };
+/** Offline renders of the actual bundled model, without a GL context per timeline row. */
 export const TimeBrick = memo(function TimeBrick({ size, tone = 'fixed' }: Props) {
-  const fill = tones[tone];
-  return <View accessible={false} style={[styles.body, { width: size, height: size * .62, backgroundColor: fill }]}>
-    <View style={[styles.stud, { backgroundColor: fill }]} />
-    <View style={[styles.stud, { backgroundColor: fill }]} />
+  const uri = brickRenders[toneIndex[tone] % brickRenders.length];
+  return <View accessible={false} style={{ width: size, height: size * .8 }}>
+    <Image source={{ uri }} resizeMode="contain" fadeDuration={0} style={{ width: size, height: size * .8 }} />
+    <Image source={{ uri }} resizeMode="contain" fadeDuration={0} style={{ position: 'absolute', width: size, height: size * .8, tintColor: tone === 'fixed' ? '#F2E7D0' : tone === 'missed' ? '#B89C88' : '#7E98A4', opacity: .72 }} />
   </View>;
-});
-
-const styles = StyleSheet.create({
-  body: { borderRadius: 5, borderBottomWidth: 3, borderBottomColor: '#594F43', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' },
-  stud: { width: 8, height: 8, borderRadius: 4, borderTopWidth: 1, borderTopColor: '#F2E7D0', borderBottomWidth: 1, borderBottomColor: '#685E52' },
 });

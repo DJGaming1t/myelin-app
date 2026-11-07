@@ -1,3 +1,5 @@
+import { ChalkGrain } from '@/src/components/app/ChalkGrain';
+import { TimeBrick } from '@/src/features/planning/TimeBrick';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import {
   NativeProgressVisual as ProgressVisual,
@@ -274,7 +276,8 @@ export default function TodayScreen() {
   const reduceMotionEnabled = Boolean(workspace?.settings?.reduceMotion);
   const collapsedSheetTop = Math.max(305, Math.min(screenHeight - 235, Math.round(screenHeight * .55)));
   const heroStageHeight = Math.max(125, collapsedSheetTop - 196);
-  const expandedSheetTop = 64;
+  const expandedSheetTop = Math.min(180, screenHeight * .24);
+  const archBorderRadius = Math.round(Math.min(220, screenWidth * 0.47));
   const expandDistance = Math.max(180, collapsedSheetTop - expandedSheetTop);
   const dockClearance = 88 + Math.max(insets.bottom, 12);
 
@@ -284,6 +287,10 @@ export default function TodayScreen() {
   function snapSheet(expand: boolean, velocityY = 0) {
     setIsSheetExpanded(expand);
     const target = expand ? -expandDistance : 0;
+    if (reduceMotionEnabled) {
+      sheetTranslateY.value = target;
+      return;
+    }
     sheetTranslateY.value = withSpring(
       target,
       reduceMotionEnabled
@@ -335,6 +342,17 @@ export default function TodayScreen() {
 
   const animatedSheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: sheetTranslateY.value }],
+    borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius, 28], Extrapolation.CLAMP),
+    borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius, 28], Extrapolation.CLAMP),
+  }));
+
+  const animatedSeamStyle = useAnimatedStyle(() => ({
+    borderTopLeftRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius - 3, 25], Extrapolation.CLAMP),
+    borderTopRightRadius: interpolate(-sheetTranslateY.value, [0, expandDistance], [archBorderRadius - 3, 25], Extrapolation.CLAMP),
+  }));
+
+  const animatedSummaryStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(-sheetTranslateY.value, [0, expandDistance * .65, expandDistance], [0, 0, 1], Extrapolation.CLAMP),
   }));
 
   const animatedHeroDimStyle = useAnimatedStyle(() => {
@@ -345,7 +363,7 @@ export default function TodayScreen() {
       Extrapolation.CLAMP,
     );
     return {
-      opacity: interpolate(progress, [0, 0.85, 1], [1, 0.35, 0.18], Extrapolation.CLAMP),
+      opacity: interpolate(progress, [0, 0.85, 1], [1, 0.12, 0], Extrapolation.CLAMP),
       transform: [
         {
           scale: interpolate(progress, [0, 1], [1, 0.96], Extrapolation.CLAMP),
@@ -571,11 +589,10 @@ export default function TodayScreen() {
             ? 'All mapped steps finished'
             : 'Open schedule · Add a task or block';
 
-  const archBorderRadius = Math.round(Math.min(220, screenWidth * 0.47));
-
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.screen}>
+        <ChalkGrain />
         {/* ===================================================================
             ZONE 1: EDITORIAL BRAND BAR (MYELIN | ? | Settings)
            =================================================================== */}
@@ -635,6 +652,8 @@ export default function TodayScreen() {
             <View style={styles.glStageShift}>
               <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={isSheetExpanded} />
             </View>
+
+            <ChalkGrain />
 
             {/* Faint Dynamic Watermark Behind Left of Bottle */}
             <Text
@@ -717,6 +736,12 @@ export default function TodayScreen() {
           </View>
         </Animated.View>
 
+        <Animated.View pointerEvents="none" style={[styles.expandedSummary, animatedSummaryStyle]}>
+          <Text style={styles.summaryDate}>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+          <Text style={styles.summaryHeading}>A little progress, every day.</Text>
+          <Text style={styles.summaryDetail}>{progressSummary.done} of {totalTaskCount} tasks complete · {formatCompletedFocusDuration(completedFocusMinutes)} focus</Text>
+        </Animated.View>
+
         {/* ===================================================================
             ZONE 3: PERSISTENT CURVED CREAM DAY MAP SHEET (zIndex: 10)
             - Expands and collapses smoothly BEHIND the floating graphite dock
@@ -733,15 +758,14 @@ export default function TodayScreen() {
             },
             animatedSheetStyle,
           ]}>
+          <ChalkGrain paper />
           {/* Inner Pencilled Contour Seam Following the Arch */}
-          <View
+          <Animated.View
             pointerEvents="none"
             style={[
               styles.archPencilSeam,
-              {
-                borderTopLeftRadius: archBorderRadius - 3,
-                borderTopRightRadius: archBorderRadius - 3,
-              },
+              animatedSeamStyle,
+
             ]}
           />
 
@@ -1612,12 +1636,6 @@ function TactileDayBrick({
   const current = step.current;
   const isBlue = done || current;
 
-  const topFaceColor = isBlue ? '#92AEBA' : '#EDE3CE';
-  const frontLeftColor = isBlue ? chalkTheme.progressBlue : chalkTheme.paperRaised;
-  const frontRightColor = isBlue ? '#5F7986' : '#CBC0AA';
-  const borderColor = current ? chalkTheme.graphite : isBlue ? '#38474F' : '#857E70';
-  const studTopColor = isBlue ? '#9FB9C5' : '#F3EBD8';
-  const studBodyColor = isBlue ? '#728D99' : '#D9CEB8';
 
   return (
     <Pressable
@@ -1644,30 +1662,7 @@ function TactileDayBrick({
       {/* Soft Graphite Paper Drop Shadow */}
       <View pointerEvents="none" style={styles.brickPaperShadow} />
 
-      {/* Isometric 2-Stud Brick Body */}
-      <View style={[styles.brickBodyShell, { borderColor }]}>
-        {/* Top Isometric Bevel Highlight */}
-        <View style={[styles.brickTopFace, { backgroundColor: topFaceColor }]} />
-        {/* Lower Split Faces (Left Lit + Right Shaded) */}
-        <View style={styles.brickLowerFacesRow}>
-          <View style={[styles.brickFrontLeftFace, { backgroundColor: frontLeftColor }]} />
-          <View style={[styles.brickFrontRightFace, { backgroundColor: frontRightColor }]} />
-        </View>
-
-        {/* Two Isometric Cylindrical Studs on Top */}
-        <View pointerEvents="none" style={styles.brickStudsRow}>
-          {[0, 1].map((studIdx) => (
-            <View
-              key={studIdx}
-              style={[
-                styles.brickStudCylinder,
-                { backgroundColor: studBodyColor, borderColor },
-              ]}>
-              <View style={[styles.brickStudCap, { backgroundColor: studTopColor }]} />
-            </View>
-          ))}
-        </View>
-      </View>
+      <TimeBrick size={68} tone={isBlue ? 'current' : 'fixed'} />
     </Pressable>
   );
 }
@@ -1720,6 +1715,10 @@ function formatDeadline(timestamp: number) {
 }
 
 const styles = StyleSheet.create({
+  expandedSummary: { position: 'absolute', top: 65, left: 24, right: 24 },
+  summaryDate: { color: chalkTheme.mutedCream, fontSize: 12, marginBottom: 6 },
+  summaryHeading: { color: chalkTheme.onStage, fontSize: 23, lineHeight: 29 },
+  summaryDetail: { color: chalkTheme.mutedCream, fontSize: 13, marginTop: 8 },
   safe: {
     flex: 1,
     backgroundColor: chalkTheme.hero,
@@ -1859,7 +1858,7 @@ const styles = StyleSheet.create({
   },
   glStageShift: {
     flex: 1,
-    marginLeft: 24,
+    marginLeft: 0,
   },
   telemetryStack: {
     position: 'absolute',

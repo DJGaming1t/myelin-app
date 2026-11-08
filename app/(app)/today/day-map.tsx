@@ -70,6 +70,13 @@ function timeLabel(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
+function readableMinutes(value: number) {
+  const minutes = Math.max(0, Math.round(value));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? `${hours}h${rest ? ` ${rest}m` : ''}` : `${rest}m`;
+}
+
 function durationLabel(start: number, end: number) {
   return String(Math.max(0, Math.round((end - start) / 60000))) + 'm';
 }
@@ -692,15 +699,18 @@ export default function DayMapScreen() {
           showsVerticalScrollIndicator={false}>
           <View style={styles.daySummary}>
             <Text style={styles.daySummaryText}>
-              {map.plannedStudyMinutes}m planned
+              {readableMinutes(map.plannedStudyMinutes)} scheduled
               {' · '}
-              {Math.round(map.availableMinutes / 60 * 10) / 10}h open
+              {readableMinutes(map.availableMinutes)} open
             </Text>
             <Text style={[styles.daySummaryMeta, map.overloadMinutes > 0 && styles.daySummaryWarning]}>
               {map.overloadMinutes > 0 ? `${map.overloadMinutes}m over capacity` : `${map.free.length} free ${map.free.length === 1 ? 'window' : 'windows'}`}
             </Text>
           </View>
 
+          {todayPlan?.nextBlock?.taskId && !map.entries.some(entry => entry.kind === 'task' && entry.taskId === todayPlan.nextBlock?.taskId) ? (
+            <Text style={styles.daySummaryMeta}>Next recommendation is flexible; schedule it to reserve a time.</Text>
+          ) : null}
           <AutopilotReflowNotice
             summary={reflow}
             recoveryOptions={recoveryOptions}
@@ -1233,7 +1243,7 @@ export default function DayMapScreen() {
                   <View key={String(window.start)} style={styles.freePill}>
                     <Text style={styles.freeTime}>{timeLabel(window.start)}</Text>
                     <Text style={styles.freeMinutes}>
-                      {timeLabel(window.end)} · {window.minutes}m free
+                      {timeLabel(window.end)} · {readableMinutes(window.minutes)} free
                     </Text>
                   </View>
                 ))

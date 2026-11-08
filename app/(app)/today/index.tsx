@@ -209,9 +209,9 @@ export default function TodayScreen() {
   const progressSummary = useMemo(
     () =>
       workspace
-        ? computeTodayProgress(workspace, now)
+        ? computeTodayProgress(workspace, now, plan?.nextBlock?.taskId ?? null)
         : { tasks: [], total: 0, done: 0, incomplete: 0, ratio: 0, percent: 0 },
-    [workspace, now],
+    [workspace, now, plan?.nextBlock?.taskId],
   );
   const completedFocusMinutes = useMemo(
     () => (workspace ? computeCompletedFocusMinutesToday(workspace, now) : 0),
@@ -690,7 +690,7 @@ export default function TodayScreen() {
                 accessibilityValue={{ min: 0, max: 100, now: todayTaskProgress }}
                 style={styles.heroProgressCallout}>
                 <Text style={styles.heroProgressPercent}>{todayTaskProgress}%</Text>
-                <Text style={styles.heroProgressCaption}>of today’s tasks</Text>
+                <Text style={styles.heroProgressCaption}>today + next task</Text>
               </Pressable>
             </View>
           </View>

@@ -62,6 +62,19 @@ function read(relative: string) {
 }
 
 function main() {
+  const flexibleWorkspace = createEmptyWorkspace(now - DAY);
+  const flexible = createStudyTask({ title: 'Bio work', planState: 'inbox', dueAt: now - DAY, now: now - DAY });
+  flexibleWorkspace.tasks.push(flexible);
+  assert.equal(computeTodayProgress(flexibleWorkspace, now).total, 0);
+  assert.equal(computeTodayProgress(flexibleWorkspace, now, flexible.id).total, 1);
+  const flexiblePlan = buildTodayPlan(flexibleWorkspace, now);
+  if (flexiblePlan.nextBlock?.taskId === flexible.id) {
+    assert(buildDayMapSteps(flexibleWorkspace, now, flexiblePlan).steps.some(step => step.taskId === flexible.id));
+  }
+  postponeTask(flexible, now + DAY, now);
+  assert.equal(computeTodayProgress(flexibleWorkspace, now, flexible.id).total, 0);
+  console.log('✓ recommended flexible task appears in Today; postponed tasks remain excluded');
+
   const workspace = createEmptyWorkspace(now - DAY);
   workspace.settings.dailyMinutes = 120;
   workspace.settings.focusMinutes = 45;

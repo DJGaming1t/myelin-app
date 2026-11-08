@@ -103,6 +103,7 @@ function overlapsLocalDay(
 export function selectTodayTasks(
   workspace: WorkspaceState,
   now = Date.now(),
+  recommendedTaskId: string | null = null,
 ): StudyTask[] {
   const dayStart = startOfLocalDay(now);
   const dayEnd = nextLocalDayStart(now);
@@ -131,6 +132,13 @@ export function selectTodayTasks(
       continue;
     }
 
+    // A flexible inbox task recommended by today's planner is part of this view.
+    if (task.id === recommendedTaskId && task.planState === 'inbox') {
+      seenIds.add(task.id);
+      result.push(task);
+      continue;
+    }
+
     if (task.planState === 'today') {
       seenIds.add(task.id);
       result.push(task);
@@ -155,8 +163,9 @@ export function selectTodayTasks(
 export function computeTodayProgress(
   workspace: WorkspaceState,
   now = Date.now(),
+  recommendedTaskId: string | null = null,
 ): TodayProgressSummary {
-  const tasks = selectTodayTasks(workspace, now);
+  const tasks = selectTodayTasks(workspace, now, recommendedTaskId);
   const items: TaskProgressItem[] = tasks.map((task) => ({
     id: task.id,
     completed: task.status === 'completed',
@@ -413,7 +422,7 @@ export function buildDayMapSteps(
   options: { previewLimit?: number; includeTopicBlocksWhenNoTasks?: boolean } = {},
 ): DayMapStepsSummary {
   const previewLimit = Math.max(1, options.previewLimit ?? 5);
-  const todayTasks = selectTodayTasks(workspace, now);
+  const todayTasks = selectTodayTasks(workspace, now, plan?.nextBlock?.taskId ?? null);
   const dayStart = startOfLocalDay(now);
   const dayEnd = nextLocalDayStart(now);
 

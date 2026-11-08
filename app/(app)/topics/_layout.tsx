@@ -1,13 +1,13 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@/src/theme/tokens';
+import { chalkTheme } from '@/src/theme/tokens';
 
 export default function TopicsLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.bg },
+        contentStyle: { backgroundColor: chalkTheme.hero },
         animation: 'slide_from_right',
       }}>
       <Stack.Screen name="index" options={{ animation: 'none' }} />

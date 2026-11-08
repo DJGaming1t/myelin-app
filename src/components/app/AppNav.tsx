@@ -119,6 +119,16 @@ export function AppNav({
 
   function openTab(item: (typeof ITEMS)[number]) {
     if (activeTab === item.key) return;
+    const slot = slots[item.key];
+    if (compact && slot) {
+      const target = dockIndicatorBox(slot);
+      const spring = { ...motion.releaseSpring, damping: 25, stiffness: 255, overshootClamping: true };
+      highlightX.value = reduceMotion ? target.x : withSpring(target.x, spring);
+      highlightY.value = reduceMotion ? target.y : withSpring(target.y, spring);
+      highlightWidth.value = reduceMotion ? target.width : withSpring(target.width, spring);
+      highlightHeight.value = reduceMotion ? target.height : withSpring(target.height, spring);
+      highlightOpacity.value = 1;
+    }
     router.replace(item.path);
   }
 

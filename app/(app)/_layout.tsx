@@ -6,7 +6,7 @@ import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { motion } from '@/src/theme/tokens';
+import { chalkTheme, motion } from '@/src/theme/tokens';
 
 const PEER_ROUTE_NAMES = new Set([
   'today',
@@ -64,6 +64,7 @@ export default function AppLayout() {
     <Stack
       screenOptions={({ route }) => ({
         headerShown: false,
+        contentStyle: { backgroundColor: chalkTheme.hero },
         // Peer screens crossfade in place, keeping their floating docks aligned.
         // Detail screens retain the directional navigation cue.
         animation: reduceMotion

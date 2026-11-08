@@ -3,14 +3,14 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import {
-  BOTTLE_LANDING_DURATION_MS,
+  BOTTLE_REVEAL_DURATION_MS,
   CHALK_ACCENT_HEX,
   CHALK_CREAM_HEX,
   CHALK_PROGRESS_HEX,
   CHALK_STAGE_HEX,
   createNativeScene,
   ensureLoaderNavigator,
-  getBottleLandingPose,
+  getBottleRevealOpacity,
   getBottleMeniscusNormalizedY,
 } from '../src/features/today/nativeVisualEngine.js';
 
@@ -39,23 +39,15 @@ assert.equal(CHALK_CREAM_HEX, '#F2E7D0');
 assert.equal(CHALK_PROGRESS_HEX, '#7E98A4');
 assert.equal(CHALK_ACCENT_HEX, '#9BB8C6');
 
-// The bottle's landing is deterministic, uniform-scaled and completes before
-// the existing long-running idle animation takes over.
-const initialLanding = getBottleLandingPose(0);
-assert.ok(initialLanding.lift > 0.5, 'Bottle should begin above its resting pose');
-assert.ok(initialLanding.scale < 1, 'Bottle should enter slightly smaller');
-const impactLanding = getBottleLandingPose(410);
-assert.ok(impactLanding.lift < 0, 'Bottle should briefly compress at contact');
-assert.ok(impactLanding.scale < 1, 'Impact compression should be subtle');
-assert.ok(getBottleLandingPose(560).lift > 0, 'Bottle should rebound once');
-assert.ok(getBottleLandingPose(780).lift < 0, 'Bottle should settle after the rebound');
-const settledLanding = { lift: 0, scale: 1, tilt: 0 };
-assert.deepEqual(getBottleLandingPose(BOTTLE_LANDING_DURATION_MS), settledLanding);
-assert.deepEqual(getBottleLandingPose(1500), settledLanding);
-assert.deepEqual(getBottleLandingPose(0, true), settledLanding, 'Reduced motion disables the landing');
-for (const ms of [0, 16, 200, 369, 370, 410, 450, 560, 680, 780, 879, 880]) {
-  const pose = getBottleLandingPose(ms);
-  assert.ok(Object.values(pose).every(Number.isFinite), 'Bottle entrance pose must remain finite');
+// The first bottle appearance is an in-place opacity reveal, not a fall.
+assert.equal(getBottleRevealOpacity(0), 0);
+assert.equal(getBottleRevealOpacity(BOTTLE_REVEAL_DURATION_MS), 1);
+assert.equal(getBottleRevealOpacity(0, true), 1);
+let previousOpacity = 0;
+for (const ms of [0, 16, 100, 230, 350, 459, 460, 1000]) {
+  const opacity = getBottleRevealOpacity(ms);
+  assert.ok(Number.isFinite(opacity) && opacity >= previousOpacity && opacity <= 1);
+  previousOpacity = opacity;
 }
 
 // ============================================================================
@@ -245,9 +237,12 @@ const bottleEngine = createNativeScene(null, (e) => errors.push(e), null, { mode
 assert.equal(bottleEngine.getModel(), 'bottle');
 bottleEngine.update(16, 43, false, { x: 0, y: 0 });
 assert.ok(
-  bottleEngine.scene.children[1].position.y > 0.25,
-  'The actual 3D bottle group must begin its landing above the resting pose',
+  Math.abs(bottleEngine.scene.children[1].position.y) < 0.03,
+  'The bottle begins in place without a drop',
 );
+const initialBottleOpacity = bottleEngine.bottle.shell.material.opacity;
+for (let frame = 0; frame < 40; frame++) bottleEngine.update(16, 43, false, { x: 0, y: 0 });
+assert.ok(bottleEngine.bottle.shell.material.opacity > initialBottleOpacity, 'The bottle reveals in place');
 for (let f = 0; f < 1000; f++) {
   bottleEngine.update(16, 43, false, { x: 0, y: 0 });
   const vis = bottleEngine.scene.children.filter((c) => c.visible);

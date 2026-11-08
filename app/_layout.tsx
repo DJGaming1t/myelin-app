@@ -14,7 +14,7 @@ import { OnboardingProvider } from '@/src/features/onboarding/OnboardingProvider
 import { OnboardingTransitionProvider } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { ReviewProvider, useReview } from '@/src/features/review/ReviewProvider';
 import { StartupUpdateGate } from '@/src/features/updates/StartupUpdateGate';
-import { colors } from '@/src/theme/tokens';
+import { chalkTheme, colors } from '@/src/theme/tokens';
 
 export default function RootLayout() {
   return (
@@ -58,7 +58,7 @@ function RootNavigator() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.bg },
+          contentStyle: { backgroundColor: darkStage ? chalkTheme.hero : colors.bg },
           animation: 'none',
         }}
       />

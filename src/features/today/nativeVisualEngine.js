@@ -51,45 +51,12 @@ function easeInOutCubic(t){
   return v<.5?4*v*v*v:1-Math.pow(-2*v+2,3)/2;
 }
 
-// The bottle enters as a physical sculpture, not as a translated GL canvas.
-// Each phase meets at its endpoint: a quick fall, brief compression, one
-// restrained rebound, and a small final settle. All scaling is uniform.
-export const BOTTLE_LANDING_DURATION_MS = 880;
-export function getBottleLandingPose(elapsedMs, reducedMotion = false) {
+// Reveal the bottle in place; never translate, squash or bounce the sculpture.
+export const BOTTLE_REVEAL_DURATION_MS = 460;
+export function getBottleRevealOpacity(elapsedMs, reducedMotion = false) {
+  if (reducedMotion) return 1;
   const ms = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
-  if (reducedMotion || ms >= BOTTLE_LANDING_DURATION_MS) {
-    return { lift: 0, scale: 1, tilt: 0 };
-  }
-  if (ms < 370) {
-    const t = ms / 370;
-    return {
-      lift: 0.56 * (1 - t * t * t),
-      scale: 0.96 + 0.04 * t,
-      tilt: 0.045 * (1 - t * t),
-    };
-  }
-  if (ms < 450) {
-    const impact = Math.sin(Math.PI * (ms - 370) / 80);
-    return {
-      lift: -0.045 * impact,
-      scale: 1 - 0.025 * impact,
-      tilt: -0.014 * impact,
-    };
-  }
-  if (ms < 680) {
-    const bounce = Math.sin(Math.PI * (ms - 450) / 230);
-    return {
-      lift: 0.13 * bounce,
-      scale: 1 + 0.009 * bounce,
-      tilt: 0.012 * bounce,
-    };
-  }
-  const settle = Math.sin(Math.PI * (ms - 680) / 200);
-  return {
-    lift: -0.018 * settle,
-    scale: 1 - 0.004 * settle,
-    tilt: -0.006 * settle,
-  };
+  return easeInOutCubic(ms / BOTTLE_REVEAL_DURATION_MS);
 }
 
 // Bundled module: progress-reveal.mjs
@@ -1993,7 +1960,7 @@ class StopwatchRenderer {
  let activeMode=options?.mode||'cycle';
  let lockedIndex=resolveModeIndex(activeMode);
  let current=lockedIndex!==null?lockedIndex:1,elapsed=10000,localTime=0,transition=null,lastProgress=NaN;
- let bottleLandingMs=0;
+ let bottleRevealMs=0;
  const framing=new Map(), fadedMaterials=new Map();
  // Compute framing once per object/aspect, after the offline model is ready.
  // Uniform scaling preserves the sculpture; camera distance fits its silhouette.
@@ -2098,15 +2065,10 @@ class StopwatchRenderer {
   }else{
    transition=null;idlePose(current,localTime,reduced,drag);
   }
-  // Play once when the bottle first appears in this graphics context. The
-  // existing idle pose remains the destination, including its diagonal angle.
-  // Pause/resume does not restart the fall; a new GL context naturally does.
-  if(displayed===1 && bottleLandingMs<BOTTLE_LANDING_DURATION_MS){
-   bottleLandingMs=reduced?BOTTLE_LANDING_DURATION_MS:Math.min(BOTTLE_LANDING_DURATION_MS,bottleLandingMs+delta);
-   const landing=getBottleLandingPose(bottleLandingMs,reduced);
-   bottleGroup.position.y+=landing.lift;
-   bottleGroup.scale.multiplyScalar(landing.scale);
-   bottleGroup.rotation.z+=landing.tilt;
+  // The first appearance uses opacity only; idle pose and water remain intact.
+  if(displayed===1 && bottleRevealMs<BOTTLE_REVEAL_DURATION_MS){
+   bottleRevealMs=reduced?BOTTLE_REVEAL_DURATION_MS:Math.min(BOTTLE_REVEAL_DURATION_MS,bottleRevealMs+delta);
+   alpha *= getBottleRevealOpacity(bottleRevealMs,reduced);
   }
   const visible=groups[displayed];visible.visible=true;frameObject(displayed);
   if(progress!==lastProgress){if(bottle.ready)bottle.setFill(progress);if(watch.ready)watch.setPercent(progress);cube?.setProgress(progress,{animate:!reduced});chess?.setProgress(progress,{animate:!reduced});lastProgress=progress;}

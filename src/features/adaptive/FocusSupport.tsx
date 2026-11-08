@@ -21,7 +21,10 @@ export function FocusSupport({ task, topicPostponements = 0, onStep, onLaunch }:
   }, [experiment, avoided, task?.id, task?.launchTrial, updateWorkspace]);
   if (!workspace) return null;
   return <View style={styles.wrap}>
-    {sleepingAt(workspace.settings, Date.now()) ? <Text style={styles.copy}>This is your protected sleep window. Today will suggest work after you wake. You can still choose a short session.</Text> : null}
+    {sleepingAt(workspace.settings, Date.now()) ? <View style={styles.sleepNotice}>
+      <Text style={styles.sleepTitle}>PROTECTED REST</Text>
+      <Text style={styles.copy}>Today will suggest work after you wake. You can still start a short session.</Text>
+    </View> : null}
     {avoided ? <View style={styles.callout}><Text style={styles.title}>{variant === 'five-minute' || !experiment ? 'Make the start smaller' : 'Choose one concrete first step'}</Text><Text style={styles.copy}>You have postponed this {task?.postponements ?? topicPostponements} times. Pick one step; the whole task can wait.</Text>{variant === 'five-minute' || !experiment ? <Pressable accessibilityRole="button" onPress={() => onLaunch(draft.split('\n').map(s => s.trim()).find(Boolean) ?? 'Open the material')} style={styles.button}><Text style={styles.action}>Try just five minutes →</Text></Pressable> : null}</View> : null}
     <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded(v => !v)} style={styles.button}><Text style={styles.action}>{expanded ? 'Hide first steps' : 'Break this into small steps'}</Text></Pressable>
     <AnimatedDisclosure visible={expanded}>
@@ -49,4 +52,4 @@ export function DistractionShield() {
     </AnimatedDisclosure>
   </View>;
 }
-const styles = StyleSheet.create({ wrap: { marginTop: 12 }, callout: { backgroundColor: colors.panel, borderLeftWidth: 2, borderLeftColor: colors.accent, padding: 14, borderRadius: radius.md }, title: { color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }, copy: { color: colors.muted, fontSize: 13, lineHeight: 20 }, input: { minHeight: 100, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.md, padding: 12, color: colors.text, lineHeight: 22, marginTop: 10 }, button: { minHeight: 48, justifyContent: 'center', paddingVertical: 10 }, action: { color: colors.accent, fontSize: 14, lineHeight: 20, fontWeight: '700' } });
+const styles = StyleSheet.create({ wrap: { marginTop: 10 }, sleepNotice: { borderLeftWidth: 2, borderLeftColor: colors.accentLine, paddingLeft: 12, marginBottom: 3 }, sleepTitle: { color: colors.accent, fontSize: 10, lineHeight: 15, fontWeight: '800', letterSpacing: .8, marginBottom: 3 }, callout: { backgroundColor: colors.panel, borderLeftWidth: 2, borderLeftColor: colors.accent, padding: 14, borderRadius: radius.md }, title: { color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }, copy: { color: colors.muted, fontSize: 13, lineHeight: 20 }, input: { minHeight: 100, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.md, padding: 12, color: colors.text, lineHeight: 22, marginTop: 10 }, button: { minHeight: 48, justifyContent: 'center', paddingVertical: 10 }, action: { color: colors.accent, fontSize: 14, lineHeight: 20, fontWeight: '700' } });

@@ -225,6 +225,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   const start = useRef({ x: 0, y: 0 });
   const contextCount = useRef(0);
   const hasCurrentContext = useRef(false);
+  const surfaceLayout = useRef({ width: 0, height: 0 });
   const startupAttempts = useRef(0);
 
   useEffect(() => {
@@ -247,7 +248,8 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
         setContextKey(key => key + 1);
       } else {
         cleanup.current();
-        const stage = hasCurrentContext.current ? 'A graphics context was created, but no frame was drawn.' : 'Android did not create a graphics context.';
+        const { width, height } = surfaceLayout.current;
+        const stage = hasCurrentContext.current ? 'A graphics context was created, but no frame was drawn.' : `Android did not create a graphics context (view ${Math.round(width)} × ${Math.round(height)}).`;
         setError(`${stage} Tap retry to try again.`);
       }
     };
@@ -477,7 +479,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 
   return (
     <View style={styles.stageContainer} {...pan.panHandlers}>
-      <GLView key={contextKey} style={styles.glView} onContextCreate={onContextCreate} />
+      <GLView key={contextKey} style={styles.glView} collapsable={false} onLayout={event => { surfaceLayout.current = event.nativeEvent.layout; }} onContextCreate={onContextCreate} />
       {!ready ? <StaticChalkVisualFallback progress={progress} model={model} /> : null}
       {error ? <Pressable accessibilityRole="button" accessibilityLabel="Retry native 3D visual" onPress={() => {
         startupAttempts.current = 0; hasCurrentContext.current = false; cleanup.current(); setReady(false); setError(null); setContextKey(key => key + 1);
@@ -587,11 +589,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   glView: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
   },
   fallbackWrap: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: CHALK_STAGE_HEX,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },

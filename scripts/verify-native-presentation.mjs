@@ -344,6 +344,8 @@ assert.ok(
 );
 assert.match(npvSource, /!ready\s*\?\s*<StaticChalkVisualFallback/, 'Show the bundled fallback until the graphics context draws');
 assert.ok(!npvSource.includes('Starting 3D…'), 'Do not replace the hero with a repeated loading message');
+assert.match(npvSource, /fallbackWrap:\s*\{[^}]*backgroundColor:\s*'transparent'/s, 'Fallback must not paint an opaque layer over the GL surface');
+assert.match(npvSource, /glView:\s*\{[^}]*\.\.\.StyleSheet\.absoluteFillObject/s, 'The GL view must fill the measured stage');
 
 console.log(
   JSON.stringify(

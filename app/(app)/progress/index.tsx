@@ -3,7 +3,7 @@ import { LearningInsights, OutcomeEvidence } from '@/src/features/adaptive/Learn
 import { AdaptationInsightList } from '@/src/features/adaptive/AdaptationInsights';
 import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -40,6 +40,7 @@ import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens'
 
 export default function ProgressScreen() {
   const dockClearance = useAppNavClearance();
+  const evidencePosition = useRef(0);
   const { workspace, ownerKey } = useWorkspace();
   const { session: focus, ready: focusReady } = useFocus();
   const { session: review, ready: reviewReady } = useReview();
@@ -88,6 +89,11 @@ export default function ProgressScreen() {
           onHelp={guide.start}
           variant="compact"
           title="Progress"
+          secondaryActionLabel="Evidence"
+          onSecondaryAction={() => {
+            setShowEvidence(true);
+            guide.scroll.current?.scrollTo({ y: Math.max(0, evidencePosition.current - 16), animated: true });
+          }}
           actionLabel="Settings"
           onAction={() => router.push('/(app)/settings')}
         />
@@ -191,6 +197,7 @@ export default function ProgressScreen() {
             ref={!showEvidence ? guide.anchors['progress.evidence'] : undefined}
             collapsable={false} testID={!showEvidence ? 'guide-progress-evidence' : undefined}
             accessibilityRole="button"
+            onLayout={event => { evidencePosition.current = event.nativeEvent.layout.y; }}
             accessibilityLabel={showEvidence ? 'Hide deeper evidence' : 'See deeper evidence'}
             accessibilityState={{ expanded: showEvidence }}
             onPress={() => setShowEvidence((current) => !current)}

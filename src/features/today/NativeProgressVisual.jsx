@@ -215,6 +215,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   const live = useRef(true);
   const active = useRef(true);
   const focused = useRef(true);
+  const focusSettled = useRef(true);
   const reduced = useRef(false);
   const syncLoop = useRef(() => {});
   useEffect(() => { syncLoop.current(); }, [paused]);
@@ -248,9 +249,16 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       focused.current = true;
       // Resume the existing graphics context; retry remains available if the
       // operating system has discarded it while the app was away.
+      focusSettled.current = !engineRef.current;
+      const transitionTimer = setTimeout(() => {
+        focusSettled.current = true;
+        syncLoop.current();
+      }, 220);
       syncLoop.current();
       return () => {
+        clearTimeout(transitionTimer);
         focused.current = false;
+        focusSettled.current = false;
         syncLoop.current();
       };
     }, []),
@@ -384,7 +392,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       let last = 0;
       let firstFrame = true;
       function sync() {
-        if (disposed || !active.current || !focused.current || pausedRef.current) {
+        if (disposed || !active.current || !focused.current || !focusSettled.current || pausedRef.current) {
           cancelAnimationFrame(frame);
           frame = 0;
           last = 0;
@@ -394,7 +402,9 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       }
       function tick(now) {
         frame = 0;
-        if (disposed || !active.current || !focused.current || pausedRef.current) return;
+        if (disposed || !active.current || !focused.current || !focusSettled.current || pausedRef.current) return;
+        // Avoid competing with navigation and touch handling at a full display refresh rate.
+        if (last && now - last < 30) { sync(); return; }
         try {
           const dt = last ? Math.min(64, now - last) : 16;
           last = now;

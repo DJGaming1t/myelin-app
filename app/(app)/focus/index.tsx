@@ -431,7 +431,7 @@ export default function FocusScreen() {
               <View style={styles.cadenceCard}>
                 <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
                 <Text accessibilityRole="header" style={styles.cadenceHeading}>Your focus session</Text>
-                <Text style={styles.cadenceIntro}>Choose a length that feels right.</Text>
+                <Text style={styles.cadenceIntro}>Choose your focus length</Text>
                 <View style={styles.planStrip}>
                   <Metric
                     label="FULL BLOCK"
@@ -507,7 +507,7 @@ export default function FocusScreen() {
                 style={styles.primary}>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.primaryText}>Start {plannedMinutes}-minute focus</Text>
-                  <Text style={styles.primarySubtext}>Your timer will keep running in the background.</Text>
+  
                 </View>
                 <Text style={styles.buttonArrow}>→</Text>
               </SpringPressable>
@@ -524,9 +524,7 @@ export default function FocusScreen() {
                   </View>
                   <View style={styles.launchCopy}>
                     <Text style={styles.launchTitle}>Five-minute launch</Text>
-                    <Text style={styles.launchText}>
-                      Only promise five minutes. If momentum arrives, continue into the full block.
-                    </Text>
+                    <Text style={styles.launchText}>Start small, then decide whether to continue.</Text>
                   </View>
                 </SpringPressable>
               </View>
@@ -1220,7 +1218,7 @@ function TimerDial({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: chalkTheme.hero },
   setupPage: { flex: 1 },
   sessionPage: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -1272,7 +1270,7 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 48,
   },
-  setupHeaderBlock: { backgroundColor: chalkTheme.hero, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 24, paddingBottom: 29, marginBottom: 0 },
+  setupHeaderBlock: { backgroundColor: chalkTheme.hero, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 26, marginBottom: 0 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   eyebrowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accentFill },
   eyebrow: { color: '#D9A58D', fontSize: 11, lineHeight: 15, fontWeight: '800', letterSpacing: 1.2 },
@@ -1292,8 +1290,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     overflow: 'hidden',
     paddingHorizontal: spacing.lg,
-    paddingTop: 26,
-    paddingBottom: 20,
+    paddingTop: 22,
+    paddingBottom: 14,
   },
   cadenceHeading: { color: colors.text, fontSize: 23, lineHeight: 30, fontWeight: '500', letterSpacing: -.5 },
   cadenceIntro: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 16 },
@@ -1327,7 +1325,7 @@ const styles = StyleSheet.create({
   durationChipTextActive: { color: colors.accent, fontWeight: '800' },
   fieldLabel: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: spacing.lg, marginBottom: 8 },
   tinyInput: {
-    minHeight: 76,
+    minHeight: 62,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
@@ -1352,11 +1350,11 @@ const styles = StyleSheet.create({
   primarySubtext: { color: paperSurfaces.onAccent, fontSize: 11.5, lineHeight: 15, marginTop: 2 },
   buttonArrow: { color: paperSurfaces.onAccent, fontSize: 20, fontWeight: '700' },
   launchButton: {
-    minHeight: 82,
+    minHeight: 66,
     marginTop: 10,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: paperSurfaces.accentLine,
+    borderColor: paperSurfaces.border,
     backgroundColor: 'transparent',
     padding: 13,
     flexDirection: 'row',
@@ -1381,9 +1379,9 @@ const styles = StyleSheet.create({
   },
   focusSessionContent: { paddingTop: 0 },
   sessionHeading: { alignItems: 'center' },
-  stopwatchPanel: { marginTop: 0, marginHorizontal: -spacing.lg, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, backgroundColor: chalkTheme.hero, paddingHorizontal: spacing.lg, paddingTop: 30, paddingBottom: 30, overflow: 'hidden' },
-  stopwatchStage: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', width: 218, height: 218, marginTop: 16 },
-  stopwatchOrbit: { position: 'absolute', width: 218, height: 218, borderRadius: 109, borderWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.23)' },
+  stopwatchPanel: { marginTop: 0, marginHorizontal: -spacing.lg, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, backgroundColor: chalkTheme.hero, paddingHorizontal: spacing.lg, paddingTop: 22, paddingBottom: 24, overflow: 'hidden' },
+  stopwatchStage: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', width: 200, height: 200, marginTop: 12 },
+  stopwatchOrbit: { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.23)' },
   stopwatchHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   stopwatchKicker: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '800', letterSpacing: 1.4, flexShrink: 1 },
   stopwatchCounter: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '700', letterSpacing: .8, flexShrink: 1, textAlign: 'right' },

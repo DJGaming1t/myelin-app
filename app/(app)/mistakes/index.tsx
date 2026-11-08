@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppIcon } from '@/src/components/app/AppIcon';
-import { AppNav } from '@/src/components/app/AppNav';
+import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { MotionItem } from '@/src/components/motion/MotionItem';
@@ -27,6 +27,7 @@ import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens'
 type Filter = 'due' | 'open' | 'resolved';
 
 export default function MistakesScreen() {
+  const dockClearance = useAppNavClearance();
   const { workspace, saveError } = useWorkspace();
   const [filter, setFilter] = useState<Filter>('due');
   const [query, setQuery] = useState('');
@@ -172,7 +173,7 @@ export default function MistakesScreen() {
           style={styles.listView}
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.list, items.length === 0 && styles.listEmpty]}
+          contentContainerStyle={[styles.list, items.length === 0 && styles.listEmpty, { paddingBottom: dockClearance }]}
           renderItem={({ item, index }) => {
             const topic = workspace.topics.find((candidate) => candidate.id === item.topicId);
             const status = item.resolvedAt ? 'Resolved' : item.wins ? `${item.wins}/2 wins` : 'Needs proof';
@@ -232,7 +233,7 @@ export default function MistakesScreen() {
           }
         />
 
-        <AppNav />
+        <AppNav overlay />
       </View>
     </SafeAreaView>
   );

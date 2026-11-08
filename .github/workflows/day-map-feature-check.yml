@@ -37,3 +37,6 @@ jobs:
         run: node --import tsx scripts/verify-timeline-position.ts
       - name: Verify theme contrast
         run: node scripts/verify-theme-contrast.mjs
+
+      - name: Verify floating dock clearance
+        run: node --import tsx scripts/verify-nav-layout.ts

@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav } from '@/src/components/app/AppNav';
+import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { MotionItem } from '@/src/components/motion/MotionItem';
@@ -36,6 +36,7 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 ];
 
 export default function TopicsScreen() {
+  const dockClearance = useAppNavClearance();
   const { status, workspace, saveError } = useWorkspace();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -210,7 +211,7 @@ export default function TopicsScreen() {
           style={styles.listView}
           data={topics}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.list, topics.length === 0 && styles.listEmpty]}
+          contentContainerStyle={[styles.list, topics.length === 0 && styles.listEmpty, { paddingBottom: dockClearance }]}
           renderItem={({ item, index }) => (
             <MotionItem delay={Math.min(index * 30, 120)}>
             <TopicCard
@@ -251,7 +252,7 @@ export default function TopicsScreen() {
           }
         />
 
-        <AppNav />
+        <AppNav overlay />
       </View>
     </SafeAreaView>
   );

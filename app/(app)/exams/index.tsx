@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav } from '@/src/components/app/AppNav';
+import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { MotionItem } from '@/src/components/motion/MotionItem';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -26,6 +26,7 @@ import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 type Filter = 'upcoming' | 'past';
 
 export default function ExamsScreen() {
+  const dockClearance = useAppNavClearance();
   const { workspace, saveError } = useWorkspace();
   const [filter, setFilter] = useState<Filter>('upcoming');
   const now = Date.now();
@@ -111,7 +112,7 @@ export default function ExamsScreen() {
           style={styles.listView}
           data={exams}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.list, exams.length === 0 && styles.listEmpty]}
+          contentContainerStyle={[styles.list, exams.length === 0 && styles.listEmpty, { paddingBottom: dockClearance }]}
           renderItem={({ item, index }) => {
             const status = examStatus(item.date, now);
             const affected = examTopics(item, workspace.topics);
@@ -182,7 +183,7 @@ export default function ExamsScreen() {
           }
         />
 
-        <AppNav />
+        <AppNav overlay />
       </View>
     </SafeAreaView>
   );

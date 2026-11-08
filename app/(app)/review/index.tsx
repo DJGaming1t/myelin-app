@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav } from '@/src/components/app/AppNav';
+import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { Confidence } from '@/src/data/schema';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
@@ -51,6 +51,7 @@ const CONFIDENCE: { value: Confidence; label: string; helper: string }[] = [
 ];
 
 export default function ReviewScreen() {
+  const dockClearance = useAppNavClearance();
   const celebrate = useAchievement();
   const params = useLocalSearchParams<{
     topicId?: string | string[];
@@ -202,7 +203,7 @@ export default function ReviewScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.page}>
-          <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={styles.dashboard}>
+          <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={[styles.dashboard, { paddingBottom: dockClearance }]}>
             <View style={styles.brandRow}>
               <View style={styles.brandDot} />
               <Text style={styles.brand}>MYELIN</Text>
@@ -227,7 +228,7 @@ export default function ReviewScreen() {
               <Text style={styles.arrow}>→</Text>
             </Pressable>
           </ScrollView>
-          <AppNav />
+          <AppNav overlay />
         </View>
         {guideOverlay}
       </SafeAreaView>
@@ -250,7 +251,7 @@ export default function ReviewScreen() {
             }
           />
 
-          <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={styles.dashboard} showsVerticalScrollIndicator={false}>
+          <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={[styles.dashboard, { paddingBottom: dockClearance }]} showsVerticalScrollIndicator={false}>
             {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text> : null}
             <AnimatedDisclosure visible={completedNotice} style={styles.completeNotice}>
               <Text style={styles.completeMark}>✓</Text>
@@ -404,7 +405,7 @@ export default function ReviewScreen() {
             )}
           </ScrollView>
 
-          <AppNav />
+          <AppNav overlay />
         </View>
         {guideOverlay}
       </SafeAreaView>

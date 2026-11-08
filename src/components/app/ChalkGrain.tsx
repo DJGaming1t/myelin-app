@@ -25,6 +25,10 @@ const fibres = Array.from({ length: 72 }, (_, i) => ({
   opacity: .045 + noise(i * 7 + 4) * .04,
   transform: [{ rotate: `${noise(i * 7 + 5) * 160 - 80}deg` }],
 }));
+export const PaperGrain = memo(function PaperGrain() {
+  return <Image accessible={false} source={{ uri: paperTexture }} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: .18 }]} />;
+});
+
 export const ChalkGrain = memo(function ChalkGrain({ paper = false }: { paper?: boolean }) {
   return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" renderToHardwareTextureAndroid shouldRasterizeIOS style={StyleSheet.absoluteFill}>
     {paper ? <Image source={{ uri: paperTexture }} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: .62 }]} /> : null}

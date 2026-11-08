@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
+import { appNavClearance } from '@/src/components/app/navLayout';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { chalkTheme, colors, layout, space, type } from '@/src/theme/tokens';
 
@@ -18,14 +19,21 @@ const ITEMS: {
   { key: 'progress', label: 'Progress', path: '/(app)/progress', icon: 'progress' },
 ];
 
+export function useAppNavClearance() {
+  const insets = useSafeAreaInsets();
+  return appNavClearance(insets.bottom);
+}
+
 export function AppNav({
   paper = true,
   floating = true,
   compact = true,
+  overlay = false,
 }: {
   paper?: boolean;
   floating?: boolean;
   compact?: boolean;
+  overlay?: boolean;
 }) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -35,6 +43,7 @@ export function AppNav({
       pointerEvents="box-none"
       style={[
         styles.shell,
+        overlay && styles.overlay,
         floating
           ? {
               paddingBottom: Math.max(insets.bottom, 10),
@@ -138,6 +147,7 @@ function NavItem({
 }
 
 const styles = StyleSheet.create({
+  overlay: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10 },
   compactDock: { minHeight: 64, borderRadius: 22, shadowOpacity: .14, elevation: 5, paddingHorizontal: 8 },
   compactItem: { minHeight: 48, borderRadius: 17, paddingVertical: 3 },
   compactActive: { backgroundColor: 'transparent', borderBottomWidth: 2, borderBottomColor: '#CFC4AB', borderRadius: 0 },

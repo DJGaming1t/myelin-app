@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav } from '@/src/components/app/AppNav';
+import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { Reveal } from '@/src/components/motion/Reveal';
@@ -39,6 +39,7 @@ import {
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 export default function ProgressScreen() {
+  const dockClearance = useAppNavClearance();
   const { workspace, ownerKey } = useWorkspace();
   const { session: focus, ready: focusReady } = useFocus();
   const { session: review, ready: reviewReady } = useReview();
@@ -96,7 +97,7 @@ export default function ProgressScreen() {
           onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }}
           scrollEventThrottle={16}
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: dockClearance }]}
           showsVerticalScrollIndicator={false}>
           <NeuralMap workspace={workspace} now={now} anchorRef={guide.anchors['progress.map']} />
           <LearningInsights workspace={workspace} now={insightNow} insights={insights} onRefresh={() => setInsightRefreshAt(Date.now())} actionRef={guide.anchors['progress.practice']} />
@@ -279,7 +280,7 @@ export default function ProgressScreen() {
           </AnimatedDisclosure>
         </ScrollView>
 
-        <AppNav />
+        <AppNav overlay />
       </View>
       {guide.open ? <ScreenGuide key={guideKey} title="Progress" steps={guide.steps}
         anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null}

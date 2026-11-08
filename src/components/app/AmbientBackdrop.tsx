@@ -1,10 +1,16 @@
+import { useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { colors } from '@/src/theme/tokens';
+import { PaperGrain } from '@/src/components/app/ChalkGrain';
+import { colors, getActiveThemePalette, subscribeThemePalette } from '@/src/theme/tokens';
+
+const subscribe = (listener: () => void) => subscribeThemePalette(listener);
 
 export function AmbientBackdrop() {
+  const palette = useSyncExternalStore(subscribe, getActiveThemePalette, getActiveThemePalette);
   return (
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[StyleSheet.absoluteFill, styles.clip]}>
       <View style={[StyleSheet.absoluteFill, styles.base]} />
+      {palette === 'editorial' ? <PaperGrain /> : null}
       <View style={styles.orbTop} />
       <View style={styles.rule} />
     </View>

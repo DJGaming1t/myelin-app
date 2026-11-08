@@ -1,0 +1,36 @@
+name: Publish Focus refinement to preview
+on:
+  push:
+    branches: [codex/preview-focus-6554]
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 6554c275e4d5dfa4bb8fe3774476f2527025e148
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify source and runtime
+        shell: bash
+        run: |
+          test -n "$EXPO_TOKEN"
+          test "$(git rev-parse HEAD)" = "6554c275e4d5dfa4bb8fe3774476f2527025e148"
+          test -z "$(git status --porcelain)"
+          node -e "const a=require('./app.json').expo; if(a.version!=='0.2.20'||a.runtimeVersion.policy!=='appVersion'||a.extra.eas.projectId!=='2171936c-83f9-459f-9bb6-dddc4768484e') process.exit(1)"
+      - name: Publish Android preview only
+        run: >-
+          npx eas-cli@latest update
+          --channel preview
+          --environment preview
+          --platform android
+          --non-interactive
+          --message "Focus and task refinement 6554c275e4d5dfa4bb8fe3774476f2527025e148"

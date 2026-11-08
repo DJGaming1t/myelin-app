@@ -4,12 +4,14 @@ import { StyleSheet, Text } from 'react-native';
 import {
   OnboardingPrimaryButton,
   OnboardingShell,
-  StudyPathVisual,
 } from '@/src/components/onboarding/OnboardingShell';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { MyelinArrival } from '@/src/components/app/MyelinArrival';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { colors, layout } from '@/src/theme/tokens';
 
 export default function WelcomeScreen() {
+  const reduceMotion = useReducedMotion();
   return (
     <OnboardingShell
       scrollable={false}
@@ -20,7 +22,7 @@ export default function WelcomeScreen() {
         </Text>
       }
       description="MYELIN turns everything competing for your attention into one clear next move."
-      visual={<StudyPathVisual />}>
+      visual={<MyelinArrival reducedMotion={reduceMotion} />}>
       <OnboardingPrimaryButton
         label="Continue"
         onPress={() => router.push('/(auth)/access')}

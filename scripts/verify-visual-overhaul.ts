@@ -192,7 +192,7 @@ function main() {
   const authScaffold = read('src/components/auth/AuthScaffold.tsx');
   assert.ok(authIntro.includes('Know what to study'));
   assert.ok(authIntro.includes('OnboardingShell'));
-  assert.ok(authIntro.includes('StudyPathVisual'));
+  assert.ok(authIntro.includes('MyelinArrival'));
   assert.equal(authIntro.includes('<Signal'), false);
   assert.equal(authIntro.includes('<LoopStep'), false);
   assert.ok(authAccess.includes('Continue to MYELIN'));

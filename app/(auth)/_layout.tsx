@@ -1,5 +1,5 @@
+import { MyelinArrival } from '@/src/components/app/MyelinArrival';
 import { Redirect, Stack } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
@@ -11,9 +11,7 @@ export default function AuthLayout() {
 
   if (!ready) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.accent} />
-      </View>
+      <MyelinArrival loading />
     );
   }
 
@@ -35,11 +33,3 @@ export default function AuthLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg,
-  },
-});

@@ -1,5 +1,5 @@
+import { MyelinArrival } from '@/src/components/app/MyelinArrival';
 import { Redirect, Stack } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useAuth } from '@/src/features/auth/AuthProvider';
@@ -44,17 +44,7 @@ export default function OnboardingLayout() {
 
 function Loading() {
   return (
-    <View style={styles.loading}>
-      <ActivityIndicator color={colors.accent} />
-    </View>
+    <MyelinArrival loading />
   );
 }
 
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg,
-  },
-});

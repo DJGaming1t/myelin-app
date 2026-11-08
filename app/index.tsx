@@ -1,10 +1,9 @@
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { MyelinArrival } from '@/src/components/app/MyelinArrival';
 
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
-import { colors } from '@/src/theme/tokens';
 
 export default function IndexScreen() {
   const { ready: authReady, user, localMode } = useAuth();
@@ -40,18 +39,5 @@ export default function IndexScreen() {
 }
 
 function Loading() {
-  return (
-    <View style={styles.loading}>
-      <ActivityIndicator color={colors.accent} />
-    </View>
-  );
+  return <MyelinArrival loading />;
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg,
-  },
-});

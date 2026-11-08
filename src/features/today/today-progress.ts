@@ -32,6 +32,7 @@ export type DayMapStep = {
   minutes: number;
   completed: boolean;
   current: boolean;
+  overdue?: boolean;
   scheduledStart: number;
   scheduledEnd: number;
   mode: 'study' | 'review';
@@ -500,6 +501,7 @@ export function buildDayMapSteps(
       minutes: duration,
       completed: isCompleted,
       current: isCurrent,
+      overdue: !isCompleted && task.dueAt > 0 && task.dueAt < now,
       scheduledStart: task.scheduledStart > 0 ? Math.max(dayStart, task.scheduledStart) : 0,
       scheduledEnd: task.scheduledEnd > 0 ? Math.min(dayEnd, task.scheduledEnd) : 0,
       mode: task.type === 'revision' ? 'review' : 'study',

@@ -1,5 +1,6 @@
 import { ChalkGrain } from '@/src/components/app/ChalkGrain';
 import { CHALK_DIGITS } from '@/src/features/today/chalkDigits';
+import { DayMapPath } from '@/src/features/today/DayMapPath';
 import { DayMapSequence } from '@/src/features/today/DayMapSequence';
 import { TimeBrick } from '@/src/features/planning/TimeBrick';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
@@ -149,6 +150,7 @@ export default function TodayScreen() {
 
   const [heroModel] = useState<TodayHeroVisualModel>('cycle');
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
 
   const activeThemeId: ThemePaletteId = workspace?.settings?.themePalette ?? 'editorial';
   const chalk = useMemo(
@@ -902,6 +904,20 @@ export default function TodayScreen() {
                 FULL TODAY RECOMMENDATION, CAPACITY & PLANNING DETAILS
                 (Accessible via scrolling or expanding the Day Map sheet)
                =============================================================== */}
+            <DayMapPath steps={dayMapStepsSummary.steps} selectedId={selectedStepId} onSelect={step => setSelectedStepId(step.id)} />
+            {selectedStepId ? (() => {
+              const step = dayMapStepsSummary.steps.find(item => item.id === selectedStepId);
+              const task = step?.taskId ? currentWorkspace.tasks.find(item => item.id === step.taskId) : null;
+              if (!step) return null;
+              return <View style={styles.selectedMapPanel}>
+                <Text style={styles.selectedMapMeta}>{step.subject} · {step.minutes} min{step.overdue ? ' · Overdue' : ''}</Text>
+                <Text style={styles.selectedMapTitle}>{step.title}</Text>
+                {task && task.status === 'open' ? <TaskQuickActions task={task} paper onComplete={dayMapCompletion.complete} /> : null}
+                <Pressable accessibilityRole="button" onPress={() => openStepDetails(step)} style={styles.selectedMapAction}>
+                  <Text style={styles.scheduleShortcutText}>Open details & schedule  ›</Text>
+                </Pressable>
+              </View>;
+            })() : null}
             <View style={styles.expandedDetailsSection}>
               <View style={styles.nextHeading}>
                 <Text style={styles.nextLabel}>
@@ -1952,6 +1968,10 @@ const styles = StyleSheet.create({
   previewComposition: { flexDirection: 'row', alignItems: 'center', minHeight: 104, gap: 12 },
   previewTrail: { width: 82, height: 100, marginTop: 0, marginBottom: 0 },
   previewDetail: { flex: 1, minWidth: 0, paddingTop: 0, paddingBottom: 0 },
+  selectedMapPanel: { padding: 14, borderRadius: 14, backgroundColor: 'rgba(255,252,243,.30)', borderWidth: StyleSheet.hairlineWidth, borderColor: chalkTheme.paperLine, marginBottom: 10 },
+  selectedMapMeta: { color: chalkTheme.inkSoft, fontSize: 12, lineHeight: 18 },
+  selectedMapTitle: { color: chalkTheme.graphite, fontSize: 19, lineHeight: 25, fontWeight: '600', marginTop: 3 },
+  selectedMapAction: { minHeight: 44, justifyContent: 'center' },
   sequenceHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   scheduleShortcut: { minHeight: 44, justifyContent: 'center', alignItems: 'flex-end' },
   scheduleShortcutText: { color: chalkTheme.nextUpBadge, fontSize: 12, fontWeight: '600' },

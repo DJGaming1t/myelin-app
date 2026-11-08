@@ -29,3 +29,5 @@ jobs:
         run: node scripts/verify-native-presentation.mjs
       - name: Verify Day Map undo and suggestion safety
         run: node --import tsx scripts/verify-day-map-completion.ts
+      - name: Verify interactive Day Map path
+        run: node scripts/verify-day-map-path.mjs

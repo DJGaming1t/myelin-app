@@ -685,11 +685,11 @@ export default function DayMapScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <View style={styles.page}>
-        <ChalkGrain paper />
         <ScreenHeader
+          dark
           variant="compact"
           title="Day Map"
           actionLabel="Add"
@@ -697,6 +697,8 @@ export default function DayMapScreen() {
           onBack={() => router.replace('/(app)/today')}
         />
 
+        <View style={styles.paperBody}>
+        <ChalkGrain paper />
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.content}
@@ -1319,6 +1321,7 @@ export default function DayMapScreen() {
           </Pressable>
           </AnimatedDisclosure>
         </ScrollView>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -1366,7 +1369,9 @@ function Mini({ label, onPress }: { label: string; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  page: { flex: 1, backgroundColor: chalkTheme.paper },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  page: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperBody: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: spacing.md },
   toggle: {
     width: '100%',
     maxWidth: layout.contentMax,

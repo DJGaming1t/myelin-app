@@ -11,7 +11,7 @@ import {
   findMistake,
   reopenMistake,
 } from '@/src/features/mistakes/mistake-engine';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -56,8 +56,9 @@ export default function MistakeDetailScreen() {
 
   if (!mistake.resolvedAt) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.graphiteSafe}>
         <ScreenHeader
+          dark
           eyebrow={topic.subject.toUpperCase()}
           title="Edit mistake"
           subtitle={`${mistake.wins}/2 spaced retest wins · ${topic.name}`}
@@ -97,14 +98,15 @@ export default function MistakeDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.graphiteSafe}>
       <ScreenHeader
+          dark
         eyebrow="RESOLVED"
         title={mistake.prompt}
         subtitle={topic.name}
         onBack={() => router.back()}
       />
-      <ScrollView contentContainerStyle={styles.resolvedContent}>
+      <ScrollView style={styles.paperScroll} contentContainerStyle={styles.resolvedContent}>
         <Info label="CAUSE" text={mistake.reason} />
         <Info label="WHAT HAPPENED" text={mistake.detail || 'No detail was recorded.'} />
         <Info label="CORRECTION" text={mistake.correction || 'No correction was recorded.'} accent />
@@ -154,7 +156,9 @@ function Info({ label, text, accent }: { label: string; text: string; accent?: b
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  body: { flex: 1 },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperScroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+  body: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   missing: { color: colors.muted, padding: spacing.lg, lineHeight: 18 },
   deleteFloating: { position: 'absolute', right: spacing.lg, bottom: 8, minHeight: layout.minTouch, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.25)', backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   deleteText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },

@@ -1,4 +1,5 @@
 import { isDayMapSuggestionCurrent } from '@/src/features/today/day-map-suggestion';
+import { ChalkGrain } from '@/src/components/app/ChalkGrain';
 import { useDaySkip } from '@/src/features/planning/useDaySkip';
 import { daySkipFailureMessage, restorableOccurrenceDates } from '@/src/features/planning/day-skip';
 import type { Commitment, StudyTask } from '@/src/data/schema';
@@ -685,6 +686,7 @@ export default function DayMapScreen() {
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <View style={styles.page}>
+        <ChalkGrain paper />
         <ScreenHeader
           variant="compact"
           title="Day Map"
@@ -1177,6 +1179,9 @@ export default function DayMapScreen() {
                       </View>
                     ) : <TaskQuickActions task={task} />}
 
+                    {!entry.missed && !estimateMet && task.status === 'open' ? (
+                      <Mini label="Move" onPress={() => moveTask(task.id)} />
+                    ) : null}
                     {entry.missed && !estimateMet ? (
                       <View style={styles.missedActions}>
                         <Mini label="Move" onPress={() => moveTask(task.id)} />
@@ -1199,10 +1204,12 @@ export default function DayMapScreen() {
             })
           ) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>The timeline is open.</Text>
+              <Text style={styles.emptyTitle}>A clear stretch of your day</Text>
               <Text style={styles.emptyText}>
-                Add fixed commitments or schedule a study task when exact timing helps.
+                {map.free.length ? `${timeLabel(map.free[0].start)}–${timeLabel(map.free[0].end)} · ${readableMinutes(map.free[0].minutes)} open` : 'No open window remains in the mapped day.'}
               </Text>
+              <Text style={styles.emptyText}>Add fixed commitments or place a flexible task when exact timing helps.</Text>
+              <Action label="+ Study task" onPress={() => router.push('/(app)/today/task/new')} accent />
             </View>
           )}
 

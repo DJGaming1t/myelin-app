@@ -59,6 +59,7 @@ import { AppNav } from '@/src/components/app/AppNav';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useDayMapCompletion } from '@/src/features/today/useDayMapCompletion';
+import { dayMapSnapTarget } from '@/src/features/today/day-map-snap';
 import { dayMapSheetLayout } from '@/src/features/today/day-map-sheet-layout';
 import { shortSession } from '@/src/features/today/short-session';
 import { useRecommendationMotion } from '@/src/features/today/useRecommendationMotion';
@@ -312,6 +313,7 @@ export default function TodayScreen() {
     () => {
       const makePan = () => Gesture.Pan()
         .activeOffsetY([-8, 8])
+        .failOffsetX([-18, 18])
         .onStart(() => {
           sheetDragActive.value = true;
           cancelAnimation(sheetTranslateY);
@@ -328,12 +330,7 @@ export default function TodayScreen() {
           }
         })
         .onEnd((event) => {
-          // A short deliberate pull opens or closes from the current snap point.
-          const threshold = Math.min(56, expandDistance * .18);
-          const shouldExpand = event.velocityY < -480 ? true : event.velocityY > 480 ? false :
-            sheetStartY.value < -expandDistance / 2
-              ? event.translationY < threshold
-              : event.translationY < -threshold;
+          const shouldExpand = dayMapSnapTarget(sheetStartY.value, event.translationY, event.velocityY, expandDistance);
           runOnJS(snapSheet)(shouldExpand, event.velocityY);
         })
         .onFinalize((_event, success) => {

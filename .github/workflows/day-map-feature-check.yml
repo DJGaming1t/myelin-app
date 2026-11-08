@@ -31,3 +31,5 @@ jobs:
         run: node --import tsx scripts/verify-day-map-completion.ts
       - name: Verify interactive Day Map path
         run: node scripts/verify-day-map-path.mjs
+      - name: Verify sheet snap decisions
+        run: node --import tsx scripts/verify-day-map-snap.ts

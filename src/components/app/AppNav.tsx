@@ -1,14 +1,30 @@
+import { useEffect, useRef, useState } from 'react';
 import { router, usePathname } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
 import { appNavClearance } from '@/src/components/app/navLayout';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
-import { chalkTheme, colors, layout, space, type } from '@/src/theme/tokens';
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { chalkTheme, colors, layout, motion, space, type } from '@/src/theme/tokens';
+
+type NavTab = 'today' | 'topics' | 'review' | 'progress';
+type TabSlot = { x: number; y: number; width: number; height: number };
+
+// The dock lives in each peer screen. Remember the last tab so the incoming
+// dock can animate its indicator from the outgoing tab after a native crossfade.
+let lastDockTab: NavTab | null = null;
 
 const ITEMS: {
-  key: 'today' | 'topics' | 'review' | 'progress';
+  key: NavTab;
   label: string;
   path: '/(app)/today' | '/(app)/topics' | '/(app)/review' | '/(app)/progress';
   icon: AppIconName;
@@ -37,6 +53,86 @@ export function AppNav({
 }) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
+  const activeTab = ITEMS.find((item) => pathname.includes(`/${item.key}`))?.key ?? null;
+  const [slots, setSlots] = useState<Partial<Record<NavTab, TabSlot>>>({});
+  const selected = useRef<NavTab | null>(null);
+  const highlightX = useSharedValue(0);
+  const highlightY = useSharedValue(0);
+  const highlightWidth = useSharedValue(0);
+  const highlightHeight = useSharedValue(0);
+  const highlightOpacity = useSharedValue(0);
+
+  const animatedHighlight = useAnimatedStyle(() => ({
+    opacity: highlightOpacity.value,
+    top: highlightY.value,
+    width: highlightWidth.value,
+    height: highlightHeight.value,
+    transform: [{ translateX: highlightX.value }],
+  }));
+
+  useEffect(() => {
+    if (!compact || !activeTab || !ITEMS.every((item) => slots[item.key])) return;
+    const target = slots[activeTab]!;
+    const targetGeometry = {
+      x: target.x + 3,
+      y: target.y + 5,
+      width: Math.max(0, target.width - 6),
+      height: Math.max(0, target.height - 10),
+    };
+    const firstLayout = selected.current === null;
+    const previousKey = firstLayout ? lastDockTab : selected.current;
+    const previous = previousKey ? slots[previousKey] : undefined;
+
+    if (firstLayout) {
+      highlightX.value = previous ? previous.x + 3 : targetGeometry.x;
+      highlightY.value = previous ? previous.y + 5 : targetGeometry.y;
+      highlightWidth.value = previous ? Math.max(0, previous.width - 6) : targetGeometry.width;
+      highlightHeight.value = previous ? Math.max(0, previous.height - 10) : targetGeometry.height;
+      highlightOpacity.value = previous && previousKey !== activeTab && !reduceMotion ? 0.72 : 1;
+    }
+
+    cancelAnimation(highlightX);
+    cancelAnimation(highlightY);
+    cancelAnimation(highlightWidth);
+    cancelAnimation(highlightHeight);
+    cancelAnimation(highlightOpacity);
+    if (reduceMotion) {
+      highlightX.value = targetGeometry.x;
+      highlightY.value = targetGeometry.y;
+      highlightWidth.value = targetGeometry.width;
+      highlightHeight.value = targetGeometry.height;
+      highlightOpacity.value = 1;
+    } else {
+      const spring = { ...motion.releaseSpring, damping: 25, stiffness: 255, overshootClamping: true };
+      highlightX.value = withSpring(targetGeometry.x, spring);
+      highlightY.value = withSpring(targetGeometry.y, spring);
+      highlightWidth.value = withSpring(targetGeometry.width, spring);
+      highlightHeight.value = withSpring(targetGeometry.height, spring);
+      highlightOpacity.value = withTiming(1, { duration: motion.hierarchyMs });
+    }
+    selected.current = activeTab;
+    lastDockTab = activeTab;
+  }, [
+    activeTab, compact, reduceMotion, slots,
+    highlightX, highlightY, highlightWidth, highlightHeight, highlightOpacity,
+  ]);
+
+  function rememberSlot(key: NavTab, event: LayoutChangeEvent) {
+    const { x, y, width, height } = event.nativeEvent.layout;
+    setSlots((previous) => {
+      const existing = previous[key];
+      if (existing && existing.x === x && existing.y === y &&
+          existing.width === width && existing.height === height) return previous;
+      return { ...previous, [key]: { x, y, width, height } };
+    });
+  }
+
+  function openTab(item: (typeof ITEMS)[number]) {
+    if (activeTab === item.key) return;
+    if (activeTab) lastDockTab = activeTab;
+    router.replace(item.path);
+  }
 
   return (
     <View
@@ -54,6 +150,9 @@ export function AppNav({
           : paper && { backgroundColor: '#F2EFE6', borderTopColor: '#D7D4CA' },
       ]}>
       <View style={[styles.wrap, floating && styles.dockCapsule, compact && styles.compactDock]}>
+        {compact ? (
+          <Animated.View pointerEvents="none" style={[styles.activeTrack, animatedHighlight]} />
+        ) : null}
         {ITEMS.slice(0, 2).map((item) => (
           <NavItem
             compact={compact}
@@ -61,7 +160,9 @@ export function AppNav({
             floating={floating}
             key={item.key}
             item={item}
-            active={pathname.includes(`/${item.key}`)}
+            active={activeTab === item.key}
+            onMeasure={(event) => rememberSlot(item.key, event)}
+            onNavigate={() => openTab(item)}
           />
         ))}
 
@@ -92,7 +193,9 @@ export function AppNav({
             floating={floating}
             key={item.key}
             item={item}
-            active={pathname.includes(`/${item.key}`)}
+            active={activeTab === item.key}
+            onMeasure={(event) => rememberSlot(item.key, event)}
+            onNavigate={() => openTab(item)}
           />
         ))}
       </View>
@@ -104,28 +207,29 @@ function NavItem({
   item,
   active,
   compact = false,
+  onMeasure,
+  onNavigate,
 }: {
   paper: boolean;
   floating: boolean;
   item: (typeof ITEMS)[number];
   active: boolean;
   compact?: boolean;
+  onMeasure: (event: LayoutChangeEvent) => void;
+  onNavigate: () => void;
 }) {
   return (
-    <Pressable
+    <SpringPressable
       accessibilityRole="tab"
       accessibilityLabel={item.label}
       accessibilityHint={active ? 'Current section' : `Open ${item.label}`}
       accessibilityState={{ selected: active }}
-      onPress={() => {
-        if (active) return;
-        router.replace(item.path);
-      }}
-      style={({ pressed }) => [
-        styles.item,
-        pressed && !active && styles.pressed,
-      ]}>
-      <View style={[styles.itemInner, active && styles.itemActivePill, compact && styles.compactItem, compact && active && styles.compactActive]}>
+      onLayout={onMeasure}
+      onPress={onNavigate}
+      scaleTo={0.94}
+      lift={1}
+      style={styles.item}>
+      <View style={[styles.itemInner, !compact && active && styles.itemActivePill, compact && styles.compactItem, compact && active && styles.compactActive]}>
         <View style={styles.iconBox}>
           <AppIcon
             name={item.icon}
@@ -142,7 +246,7 @@ function NavItem({
           {item.label}
         </Text>
       </View>
-    </Pressable>
+    </SpringPressable>
   );
 }
 
@@ -150,7 +254,16 @@ const styles = StyleSheet.create({
   overlay: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10 },
   compactDock: { minHeight: 66, borderRadius: 26, shadowOpacity: .22, elevation: 7, paddingHorizontal: 7 },
   compactItem: { minHeight: 48, borderRadius: 17, paddingVertical: 3 },
-  compactActive: { backgroundColor: 'rgba(242,231,208,.12)', borderRadius: 16 },
+  compactActive: { borderRadius: 16 },
+  activeTrack: {
+    position: 'absolute',
+    left: 0,
+    zIndex: 0,
+    borderRadius: 17,
+    backgroundColor: 'rgba(242,231,208,.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(242,231,208,.07)',
+  },
   compactActiveText: { color: chalkTheme.onStage },
   compactAddButton: { width: 46, height: 46, borderRadius: 16, backgroundColor: '#526B75' },
   compactAddSlot: { width: 56, paddingBottom: 0, justifyContent: 'center' },
@@ -263,5 +376,4 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: '600',
   },
-  pressed: { opacity: 0.68 },
 });

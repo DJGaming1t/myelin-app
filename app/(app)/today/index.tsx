@@ -27,7 +27,7 @@ import {
 } from '@/src/features/planning/TaskQuickActions';
 import { buildDayMap } from '@/src/features/planning/day-engine';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -59,7 +59,7 @@ import { AppNav } from '@/src/components/app/AppNav';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useDayMapCompletion } from '@/src/features/today/useDayMapCompletion';
-import { dayMapSnapTarget } from '@/src/features/today/day-map-snap';
+import { dayMapSnapTarget, shouldCollapseFromScroll } from '@/src/features/today/day-map-snap';
 import { dayMapSheetLayout } from '@/src/features/today/day-map-sheet-layout';
 import { shortSession } from '@/src/features/today/short-session';
 import { useRecommendationMotion } from '@/src/features/today/useRecommendationMotion';
@@ -151,6 +151,7 @@ export default function TodayScreen() {
 
   const [heroModel] = useState<TodayHeroVisualModel>('cycle');
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+  const scrollTouch = useRef<{ x: number; y: number; offset: number } | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
 
   const activeThemeId: ThemePaletteId = workspace?.settings?.themePalette ?? 'editorial';
@@ -891,6 +892,17 @@ export default function TodayScreen() {
             testID="today-scroll"
             onScroll={(event) => {
               guide.offset.current = event.nativeEvent.contentOffset.y;
+            }}
+            onTouchStart={(event) => {
+              const touch = event.nativeEvent.touches[0];
+              scrollTouch.current = touch ? { x: touch.pageX, y: touch.pageY, offset: guide.offset.current } : null;
+            }}
+            onTouchCancel={() => { scrollTouch.current = null; }}
+            onTouchEnd={(event) => {
+              const start = scrollTouch.current;
+              const touch = event.nativeEvent.changedTouches[0];
+              scrollTouch.current = null;
+              if (isSheetExpanded && start && touch && shouldCollapseFromScroll(start.offset, touch.pageX - start.x, touch.pageY - start.y)) snapSheet(false);
             }}
             scrollEventThrottle={16}
             style={styles.scroll}

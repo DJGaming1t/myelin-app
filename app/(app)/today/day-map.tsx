@@ -63,7 +63,7 @@ import {
   buildTodayPlan,
 } from '@/src/features/today/planner';
 import { TimeBrick } from '@/src/features/planning/TimeBrick';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function timeLabel(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -124,7 +124,7 @@ export default function DayMapScreen() {
   const viewedDay = localDateKey(now);
   const rebuild = useDayRebuild();
   const proposal = rebuild.preview;
-  const [showPlanning, setShowPlanning] = useState(false);
+  const [showPlanning, setShowPlanning] = useState(true);
   const [reflow, setReflow] = useState<AutopilotReflowSummary | null>(() =>
     parseAutopilotReflow(params.reflow),
   );
@@ -432,7 +432,7 @@ export default function DayMapScreen() {
     .filter(
       (task) =>
         task.status === 'open' &&
-        task.planState === 'today' &&
+        (task.planState === 'today' || (task.planState === 'inbox' && task.id === todayPlan?.nextBlock?.taskId)) &&
         task.postponedUntil <= now,
     )
     .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
@@ -1366,7 +1366,7 @@ function Mini({ label, onPress }: { label: string; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  page: { flex: 1 },
+  page: { flex: 1, backgroundColor: chalkTheme.paper },
   toggle: {
     width: '100%',
     maxWidth: layout.contentMax,
@@ -1751,15 +1751,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
-    backgroundColor: colors.panelRaised,
+    borderLeftWidth: 1,
+    borderLeftColor: chalkTheme.paperLine,
+    backgroundColor: 'rgba(255,252,243,.34)',
     paddingHorizontal: 13,
     paddingVertical: 11,
   },
   fixedBlock: {
-    borderLeftColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    borderLeftColor: chalkTheme.paperLine,
+    backgroundColor: 'rgba(126,152,164,.10)',
   },
   missedBlock: { borderStyle: 'dashed' },
   estimateReview: {

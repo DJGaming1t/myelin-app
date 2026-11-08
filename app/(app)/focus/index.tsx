@@ -422,9 +422,7 @@ export default function FocusScreen() {
                     </Text>
                   </View>
                 ) : null}
-                <Text style={styles.setupSubtitle}>
-                  Choose the first action, then let the timer disappear into the background.
-                </Text>
+                <Text style={styles.setupSubtitle}>A little space to give this your full attention.</Text>
               </View>
             </Reveal>
 
@@ -432,7 +430,8 @@ export default function FocusScreen() {
 
             <Reveal delay={55} distance={8}>
               <View style={styles.cadenceCard}>
-                <Text style={styles.cadenceKicker}>SHAPE YOUR SESSION</Text>
+                <Text accessibilityRole="header" style={styles.cadenceHeading}>Make a little time.</Text>
+                <Text style={styles.cadenceIntro}>Choose a focus length. A break follows your block.</Text>
                 <View style={styles.planStrip}>
                   <Metric
                     label="FULL BLOCK"
@@ -506,7 +505,7 @@ export default function FocusScreen() {
                 style={styles.primary}>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.primaryText}>Start {plannedMinutes}-minute focus</Text>
-                  <Text style={styles.primarySubtext}>One task. A little more progress.</Text>
+                  <Text style={styles.primarySubtext}>Your timer will keep running in the background.</Text>
                 </View>
                 <Text style={styles.buttonArrow}>→</Text>
               </SpringPressable>
@@ -749,7 +748,7 @@ export default function FocusScreen() {
 
         <ScrollView
           ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
-          contentContainerStyle={styles.sessionContent}
+          contentContainerStyle={[styles.sessionContent, styles.focusSessionContent]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <FocusShieldActiveBanner shield={shield} />
@@ -1074,6 +1073,7 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
   const visualHeight = Math.max(144, Math.min(180, width - 160));
   return (
     <View style={styles.stopwatchPanel}>
+      <View pointerEvents="none" style={styles.stopwatchOrbit} />
       <View style={styles.stopwatchHeader}>
         <Text style={styles.stopwatchKicker}>{subject.toUpperCase() || 'FOCUS SESSION'}</Text>
         <Text style={styles.stopwatchCounter}>{label}</Text>
@@ -1264,29 +1264,31 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: layout.readingMax,
     alignSelf: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 0,
     paddingBottom: 48,
   },
-  setupHeaderBlock: { marginBottom: 4 },
+  setupHeaderBlock: { backgroundColor: chalkTheme.hero, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 26, paddingBottom: 30, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, marginBottom: 12 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   eyebrowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accentFill },
-  eyebrow: { color: colors.accent, fontSize: 11, lineHeight: 15, fontWeight: '800', letterSpacing: 1.2 },
-  setupTitle: { color: colors.text, fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.2, marginTop: 8 },
-  setupSubtitle: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 9, maxWidth: 540 },
+  eyebrow: { color: '#D9A58D', fontSize: 11, lineHeight: 15, fontWeight: '800', letterSpacing: 1.2 },
+  setupTitle: { color: chalkTheme.onStage, fontSize: 38, lineHeight: 45, fontWeight: '500', letterSpacing: -1.1, marginTop: 12 },
+  setupSubtitle: { color: chalkTheme.mutedCream, fontSize: 14, lineHeight: 21, marginTop: 13, maxWidth: 540 },
   taskContextPill: {
     alignSelf: 'flex-start',
     marginTop: 9,
     paddingVertical: 2,
   },
-  taskContext: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
+  taskContext: { color: chalkTheme.mutedCream, fontSize: 11.5, lineHeight: 17 },
   cadenceCard: {
     marginTop: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: paperSurfaces.border,
-    backgroundColor: paperSurfaces.card,
-    padding: 16,
+    paddingVertical: 20,
   },
+  cadenceHeading: { color: colors.text, fontSize: 23, lineHeight: 30, fontWeight: '500', letterSpacing: -.5 },
+  cadenceIntro: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 16 },
   cadenceKicker: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
   planStrip: { flexDirection: 'row', gap: 12 },
   metric: {
@@ -1313,7 +1315,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  durationChip: { flex: 0, flexGrow: 1, flexBasis: '20%', minWidth: 56, backgroundColor: chalkTheme.paper, borderColor: paperSurfaces.border },
+  durationChip: { flex: 0, flexGrow: 1, flexBasis: '20%', minWidth: 56, borderRadius: 12, backgroundColor: 'transparent', borderColor: paperSurfaces.border },
   durationChipTextActive: { color: colors.accent, fontWeight: '800' },
   fieldLabel: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: spacing.lg, marginBottom: 8 },
   tinyInput: {
@@ -1347,7 +1349,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: paperSurfaces.accentLine,
-    backgroundColor: paperSurfaces.accentSoft,
+    backgroundColor: 'transparent',
     padding: 13,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1369,16 +1371,18 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: 56,
   },
+  focusSessionContent: { paddingTop: 0 },
   sessionHeading: { alignItems: 'center' },
-  stopwatchPanel: { marginTop: 4, borderRadius: 24, backgroundColor: chalkTheme.hero, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 22, overflow: 'hidden' },
+  stopwatchPanel: { marginTop: 0, marginHorizontal: -spacing.lg, borderBottomLeftRadius: 34, borderBottomRightRadius: 34, backgroundColor: chalkTheme.hero, paddingHorizontal: spacing.lg, paddingTop: 30, paddingBottom: 30, overflow: 'hidden' },
+  stopwatchOrbit: { position: 'absolute', alignSelf: 'center', width: 260, height: 260, top: 106, borderRadius: 130, borderWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.24)' },
   stopwatchHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   stopwatchKicker: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '800', letterSpacing: 1.4, flexShrink: 1 },
   stopwatchCounter: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '700', letterSpacing: .8, flexShrink: 1, textAlign: 'right' },
   stopwatchTitle: { color: chalkTheme.onStage, fontSize: 25, lineHeight: 31, letterSpacing: -.6, marginTop: 14, fontWeight: '600' },
   stopwatchDetail: { color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 16, letterSpacing: .5, marginTop: 4 },
   stopwatchStep: { color: chalkTheme.onStage, fontSize: 12, lineHeight: 18, marginTop: 10 },
-  stopwatchVisual: { width: '100%', maxWidth: 240, alignSelf: 'center', marginTop: 8 },
-  stopwatchReadout: { alignItems: 'center', marginTop: 0 },
+  stopwatchVisual: { width: '100%', maxWidth: 240, alignSelf: 'center', marginTop: 22 },
+  stopwatchReadout: { alignItems: 'center', marginTop: 10 },
   stopwatchValue: { color: chalkTheme.onStage, fontSize: 52, lineHeight: 60, letterSpacing: -2, fontVariant: ['tabular-nums'] },
   stopwatchLabel: { color: chalkTheme.mutedCream, fontSize: 10, lineHeight: 16, letterSpacing: 1.3, fontWeight: '800' },
   sessionModePill: {
@@ -1546,12 +1550,11 @@ const styles = StyleSheet.create({
   textButtonText: { color: colors.muted, fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   parkingShell: {
     marginTop: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: paperSurfaces.border,
-    backgroundColor: paperSurfaces.card,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    paddingHorizontal: 2,
+    paddingVertical: 5,
   },
   parkingToggle: { minHeight: layout.minTouch, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   parkingCopy: { flex: 1, minWidth: 0 },

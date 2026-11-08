@@ -342,6 +342,8 @@ assert.ok(
   npvSource.includes('StaticChalkVisualFallback'),
   'Must provide StaticChalkVisualFallback when WebGL is initializing or unavailable',
 );
+assert.match(npvSource, /!ready\s*\?\s*<StaticChalkVisualFallback/, 'Show the bundled fallback until the graphics context draws');
+assert.ok(!npvSource.includes('Starting 3D…'), 'Do not replace the hero with a repeated loading message');
 
 console.log(
   JSON.stringify(

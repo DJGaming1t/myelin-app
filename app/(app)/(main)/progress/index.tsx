@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
+import { useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { Reveal } from '@/src/components/motion/Reveal';
@@ -316,7 +316,6 @@ export default function ProgressScreen() {
           </AnimatedDisclosure>
         </ScrollView>
 
-        <AppNav overlay />
       </View>
       {guide.open ? <ScreenGuide key={guideKey} title="Progress" steps={guide.steps}
         anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null}

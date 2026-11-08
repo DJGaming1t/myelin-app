@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionRow } from '@/src/components/app/ActionRow';
 import { PaperGrain } from '@/src/components/app/ChalkGrain';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
+import { useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { MotionItem } from '@/src/components/motion/MotionItem';
@@ -261,7 +261,6 @@ export default function TopicsScreen() {
         />
 
         </View>
-        <AppNav overlay />
       </View>
     </SafeAreaView>
   );

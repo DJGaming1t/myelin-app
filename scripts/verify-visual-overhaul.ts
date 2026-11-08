@@ -65,7 +65,7 @@ function main() {
   assert.ok(topicForm.indexOf('Topic name') < topicForm.indexOf('More options'));
   assert.ok(topicForm.indexOf('More options') < topicForm.indexOf('Estimated focused study time'));
 
-  const today = read('app/(app)/today/index.tsx');
+  const today = read('app/(app)/(main)/today/index.tsx');
   assert.ok(today.includes('styles.visualStage'));
   assert.ok(today.includes('accessibilityRole="progressbar"'));
   assert.equal(
@@ -92,9 +92,9 @@ function main() {
   assert.ok(today.indexOf("'UP NEXT'") < today.indexOf('Later today'));
 
   for (const path of [
-    'app/(app)/topics/index.tsx',
-    'app/(app)/topics/[topicId]/index.tsx',
-    'app/(app)/progress/index.tsx',
+    'app/(app)/(main)/topics/index.tsx',
+    'app/(app)/(main)/topics/[topicId]/index.tsx',
+    'app/(app)/(main)/progress/index.tsx',
     'app/(app)/settings/index.tsx',
     'app/(app)/settings/cloud-sync.tsx',
     'app/(app)/settings/data-transfer.tsx',
@@ -124,10 +124,10 @@ function main() {
     assert.ok(appLayout.includes(routeName));
   }
 
-  const topicsLayout = read('app/(app)/topics/_layout.tsx');
+  const topicsLayout = read('app/(app)/(main)/topics/_layout.tsx');
   assert.ok(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'));
 
-  const topics = read('app/(app)/topics/index.tsx');
+  const topics = read('app/(app)/(main)/topics/index.tsx');
   assert.ok(topics.includes('title="Library"'));
   assert.ok(topics.includes('showFilters'));
   assert.ok(topics.includes('<AnimatedDisclosure visible={showFilters}'));
@@ -139,14 +139,14 @@ function main() {
   assert.ok(topicCard.includes('rightMeta'));
   assert.equal(topicCard.includes('notes'), false);
 
-  const topicDetail = read('app/(app)/topics/[topicId]/index.tsx');
+  const topicDetail = read('app/(app)/(main)/topics/[topicId]/index.tsx');
   assert.ok(topicDetail.includes('NEXT MOVE'));
   assert.ok(topicDetail.includes('recommendReview'));
   assert.ok(topicDetail.includes('showDetails'));
   assert.ok(topicDetail.includes('Topic details'));
   assert.ok(topicDetail.indexOf('NEXT MOVE') < topicDetail.indexOf('Topic details'));
 
-  const dayMap = read('app/(app)/today/day-map.tsx');
+  const dayMap = read('app/(app)/(main)/today/day-map.tsx');
   assert.ok(dayMap.includes('TIMELINE'));
   assert.ok(dayMap.includes('showPlanning'));
   assert.ok(dayMap.includes('<AnimatedDisclosure visible={showPlanning}>'));
@@ -159,14 +159,14 @@ function main() {
   assert.ok(focus.includes('Park a distraction'));
   assert.equal(focus.includes('<PulseHalo'), false);
 
-  const review = read('app/(app)/review/index.tsx');
+  const review = read('app/(app)/(main)/review/index.tsx');
   assert.ok(review.includes('title="Review"'));
   assert.ok(review.includes('Recall what is due. Corrections stay close.'));
   assert.ok(review.includes('RECALL BEFORE YOU CHECK'));
   assert.ok(review.includes('COMPARE, THEN GRADE'));
   assert.ok(review.includes('<AnimatedProgress'));
 
-  const progressScreen = read('app/(app)/progress/index.tsx');
+  const progressScreen = read('app/(app)/(main)/progress/index.tsx');
   assert.ok(progressScreen.includes('showEvidence'));
   assert.ok(progressScreen.includes('<AnimatedDisclosure visible={showEvidence}>'));
   assert.ok(progressScreen.includes('See deeper evidence'));
@@ -237,7 +237,7 @@ function main() {
   const rootLayout = read('app/_layout.tsx');
   assert.ok(rootLayout.includes("animation: 'none'"));
 
-  const todayReady = read('app/(app)/today/index.tsx');
+  const todayReady = read('app/(app)/(main)/today/index.tsx');
   assert.equal(todayReady.includes('notifyTransitionReady'), false);
   assert.equal(todayReady.includes('useFocusEffect'), false);
 

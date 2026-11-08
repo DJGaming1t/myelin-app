@@ -78,10 +78,7 @@ export default function AppLayout() {
             ? 180
             : motion.enterMs,
       })}>
-      <Stack.Screen name="today/index" />
-      <Stack.Screen name="topics" />
-      <Stack.Screen name="review/index" />
-      <Stack.Screen name="progress/index" />
+      <Stack.Screen name="(main)" options={{ animation: 'none' }} />
     </Stack>
   );
 }

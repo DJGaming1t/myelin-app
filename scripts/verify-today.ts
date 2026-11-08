@@ -725,7 +725,7 @@ function main() {
   console.log('✓ Stage 1: Day Map step selector retains all real tasks (0, 1, 7, 12) and deduplicates IDs');
   console.log('✓ Stage 1: study streak calculation verified across consecutive local days');
 
-  const todayScreen = read('app/(app)/today/index.tsx');
+  const todayScreen = read('app/(app)/(main)/today/index.tsx');
   const recommendationMotion = read('src/features/today/useRecommendationMotion.ts');
   const planCard = read('src/features/today/PlanBlockCard.tsx');
   const springPressable = read('src/components/motion/SpringPressable.tsx');

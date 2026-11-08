@@ -16,7 +16,7 @@ import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { chalkTheme, colors, layout, motion, space, type } from '@/src/theme/tokens';
 
-type NavTab = 'today' | 'topics' | 'review' | 'progress';
+export type NavTab = 'today' | 'topics' | 'review' | 'progress';
 type TabSlot = DockTabSlot;
 
 const ITEMS: {
@@ -41,11 +41,13 @@ export function AppNav({
   floating = true,
   compact = true,
   overlay = false,
+  onNavigateTab,
 }: {
   paper?: boolean;
   floating?: boolean;
   compact?: boolean;
   overlay?: boolean;
+  onNavigateTab?: (tab: NavTab) => void;
 }) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -73,8 +75,7 @@ export function AppNav({
     const targetGeometry = dockIndicatorBox(target);
     const firstLayout = selected.current === null;
     if (firstLayout) {
-      // Each destination mounts its own dock. Start at the destination so
-      // the outgoing and incoming docks never show two travelling indicators.
+      // Initialize at the current tab; later selections animate on the shared dock.
       highlightX.value = targetGeometry.x;
       highlightY.value = targetGeometry.y;
       highlightWidth.value = targetGeometry.width;
@@ -130,7 +131,8 @@ export function AppNav({
       highlightOpacity.value = 1;
     }
     // Navigate to an existing peer when possible so Today can retain its 3D view.
-    router.navigate(item.path);
+    if (onNavigateTab) onNavigateTab(item.key);
+    else router.navigate(item.path);
   }
 
   return (

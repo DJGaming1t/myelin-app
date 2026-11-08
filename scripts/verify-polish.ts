@@ -18,7 +18,7 @@ const appButton = read('src/components/app/AppButton.tsx');
 const actionRow = read('src/components/app/ActionRow.tsx');
 const disclosure = read('src/components/motion/AnimatedDisclosure.tsx');
 const motionItem = read('src/components/motion/MotionItem.tsx');
-const topicsLayout = read('app/(app)/topics/_layout.tsx');
+const topicsLayout = read('app/(app)/(main)/topics/_layout.tsx');
 const states = read('src/components/app/ScreenState.tsx');
 const focus = read('app/(app)/focus/index.tsx');
 const workspaceProvider = read('src/data/WorkspaceProvider.tsx');
@@ -28,8 +28,8 @@ const ambient = read('src/components/app/AmbientBackdrop.tsx');
 const pulseHalo = read('src/components/motion/PulseHalo.tsx');
 const animatedProgress = read('src/components/motion/AnimatedProgress.tsx');
 const springPressable = read('src/components/motion/SpringPressable.tsx');
-const today = read('app/(app)/today/index.tsx');
-const review = read('app/(app)/review/index.tsx');
+const today = read('app/(app)/(main)/today/index.tsx');
+const review = read('app/(app)/(main)/review/index.tsx');
 const onboarding = read('app/(onboarding)/index.tsx');
 const onboardingShell = read('src/components/onboarding/OnboardingShell.tsx');
 const authWelcome = read('app/(auth)/index.tsx');
@@ -77,10 +77,12 @@ for (const routeName of [
     `Peer-route transition guard is missing ${routeName}.`,
   );
 }
+const mainTabs = read('app/(app)/(main)/_layout.tsx');
 assert(
-  app.includes('<Stack.Screen name="today/index" />') &&
-    app.includes('<Stack.Screen name="progress/index" />'),
-  'Today and Progress should stay explicit peer destinations in the app stack.',
+  app.includes('<Stack.Screen name="(main)"') &&
+    mainTabs.includes('<Tabs.Screen name="today" />') &&
+    mainTabs.includes('<Tabs.Screen name="progress/index" />'),
+  'Today and Progress should be peers under the shared main tabs.',
 );
 assert(app.includes('kind="error"'), 'Workspace loading failures do not have an explicit error state.');
 assert(app.includes('actionLabel="Try again"'), 'Workspace error state is missing a retry action.');

@@ -215,7 +215,7 @@ function main() {
   );
   assert.equal(screenSource.includes('notifyTransitionReady'), false);
   assert.equal(screenSource.includes('useFocusEffect'), false);
-  const todaySource = fs.readFileSync('app/(app)/today/index.tsx', 'utf8');
+  const todaySource = fs.readFileSync('app/(app)/(main)/today/index.tsx', 'utf8');
   assert.equal(todaySource.includes('notifyTransitionReady'), false);
   assert.equal(todaySource.includes('useFocusEffect'), false);
   assert.ok(rootLayoutSource.includes("animation: 'none'"));

@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
+import { useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { Confidence } from '@/src/data/schema';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
@@ -228,7 +228,6 @@ export default function ReviewScreen() {
               <Text style={styles.arrow}>→</Text>
             </Pressable>
           </ScrollView>
-          <AppNav overlay />
         </View>
         {guideOverlay}
       </SafeAreaView>
@@ -409,7 +408,6 @@ export default function ReviewScreen() {
             )}
           </ScrollView>
 
-          <AppNav overlay />
         </View>
         {guideOverlay}
       </SafeAreaView>

@@ -55,7 +55,6 @@ import Animated, {
 import { ActionRow } from '@/src/components/app/ActionRow';
 import { AppButton } from '@/src/components/app/AppButton';
 import { AppIcon } from '@/src/components/app/AppIcon';
-import { AppNav } from '@/src/components/app/AppNav';
 import { AnimatedProgress } from '@/src/components/motion/AnimatedProgress';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useDayMapCompletion } from '@/src/features/today/useDayMapCompletion';
@@ -1598,7 +1597,6 @@ export default function TodayScreen() {
             - Expanding cream Day Map sheet slides cleanly BEHIND this layer
            =================================================================== */}
         <View pointerEvents="box-none" style={styles.floatingDockOverlay}>
-          <AppNav floating compact />
         </View>
       </View>
 

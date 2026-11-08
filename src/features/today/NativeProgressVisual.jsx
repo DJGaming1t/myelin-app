@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
-import { View, Text, Image, ActivityIndicator, Pressable, PanResponder, AppState, AccessibilityInfo, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, PanResponder, AppState, AccessibilityInfo, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { GLView } from 'expo-gl';
 import Animated, {
@@ -222,7 +222,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   const cleanup = useRef(() => {});
   const drag = useRef({ x: 0, y: 0 });
   const start = useRef({ x: 0, y: 0 });
-  const contextInitialized = useRef(false);
+  const contextCount = useRef(0);
 
   useEffect(() => {
     if (ready || error || paused) return;
@@ -247,6 +247,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   useFocusEffect(
     useCallback(() => {
       focused.current = true;
+      if (__DEV__) console.info('[Myelin 3D] focus', { contexts: contextCount.current });
       // Resume the existing graphics context; retry remains available if the
       // operating system has discarded it while the app was away.
       focusSettled.current = !engineRef.current;
@@ -258,6 +259,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       return () => {
         clearTimeout(transitionTimer);
         focused.current = false;
+        if (__DEV__) console.info('[Myelin 3D] blur');
         focusSettled.current = false;
         syncLoop.current();
       };
@@ -266,6 +268,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 
   useEffect(() => {
     live.current = true;
+    if (__DEV__) console.info('[Myelin 3D] mount');
     active.current = AppState.currentState !== 'background' && AppState.currentState !== 'inactive';
     const sub = AppState.addEventListener('change', s => {
       active.current = s === 'active';
@@ -279,6 +282,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
     });
     return () => {
       live.current = false;
+      if (__DEV__) console.info('[Myelin 3D] unmount');
       sub.remove();
       motion.remove();
       cleanup.current();
@@ -303,8 +307,14 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   ).current;
 
   const onContextCreate = useCallback(async gl => {
-    if (contextInitialized.current) return;
-    contextInitialized.current = true;
+    // Android can replace the native surface without unmounting this component.
+    // Dispose the old renderer before accepting the new GL context.
+    cleanup.current();
+    setReady(false);
+    setError(null);
+    contextCount.current += 1;
+    const contextStart = Date.now();
+    if (__DEV__) console.info('[Myelin 3D] context created', { count: contextCount.current });
 
 
     let engine;
@@ -322,14 +332,12 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 
     const dispose = () => {
       disposed = true;
-      contextInitialized.current = false;
       engineRef.current = null;
       cancelAnimationFrame(frame);
       engine?.dispose();
       renderer?.dispose();
     };
 
-    cleanup.current();
     cleanup.current = dispose;
 
     try {
@@ -391,6 +399,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 
       let last = 0;
       let firstFrame = true;
+      let sampledFrames = 0, slowFrames = 0, slowestFrameMs = 0;
       function sync() {
         if (disposed || !active.current || !focused.current || !focusSettled.current || pausedRef.current) {
           cancelAnimationFrame(frame);
@@ -406,13 +415,28 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
         // Avoid competing with navigation and touch handling at a full display refresh rate.
         if (last && now - last < 30) { sync(); return; }
         try {
+          const frameStart = __DEV__ ? Date.now() : 0;
           const dt = last ? Math.min(64, now - last) : 16;
           last = now;
           engine.update(dt, latest.current, reduced.current, drag.current);
           stage = 'frame rendering';
           renderer.render(engine.scene, engine.camera);
           gl.endFrameEXP();
-          if (firstFrame && live.current) { firstFrame = false; setReady(true); }
+          if (__DEV__) {
+            const frameMs = Date.now() - frameStart;
+            sampledFrames += 1;
+            if (frameMs > 16) slowFrames += 1;
+            slowestFrameMs = Math.max(slowestFrameMs, frameMs);
+            if (sampledFrames === 120) {
+              console.info('[Myelin 3D] JS frame work', { slowFrames, slowestFrameMs, drawCalls: renderer.info.render.calls, points: renderer.info.render.points });
+              sampledFrames = 0; slowFrames = 0; slowestFrameMs = 0;
+            }
+          }
+          if (firstFrame && live.current) {
+            firstFrame = false;
+            if (__DEV__) console.info('[Myelin 3D] first frame', { ms: Date.now() - contextStart });
+            setReady(true);
+          }
           sync();
         } catch (e) {
           report(e);
@@ -431,12 +455,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   return (
     <View style={styles.stageContainer} {...pan.panHandlers}>
       <GLView key={contextKey} style={styles.glView} onContextCreate={onContextCreate} />
-      {!ready && !error ? (
-        <View pointerEvents="none" style={styles.fallbackWrap}>
-          <ActivityIndicator color="#F2E7D0" />
-          <Text style={{ color: '#F2E7D0', marginTop: 8 }}>Starting 3D…</Text>
-        </View>
-      ) : null}
+      {!ready ? <StaticChalkVisualFallback progress={progress} model={model} /> : null}
       {error ? <Pressable accessibilityRole="button" accessibilityLabel="Retry native 3D visual" onPress={() => {
         cleanup.current(); setReady(false); setError(null); setContextKey(key => key + 1);
       }} style={{ position: 'absolute', top: 8, alignSelf: 'center', padding: 12, backgroundColor: '#252520' }}>

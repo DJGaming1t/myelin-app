@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { View, Text, Image, Pressable, PanResponder, AppState, AccessibilityInfo, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { startupRecoveryAction } from './visualStartupRecovery.mjs';
 import { GLView } from 'expo-gl';
 import Animated, {
   Easing,
@@ -223,14 +224,34 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   const drag = useRef({ x: 0, y: 0 });
   const start = useRef({ x: 0, y: 0 });
   const contextCount = useRef(0);
+  const hasCurrentContext = useRef(false);
+  const startupAttempts = useRef(0);
 
   useEffect(() => {
     if (ready || error || paused) return;
-    const timer = setTimeout(() => {
-      if (!live.current || !active.current || !focused.current) return;
-      cleanup.current();
-      setError('Native 3D did not deliver its first frame. Tap retry to recreate the graphics context.');
-    }, 15000);
+    let timer;
+    const checkStartup = () => {
+      if (!live.current) return;
+      const action = startupRecoveryAction({
+        active: active.current,
+        focused: focused.current,
+        paused: pausedRef.current,
+        attempts: startupAttempts.current,
+      });
+      if (action === 'wait') {
+        timer = setTimeout(checkStartup, 8000);
+      } else if (action === 'retry') {
+        startupAttempts.current += 1;
+        hasCurrentContext.current = false;
+        cleanup.current();
+        setContextKey(key => key + 1);
+      } else {
+        cleanup.current();
+        const stage = hasCurrentContext.current ? 'A graphics context was created, but no frame was drawn.' : 'Android did not create a graphics context.';
+        setError(`${stage} Tap retry to try again.`);
+      }
+    };
+    timer = setTimeout(checkStartup, 8000);
     return () => clearTimeout(timer);
   }, [ready, error, paused, contextKey]);
 
@@ -313,6 +334,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
     setReady(false);
     setError(null);
     contextCount.current += 1;
+    hasCurrentContext.current = true;
     const contextStart = Date.now();
     if (__DEV__) console.info('[Myelin 3D] context created', { count: contextCount.current });
 
@@ -434,6 +456,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
           }
           if (firstFrame && live.current) {
             firstFrame = false;
+            startupAttempts.current = 0;
             if (__DEV__) console.info('[Myelin 3D] first frame', { ms: Date.now() - contextStart });
             setReady(true);
           }
@@ -457,7 +480,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
       <GLView key={contextKey} style={styles.glView} onContextCreate={onContextCreate} />
       {!ready ? <StaticChalkVisualFallback progress={progress} model={model} /> : null}
       {error ? <Pressable accessibilityRole="button" accessibilityLabel="Retry native 3D visual" onPress={() => {
-        cleanup.current(); setReady(false); setError(null); setContextKey(key => key + 1);
+        startupAttempts.current = 0; hasCurrentContext.current = false; cleanup.current(); setReady(false); setError(null); setContextKey(key => key + 1);
       }} style={{ position: 'absolute', top: 8, alignSelf: 'center', padding: 12, backgroundColor: '#252520' }}>
         <Text style={{ color: '#F2E7D0' }}>3D unavailable · Tap to retry</Text>
       </Pressable> : null}
@@ -561,7 +584,7 @@ export const NativeLegoIcon = memo(function NativeLegoIcon({
 const styles = StyleSheet.create({
   stageContainer: {
     flex: 1,
-    backgroundColor: CHALK_STAGE_HEX,
+    backgroundColor: 'transparent',
   },
   glView: {
     flex: 1,

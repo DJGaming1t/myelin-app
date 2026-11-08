@@ -1,3 +1,4 @@
+import { computeStudyStreakDays, computeStudyStreakWeek } from '@/src/features/today/today-progress';
 import { NeuralMap } from '@/src/features/adaptive/NeuralMap';
 import { LearningInsights, OutcomeEvidence } from '@/src/features/adaptive/LearningInsights';
 import { AdaptationInsightList } from '@/src/features/adaptive/AdaptationInsights';
@@ -55,6 +56,8 @@ export default function ProgressScreen() {
     () => (workspace ? buildProgressSnapshot(workspace, now) : null),
     [workspace, now],
   );
+  const streakDays = useMemo(() => workspace ? computeStudyStreakDays(workspace, now) : 0, [workspace, now]);
+  const streakWeek = useMemo(() => workspace ? computeStudyStreakWeek(workspace, now) : [], [workspace, now]);
   const insights = useMemo(() => workspace ? learningInsights(workspace, insightNow) : [], [workspace, insightNow]);
   const guideState: ProgressGuideState = {
     hasTopics: !!workspace?.topics.length,
@@ -121,6 +124,23 @@ export default function ProgressScreen() {
               </View>
             </View>
           </Reveal>
+
+          <View style={styles.streakPanel}>
+            <View style={styles.streakHeading}>
+              <View style={styles.streakCopy}>
+                <Text style={styles.streakTitle}>Study streak</Text>
+                <Text style={styles.streakHint}>{streakWeek[6]?.active ? 'You studied today.' : streakDays ? 'Study today to continue your streak.' : 'A little study starts your streak.'}</Text>
+              </View>
+              <Text style={styles.streakCount}>{streakDays} {streakDays === 1 ? 'day' : 'days'}</Text>
+            </View>
+            <View style={styles.streakDays}>
+              {streakWeek.map(day => <View key={day.timestamp} style={styles.streakDay} accessible accessibilityLabel={`${new Date(day.timestamp).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}: ${day.active ? 'study recorded' : 'no study recorded'}${day.today ? ', today' : ''}`}>
+                <View style={[styles.streakDot, day.active && styles.streakDotActive, day.today && styles.streakDotToday]}><Text style={[styles.streakDotText, day.active && styles.streakDotTextActive]}>{day.active ? '✓' : '·'}</Text></View>
+                <Text style={styles.streakDayLabel}>{new Date(day.timestamp).toLocaleDateString(undefined, { weekday: 'short' })}</Text>
+              </View>)}
+            </View>
+            <Text style={styles.streakNote}>Recorded focus or graded review with study time counts. Your streak follows your local calendar.</Text>
+          </View>
 
           <SectionTitle
             title="Study time"
@@ -516,6 +536,21 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 12 },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 44 },
+  streakPanel: { backgroundColor: chalkTheme.paperRaised, borderRadius: 18, padding: 16, marginTop: 4 },
+  streakHeading: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  streakCopy: { flex: 1 },
+  streakTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  streakHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  streakCount: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  streakDays: { flexDirection: 'row', justifyContent: 'space-between', gap: 2, marginTop: 18 },
+  streakDay: { flex: 1, alignItems: 'center' },
+  streakDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: chalkTheme.paperContour, alignItems: 'center', justifyContent: 'center' },
+  streakDotActive: { backgroundColor: chalkTheme.dock, borderColor: chalkTheme.dock },
+  streakDotToday: { borderWidth: 2 },
+  streakDotText: { color: colors.muted, fontSize: 15 },
+  streakDotTextActive: { color: chalkTheme.onStage },
+  streakDayLabel: { color: colors.muted, fontSize: 10, marginTop: 5 },
+  streakNote: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 14 },
   summaryHero: {
     backgroundColor: chalkTheme.hero, borderRadius: 24, paddingHorizontal: 20,
     paddingTop: 21, paddingBottom: 15, marginBottom: spacing.md,

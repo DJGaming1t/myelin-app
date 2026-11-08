@@ -21,6 +21,7 @@ import {
   buildDayMapSteps,
   computeCompletedFocusMinutesToday,
   computeStudyStreakDays,
+  computeStudyStreakWeek,
   computeTodayProgress,
   formatCompletedFocusDuration,
   isBrickDone,
@@ -699,6 +700,23 @@ function main() {
     4,
     'Completing focus today advances the streak to 4 days.',
   );
+
+  // Weekly indicators must agree with the current streak and remain derived after reload.
+  const streakWeek = computeStudyStreakWeek(streakWs, now);
+  assert.deepEqual(streakWeek.map(day => day.active), [false, false, false, true, true, true, true]);
+  assert.equal(streakWeek[6].today, true);
+  assert.deepEqual(computeStudyStreakWeek(JSON.parse(JSON.stringify(streakWs)), now), streakWeek);
+  assert.equal(computeStudyStreakDays(streakWs, now + 3 * DAY), 0, 'A gap ends the current streak.');
+  assert.ok(computeStudyStreakWeek(emptyWs, now).every(day => !day.active));
+  const gradedReviewWs = createEmptyWorkspace(now);
+  gradedReviewWs.history.push({ id: 'review-day', topicId: 'bio', at: now - 1000, kind: 'review', minutes: 3, grade: 2, effort: 3, prompt: '', response: '', confidence: 'unsure' });
+  assert.equal(computeStudyStreakDays(gradedReviewWs, now), 1);
+  assert.equal(computeStudyStreakWeek(gradedReviewWs, now)[6].active, true);
+  gradedReviewWs.history[0].minutes = 0;
+  assert.equal(computeStudyStreakDays(gradedReviewWs, now), 0, 'A zero-minute review does not count.');
+  gradedReviewWs.history[0].minutes = 3;
+  gradedReviewWs.history[0].at = now + 60000;
+  assert.equal(computeStudyStreakWeek(gradedReviewWs, now)[6].active, false, 'Future activity must not count.');
 
   console.log('✓ Stage 1: zero, single, 3/7 (43%), 7/7 (100%) and variable task progress verified');
   console.log('✓ Stage 1: planned minutes, breaks and abandoned outcomes never count as completed focus');

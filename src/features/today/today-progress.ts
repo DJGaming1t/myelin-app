@@ -362,6 +362,24 @@ export function formatCompletedFocusDuration(minutes: number): string {
   return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`;
 }
 
+function isStudyStreakDayActive(workspace: WorkspaceState, todayStart: number, now: number, dayOffset: number): boolean {
+  const day = addLocalDays(todayStart, -dayOffset);
+  const dayEnd = addLocalDays(day, 1);
+  const upTo = dayOffset === 0 ? now : dayEnd;
+  if (computeCompletedFocusMinutesForDay(workspace, day, upTo) > 0) return true;
+  return workspace.history.some(entry => entry.kind === 'review' && entry.grade > 0 && entry.minutes > 0 && entry.at >= day && entry.at < Math.min(dayEnd, upTo + 1));
+}
+
+/** Seven local calendar days, oldest first, using the same rules as the current streak. */
+export function computeStudyStreakWeek(workspace: WorkspaceState, now = Date.now()) {
+  const todayStart = startOfLocalDay(now);
+  return Array.from({ length: 7 }, (_, index) => {
+    const offset = 6 - index;
+    const timestamp = addLocalDays(todayStart, -offset);
+    return { timestamp, active: isStudyStreakDayActive(workspace, todayStart, now, offset), today: offset === 0 };
+  });
+}
+
 /**
  * Computes the user's consecutive active study streak in local calendar days.
  * - A local day is active if completed focus/study or graded review minutes > 0.
@@ -375,30 +393,14 @@ export function computeStudyStreakDays(
 ): number {
   const todayStart = startOfLocalDay(now);
 
-  function isDayActive(dayOffset: number): boolean {
-    const day = addLocalDays(todayStart, -dayOffset);
-    const dayEnd = addLocalDays(day, 1);
-    const upTo = dayOffset === 0 ? now : dayEnd;
-    if (computeCompletedFocusMinutesForDay(workspace, day, upTo) > 0) {
-      return true;
-    }
-    // Also check graded review sessions on that local day
-    return workspace.history.some(
-      (entry) =>
-        entry.kind === 'review' &&
-        entry.grade > 0 &&
-        entry.minutes > 0 &&
-        entry.at >= day &&
-        entry.at < Math.min(dayEnd, upTo + 1),
-    );
-  }
+
 
   let streak = 0;
-  const todayActive = isDayActive(0);
+  const todayActive = isStudyStreakDayActive(workspace, todayStart, now, 0);
   const startOffset = todayActive ? 0 : 1;
 
   for (let offset = startOffset; offset < maxLookbackDays; offset += 1) {
-    if (isDayActive(offset)) {
+    if (isStudyStreakDayActive(workspace, todayStart, now, offset)) {
       streak += 1;
     } else {
       break;

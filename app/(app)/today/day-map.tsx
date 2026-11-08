@@ -113,6 +113,7 @@ export default function DayMapScreen() {
   const completeTaskWithUndo = useTaskCompletion();
   const { session: focusSession } = useFocus();
   const scrollRef = useRef<ScrollView | null>(null);
+  const timelinePosition = useRef(0);
   const handoffConsumedRef = useRef(false);
   const recoveredLayoutRef = useRef<Record<string, number>>({});
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -692,6 +693,8 @@ export default function DayMapScreen() {
           dark
           variant="compact"
           title="Day Map"
+          secondaryActionLabel="Timeline"
+          onSecondaryAction={() => scrollRef.current?.scrollTo({ y: Math.max(0, timelinePosition.current - 16), animated: true })}
           actionLabel="Add"
           onAction={() => router.push('/(app)/quick-add')}
           onBack={() => router.replace('/(app)/today')}
@@ -1102,7 +1105,7 @@ export default function DayMapScreen() {
             ) : null}
           </AnimatedDisclosure>
 
-          <View style={styles.timelineHeader}>
+          <View style={styles.timelineHeader} onLayout={event => { timelinePosition.current = event.nativeEvent.layout.y; }}> 
             <Text style={styles.sectionLabel}>TIMELINE</Text>
             <Text style={styles.nowLabel}>Now · {timeLabel(now)}</Text>
           </View>

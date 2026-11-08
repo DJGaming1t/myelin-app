@@ -31,8 +31,8 @@ export function TaskQuickActions({ task, paper = true, onComplete }: { task: Stu
   }
   if (task.status !== 'open') return null;
   return <View style={styles.row}>
-    <SpringPressable accessibilityRole="button" accessibilityLabel={`Focus on ${task.title}`} onPress={focus} style={[styles.action, styles.focus, paper && {backgroundColor: '#FF9176', borderColor: '#FF9176', borderRadius:28}]}>
-      <Text style={[styles.focusText, paper && {color:'#241B17'}]}>{session?.taskId === task.id ? 'Resume timer' : '▶ Focus'}</Text>
+    <SpringPressable accessibilityRole="button" accessibilityLabel={`Focus on ${task.title}`} onPress={focus} style={[styles.action, styles.focus, paper && {backgroundColor: colors.accentFill, borderColor: colors.accentFill, borderRadius:28}]}>
+      <Text style={[styles.focusText, paper && {color: colors.onAccent}]}>{session?.taskId === task.id ? 'Resume timer' : '▶ Focus'}</Text>
     </SpringPressable>
     <SpringPressable accessibilityRole="button" accessibilityLabel={`Complete ${task.title}`} onPress={() => onComplete ? onComplete(task.id) : complete(task.id)} style={[styles.action, paper && {borderColor:'#B9B5AB',borderRadius:28}]}>
       <Text style={[styles.completeText, paper && {color:'#343D34'}]}>✓ Complete</Text>

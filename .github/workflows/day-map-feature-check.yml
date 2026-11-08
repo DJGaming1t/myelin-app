@@ -35,3 +35,5 @@ jobs:
         run: node --import tsx scripts/verify-day-map-snap.ts
       - name: Verify timeline marker
         run: node --import tsx scripts/verify-timeline-position.ts
+      - name: Verify theme contrast
+        run: node scripts/verify-theme-contrast.mjs

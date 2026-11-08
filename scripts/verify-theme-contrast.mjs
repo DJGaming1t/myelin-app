@@ -142,6 +142,6 @@ assert.equal(chalkWithCustomProgress.progressBlue, '#5B88A6');
 
 // Restore default editorial palette
 applyThemePalette('editorial', {});
-assert.equal(colors.bg, '#F2EFE6');
+assert.equal(colors.bg, chalkTheme.paper);
 
 console.log(`Passed 37 text/surface pairs across all palettes + chalkTheme pairs; lowest body-text contrast ${lowest.toFixed(2)}:1`);

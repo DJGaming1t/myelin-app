@@ -21,7 +21,7 @@ const ITEMS: {
 export function AppNav({
   paper = true,
   floating = true,
-  compact = false,
+  compact = true,
 }: {
   paper?: boolean;
   floating?: boolean;

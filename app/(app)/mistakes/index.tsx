@@ -22,7 +22,7 @@ import {
   buildMistakeRetestQueue,
   mistakeCounts,
 } from '@/src/features/mistakes/mistake-engine';
-import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
 type Filter = 'due' | 'open' | 'resolved';
 
@@ -86,16 +86,18 @@ export default function MistakesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <View style={styles.page}>
         <ScreenHeader
+          dark
           variant="compact"
           title="Corrections"
           actionLabel="Add"
           onAction={() => router.push('/(app)/mistakes/new')}
         />
 
+        <View style={styles.paperBody}>
         <View style={styles.summaryLine}>
           <Text style={styles.summaryText}>
             {counts.open} open · {counts.resolved} resolved
@@ -233,6 +235,7 @@ export default function MistakesScreen() {
           }
         />
 
+        </View>
         <AppNav overlay />
       </View>
     </SafeAreaView>
@@ -265,6 +268,8 @@ function FilterChip({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperBody: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: 16 },
   page: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, ...type.meta },

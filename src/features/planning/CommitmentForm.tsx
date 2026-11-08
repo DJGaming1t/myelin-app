@@ -20,7 +20,7 @@ import {
   buildAutopilotReflowSummary,
   serializeAutopilotReflow,
 } from '@/src/features/exams/autopilot-reflow';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const DAYS = [
   { value: 1, label: 'M' },
@@ -212,6 +212,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.embeddedHeader}>
       <ScreenHeader
+        dark
         variant="compact"
         eyebrow="DAY MAP"
         title={existing ? 'Edit fixed block' : 'Add fixed time'}
@@ -368,7 +369,7 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
-  embeddedHeader: { marginHorizontal: -spacing.lg },
+  embeddedHeader: { marginHorizontal: -spacing.lg, backgroundColor: chalkTheme.hero, paddingBottom: spacing.sm, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
   content: {
     width: '100%',
     maxWidth: layout.contentMax,

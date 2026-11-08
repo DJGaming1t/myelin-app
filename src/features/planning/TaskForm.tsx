@@ -20,7 +20,7 @@ import {
   reopenTask,
 } from '@/src/features/planning/task-engine';
 import { applyTaskEdit, taskEditConflict, RecordedTime, TaskEdit } from './task-edit';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 const DURATIONS = [15, 25, 35, 45, 60];
 const TYPES: Array<{ value: StudyTaskType; label: string }> = [
@@ -246,6 +246,7 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.embeddedHeader}>
       <ScreenHeader
+        dark
         variant="compact"
         eyebrow={existing ? 'STUDY TASK' : 'QUICK CAPTURE'}
         title={existing ? 'Edit task' : 'Add study work'}
@@ -458,7 +459,7 @@ function Chip({ label, active, onPress, flex }: { label: string; active: boolean
 }
 
 const styles = StyleSheet.create({
-  embeddedHeader: { marginHorizontal: -spacing.lg },
+  embeddedHeader: { marginHorizontal: -spacing.lg, backgroundColor: chalkTheme.hero, paddingBottom: spacing.sm, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
   content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 56 },
   label: { color: colors.textDim, fontSize: 12.5, lineHeight: 17, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
   detailsToggle: { minHeight: 66, marginTop: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.lineStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },

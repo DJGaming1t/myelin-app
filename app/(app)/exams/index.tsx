@@ -21,7 +21,7 @@ import {
   nearestUpcomingExam,
   sortExams,
 } from '@/src/features/exams/exam-engine';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 type Filter = 'upcoming' | 'past';
 
@@ -55,16 +55,18 @@ export default function ExamsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <View style={styles.page}>
         <ScreenHeader
+          dark
           variant="compact"
           title="Exams"
           actionLabel="Add"
           onAction={() => router.push('/(app)/exams/new')}
         />
 
+        <View style={styles.paperBody}>
         {nextExam ? (
           <Pressable
             accessibilityRole="button"
@@ -183,6 +185,7 @@ export default function ExamsScreen() {
           }
         />
 
+        </View>
         <AppNav overlay />
       </View>
     </SafeAreaView>
@@ -215,6 +218,8 @@ function FilterButton({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperBody: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: 16 },
   page: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 13 },

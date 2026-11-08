@@ -245,6 +245,8 @@ export default function ReviewScreen() {
             onHelp={guide.start}
             variant="compact"
             title="Review"
+            actionLabel="Corrections"
+            onAction={() => router.push('/(app)/mistakes')}
             subtitle={
               requestedTopic
                 ? requestedTopic.name

@@ -11,6 +11,8 @@ type Props = {
   onBack?: () => void;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
   onHelp?: () => void;
   variant?: 'hero' | 'standard' | 'compact';
   dark?: boolean;
@@ -24,6 +26,8 @@ export function ScreenHeader({
   onBack,
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
   onHelp,
   variant = 'standard',
   dark = false,
@@ -56,6 +60,12 @@ export function ScreenHeader({
           onPress={onHelp} lift={0} style={styles.helpButton}>
           <Text style={[styles.helpText, dark && { color: chalkTheme.onStage }]}>?</Text>
         </SpringPressable> : null}
+        {secondaryActionLabel && onSecondaryAction ? (
+          <SpringPressable accessibilityRole="button" accessibilityLabel={secondaryActionLabel}
+            onPress={onSecondaryAction} hitSlop={8} scaleTo={0.985} lift={0} style={styles.actionButton}>
+            <Text style={[styles.actionText, dark && { color: chalkTheme.onStage }]}>{secondaryActionLabel}</Text>
+          </SpringPressable>
+        ) : null}
         {actionLabel && onAction ? (
           <SpringPressable
             accessibilityRole="button"

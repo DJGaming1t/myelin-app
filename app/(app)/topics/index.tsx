@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -37,6 +37,7 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 
 export default function TopicsScreen() {
   const dockClearance = useAppNavClearance();
+  const searchRef = useRef<TextInput>(null);
   const { status, workspace, saveError } = useWorkspace();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -83,6 +84,8 @@ export default function TopicsScreen() {
           dark
           variant="compact"
           title="Library"
+          secondaryActionLabel="Search"
+          onSecondaryAction={() => searchRef.current?.focus()}
           actionLabel="Exams"
           onAction={() => router.push('/(app)/exams')}
         />
@@ -122,6 +125,7 @@ export default function TopicsScreen() {
 
         <View style={styles.searchWrap}>
           <TextInput
+            ref={searchRef}
             accessibilityLabel="Search Library"
             value={query}
             onChangeText={setQuery}

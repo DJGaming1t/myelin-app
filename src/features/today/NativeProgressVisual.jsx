@@ -259,10 +259,6 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   useEffect(() => {
     live.current = true;
     active.current = AppState.currentState !== 'background' && AppState.currentState !== 'inactive';
-    if (modelRef.current === 'cycle') {
-      preloadBrainBuffer().catch(() => {});
-    }
-
     const sub = AppState.addEventListener('change', s => {
       active.current = s === 'active';
       syncLoop.current();
@@ -338,17 +334,12 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
         throw new Error('Native graphics context returned invalid capabilities');
       }
 
-      let brainBuffer = cachedBrainBuffer;
-      if (!brainBuffer && modelRef.current === 'cycle') {
-        stage = 'offline asset loading';
-        brainBuffer = await preloadBrainBuffer();
-      }
       const legoBuffer = cachedLegoBuffer;
       if (disposed || !live.current) return;
 
       stage = 'object construction';
       engine = createNativeScene(
-        brainBuffer,
+        null,
         message => report(new Error(message)),
         legoBuffer,
         { mode: modelRef.current },

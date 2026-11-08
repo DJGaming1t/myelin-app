@@ -514,9 +514,9 @@ const KNIGHT_PROFILE=Object.freeze([
  // broad carved neck, projecting nose and a crisp under-jaw.
  [-.44,-.64],[-.52,-.46],[-.58,-.25],[-.62,.03],[-.65,.28],
  [-.655,.42],[-.67,.54],[-.66,.78],[-.64,.96],[-.57,1.10],[-.51,1.16],[-.47,1.20],
- [-.34,1.29],[-.24,1.35],[-.17,1.39],[-.12,1.27],
+ [-.34,1.29],[-.25,1.37],[-.17,1.45],[-.12,1.28],
  [-.06,1.25],[.04,1.27],[.10,1.14],[.18,1.08],
- [.29,1.02],[.37,.93],[.48,.88],[.59,.83],[.63,.76],
+ [.29,1.03],[.39,.95],[.52,.90],[.64,.84],[.68,.76],
  [.59,.69],[.53,.66],[.51,.635],[.44,.63],[.34,.64],
  [.28,.59],[.25,.53],[.23,.48],[.18,.40],[.12,.25],
  [.11,.09],[.17,-.12],[.27,-.36],[.40,-.64]
@@ -550,7 +550,7 @@ function addSurface(out,r,x,y,sign){
 function buildKnightParticles({density=1,seed=1405}={}){
  const r=rng(seed),body=empty(),base=empty(),details=empty(),face=empty();
  // Inward-curved, genuinely 3D side surfaces; not stacked flat point sheets.
- const nFace=Math.round(6800*density);
+ const nFace=Math.round(5600*density);
  let made=0,attempts=0;
  while(made<nFace&&attempts++<nFace*15){
   const x=-.68+r()*1.30,y=-.64+r()*2.15;
@@ -564,7 +564,7 @@ function buildKnightParticles({density=1,seed=1405}={}){
   const b=KNIGHT_PROFILE[(i+1)%KNIGHT_PROFILE.length];return {a,b,len:Math.hypot(b[0]-a[0],b[1]-a[1])};
  });
  const total=segments.reduce((s,v)=>s+v.len,0);
- for(let i=0;i<Math.round(2250*density);i++){
+ for(let i=0;i<Math.round(2450*density);i++){
   let q=r()*total,j=0;while(j<segments.length-1&&q>segments[j].len)q-=segments[j++].len;
   const {a,b}=segments[j],t=r(),x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;
   const z=(r()-.5)*.285,dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1;

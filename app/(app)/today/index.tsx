@@ -1157,7 +1157,7 @@ export default function TodayScreen() {
                     <Text style={styles.scheduleShortcutText}>Schedule & adjust  ›</Text>
                   </Pressable>
                 </View>
-            <DayMapPath steps={dayMapStepsSummary.steps} selectedId={selectedStepId} onSelect={step => setSelectedStepId(step.id)} />
+            <DayMapPath reduceMotion={reduceMotionEnabled} steps={dayMapStepsSummary.steps} selectedId={selectedStepId} onSelect={step => setSelectedStepId(step.id)} />
             {selectedStepId ? (() => {
               const step = dayMapStepsSummary.steps.find(item => item.id === selectedStepId);
               const task = step?.taskId ? currentWorkspace.tasks.find(item => item.id === step.taskId) : null;

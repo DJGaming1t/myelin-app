@@ -7,8 +7,8 @@ import type { DayMapStep } from './today-progress';
 export function dayMapPathPoint(index: number) {
   return { x: 12 + index * 92, y: 30 + 13 * Math.sin(index * .8) };
 }
-export function DayMapPath({ steps, selectedId, onSelect }: {
-  steps: readonly DayMapStep[]; selectedId: string | null; onSelect: (step: DayMapStep) => void;
+export function DayMapPath({ steps, selectedId, onSelect, reduceMotion = false }: {
+  steps: readonly DayMapStep[]; selectedId: string | null; onSelect: (step: DayMapStep) => void; reduceMotion?: boolean;
 }) {
   if (!steps.length) return <Text style={styles.empty}>Your path starts with one task. Add one when you’re ready.</Text>;
   const width = Math.max(110, 24 + (steps.length - 1) * 92 + 76);
@@ -24,7 +24,7 @@ export function DayMapPath({ steps, selectedId, onSelect }: {
         const state = step.completed ? 'completed' : step.overdue ? 'overdue' : step.current ? 'next' : 'upcoming';
         return <Pressable key={step.id} accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={`${step.title}, ${state}, ${step.minutes} minutes`} accessibilityHint="Show task actions"
           onPress={() => onSelect(step)} style={({ pressed }) => [styles.node, { left: point.x, top: point.y }, pressed && { opacity: .65 }]}>
-          <MapBrick selected={selected} tone={step.completed ? 'completed' : step.overdue ? 'overdue' : step.current ? 'active' : 'upcoming'} />
+          <MapBrick reduceMotion={reduceMotion} selected={selected} tone={step.completed ? 'completed' : step.overdue ? 'overdue' : step.current ? 'active' : 'upcoming'} />
           {selected ? <View style={styles.selected} /> : null}
           <Text numberOfLines={1} style={styles.label}>{state.toUpperCase()}</Text>
         </Pressable>;

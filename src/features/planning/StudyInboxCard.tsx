@@ -21,6 +21,7 @@ import { suggestTaskSlots } from '@/src/features/planning/day-engine';
 import {
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
+import { taskUrgency } from '@/src/features/planning/task-urgency';
 import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
@@ -254,7 +255,7 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
               <Text style={styles.taskMeta}>
                 {[
                   task.subject || task.type,
-                  dueLabel(task.dueAt),
+                  taskUrgency(task) ? null : dueLabel(task.dueAt),
                   task.planState === 'postponed' ? 'Deferred' : task.planState === 'scheduled' ? 'Scheduled' : task.planState === 'today' && task.postponedUntil > Date.now() ? `Planned ${new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(new Date(task.postponedUntil))}` : task.planState === 'today' ? 'Today' : 'Inbox',
                   task.estimatedMinutes ? String(task.estimatedMinutes) + 'm' : 'No estimate',
                 ]
@@ -275,8 +276,8 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
             </Pressable>
             <AnimatedDisclosure visible={planningTaskId === task.id}>
               <View style={styles.actions}>
-                <Mini label="Today" onPress={() => moveToday(task.id)} />
-                <Mini label="Schedule" onPress={() => openScheduler(task.id)} accent />
+                <Mini label="Today" accessibilityLabel={`Move ${task.title} to Today`} onPress={() => moveToday(task.id)} />
+                <Mini label="Schedule" accessibilityLabel={`Schedule ${task.title}`} onPress={() => openScheduler(task.id)} accent />
               </View>
               <TaskUnstuck task={task} onSchedule={request => { if (request.ownerKey === ownerKey) openScheduler(request.task.id); }} />
             </AnimatedDisclosure>
@@ -421,16 +422,19 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
 
 function Mini({
   label,
+  accessibilityLabel,
   onPress,
   accent = false,
 }: {
   label: string;
+  accessibilityLabel: string;
   onPress: () => void;
   accent?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       onPress={onPress}
       style={({ pressed }) => [
         styles.mini,
@@ -480,7 +484,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accentLine,
   },
-  addText: { color: colors.accent, fontSize: 10.5, fontWeight: '800' },
+  addText: { color: colors.accent, fontSize: 12.5, fontWeight: '800' },
   task: {
     borderTopWidth: 1,
     borderTopColor: colors.line,

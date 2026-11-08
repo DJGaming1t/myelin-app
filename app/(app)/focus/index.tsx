@@ -1075,19 +1075,20 @@ function Metric({
 }
 
 function FocusStopwatch({ value, label, progress }: { value: string; label: string; progress: number }) {
-  const visualHeight = 180;
+  const { width } = useWindowDimensions();
+  const visualHeight = Math.max(144, Math.min(180, width - 160));
   return (
     <View style={styles.stopwatchPanel}>
       <View style={styles.stopwatchHeader}>
         <Text style={styles.stopwatchKicker}>FOCUS SESSION</Text>
-        <Text style={styles.stopwatchCounter}>{Math.round(progress * 100)}%</Text>
+        <Text style={styles.stopwatchCounter}>{label}</Text>
       </View>
       <View style={[styles.stopwatchVisual, { height: visualHeight }]}>
         <NativeProgressVisual model="stopwatch" progress={progress * 100} viewportHeight={visualHeight} />
       </View>
       <View accessible accessibilityLabel={`${value} remaining. ${label.toLowerCase()}.`} style={styles.stopwatchReadout}>
         <Text style={styles.stopwatchValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
-        <Text style={styles.stopwatchLabel}>{label}</Text>
+        <Text style={styles.stopwatchLabel}>TIME REMAINING</Text>
       </View>
     </View>
   );
@@ -1381,7 +1382,7 @@ const styles = StyleSheet.create({
   stopwatchPanel: { marginTop: spacing.lg, borderRadius: 24, backgroundColor: chalkTheme.hero, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 22, overflow: 'hidden' },
   stopwatchHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   stopwatchKicker: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
-  stopwatchCounter: { color: chalkTheme.mutedCream, fontSize: 13, fontVariant: ['tabular-nums'] },
+  stopwatchCounter: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '700', letterSpacing: .8 },
   stopwatchVisual: { width: '100%', maxWidth: 240, alignSelf: 'center', marginTop: 4 },
   stopwatchReadout: { alignItems: 'center', marginTop: 2 },
   stopwatchValue: { color: chalkTheme.onStage, fontSize: 48, lineHeight: 56, letterSpacing: -2, fontVariant: ['tabular-nums'] },

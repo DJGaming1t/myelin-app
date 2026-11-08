@@ -113,8 +113,8 @@ function MetricChip({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   todayCard: {
-    backgroundColor: chalkTheme.paperRaised,
-    borderColor: colors.line,
+    backgroundColor: chalkTheme.paper,
+    borderColor: chalkTheme.paperContour,
     borderWidth: 1,
     borderRadius: radius.md,
     padding: spacing.md,
@@ -145,8 +145,8 @@ const styles = StyleSheet.create({
     color: colors.textDim,
   },
   topicCard: {
-    backgroundColor: chalkTheme.paperRaised,
-    borderColor: colors.line,
+    backgroundColor: chalkTheme.paper,
+    borderColor: chalkTheme.paperContour,
     borderWidth: 1,
     borderRadius: radius.md,
     padding: spacing.md,

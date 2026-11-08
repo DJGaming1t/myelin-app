@@ -1,11 +1,13 @@
 import { useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperGrain } from '@/src/components/app/ChalkGrain';
 import { chalkTheme, colors, getActiveThemePalette, subscribeThemePalette } from '@/src/theme/tokens';
 
 const subscribe = (listener: () => void) => subscribeThemePalette(listener);
 
-export function AmbientBackdrop({ dark = false }: { dark?: boolean }) {
+export function AmbientBackdrop({ dark = false, darkTop = false }: { dark?: boolean; darkTop?: boolean }) {
+  const insets = useSafeAreaInsets();
   const palette = useSyncExternalStore(subscribe, getActiveThemePalette, getActiveThemePalette);
   return (
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[StyleSheet.absoluteFill, styles.clip]}>
@@ -13,6 +15,7 @@ export function AmbientBackdrop({ dark = false }: { dark?: boolean }) {
       {!dark && palette === 'editorial' ? <PaperGrain /> : null}
       {!dark ? <View style={styles.orbTop} /> : null}
       {!dark ? <View style={styles.rule} /> : null}
+      {darkTop ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: insets.top, backgroundColor: chalkTheme.hero }} /> : null}
     </View>
   );
 }

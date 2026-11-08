@@ -345,7 +345,7 @@ export default function FocusScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-        <AmbientBackdrop />
+        <AmbientBackdrop darkTop />
         <View style={styles.setupPage}>
           <TopBar onHelp={guide.start} label="Focus" backLabel="Review" onBack={() => router.replace('/(app)/review')} />
           <View style={styles.missing}>
@@ -375,7 +375,7 @@ export default function FocusScreen() {
       return (
         <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-          <AmbientBackdrop />
+          <AmbientBackdrop darkTop />
           <View style={styles.setupPage}>
             <TopBar onHelp={guide.start} label="Focus" onBack={() => router.replace('/(app)/today')} />
             <View style={styles.missing}>
@@ -403,7 +403,7 @@ export default function FocusScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-        <AmbientBackdrop />
+        <AmbientBackdrop darkTop />
         <View style={styles.setupPage}>
           <TopBar onHelp={guide.start} label="Focus" backLabel="Back" onBack={() => router.back()} />
 
@@ -559,7 +559,7 @@ export default function FocusScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-        <AmbientBackdrop />
+        <AmbientBackdrop darkTop />
         <View style={styles.sessionPage}>
           <TopBar
             onHelp={guide.start}
@@ -745,7 +745,7 @@ export default function FocusScreen() {
   return (
     <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop />
       <View style={styles.sessionPage}>
         <TopBar
           onHelp={guide.start}

@@ -197,7 +197,7 @@ for (const aspect of [0.8, 1, 1.6]) {
     }
   }
 }
-assert.equal(seen.size, 5);
+assert.deepEqual([...seen].sort(), [1, 2, 3, 4]);
 assert.ok(maxFrameAngle < 0.02, `Abrupt orientation change ${maxFrameAngle}`);
 
 // Drag resets at a switch, then every model starts from its chosen resting angle.

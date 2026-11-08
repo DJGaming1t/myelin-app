@@ -2036,7 +2036,7 @@ class StopwatchRenderer {
   restoreOpacity();
   const delta=Math.max(0,Math.min(64,dt));elapsed+=delta;localTime+=delta;
   progress=Math.max(0,Math.min(100,Number(progress)||0));state.progress=progress;
-  const next=lockedIndex!==null?lockedIndex:(Math.floor(elapsed/10000)%5);
+  const next=lockedIndex!==null?lockedIndex:(1 + Math.floor((elapsed-10000)/10000)%4);
   if(next!==current){
    const from=current;current=next;localTime=0;
    transition=reduced?null:{from,to:next,time:0};

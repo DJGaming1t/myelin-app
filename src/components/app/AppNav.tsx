@@ -148,11 +148,11 @@ function NavItem({
 
 const styles = StyleSheet.create({
   overlay: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10 },
-  compactDock: { minHeight: 64, borderRadius: 22, shadowOpacity: .14, elevation: 5, paddingHorizontal: 8 },
+  compactDock: { minHeight: 66, borderRadius: 26, shadowOpacity: .22, elevation: 7, paddingHorizontal: 7 },
   compactItem: { minHeight: 48, borderRadius: 17, paddingVertical: 3 },
-  compactActive: { backgroundColor: 'transparent', borderBottomWidth: 2, borderBottomColor: '#CFC4AB', borderRadius: 0 },
+  compactActive: { backgroundColor: 'rgba(242,231,208,.12)', borderRadius: 16 },
   compactActiveText: { color: chalkTheme.onStage },
-  compactAddButton: { width: 44, height: 44, borderRadius: 15, backgroundColor: '#526B75' },
+  compactAddButton: { width: 46, height: 46, borderRadius: 16, backgroundColor: '#526B75' },
   compactAddSlot: { width: 56, paddingBottom: 0, justifyContent: 'center' },
   compactAddHousing: { width: 48, height: 48, marginTop: 0, marginBottom: 0, borderWidth: 0 },
 

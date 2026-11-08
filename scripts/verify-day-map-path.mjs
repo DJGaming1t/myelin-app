@@ -8,7 +8,7 @@ const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKi
 const module = { exports: {} };
 new Function('require','module','exports',code)((id) => {
   if (id === 'react-native') return { View:'View', Text:'Text', Pressable:'Pressable', ScrollView:'ScrollView', StyleSheet:{create:s=>s} };
-  if (id.endsWith('/TimeBrick')) return { TimeBrick:'TimeBrick' };
+  if (id.endsWith('/MapBrick')) return { MapBrick:'MapBrick' };
   if (id.endsWith('/tokens')) return { chalkTheme:{} };
   return require(id);
 }, module, module.exports);

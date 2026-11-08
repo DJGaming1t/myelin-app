@@ -805,7 +805,7 @@ class ChessRenderer{
  build(){
   const previous=this.percent;
   this.dispose();
-  const T=this.THREE,factor=this.large?1.35:1;
+  const T=this.THREE,factor=this.large?1.16:.86;
   // Depth-only knight profile: never draws a solid pixel. Rear interior dots
   // cannot show through the face, matching the other sculpted grain objects.
   const shape=new T.Shape();
@@ -832,8 +832,8 @@ class ChessRenderer{
   for(const piece of pieces){
    const pedestal=new T.Group();
    pedestal.position.set(...piece.origin);pedestal.scale.setScalar(piece.scale);
-   const restBody=this.cloud(piece.body,this.large?.022:.020,.21,.46);
-   const restDetails=this.cloud(piece.details,this.large?.023:.021,.25,.48);
+   const restBody=this.cloud(piece.body,this.large?.020:.018,.17,.26);
+   const restDetails=this.cloud(piece.details,this.large?.021:.019,.22,.28);
    const activeBody=this.cloud(piece.body,this.large?.023:.021,0,.65);
    const activeDetails=this.cloud(piece.details,this.large?.026:.023,0,.70);
    pedestal.add(restBody,restDetails,activeBody,activeDetails);

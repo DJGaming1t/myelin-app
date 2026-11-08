@@ -915,20 +915,6 @@ export default function TodayScreen() {
                 FULL TODAY RECOMMENDATION, CAPACITY & PLANNING DETAILS
                 (Accessible via scrolling or expanding the Day Map sheet)
                =============================================================== */}
-            <DayMapPath steps={dayMapStepsSummary.steps} selectedId={selectedStepId} onSelect={step => setSelectedStepId(step.id)} />
-            {selectedStepId ? (() => {
-              const step = dayMapStepsSummary.steps.find(item => item.id === selectedStepId);
-              const task = step?.taskId ? currentWorkspace.tasks.find(item => item.id === step.taskId) : null;
-              if (!step) return null;
-              return <View style={styles.selectedMapPanel}>
-                <Text style={styles.selectedMapMeta}>{step.subject} · {step.minutes} min{step.overdue ? ' · Overdue' : ''}</Text>
-                <Text style={styles.selectedMapTitle}>{step.title}</Text>
-                {task && task.status === 'open' ? <TaskQuickActions task={task} paper onComplete={dayMapCompletion.complete} /> : null}
-                <Pressable accessibilityRole="button" onPress={() => openStepDetails(step)} style={styles.selectedMapAction}>
-                  <Text style={styles.scheduleShortcutText}>Open details & schedule  ›</Text>
-                </Pressable>
-              </View>;
-            })() : null}
             <View style={styles.expandedDetailsSection}>
               <View style={styles.nextHeading}>
                 <Text style={styles.nextLabel}>
@@ -1171,6 +1157,20 @@ export default function TodayScreen() {
                     <Text style={styles.scheduleShortcutText}>Schedule & adjust  ›</Text>
                   </Pressable>
                 </View>
+            <DayMapPath steps={dayMapStepsSummary.steps} selectedId={selectedStepId} onSelect={step => setSelectedStepId(step.id)} />
+            {selectedStepId ? (() => {
+              const step = dayMapStepsSummary.steps.find(item => item.id === selectedStepId);
+              const task = step?.taskId ? currentWorkspace.tasks.find(item => item.id === step.taskId) : null;
+              if (!step) return null;
+              return <View style={styles.selectedMapPanel}>
+                <Text style={styles.selectedMapMeta}>{step.subject} · {step.minutes} min{step.overdue ? ' · Overdue' : ''}</Text>
+                <Text style={styles.selectedMapTitle}>{step.title}</Text>
+                {task && task.status === 'open' ? <TaskQuickActions task={task} paper onComplete={dayMapCompletion.complete} /> : null}
+                <Pressable accessibilityRole="button" onPress={() => openStepDetails(step)} style={styles.selectedMapAction}>
+                  <Text style={styles.scheduleShortcutText}>Open details & schedule  ›</Text>
+                </Pressable>
+              </View>;
+            })() : null}
                 {dayMapStepsSummary.steps.length > 0 ? (
                   <DayMapSequence
                     steps={dayMapStepsSummary.steps}

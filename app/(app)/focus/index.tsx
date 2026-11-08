@@ -59,6 +59,7 @@ import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { chalkTheme, colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
 import { paperSurfaces } from '@/src/theme/paperSurfaces';
+import { NativeProgressVisual } from '@/src/features/today/NativeProgressVisual';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -772,7 +773,7 @@ export default function FocusScreen() {
 
           <FocusShieldActiveBanner shield={shield} />
           {saveError ? <Text accessibilityRole="alert" style={styles.storageWarning}>{saveError}</Text> : null}
-          <TimerDial
+          <FocusStopwatch
             value={formatTimer(remaining)}
             label={
               timerDone
@@ -783,11 +784,7 @@ export default function FocusScreen() {
                   ? 'FOCUSING'
                   : 'PAUSED'
             }
-            complete={timerDone}
-            paused={!session.runningSince && !timerDone}
-            phase="focus"
             progress={phaseProgress}
-            size={timerDialSize}
           />
           <View style={styles.phaseProgress}>
             <AnimatedProgress
@@ -1077,6 +1074,25 @@ function Metric({
   );
 }
 
+function FocusStopwatch({ value, label, progress }: { value: string; label: string; progress: number }) {
+  const visualHeight = 180;
+  return (
+    <View style={styles.stopwatchPanel}>
+      <View style={styles.stopwatchHeader}>
+        <Text style={styles.stopwatchKicker}>FOCUS SESSION</Text>
+        <Text style={styles.stopwatchCounter}>{Math.round(progress * 100)}%</Text>
+      </View>
+      <View style={[styles.stopwatchVisual, { height: visualHeight }]}>
+        <NativeProgressVisual model="stopwatch" progress={progress * 100} viewportHeight={visualHeight} />
+      </View>
+      <View accessible accessibilityLabel={`${value} remaining. ${label.toLowerCase()}.`} style={styles.stopwatchReadout}>
+        <Text style={styles.stopwatchValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+        <Text style={styles.stopwatchLabel}>{label}</Text>
+      </View>
+    </View>
+  );
+}
+
 function TimerDial({
   value,
   label,
@@ -1210,7 +1226,8 @@ const styles = StyleSheet.create({
   topBar: {
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: 'rgba(242,231,208,.14)',
+    backgroundColor: chalkTheme.hero,
   },
   topBarMain: {
     minHeight: layout.minTouch + 8,
@@ -1222,12 +1239,12 @@ const styles = StyleSheet.create({
     minHeight: layout.minTouch,
     justifyContent: 'center',
   },
-  back: { color: colors.textDim, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  back: { color: chalkTheme.onStage, fontSize: 13, lineHeight: 18, fontWeight: '600' },
   modeTitle: {
     flex: 1,
     minWidth: 0,
     textAlign: 'center',
-    color: colors.text,
+    color: chalkTheme.onStage,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
@@ -1235,9 +1252,9 @@ const styles = StyleSheet.create({
   },
   topBarSpacer: { width: 96, alignItems: 'flex-end' },
   helpButton: { minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
-  helpText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
+  helpText: { color: chalkTheme.onStage, fontSize: 18, fontWeight: '600' },
   topHelper: {
-    color: colors.muted,
+    color: chalkTheme.mutedCream,
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
@@ -1361,6 +1378,14 @@ const styles = StyleSheet.create({
     paddingBottom: 56,
   },
   sessionHeading: { alignItems: 'center' },
+  stopwatchPanel: { marginTop: spacing.lg, borderRadius: 24, backgroundColor: chalkTheme.hero, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 22, overflow: 'hidden' },
+  stopwatchHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stopwatchKicker: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  stopwatchCounter: { color: chalkTheme.mutedCream, fontSize: 13, fontVariant: ['tabular-nums'] },
+  stopwatchVisual: { width: '100%', maxWidth: 240, alignSelf: 'center', marginTop: 4 },
+  stopwatchReadout: { alignItems: 'center', marginTop: 2 },
+  stopwatchValue: { color: chalkTheme.onStage, fontSize: 48, lineHeight: 56, letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  stopwatchLabel: { color: chalkTheme.mutedCream, fontSize: 10, lineHeight: 16, letterSpacing: 1.3, fontWeight: '800' },
   sessionModePill: {
     flexDirection: 'row',
     flexWrap: 'wrap',

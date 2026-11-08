@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { MotionItem } from '@/src/components/motion/MotionItem';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { useTaskPlanning } from './useTaskPlanning';
 import { planningFailureMessage, taskPlanningConflict, taskPlanningSnapshot, ScheduleChoice, TaskPlanningSnapshot } from './task-planning';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -117,6 +118,7 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
   const planning = useTaskPlanning();
   const ownerRef = useRef(ownerKey); ownerRef.current = ownerKey;
   const [visibleCount, setVisibleCount] = useState(4);
+  const [planningTaskId, setPlanningTaskId] = useState<string | null>(null);
   type Scheduling = { ownerKey: string; expected: TaskPlanningSnapshot };
   const [scheduler, setScheduler] = useState<Scheduling | null>(null);
   const schedulerRef = useRef<Scheduling | null>(null);
@@ -125,7 +127,7 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
   const [customTime, setCustomTime] = useState('');
   const [scheduleError, setScheduleError] = useState('');
 
-  useEffect(() => { schedulerRef.current = null; setScheduler(null); setScheduleError(''); setNotice(null); }, [ownerKey, status]);
+  useEffect(() => { schedulerRef.current = null; setScheduler(null); setScheduleError(''); setNotice(null); setPlanningTaskId(null); }, [ownerKey, status]);
   const handledRequest = useRef<TaskScheduleRequest | null>(null);
   useEffect(() => {
     if (!scheduleRequest || handledRequest.current === scheduleRequest) return;
@@ -262,11 +264,22 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
             </Pressable>
             <TaskDueLabel task={task} />
             <TaskQuickActions task={task} />
-            <View style={styles.actions}>
-              <Mini label="Today" onPress={() => moveToday(task.id)} />
-              <Mini label="Schedule" onPress={() => openScheduler(task.id)} accent />
-            </View>
-            <TaskUnstuck task={task} onSchedule={request => { if (request.ownerKey === ownerKey) openScheduler(request.task.id); }} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Planning options for ${task.title}`}
+              accessibilityState={{ expanded: planningTaskId === task.id }}
+              onPress={() => setPlanningTaskId(current => current === task.id ? null : task.id)}
+              style={styles.planToggle}>
+              <Text style={styles.planToggleText}>{planningTaskId === task.id ? 'Hide planning options' : 'Plan or reschedule'}</Text>
+              <Text style={styles.planToggleMark}>{planningTaskId === task.id ? '−' : '+'}</Text>
+            </Pressable>
+            <AnimatedDisclosure visible={planningTaskId === task.id}>
+              <View style={styles.actions}>
+                <Mini label="Today" onPress={() => moveToday(task.id)} />
+                <Mini label="Schedule" onPress={() => openScheduler(task.id)} accent />
+              </View>
+              <TaskUnstuck task={task} onSchedule={request => { if (request.ownerKey === ownerKey) openScheduler(request.task.id); }} />
+            </AnimatedDisclosure>
           </MotionItem>
         ))
       ) : (
@@ -431,12 +444,12 @@ function Mini({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    padding: spacing.md,
+    borderColor: paperSurfaces.border,
+    backgroundColor: paperSurfaces.card,
+    padding: spacing.lg,
   },
   header: {
     flexDirection: 'row',
@@ -446,14 +459,14 @@ const styles = StyleSheet.create({
   },
   headerCopy: { flex: 1, minWidth: 0 },
   eyebrow: {
-    color: colors.accent,
-    fontSize: 8,
+    color: paperSurfaces.accent,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.3,
   },
   title: {
     color: colors.text,
-    fontSize: 12.5,
+    fontSize: 18,
     fontWeight: '700',
     marginTop: 4,
   },
@@ -475,8 +488,11 @@ const styles = StyleSheet.create({
     marginTop: 11,
   },
   taskCopy: { minHeight: layout.minTouch, justifyContent: 'center' },
-  taskTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
-  taskMeta: { color: colors.subtle, fontSize: 9, lineHeight: 14, marginTop: 4 },
+  taskTitle: { color: colors.text, fontSize: 16, lineHeight: 21, fontWeight: '700' },
+  taskMeta: { color: colors.textDim, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  planToggle: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  planToggleText: { color: colors.textDim, fontSize: 12, fontWeight: '700' },
+  planToggleMark: { color: paperSurfaces.accent, fontSize: 20 },
   actions: { flexDirection: 'row', gap: 7, marginTop: 7 },
   mini: {
     flex: 1,
@@ -491,10 +507,10 @@ const styles = StyleSheet.create({
     borderColor: colors.accentLine,
     backgroundColor: colors.accentFaint,
   },
-  miniText: { color: colors.muted, fontSize: 9.5, fontWeight: '700' },
+  miniText: { color: colors.textDim, fontSize: 12, fontWeight: '700' },
   miniTextAccent: { color: colors.accent },
-  empty: { color: colors.subtle, fontSize: 10, lineHeight: 15, marginTop: 12 },
-  more: { color: colors.subtle, fontSize: 9, marginTop: 10 },
+  empty: { color: colors.textDim, fontSize: 13, lineHeight: 19, marginTop: 12 },
+  more: { color: paperSurfaces.accent, fontSize: 12, fontWeight: '700', marginTop: 10 },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',

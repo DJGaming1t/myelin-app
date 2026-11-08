@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
   topRow: {
     minHeight: layout.minTouch,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: space.sm,
@@ -122,7 +123,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.xs,
   },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  topActions: { flexDirection: 'row', flexWrap: 'wrap', flexShrink: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
   helpButton: { minWidth: layout.minTouch, minHeight: layout.minTouch, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   helpText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
   brandMark: {

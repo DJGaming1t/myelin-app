@@ -93,6 +93,8 @@ export default function MistakesScreen() {
           dark
           variant="compact"
           title="Corrections"
+          secondaryActionLabel="Browse"
+          onSecondaryAction={() => setShowBrowse(true)}
           actionLabel="Add"
           onAction={() => router.push('/(app)/mistakes/new')}
         />

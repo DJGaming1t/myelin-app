@@ -40,7 +40,7 @@ import {
   providerLabels,
   workspaceDataSummary,
 } from '@/src/features/settings/settings-engine';
-import { ThemePaletteId, applyThemePalette, colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
+import { ThemePaletteId, applyThemePalette, chalkTheme, colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
 
 const DAILY = [30, 60, 90, 120, 180];
 const FOCUS = [20, 25, 30, 45, 60];
@@ -276,10 +276,11 @@ export default function SettingsScreen() {
     : [];
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <View style={styles.page}>
         <ScreenHeader
+          dark
           variant="compact"
           title="Settings"
           onBack={() => router.back()}
@@ -892,11 +893,12 @@ function InfoBox({ children }: { children: React.ReactNode }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
   page: { flex: 1 },
-  scroll: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 13, lineHeight: 18 },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 72 },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 72 },
   section: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   sectionHeader: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   sectionHeaderCopy: { flex: 1, minWidth: 0 },

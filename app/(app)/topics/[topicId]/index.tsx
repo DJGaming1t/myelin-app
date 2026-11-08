@@ -16,7 +16,7 @@ import {
   deleteTopicFromWorkspace,
   findTopic,
 } from '@/src/features/topics/topic-operations';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -128,9 +128,10 @@ export default function TopicDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <ScreenHeader
+        dark
         variant="compact"
         eyebrow={topic.subject.toUpperCase()}
         title={topic.name}
@@ -144,7 +145,7 @@ export default function TopicDetailScreen() {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.paperScroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionKicker}>NEXT MOVE</Text>
         <Pressable
           accessibilityRole="button"
@@ -376,11 +377,14 @@ function SectionHeader({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperScroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   content: {
     width: '100%',
     maxWidth: layout.contentMax,
     alignSelf: 'center',
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
     paddingBottom: 56,
   },
   notFound: { flex: 1, justifyContent: 'center', padding: spacing.xl },

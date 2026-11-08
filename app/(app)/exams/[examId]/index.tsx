@@ -11,7 +11,7 @@ import {
   findExam,
   formatExamDateLong,
 } from '@/src/features/exams/exam-engine';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -57,8 +57,9 @@ export default function ExamDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.graphiteSafe}>
       <ScreenHeader
+        dark
         eyebrow={status.kind === 'past' ? 'PAST EXAM' : status.kind === 'today' ? 'EXAM TODAY' : 'UPCOMING EXAM'}
         title={exam.name}
         subtitle={formatExamDateLong(exam.date)}
@@ -72,7 +73,7 @@ export default function ExamDetailScreen() {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.paperScroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.summary}>
           <Metric label="WHEN" value={status.label} accent={status.kind !== 'past'} />
           <Metric label="SCOPE" value={exam.scope === 'subjects' ? 'Subjects' : 'Topics'} />
@@ -140,8 +141,10 @@ function Metric({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperScroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   missing: { color: colors.muted, padding: spacing.lg },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 52 },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 52 },
   summary: { flexDirection: 'row', gap: 7 },
   metric: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 10, justifyContent: 'space-between' },
   metricLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },

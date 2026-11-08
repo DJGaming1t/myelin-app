@@ -129,7 +129,8 @@ export function AppNav({
       highlightHeight.value = reduceMotion ? target.height : withSpring(target.height, spring);
       highlightOpacity.value = 1;
     }
-    router.replace(item.path);
+    // Navigate to an existing peer when possible so Today can retain its 3D view.
+    router.navigate(item.path);
   }
 
   return (

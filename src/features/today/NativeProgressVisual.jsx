@@ -215,7 +215,6 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   const live = useRef(true);
   const active = useRef(true);
   const focused = useRef(true);
-  const hasFocused = useRef(false);
   const reduced = useRef(false);
   const syncLoop = useRef(() => {});
   useEffect(() => { syncLoop.current(); }, [paused]);
@@ -247,15 +246,9 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   useFocusEffect(
     useCallback(() => {
       focused.current = true;
-      if (hasFocused.current) {
-        cleanup.current();
-        setReady(false);
-        setError(null);
-        setContextKey(key => key + 1);
-      } else {
-        hasFocused.current = true;
-        syncLoop.current();
-      }
+      // Resume the existing graphics context; retry remains available if the
+      // operating system has discarded it while the app was away.
+      syncLoop.current();
       return () => {
         focused.current = false;
         syncLoop.current();

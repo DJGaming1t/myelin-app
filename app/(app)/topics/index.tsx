@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: space.md,
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
   },
   filterChipActive: {
     borderColor: colors.accentLine,

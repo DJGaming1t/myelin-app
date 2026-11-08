@@ -6,7 +6,7 @@ import {
   buildTopicAdaptationInsight,
   buildTopicAdaptationInsights,
 } from '@/src/features/adaptive/topic-feedback';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, radius, spacing } from '@/src/theme/tokens';
 
 export function TodayAdaptationInsight({
   workspace,
@@ -113,7 +113,7 @@ function MetricChip({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   todayCard: {
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     borderColor: colors.line,
     borderWidth: 1,
     borderRadius: radius.md,
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     color: colors.textDim,
   },
   topicCard: {
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     borderColor: colors.line,
     borderWidth: 1,
     borderRadius: radius.md,
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   metricChip: {
-    backgroundColor: colors.panelRaised,
+    backgroundColor: chalkTheme.paperRaised,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,

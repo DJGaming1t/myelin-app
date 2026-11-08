@@ -6,7 +6,7 @@ import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
 import { learningInsights } from './insight-engine';
 import { outcomeSnapshot } from './outcome-engine';
-import { colors, radius } from '@/src/theme/tokens';
+import { chalkTheme, colors, radius } from '@/src/theme/tokens';
 export function LearningInsights({
   workspace,
   now,
@@ -47,4 +47,4 @@ export function OutcomeEvidence({ workspace, now }: { workspace: WorkspaceState;
     <Pressable accessibilityRole="button" onPress={() => router.push('/(app)/settings')} style={styles.button}><Text style={styles.action}>{workspace.settings.launchExperiment ? 'Manage learning lab →' : 'Choose whether to join in Settings →'}</Text></Pressable>
   </View>;
 }
-const styles = StyleSheet.create({ card: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 16, borderRadius: radius.lg, marginBottom: 12 }, title: { color: colors.text, fontSize: 16, fontWeight: '700', lineHeight: 23 }, copy: { color: colors.muted, fontSize: 13, lineHeight: 21, marginTop: 8 }, note: { color: colors.muted, fontSize: 11, lineHeight: 18, marginTop: 10 }, button: { minHeight: 48, justifyContent: 'center', marginTop: 8 }, action: { color: colors.accent, fontSize: 13, fontWeight: '700', lineHeight: 20 } });
+const styles = StyleSheet.create({ card: { borderWidth: 1, borderColor: colors.line, backgroundColor: chalkTheme.paperRaised, padding: 16, borderRadius: radius.lg, marginBottom: 12 }, title: { color: colors.text, fontSize: 16, fontWeight: '700', lineHeight: 23 }, copy: { color: colors.muted, fontSize: 13, lineHeight: 21, marginTop: 8 }, note: { color: colors.muted, fontSize: 11, lineHeight: 18, marginTop: 10 }, button: { minHeight: 48, justifyContent: 'center', marginTop: 8 }, action: { color: colors.accent, fontSize: 13, fontWeight: '700', lineHeight: 20 } });

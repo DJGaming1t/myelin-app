@@ -8,7 +8,7 @@ import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { MistakeForm } from '@/src/features/mistakes/MistakeForm';
 import { createMistake } from '@/src/features/mistakes/mistake-engine';
 import { findTopic } from '@/src/features/topics/topic-operations';
-import { colors, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -39,9 +39,10 @@ export default function NewMistakeScreen() {
   const requestedCard = requestedTopic?.cards.find((card) => card.id === requestedCardId) ?? null;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <ScreenHeader
+        dark
         variant="compact"
         eyebrow="CAPTURE THE ERROR"
         title="Add mistake"
@@ -78,7 +79,8 @@ export default function NewMistakeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  body: { flex: 1 },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  body: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   empty: { padding: spacing.xl, flex: 1, justifyContent: 'center' },
   emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
   emptyText: { color: colors.muted, fontSize: 11.5, lineHeight: 18, marginTop: 7 },

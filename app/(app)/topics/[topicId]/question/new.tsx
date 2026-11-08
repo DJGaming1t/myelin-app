@@ -7,7 +7,7 @@ import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { QuestionForm } from '@/src/features/topics/QuestionForm';
 import { createQuestion, findTopic } from '@/src/features/topics/topic-operations';
-import { colors, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -30,9 +30,10 @@ export default function NewQuestionScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <ScreenHeader
+        dark
         variant="compact"
         eyebrow={topic.subject.toUpperCase()}
         title="Add recall question"
@@ -59,6 +60,7 @@ export default function NewQuestionScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  body: { flex: 1 },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  body: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   message: { color: colors.muted, padding: spacing.lg, lineHeight: 20 },
 });

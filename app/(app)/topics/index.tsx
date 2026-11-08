@@ -24,7 +24,7 @@ import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { examStatus, nearestUpcomingExam } from '@/src/features/exams/exam-engine';
 import { TopicCard } from '@/src/features/topics/TopicCard';
 import { filterTopics, topicSubjects } from '@/src/features/topics/topic-operations';
-import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
 type StatusFilter = TopicStatus | 'all';
 
@@ -76,16 +76,18 @@ export default function TopicsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <View style={styles.screen}>
         <ScreenHeader
+          dark
           variant="compact"
           title="Library"
           actionLabel="Exams"
           onAction={() => router.push('/(app)/exams')}
         />
 
+        <View style={styles.paperBody}>
         <View style={styles.summary}>
           <Text style={styles.summaryText}>
             {totalTopics} {totalTopics === 1 ? 'topic' : 'topics'} · {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
@@ -252,6 +254,7 @@ export default function TopicsScreen() {
           }
         />
 
+        </View>
         <AppNav overlay />
       </View>
     </SafeAreaView>
@@ -284,6 +287,8 @@ function FilterChip({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperBody: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: space.md },
   screen: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
   loadingText: { color: colors.muted, ...type.meta },

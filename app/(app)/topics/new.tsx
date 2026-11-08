@@ -7,16 +7,17 @@ import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { TopicForm } from '@/src/features/topics/TopicForm';
 import { createTopic, topicSubjects } from '@/src/features/topics/topic-operations';
-import { colors } from '@/src/theme/tokens';
+import { chalkTheme, colors } from '@/src/theme/tokens';
 
 export default function NewTopicScreen() {
   const { workspace, updateWorkspace } = useWorkspace();
   const subjects = topicSubjects(workspace?.topics ?? []);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <ScreenHeader
+        dark
         variant="compact"
         eyebrow="NEW TOPIC"
         title="What are you learning?"
@@ -46,5 +47,6 @@ export default function NewTopicScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  body: { flex: 1 },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  body: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
 });

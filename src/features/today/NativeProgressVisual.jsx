@@ -1,5 +1,3 @@
-Warning: truncated output (original token count: 113946)
-Total output lines: 609
 
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { View, Text, Image, ActivityIndicator, Pressable, PanResponder, AppState, AccessibilityInfo, ScrollView, StyleSheet } from 'react-native';

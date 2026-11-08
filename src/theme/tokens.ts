@@ -226,10 +226,10 @@ export const themePalettes: Record<ThemePaletteId, ThemeColorTokens> = {
   editorial: {
     bg: '#F2E7D0',
     bgRaised: '#F8F6F0',
-    panel: '#FCFAF5',
+    panel: '#EFE4D0',
     panelRaised: '#EAE6DC',
     panelHighlight: '#E1DCD0',
-    panelGlass: 'rgba(252, 250, 245, 0.78)',
+    panelGlass: 'rgba(239, 228, 208, 0.88)',
     panelWarm: '#F6E7DC',
     text: '#161917',
     textDim: '#42483F',

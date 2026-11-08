@@ -422,9 +422,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   to: { color: colors.muted, fontSize: 12, lineHeight: 16 },
-  days: { flexDirection: 'row', gap: 6 },
+  days: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   day: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: 40,
     minHeight: layout.minTouch,
     borderRadius: radius.md,
     borderWidth: 1,

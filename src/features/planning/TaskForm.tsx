@@ -269,16 +269,16 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
       />
 
       <Label>Estimated time</Label>
-      <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
+      <View style={styles.rowWrap}>
         {DURATIONS.map((minutes) => (
           <Chip key={minutes} label={`${minutes}m`} active={Number(estimate) === minutes} onPress={() => setEstimate(String(minutes))} />
         ))}
-        <View style={styles.customDuration}>
-          <Text style={styles.customDurationLabel}>Custom</Text>
-          <TextInput accessibilityLabel="Custom duration in minutes" value={estimate} onChangeText={setEstimate}
-            keyboardType="number-pad" placeholder="Minutes" placeholderTextColor={colors.subtle} style={styles.smallInput} />
-        </View>
-      </ScrollView>
+      </View>
+      <View style={styles.customDuration}>
+        <Text style={styles.customDurationLabel}>Custom minutes</Text>
+        <TextInput accessibilityLabel="Custom duration in minutes" value={estimate} onChangeText={setEstimate}
+          keyboardType="number-pad" placeholder="Minutes" placeholderTextColor={colors.subtle} style={styles.smallInput} />
+      </View>
 
       <Label>Where should it live?</Label>
       <SegmentedControl label="Where to add this task" value={planState}
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   detailsMark: { color: colors.textDim, fontSize: 23 },
   input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
   disabledInput: { opacity: 0.65 },
-  customDuration: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  customDuration: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   customDurationLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   smallInput: { minHeight: layout.minTouch, width: 90, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
   notes: { minHeight: 110, paddingTop: 13, paddingBottom: 13 },

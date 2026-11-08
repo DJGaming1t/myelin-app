@@ -1,5 +1,6 @@
 import { isDayMapSuggestionCurrent } from '@/src/features/today/day-map-suggestion';
 import { ChalkGrain } from '@/src/components/app/ChalkGrain';
+import { currentTimeInsertionIndex } from '@/src/features/planning/timeline-position';
 import { useDaySkip } from '@/src/features/planning/useDaySkip';
 import { daySkipFailureMessage, restorableOccurrenceDates } from '@/src/features/planning/day-skip';
 import type { Commitment, StudyTask } from '@/src/data/schema';
@@ -12,7 +13,7 @@ import { useScreenClock } from '@/src/features/planning/useScreenClock';
 import { TaskQuickActions, TaskDueLabel, useTaskCompletion } from '@/src/features/planning/TaskQuickActions';
 
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -426,6 +427,7 @@ export default function DayMapScreen() {
     return next;
   }
 
+  const nowIndex = currentTimeInsertionIndex(map.entries, now);
   const flexible = workspace.tasks
     .filter(
       (task) =>
@@ -1110,7 +1112,9 @@ export default function DayMapScreen() {
                 const sourceId = entry.commitmentId;
                 const commitment = commitmentsById.get(sourceId);
                 return (
-                  <MotionItem key={entry.id}>
+                  <Fragment key={entry.id}>
+                  {entryIndex === nowIndex ? <NowMarker now={now} /> : null}
+                  <MotionItem>
                   <View style={[styles.timelineRow, passed && styles.passed]}>
                     <View style={styles.timeCol}>
                       <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
@@ -1128,6 +1132,7 @@ export default function DayMapScreen() {
                     </View>
                   </View>
                   </MotionItem>
+                  </Fragment>
                 );
               }
 
@@ -1136,7 +1141,9 @@ export default function DayMapScreen() {
               const estimateMet = task.status === 'open' && task.estimatedMinutes > 0 &&
                 taskRemainingMinutes(task) <= 0;
               return (
-                <MotionItem key={entry.id}>
+                <Fragment key={entry.id}>
+                {entryIndex === nowIndex ? <NowMarker now={now} /> : null}
+                <MotionItem>
                 <View style={[styles.timelineRow, passed && !entry.missed && styles.passed]}>
                   <View style={styles.timeCol}>
                     <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
@@ -1200,6 +1207,7 @@ export default function DayMapScreen() {
                   </View>
                 </View>
                 </MotionItem>
+                </Fragment>
               );
             })
           ) : (
@@ -1213,6 +1221,7 @@ export default function DayMapScreen() {
             </View>
           )}
 
+          {map.entries.length > 0 && nowIndex === map.entries.length ? <NowMarker now={now} /> : null}
           {workspace.commitments.flatMap(item => restorableOccurrenceDates(item, now)
             .map(date => <View key={`${item.id}:${date}`} style={{ paddingVertical: 12 }}>
               <Text style={styles.blockMeta}>{item.title} · skipped {date}</Text>
@@ -1313,6 +1322,12 @@ export default function DayMapScreen() {
       </View>
     </SafeAreaView>
   );
+}
+
+function NowMarker({ now }: { now: number }) {
+  return <View accessible accessibilityLabel={`Current time ${timeLabel(now)}`} style={styles.nowMarker}>
+    <Text style={styles.nowMarkerText}>NOW · {timeLabel(now)}</Text><View style={styles.nowMarkerLine} />
+  </View>;
 }
 
 function Action({
@@ -1711,6 +1726,9 @@ const styles = StyleSheet.create({
   proposalTitle: { flex: 1, minWidth: 0, color: colors.text, fontSize: 10.5, fontWeight: '700' },
   proposalDuration: { color: colors.subtle, fontSize: 9 },
   proposalActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  nowMarker: { flexDirection: 'row', alignItems: 'center', gap: 9, marginVertical: 8 },
+  nowMarkerText: { color: '#8E5147', fontSize: 10, fontWeight: '700' },
+  nowMarkerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#B27B6D' },
   timelineHeader: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -787,7 +787,9 @@ export default function TodayScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={isSheetExpanded ? 'Collapse Day Map' : 'Expand Day Map'}
-                accessibilityHint="Tap or drag to toggle full Day Map details"
+                accessibilityHint={isSheetExpanded ? 'Tap or pull this handle down to close. Scroll the page below for more.' : 'Tap or pull upward to open the Day Map.'}
+                accessibilityActions={[{ name: 'expand', label: 'Open Day Map' }, { name: 'collapse', label: 'Close Day Map' }]}
+                onAccessibilityAction={(event) => { if (event.nativeEvent.actionName === 'expand') snapSheet(true); else if (event.nativeEvent.actionName === 'collapse') snapSheet(false); }}
                 accessibilityState={{ expanded: isSheetExpanded }}
                 onPress={() => snapSheet(!isSheetExpanded)}
                 style={styles.archHeaderPressable}>

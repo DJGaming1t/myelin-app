@@ -33,3 +33,5 @@ jobs:
         run: node scripts/verify-day-map-path.mjs
       - name: Verify sheet snap decisions
         run: node --import tsx scripts/verify-day-map-snap.ts
+      - name: Verify timeline marker
+        run: node --import tsx scripts/verify-timeline-position.ts

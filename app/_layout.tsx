@@ -12,7 +12,7 @@ import { FocusProvider } from '@/src/features/focus/FocusProvider';
 import { ReminderProvider } from '@/src/features/notifications/ReminderProvider';
 import { OnboardingProvider } from '@/src/features/onboarding/OnboardingProvider';
 import { OnboardingTransitionProvider } from '@/src/features/onboarding/OnboardingTransitionProvider';
-import { ReviewProvider } from '@/src/features/review/ReviewProvider';
+import { ReviewProvider, useReview } from '@/src/features/review/ReviewProvider';
 import { StartupUpdateGate } from '@/src/features/updates/StartupUpdateGate';
 import { colors } from '@/src/theme/tokens';
 
@@ -50,7 +50,8 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const pathname = usePathname();
-  const darkStage = pathname === '/today' || pathname === '/today/';
+  const { session: reviewSession } = useReview();
+  const darkStage = pathname === '/today' || pathname === '/today/' || pathname === '/topics' || pathname === '/topics/new' || pathname === '/exams' || pathname === '/exams/new' || pathname === '/mistakes' || pathname === '/progress' || pathname === '/settings' || pathname === '/quick-add' || pathname === '/today/day-map' || pathname === '/today/task/new' || pathname === '/today/commitment/new' || (pathname === '/review' && !reviewSession);
   return (
     <>
       <StatusBar style={darkStage ? "light" : "dark"} />

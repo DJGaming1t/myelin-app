@@ -243,7 +243,7 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.embeddedHeader}>
       <ScreenHeader
         dark
@@ -459,6 +459,7 @@ function Chip({ label, active, onPress, flex }: { label: string; active: boolean
 }
 
 const styles = StyleSheet.create({
+  scroll: { backgroundColor: chalkTheme.paper },
   embeddedHeader: { marginHorizontal: -spacing.lg, backgroundColor: chalkTheme.hero, paddingBottom: spacing.sm, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
   content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 56 },
   label: { color: colors.textDim, fontSize: 12.5, lineHeight: 17, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
@@ -467,11 +468,11 @@ const styles = StyleSheet.create({
   detailsTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   detailsHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
   detailsMark: { color: colors.textDim, fontSize: 23 },
-  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
+  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paperRaised, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
   disabledInput: { opacity: 0.65 },
   customDuration: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   customDurationLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
-  smallInput: { minHeight: layout.minTouch, width: 90, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
+  smallInput: { minHeight: layout.minTouch, width: 90, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paperRaised, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
   notes: { minHeight: 110, paddingTop: 13, paddingBottom: 13 },
   row: { flexDirection: 'row', gap: 8 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     color: colors.text,
     paddingHorizontal: 12,
     fontSize: 12,
@@ -494,13 +495,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     color: colors.text,
     paddingHorizontal: 12,
     fontSize: 12,
   },
-  chip: { minHeight: layout.minTouch, maxWidth: 220, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
-  chipActive: { borderColor: colors.accentLine, backgroundColor: colors.panelRaised },
+  chip: { minHeight: layout.minTouch, maxWidth: 220, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: chalkTheme.paper, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
+  chipActive: { borderColor: colors.accentLine, backgroundColor: chalkTheme.paperRaised },
   chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   chipTextActive: { color: colors.accent },
   flex: { flex: 1, maxWidth: undefined },

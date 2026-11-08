@@ -20,7 +20,7 @@ import { suggestTaskSlots } from '@/src/features/planning/day-engine';
 import {
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function dayKey(timestamp: number) {
   const date = new Date(timestamp);
@@ -301,7 +301,7 @@ export function StudyInboxCard({ overdueOnly = false, scheduleRequest, onSchedul
                 {schedulerTask?.title ?? 'Study task'}
               </Text>
               <Text style={styles.scheduleIntro}>
-                {schedulerTask?.status === 'open' ? 'Pick an actual time. Scheduling no longer sends this task to Today automatically.' : 'This task is already complete. Close this sheet to return to your current plan.'}
+                {schedulerTask?.status === 'open' ? 'Choose a suggested slot or enter a date and time.' : 'This task is already complete. Close this sheet to return to your current plan.'}
               </Text>
 
               {suggestedSlots.length ? (
@@ -507,9 +507,9 @@ const styles = StyleSheet.create({
     maxHeight: '86%',
     alignSelf: 'center',
     borderRadius: radius.xl,
-    backgroundColor: colors.panelRaised,
+    backgroundColor: chalkTheme.paper,
     borderWidth: 1,
-    borderColor: colors.lineStrong,
+    borderColor: chalkTheme.paperContour,
     overflow: 'hidden',
   },
   scheduleContent: {
@@ -538,11 +538,11 @@ const styles = StyleSheet.create({
   suggestionList: { gap: 8, marginTop: spacing.md },
   slotChoice: {
     minHeight: 62,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
-    paddingHorizontal: 14,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 4,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',

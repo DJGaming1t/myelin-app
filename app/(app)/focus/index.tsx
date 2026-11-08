@@ -57,7 +57,7 @@ import { useGuideOffer } from '@/src/features/guides/useGuideOffer';
 import { GuideOffer } from '@/src/features/guides/GuideOffer';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
-import { colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -1272,7 +1272,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panelGlass,
+    backgroundColor: chalkTheme.paperRaised,
     padding: 14,
   },
   planStrip: { flexDirection: 'row', gap: 8 },
@@ -1282,7 +1282,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bgRaised,
+    backgroundColor: chalkTheme.paperRaised,
     padding: 12,
     justifyContent: 'space-between',
   },
@@ -1311,7 +1311,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     padding: 13,
     color: colors.text,
     fontSize: 13.5,

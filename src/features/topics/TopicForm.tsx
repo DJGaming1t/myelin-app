@@ -11,7 +11,7 @@ import {
 
 import { AppButton } from '@/src/components/app/AppButton';
 import { Priority, TopicStatus } from '@/src/data/schema';
-import { colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
 
 import { TopicInput } from './topic-operations';
 
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     paddingHorizontal: space.md,
     color: colors.text,
     ...type.body,
@@ -287,13 +287,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paper,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chipActive: {
     borderColor: colors.accentLine,
-    backgroundColor: colors.panelRaised,
+    backgroundColor: chalkTheme.paperRaised,
   },
   chipText: { color: colors.textDim, ...type.meta, fontWeight: '600' },
   activeText: { color: colors.accent },
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  statusRowActive: { backgroundColor: colors.panelRaised },
+  statusRowActive: { backgroundColor: chalkTheme.paperRaised },
   statusCopy: { flex: 1, paddingLeft: space.xs },
   statusTitle: { color: colors.text, ...type.bodyStrong },
   statusHelper: { color: colors.muted, ...type.meta, marginTop: 2 },

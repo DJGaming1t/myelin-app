@@ -209,7 +209,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.embeddedHeader}>
       <ScreenHeader
         dark
@@ -266,7 +266,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
       </View>
 
       <Text style={styles.label}>Repeat · optional</Text>
-      <View style={styles.days}>
+      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.days}>
         {DAYS.map((day, index) => (
           <Pressable
             key={String(day.value) + ':' + String(index)}
@@ -284,7 +284,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
             </Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
       <Text style={styles.helper}>
         {days.length
           ? 'Repeats on the selected weekdays.'
@@ -369,6 +369,7 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
+  scroll: { backgroundColor: chalkTheme.paper },
   embeddedHeader: { marginHorizontal: -spacing.lg, backgroundColor: chalkTheme.hero, paddingBottom: spacing.sm, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
   content: {
     width: '100%',
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     color: colors.text,
     paddingHorizontal: 13,
     fontSize: 14,
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  active: { borderColor: colors.accentLine, backgroundColor: colors.panelRaised },
+  active: { borderColor: colors.accentLine, backgroundColor: chalkTheme.paperRaised },
   activeText: { color: colors.accent },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   timeInput: {
@@ -415,17 +416,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paperRaised,
     color: colors.text,
     paddingHorizontal: 13,
     fontSize: 15,
     fontWeight: '700',
   },
   to: { color: colors.muted, fontSize: 12, lineHeight: 16 },
-  days: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  days: { flexDirection: 'row', gap: 6, paddingRight: 8 },
   day: {
-    flexGrow: 1,
-    minWidth: 40,
+    width: 44,
+    flexGrow: 0,
     minHeight: layout.minTouch,
     borderRadius: radius.md,
     borderWidth: 1,

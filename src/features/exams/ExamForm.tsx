@@ -12,7 +12,7 @@ import {
 
 import { SegmentedControl } from '@/src/components/app/SegmentedControl';
 import { Topic } from '@/src/data/schema';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, radius, spacing } from '@/src/theme/tokens';
 
 import {
   ExamInput,
@@ -247,17 +247,17 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: 52 },
   label: { color: colors.textDim, fontSize: 12.5, lineHeight: 17, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
-  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 13, color: colors.text, fontSize: 14 },
+  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paperRaised, paddingHorizontal: 13, color: colors.text, fontSize: 14 },
   dateHelp: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 5 },
   scopeRow: { gap: 8 },
-  scopeCard: { minHeight: 66, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12, justifyContent: 'center' },
-  scopeActive: { borderColor: colors.accentLine, backgroundColor: colors.panelRaised },
+  scopeCard: { minHeight: 66, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: chalkTheme.paperRaised, padding: 12, justifyContent: 'center' },
+  scopeActive: { borderColor: colors.accentLine, backgroundColor: chalkTheme.paperRaised },
   scopeTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   scopeHelp: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   activeText: { color: colors.accent },
   selectionGrid: { gap: 8 },
-  selection: { minHeight: 58, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  selectionActive: { borderColor: colors.accentLine, backgroundColor: colors.panelRaised },
+  selection: { minHeight: 58, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: chalkTheme.paperRaised, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  selectionActive: { borderColor: colors.accentLine, backgroundColor: chalkTheme.paperRaised },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
   checkActive: { borderColor: colors.accent, backgroundColor: colors.accentFill },
   checkText: { color: '#25140e', fontSize: 12, fontWeight: '900' },
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   explainerText: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: spacing.md },
   actions: { flexDirection: 'row', gap: 9, marginTop: spacing.xl },
-  secondary: { flex: 1, minHeight: 50, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
+  secondary: { flex: 1, minHeight: 50, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paperRaised, alignItems: 'center', justifyContent: 'center' },
   primary: { flex: 1, minHeight: 50, borderRadius: radius.md, backgroundColor: colors.accentFill, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   primaryText: { color: '#25140e', fontSize: 13.5, lineHeight: 18, fontWeight: '800' },

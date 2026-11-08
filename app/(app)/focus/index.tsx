@@ -1,5 +1,6 @@
 import { FocusSupport, DistractionShield } from '@/src/features/adaptive/FocusSupport';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -332,6 +333,7 @@ export default function FocusScreen() {
   if (!ready || !workspace) {
     return (
       <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
         <View style={styles.center}>
           <Text style={styles.loading}>Restoring focus session…</Text>
         </View>
@@ -342,6 +344,7 @@ export default function FocusScreen() {
   if (!session && activeReview) {
     return (
       <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
         <AmbientBackdrop />
         <View style={styles.setupPage}>
           <TopBar onHelp={guide.start} label="Focus" backLabel="Review" onBack={() => router.replace('/(app)/review')} />
@@ -371,6 +374,7 @@ export default function FocusScreen() {
     if ((!topic && !task) || (task && task.status !== 'open')) {
       return (
         <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
           <AmbientBackdrop />
           <View style={styles.setupPage}>
             <TopBar onHelp={guide.start} label="Focus" onBack={() => router.replace('/(app)/today')} />
@@ -398,6 +402,7 @@ export default function FocusScreen() {
 
     return (
       <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
         <AmbientBackdrop />
         <View style={styles.setupPage}>
           <TopBar onHelp={guide.start} label="Focus" backLabel="Back" onBack={() => router.back()} />
@@ -553,6 +558,7 @@ export default function FocusScreen() {
   if (session.phase === 'break') {
     return (
       <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
         <AmbientBackdrop />
         <View style={styles.sessionPage}>
           <TopBar
@@ -738,6 +744,7 @@ export default function FocusScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
       <AmbientBackdrop />
       <View style={styles.sessionPage}>
         <TopBar

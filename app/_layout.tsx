@@ -18,7 +18,7 @@ import { chalkTheme, colors } from '@/src/theme/tokens';
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: chalkTheme.hero }}>
       <SafeAreaProvider>
         <LocalAiProvider>
           <StartupUpdateGate>

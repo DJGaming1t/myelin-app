@@ -23,12 +23,12 @@ assert.deepEqual(
 const navigation = readFileSync('src/components/app/AppNav.tsx', 'utf8');
 assert.ok(navigation.includes('useReducedMotion()'), 'Dock obeys reduced motion');
 assert.ok(navigation.includes('withSpring(targetGeometry.x'), 'The active highlight glides horizontally');
-assert.ok(navigation.includes('dockIndicatorBox(previous)'), 'The highlight starts at the previous tab');
+assert.ok(navigation.includes('highlightX.value = targetGeometry.x'), 'The incoming highlight starts inside the selected tab');
 assert.ok(navigation.includes('accessibilityState={{ selected: active }}'), 'Tab selection stays accessible');
-assert.ok(navigation.includes('scaleTo={0.94}'), 'Dock tabs have tactile press feedback');
+assert.ok(navigation.includes('scaleTo={0.97}'), 'Dock tabs have tactile press feedback');
 
 const stack = readFileSync('app/(app)/_layout.tsx', 'utf8');
-assert.ok(stack.includes("'fade_from_bottom'"), 'Peer pages use a gentle lift-fade');
+assert.ok(stack.includes("? 'fade'"), 'Peer pages crossfade without moving the dock');
 assert.ok(stack.includes("'slide_from_right'"), 'Detail pages use a directional transition');
 assert.ok(stack.includes("reduceMotion\n          ? 'none'"), 'Reduced motion disables stack transitions');
 

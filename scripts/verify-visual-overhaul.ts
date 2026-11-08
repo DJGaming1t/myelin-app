@@ -110,7 +110,7 @@ function main() {
   const appLayout = read('app/(app)/_layout.tsx');
   assert.ok(appLayout.includes('PEER_ROUTE_NAMES.has(route.name)'));
   assert.ok(appLayout.includes("? 'fade'"));
-  assert.ok(appLayout.includes(": 'fade_from_bottom'"));
+  assert.ok(appLayout.includes(": 'slide_from_right'"));
   for (const routeName of [
     "'today'",
     "'today/index'",
@@ -261,7 +261,7 @@ function main() {
   assert.ok(settingsScreen.includes('label="Delete account"'));
   assert.equal(settingsScreen.includes('<AppNav />'), false);
 
-  assert.ok(nav.includes('if (active) return;'));
+  assert.ok(nav.includes('if (activeTab === item.key) return;'));
   assert.equal(nav.includes('pressedMotion'), false);
 
   console.log('✓ shared semantic design tokens are established');

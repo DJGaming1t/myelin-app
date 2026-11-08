@@ -59,7 +59,7 @@ assert(
 assert(
   app.includes('PEER_ROUTE_NAMES.has(route.name)') &&
     app.includes("? 'fade'") &&
-    app.includes(": 'fade_from_bottom'"),
+    app.includes(": 'slide_from_right'"),
   'Peer tabs must crossfade without positional motion while deeper routes keep hierarchy motion.',
 );
 for (const routeName of [
@@ -91,7 +91,7 @@ assert(states.includes('accessibilityLiveRegion'), 'Shared loading/error states 
 assert(nav.includes('accessibilityLabel={item.label}'), 'Bottom navigation labels are missing.');
 assert(nav.includes('minHeight: layout.minTouch'), 'Bottom navigation touch targets are too small.');
 assert(nav.includes('maxWidth: layout.contentMax'), 'Bottom navigation is not tablet/web bounded.');
-assert(nav.includes('if (active) return;'), 'Tapping the active tab should be a true no-op.');
+assert(nav.includes('if (activeTab === item.key) return;'), 'Tapping the active tab should be a true no-op.');
 assert(!nav.includes('pressedMotion'), 'Bottom tabs should not scale on press.');
 assert(nav.includes('addButtonFrame'), 'Quick Add needs an explicit centered frame above its label.');
 assert(topicsLayout.includes('<Stack.Screen name="index" options={{ animation: \'none\' }} />'), 'Library nested index should not add a second transition.');

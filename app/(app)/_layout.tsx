@@ -64,18 +64,17 @@ export default function AppLayout() {
     <Stack
       screenOptions={({ route }) => ({
         headerShown: false,
-        // Peer tabs arrive with a restrained upward fade; nested detail pages
-        // slide in as a separate navigation layer. The dock animates its
-        // selected indicator independently and stays physically anchored.
+        // Peer screens crossfade in place, keeping their floating docks aligned.
+        // Detail screens retain the directional navigation cue.
         animation: reduceMotion
           ? 'none'
           : PEER_ROUTE_NAMES.has(route.name)
-            ? 'fade_from_bottom'
+            ? 'fade'
             : 'slide_from_right',
         animationDuration: reduceMotion
           ? 0
           : PEER_ROUTE_NAMES.has(route.name)
-            ? motion.hierarchyMs
+            ? 180
             : motion.enterMs,
       })}>
       <Stack.Screen name="today/index" />

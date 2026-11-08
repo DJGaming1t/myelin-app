@@ -19,10 +19,6 @@ import { chalkTheme, colors, layout, motion, space, type } from '@/src/theme/tok
 type NavTab = 'today' | 'topics' | 'review' | 'progress';
 type TabSlot = DockTabSlot;
 
-// The dock lives in each peer screen. Remember the last tab so the incoming
-// dock can animate its indicator from the outgoing tab after a native crossfade.
-let lastDockTab: NavTab | null = null;
-
 const ITEMS: {
   key: NavTab;
   label: string;
@@ -76,16 +72,14 @@ export function AppNav({
     const target = slots[activeTab]!;
     const targetGeometry = dockIndicatorBox(target);
     const firstLayout = selected.current === null;
-    const previousKey = firstLayout ? lastDockTab : selected.current;
-    const previous = previousKey ? slots[previousKey] : undefined;
-    const previousGeometry = previous ? dockIndicatorBox(previous) : targetGeometry;
-
     if (firstLayout) {
-      highlightX.value = previousGeometry.x;
-      highlightY.value = previousGeometry.y;
-      highlightWidth.value = previousGeometry.width;
-      highlightHeight.value = previousGeometry.height;
-      highlightOpacity.value = previous && previousKey !== activeTab && !reduceMotion ? 0.72 : 1;
+      // Each destination mounts its own dock. Start at the destination so
+      // the outgoing and incoming docks never show two travelling indicators.
+      highlightX.value = targetGeometry.x;
+      highlightY.value = targetGeometry.y;
+      highlightWidth.value = targetGeometry.width;
+      highlightHeight.value = targetGeometry.height;
+      highlightOpacity.value = reduceMotion ? 1 : 0;
     }
 
     cancelAnimation(highlightX);
@@ -105,10 +99,9 @@ export function AppNav({
       highlightY.value = withSpring(targetGeometry.y, spring);
       highlightWidth.value = withSpring(targetGeometry.width, spring);
       highlightHeight.value = withSpring(targetGeometry.height, spring);
-      highlightOpacity.value = withTiming(1, { duration: motion.hierarchyMs });
+      highlightOpacity.value = withTiming(1, { duration: 140 });
     }
     selected.current = activeTab;
-    lastDockTab = activeTab;
   }, [
     activeTab, compact, reduceMotion, slots,
     highlightX, highlightY, highlightWidth, highlightHeight, highlightOpacity,
@@ -126,7 +119,6 @@ export function AppNav({
 
   function openTab(item: (typeof ITEMS)[number]) {
     if (activeTab === item.key) return;
-    if (activeTab) lastDockTab = activeTab;
     router.replace(item.path);
   }
 
@@ -222,8 +214,8 @@ function NavItem({
       accessibilityState={{ selected: active }}
       onLayout={onMeasure}
       onPress={onNavigate}
-      scaleTo={0.94}
-      lift={1}
+      scaleTo={0.97}
+      lift={0}
       style={styles.item}>
       <View style={[styles.itemInner, !compact && active && styles.itemActivePill, compact && styles.compactItem, compact && active && styles.compactActive]}>
         <View style={styles.iconBox}>

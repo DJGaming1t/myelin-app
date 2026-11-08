@@ -33,6 +33,7 @@ export default function NewQuestionScreen() {
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <ScreenHeader
+        variant="compact"
         eyebrow={topic.subject.toUpperCase()}
         title="Add recall question"
         subtitle={topic.name}

@@ -36,7 +36,7 @@ import {
   buildProgressSnapshot,
   formatMinutesCompact,
 } from '@/src/features/progress/progress-engine';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 export default function ProgressScreen() {
   const dockClearance = useAppNavClearance();
@@ -101,13 +101,30 @@ export default function ProgressScreen() {
           showsVerticalScrollIndicator={false}>
           <Reveal delay={35} distance={7}>
             <View ref={!insights.length ? guide.anchors['progress.practice'] : undefined}
-              collapsable={false} testID={!insights.length ? 'guide-progress-practice' : undefined} style={styles.summaryGrid}>
-              <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
-              <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
-              <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
-              <Metric label="DUE CORRECTIONS" value={String(snapshot.mistakes.due)} />
+              collapsable={false} testID={!insights.length ? 'guide-progress-practice' : undefined} style={styles.summaryHero}>
+              <Text style={styles.heroCaption}>YOUR LAST 7 DAYS</Text>
+              <Text style={styles.heroNumber} accessibilityLabel={`${formatMinutesCompact(snapshot.study.last7Minutes)} of recorded study in the last 7 days`}>
+                {formatMinutesCompact(snapshot.study.last7Minutes)}
+              </Text>
+              <Text style={styles.heroDescription}>Recorded study and review time</Text>
+              <View style={styles.summaryGrid}>
+                <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
+                <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
+                <Metric label="CORRECTIONS DUE" value={String(snapshot.mistakes.due)} />
+              </View>
             </View>
           </Reveal>
+
+          <SectionTitle
+            title="Study time"
+            subtitle="Recorded study + review minutes."
+          />
+          <StudyBars
+            points={snapshot.study.last7Days}
+            previous7Minutes={snapshot.study.previous7Minutes}
+            current7Minutes={snapshot.study.last7Minutes}
+          />
+
 
           <NeuralMap workspace={workspace} now={now} anchorRef={guide.anchors['progress.map']} />
           <LearningInsights workspace={workspace} now={insightNow} insights={insights} onRefresh={() => setInsightRefreshAt(Date.now())} actionRef={guide.anchors['progress.practice']} />
@@ -127,15 +144,6 @@ export default function ProgressScreen() {
             onShow={() => { guideOffer.choose('shown'); guide.start(); }}
             onLater={() => guideOffer.choose('later')} onRetry={guideOffer.retry} />
 
-          <SectionTitle
-            title="Study time"
-            subtitle="Recorded study + review minutes."
-          />
-          <StudyBars
-            points={snapshot.study.last7Days}
-            previous7Minutes={snapshot.study.previous7Minutes}
-            current7Minutes={snapshot.study.last7Minutes}
-          />
 
           {snapshot.mistakes.due > 0 ? (
             <View style={styles.progressActionList}>
@@ -499,39 +507,27 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 12 },
   content: { paddingHorizontal: spacing.lg, paddingBottom: 44 },
-  summaryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: 0,
-    rowGap: 0,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panel,
-    marginBottom: spacing.lg,
-    overflow: 'hidden',
+  summaryHero: {
+    backgroundColor: chalkTheme.hero, borderRadius: 24, paddingHorizontal: 20,
+    paddingTop: 21, paddingBottom: 15, marginBottom: spacing.md,
+    borderWidth: 1, borderColor: chalkTheme.dockBorder,
   },
-  metric: {
-    width: '50%',
-    minHeight: 86,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    justifyContent: 'space-between',
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-  },
-  metricLabel: { color: colors.muted, fontSize: 11, lineHeight: 16, fontWeight: '700', letterSpacing: .5 },
-  metricValue: { color: colors.text, fontSize: 22, fontWeight: '600' },
+  heroCaption: { color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 16, fontWeight: '700', letterSpacing: 1.4 },
+  heroNumber: { color: chalkTheme.onStage, fontSize: 42, lineHeight: 51, letterSpacing: -1, marginTop: 10, fontWeight: '400', fontVariant: ['tabular-nums'] },
+  heroDescription: { color: chalkTheme.mutedCream, fontSize: 13, lineHeight: 19, marginTop: 1 },
+  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 22, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(242,231,208,.28)' },
+  metric: { flexGrow: 1, flexBasis: 88, paddingTop: 15, paddingRight: 8, minHeight: 64, justifyContent: 'space-between' },
+  metricLabel: { color: chalkTheme.mutedCream, fontSize: 10, lineHeight: 15, fontWeight: '700', letterSpacing: .4 },
+  metricValue: { color: chalkTheme.onStage, fontSize: 20, lineHeight: 26, fontWeight: '600', fontVariant: ['tabular-nums'] },
   sectionHeading: { marginTop: spacing.xl, marginBottom: 9 },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
   sectionSubtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4, maxWidth: 540 },
-  chartPanel: { borderRadius: radius.xl, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panelGlass, padding: 14 },
+  chartPanel: { borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 16, marginBottom: spacing.lg },
   chart: { minHeight: 154, flexDirection: 'row', alignItems: 'flex-end', gap: 5 },
   barColumn: { flex: 1, alignItems: 'center' },
   barValue: { color: colors.subtle, fontSize: 10.5, marginBottom: 5 },
   barTrack: { height: 116, width: '70%', maxWidth: 28, justifyContent: 'flex-end', borderRadius: 8, backgroundColor: colors.bg, overflow: 'hidden' },
-  bar: { width: '100%', borderRadius: 8, backgroundColor: colors.accentFill },
+  bar: { width: '100%', borderRadius: 8, backgroundColor: chalkTheme.progressBlue },
   barLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 6 },
   chartFoot: { color: colors.muted, fontSize: 12, marginTop: 10, textAlign: 'center' },
   panel: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },

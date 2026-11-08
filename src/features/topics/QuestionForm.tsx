@@ -55,7 +55,7 @@ export function QuestionForm({ initial, submitLabel, onCancel, onSubmit }: Props
           onChangeText={setPrompt}
           placeholder="e.g. Why can copper not displace hydrogen from dilute HCl?"
           maxLength={6000}
-          minHeight={112}
+          minHeight={96}
           autoFocus={!initial?.prompt}
         />
 
@@ -65,7 +65,7 @@ export function QuestionForm({ initial, submitLabel, onCancel, onSubmit }: Props
           onChangeText={setAnswer}
           placeholder="The answer you want to compare yourself against…"
           maxLength={16000}
-          minHeight={150}
+          minHeight={120}
         />
 
         <Field
@@ -74,7 +74,7 @@ export function QuestionForm({ initial, submitLabel, onCancel, onSubmit }: Props
           onChangeText={setHint}
           placeholder="A subtle clue, not the whole answer…"
           maxLength={4000}
-          minHeight={90}
+          minHeight={72}
         />
 
         <Field label="Confusion group (optional)" value={confusionGroup} onChangeText={setConfusionGroup}
@@ -132,9 +132,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     lineHeight: 19,
-    borderLeftWidth: 2,
-    borderLeftColor: colors.accent,
-    paddingLeft: 11,
     marginBottom: spacing.md,
   },
   field: { marginTop: spacing.md },

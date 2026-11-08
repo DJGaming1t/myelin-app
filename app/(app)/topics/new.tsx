@@ -17,6 +17,7 @@ export default function NewTopicScreen() {
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <ScreenHeader
+        variant="compact"
         eyebrow="NEW TOPIC"
         title="What are you learning?"
         subtitle="Start small. You can add recall questions, notes and more detail after the topic exists."

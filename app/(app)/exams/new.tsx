@@ -25,6 +25,7 @@ export default function NewExamScreen() {
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <ScreenHeader
+        variant="compact"
         eyebrow="NEW EXAM"
         title="What are you preparing for?"
         subtitle="Choose the date and the exact syllabus scope. MYELIN will use both when planning."

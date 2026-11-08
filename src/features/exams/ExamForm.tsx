@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { SegmentedControl } from '@/src/components/app/SegmentedControl';
 import { Topic } from '@/src/data/schema';
 import { colors, radius, spacing } from '@/src/theme/tokens';
 
@@ -123,20 +124,12 @@ export function ExamForm({
         <Text style={styles.dateHelp}>Example: 2026-10-18</Text>
 
         <Label>What is included?</Label>
-        <View style={styles.scopeRow}>
-          <ScopeButton
-            label="Whole subjects"
-            helper="Every MYELIN topic in selected subjects"
-            active={scope === 'subjects'}
-            onPress={() => setScope('subjects')}
-          />
-          <ScopeButton
-            label="Specific topics"
-            helper="Only the exact topics you choose"
-            active={scope === 'topics'}
-            onPress={() => setScope('topics')}
-          />
-        </View>
+        <SegmentedControl label="Exam coverage" value={scope}
+          options={[{ value: 'subjects', label: 'Whole subjects' }, { value: 'topics', label: 'Specific topics' }] as const}
+          onChange={setScope} />
+        <Text style={styles.dateHelp}>{scope === 'subjects'
+          ? 'Include all topics in selected subjects.'
+          : 'Include only the topics you choose.'}</Text>
 
         {scope === 'subjects' ? (
           <>
@@ -208,33 +201,6 @@ export function ExamForm({
 
 function Label({ children }: { children: string }) {
   return <Text style={styles.label}>{children}</Text>;
-}
-
-function ScopeButton({
-  label,
-  helper,
-  active,
-  onPress,
-}: {
-  label: string;
-  helper: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.scopeCard,
-        active && styles.scopeActive,
-        pressed && styles.pressed,
-      ]}>
-      <Text style={[styles.scopeTitle, active && styles.activeText]}>{label}</Text>
-      <Text style={styles.scopeHelp}>{helper}</Text>
-    </Pressable>
-  );
 }
 
 function SelectionCard({

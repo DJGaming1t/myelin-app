@@ -210,6 +210,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={styles.embeddedHeader}>
       <ScreenHeader
         variant="compact"
         eyebrow="DAY MAP"
@@ -217,6 +218,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
         subtitle="Block time that is genuinely unavailable for study."
         onBack={() => router.back()}
       />
+      </View>
 
       <Text style={styles.label}>Name</Text>
       <TextInput
@@ -366,6 +368,7 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
+  embeddedHeader: { marginHorizontal: -spacing.lg },
   content: {
     width: '100%',
     maxWidth: layout.contentMax,

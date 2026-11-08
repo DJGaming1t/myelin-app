@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { SegmentedControl } from '@/src/components/app/SegmentedControl';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { Priority, StudyTask, StudyTaskType } from '@/src/data/schema';
@@ -243,6 +244,7 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={styles.embeddedHeader}>
       <ScreenHeader
         variant="compact"
         eyebrow={existing ? 'STUDY TASK' : 'QUICK CAPTURE'}
@@ -250,6 +252,7 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
         subtitle="Keep it concrete. Exact scheduling can come later."
         onBack={() => router.back()}
       />
+      </View>
 
       {existing ? <><TaskDueLabel task={existing} /><TaskQuickActions task={existing} /></> : null}
       <Label>What needs doing?</Label>
@@ -265,30 +268,21 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
       />
 
       <Label>Estimated time</Label>
-      <View style={styles.rowWrap}>
+      <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
         {DURATIONS.map((minutes) => (
-          <Chip
-            key={minutes}
-            label={`${minutes}m`}
-            active={Number(estimate) === minutes}
-            onPress={() => setEstimate(String(minutes))}
-          />
+          <Chip key={minutes} label={`${minutes}m`} active={Number(estimate) === minutes} onPress={() => setEstimate(String(minutes))} />
         ))}
-      </View>
-      <TextInput
-        value={estimate}
-        onChangeText={setEstimate}
-        keyboardType="number-pad"
-        placeholder="Minutes"
-        placeholderTextColor={colors.subtle}
-        style={styles.smallInput}
-      />
+        <View style={styles.customDuration}>
+          <Text style={styles.customDurationLabel}>Custom</Text>
+          <TextInput accessibilityLabel="Custom duration in minutes" value={estimate} onChangeText={setEstimate}
+            keyboardType="number-pad" placeholder="Minutes" placeholderTextColor={colors.subtle} style={styles.smallInput} />
+        </View>
+      </ScrollView>
 
       <Label>Where should it live?</Label>
-      <View style={styles.row}>
-        <Chip label="Inbox" active={planState === 'inbox'} onPress={() => setPlanState('inbox')} flex />
-        <Chip label="Today" active={planState === 'today'} onPress={() => setPlanState('today')} flex />
-      </View>
+      <SegmentedControl label="Where to add this task" value={planState}
+        options={[{ value: 'inbox', label: 'Inbox' }, { value: 'today', label: 'Today' }] as const}
+        onChange={setPlanState} />
 
       <Label>Due</Label>
       <View style={styles.rowWrap}>
@@ -464,6 +458,7 @@ function Chip({ label, active, onPress, flex }: { label: string; active: boolean
 }
 
 const styles = StyleSheet.create({
+  embeddedHeader: { marginHorizontal: -spacing.lg },
   content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 56 },
   label: { color: colors.textDim, fontSize: 12.5, lineHeight: 17, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
   detailsToggle: { minHeight: 66, marginTop: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.lineStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
@@ -473,7 +468,9 @@ const styles = StyleSheet.create({
   detailsMark: { color: colors.textDim, fontSize: 23 },
   input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
   disabledInput: { opacity: 0.65 },
-  smallInput: { minHeight: layout.minTouch, width: 110, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
+  customDuration: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  customDurationLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
+  smallInput: { minHeight: layout.minTouch, width: 90, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
   notes: { minHeight: 110, paddingTop: 13, paddingBottom: 13 },
   row: { flexDirection: 'row', gap: 8 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

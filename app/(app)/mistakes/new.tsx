@@ -42,6 +42,7 @@ export default function NewMistakeScreen() {
     <SafeAreaView style={styles.safe}>
       <AmbientBackdrop />
       <ScreenHeader
+        variant="compact"
         eyebrow="CAPTURE THE ERROR"
         title="Add mistake"
         subtitle="Record enough to recognize the error later, then write the correction you want to be able to reproduce."

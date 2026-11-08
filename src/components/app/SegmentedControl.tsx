@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { chalkTheme, colors } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
 type Option<T extends string> = { value: T; label: string };
 
@@ -23,7 +24,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
 const styles = StyleSheet.create({
   track: { flexDirection: 'row', borderRadius: 14, padding: 3, backgroundColor: chalkTheme.paper, gap: 3 },
   option: { flex: 1, minHeight: 44, paddingHorizontal: 8, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 11 },
-  selected: { backgroundColor: chalkTheme.paperRaised, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.lineStrong },
+  selected: { backgroundColor: paperSurfaces.card, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.lineStrong },
   label: { color: colors.muted, fontSize: 13, lineHeight: 18, textAlign: 'center', fontWeight: '600' },
   selectedLabel: { color: colors.text, fontWeight: '700' },
   pressed: { opacity: .72 },

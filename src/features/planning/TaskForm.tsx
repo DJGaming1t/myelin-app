@@ -21,6 +21,7 @@ import {
 } from '@/src/features/planning/task-engine';
 import { applyTaskEdit, taskEditConflict, RecordedTime, TaskEdit } from './task-edit';
 import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
 const DURATIONS = [15, 25, 35, 45, 60];
 const TYPES: Array<{ value: StudyTaskType; label: string }> = [
@@ -468,11 +469,11 @@ const styles = StyleSheet.create({
   detailsTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   detailsHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
   detailsMark: { color: colors.textDim, fontSize: 23 },
-  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paperRaised, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
+  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: paperSurfaces.card, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
   disabledInput: { opacity: 0.65 },
   customDuration: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   customDurationLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
-  smallInput: { minHeight: layout.minTouch, width: 90, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paperRaised, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
+  smallInput: { minHeight: layout.minTouch, width: 90, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: paperSurfaces.card, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
   notes: { minHeight: 110, paddingTop: 13, paddingBottom: 13 },
   row: { flexDirection: 'row', gap: 8 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: chalkTheme.paperRaised,
+    backgroundColor: paperSurfaces.card,
     color: colors.text,
     paddingHorizontal: 12,
     fontSize: 12,
@@ -495,21 +496,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: chalkTheme.paperRaised,
+    backgroundColor: paperSurfaces.card,
     color: colors.text,
     paddingHorizontal: 12,
     fontSize: 12,
   },
   chip: { minHeight: layout.minTouch, maxWidth: 220, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: chalkTheme.paper, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
-  chipActive: { borderColor: colors.accentLine, backgroundColor: chalkTheme.paperRaised },
+  chipActive: { borderColor: colors.accentLine, backgroundColor: paperSurfaces.card },
   chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   chipTextActive: { color: colors.accent },
   flex: { flex: 1, maxWidth: undefined },
   helper: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 5 },
   error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: spacing.md },
-  primary: { minHeight: 56, marginTop: spacing.xl, borderRadius: radius.md, backgroundColor: colors.accentFill, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  primaryText: { color: '#25140e', fontSize: 14, lineHeight: 19, fontWeight: '900' },
-  primaryArrow: { color: '#25140e', fontSize: 19 },
+  primary: { minHeight: 56, marginTop: spacing.xl, borderRadius: radius.md, backgroundColor: paperSurfaces.accent, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  primaryText: { color: paperSurfaces.onAccent, fontSize: 14, lineHeight: 19, fontWeight: '900' },
+  primaryArrow: { color: paperSurfaces.onAccent, fontSize: 19 },
   secondary: { minHeight: layout.minTouch, marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { color: colors.text, fontSize: 12.5, lineHeight: 17, fontWeight: '700' },
   deleteButton: { minHeight: layout.minTouch, marginTop: 9, alignItems: 'center', justifyContent: 'center' },

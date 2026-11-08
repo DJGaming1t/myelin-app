@@ -2,8 +2,9 @@ import { StyleSheet, Text, ViewStyle } from 'react-native';
 
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { colors, layout, radius, space, type } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
-type Variant = 'primary' | 'secondary' | 'quiet' | 'danger';
+type Variant = 'paperPrimary' | 'primary' | 'secondary' | 'quiet' | 'danger';
 
 type Props = {
   label: string;
@@ -23,7 +24,9 @@ export function AppButton({
   style,
 }: Props) {
   const textStyle =
-    variant === 'primary'
+    variant === 'paperPrimary'
+      ? styles.paperPrimaryText
+      : variant === 'primary'
       ? styles.primaryText
       : variant === 'secondary'
         ? styles.secondaryText
@@ -61,11 +64,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primary: { backgroundColor: colors.accentFill },
+  paperPrimary: { backgroundColor: paperSurfaces.accent },
   secondary: { backgroundColor: colors.panelRaised, borderWidth: 1, borderColor: colors.lineStrong },
   quiet: { backgroundColor: 'transparent' },
   danger: { backgroundColor: 'rgba(255,165,150,0.10)', borderWidth: 1, borderColor: 'rgba(255,165,150,0.24)' },
   label: { ...type.bodyStrong, textAlign: 'center', flexShrink: 1 },
   primaryText: { color: colors.onAccent },
+  paperPrimaryText: { color: paperSurfaces.onAccent },
   secondaryText: { color: colors.text },
   quietText: { color: colors.textDim },
   dangerText: { color: colors.danger },

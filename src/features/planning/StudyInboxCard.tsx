@@ -21,6 +21,7 @@ import {
   taskRemainingMinutes,
 } from '@/src/features/planning/task-engine';
 import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
 function dayKey(timestamp: number) {
   const date = new Date(timestamp);
@@ -538,11 +539,11 @@ const styles = StyleSheet.create({
   suggestionList: { gap: 8, marginTop: spacing.md },
   slotChoice: {
     minHeight: 62,
-    borderRadius: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 4,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: paperSurfaces.border,
+    backgroundColor: paperSurfaces.card,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -584,7 +585,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: paperSurfaces.card,
     color: colors.text,
     paddingHorizontal: 12,
     fontSize: 12,
@@ -595,7 +596,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: paperSurfaces.card,
     color: colors.text,
     paddingHorizontal: 12,
     fontSize: 12,
@@ -610,13 +611,13 @@ const styles = StyleSheet.create({
     minHeight: 52,
     marginTop: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.accentFill,
+    backgroundColor: paperSurfaces.accent,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   schedulePrimaryText: {
-    color: '#25140e',
+    color: paperSurfaces.onAccent,
     fontSize: 13,
     fontWeight: '900',
   },

@@ -64,6 +64,7 @@ import {
 } from '@/src/features/today/planner';
 import { TimeBrick } from '@/src/features/planning/TimeBrick';
 import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
 function timeLabel(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -1723,7 +1724,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: '#E6D2BB',
+    backgroundColor: paperSurfaces.card,
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
@@ -1811,7 +1812,7 @@ const styles = StyleSheet.create({
   missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   mini: { minHeight: layout.minTouch, minWidth: 68, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
   miniText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
-  emptyCard: { marginTop: 8, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: '#B9A18A', backgroundColor: '#E6D2BB', padding: spacing.lg, overflow: 'hidden' },
+  emptyCard: { marginTop: 8, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border, backgroundColor: paperSurfaces.card, padding: spacing.lg, overflow: 'hidden' },
   emptyTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
   emptyText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
   flexible: { marginTop: spacing.xl },
@@ -1822,12 +1823,12 @@ const styles = StyleSheet.create({
   flexibleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   addRow: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
   action: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  actionAccent: { borderColor: '#B57A66', backgroundColor: '#EED2C2' },
-  actionPrimary: { flex: 0, minHeight: 52, marginTop: spacing.md, borderRadius: radius.pill, backgroundColor: '#994A38', borderColor: '#994A38' },
-  actionTextPrimary: { color: '#F2E7D0', fontSize: 14, lineHeight: 20 },
+  actionAccent: { borderColor: paperSurfaces.accentLine, backgroundColor: paperSurfaces.accentSoft },
+  actionPrimary: { flex: 0, minHeight: 52, marginTop: spacing.md, borderRadius: radius.pill, backgroundColor: paperSurfaces.accent, borderColor: paperSurfaces.accent },
+  actionTextPrimary: { color: paperSurfaces.onAccent, fontSize: 14, lineHeight: 20 },
   actionText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
   actionTextAccent: { color: colors.accent },
-  rebuild: { minHeight: 68, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: '#B9A18A', backgroundColor: '#E6D2BB', paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  rebuild: { minHeight: 68, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border, backgroundColor: paperSurfaces.card, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   rebuildTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   rebuildText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   rebuildArrow: { color: colors.accent, fontSize: 18 },

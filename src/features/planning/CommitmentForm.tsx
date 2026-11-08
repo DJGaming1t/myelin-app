@@ -21,6 +21,7 @@ import {
   serializeAutopilotReflow,
 } from '@/src/features/exams/autopilot-reflow';
 import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
 const DAYS = [
   { value: 1, label: 'M' },
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: chalkTheme.paperRaised,
+    backgroundColor: paperSurfaces.card,
     color: colors.text,
     paddingHorizontal: 13,
     fontSize: 14,
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  active: { borderColor: colors.accentLine, backgroundColor: chalkTheme.paperRaised },
+  active: { borderColor: colors.accentLine, backgroundColor: paperSurfaces.card },
   activeText: { color: colors.accent },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   timeInput: {
@@ -416,7 +417,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: chalkTheme.paperRaised,
+    backgroundColor: paperSurfaces.card,
     color: colors.text,
     paddingHorizontal: 13,
     fontSize: 15,
@@ -445,11 +446,11 @@ const styles = StyleSheet.create({
     minHeight: 56,
     marginTop: spacing.xl,
     borderRadius: radius.md,
-    backgroundColor: colors.accentFill,
+    backgroundColor: paperSurfaces.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: { color: '#25140e', fontSize: 14, lineHeight: 19, fontWeight: '900' },
+  primaryText: { color: paperSurfaces.onAccent, fontSize: 14, lineHeight: 19, fontWeight: '900' },
   delete: {
     minHeight: layout.minTouch,
     marginTop: 9,

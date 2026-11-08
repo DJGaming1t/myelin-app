@@ -58,6 +58,7 @@ import { GuideOffer } from '@/src/features/guides/GuideOffer';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { chalkTheme, colors, layout, motion, radius, spacing } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -1271,8 +1272,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: chalkTheme.paperRaised,
+    borderColor: paperSurfaces.border,
+    backgroundColor: paperSurfaces.card,
     padding: 14,
   },
   planStrip: { flexDirection: 'row', gap: 8 },
@@ -1321,23 +1322,23 @@ const styles = StyleSheet.create({
     minHeight: 58,
     marginTop: spacing.lg,
     borderRadius: radius.md,
-    backgroundColor: colors.accentFill,
+    backgroundColor: paperSurfaces.accent,
     paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   wideButton: { width: '100%' },
-  primaryText: { flexShrink: 1, color: '#25140e', fontSize: 13.5, fontWeight: '800' },
-  primarySubtext: { color: 'rgba(37,20,14,0.72)', fontSize: 11.5, lineHeight: 15, marginTop: 2 },
-  buttonArrow: { color: '#25140e', fontSize: 20, fontWeight: '700' },
+  primaryText: { flexShrink: 1, color: paperSurfaces.onAccent, fontSize: 13.5, fontWeight: '800' },
+  primarySubtext: { color: paperSurfaces.onAccent, fontSize: 11.5, lineHeight: 15, marginTop: 2 },
+  buttonArrow: { color: paperSurfaces.onAccent, fontSize: 20, fontWeight: '700' },
   launchButton: {
     minHeight: 82,
     marginTop: 10,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,128,91,0.26)',
-    backgroundColor: colors.accentSoft,
+    borderColor: paperSurfaces.accentLine,
+    backgroundColor: paperSurfaces.accentSoft,
     padding: 13,
     flexDirection: 'row',
     alignItems: 'center',

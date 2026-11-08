@@ -12,6 +12,7 @@ import {
 import { AppButton } from '@/src/components/app/AppButton';
 import { Priority, TopicStatus } from '@/src/data/schema';
 import { chalkTheme, colors, layout, motion, radius, space, type } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 
 import { TopicInput } from './topic-operations';
 
@@ -223,7 +224,7 @@ export function TopicForm({ initial, subjects = [], submitLabel, onCancel, onSub
 
         <View style={styles.actions}>
           <AppButton label="Cancel" variant="quiet" onPress={onCancel} style={styles.action} />
-          <AppButton label={submitLabel} onPress={submit} style={styles.action} />
+          <AppButton label={submitLabel} variant="paperPrimary" onPress={submit} style={styles.action} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: chalkTheme.paperRaised,
+    backgroundColor: paperSurfaces.card,
     paddingHorizontal: space.md,
     color: colors.text,
     ...type.body,
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: colors.accentLine,
-    backgroundColor: chalkTheme.paperRaised,
+    backgroundColor: paperSurfaces.card,
   },
   chipText: { color: colors.textDim, ...type.meta, fontWeight: '600' },
   activeText: { color: colors.accent },
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  statusRowActive: { backgroundColor: chalkTheme.paperRaised },
+  statusRowActive: { backgroundColor: paperSurfaces.card },
   statusCopy: { flex: 1, paddingLeft: space.xs },
   statusTitle: { color: colors.text, ...type.bodyStrong },
   statusHelper: { color: colors.muted, ...type.meta, marginTop: 2 },

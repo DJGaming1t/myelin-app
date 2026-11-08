@@ -38,7 +38,7 @@ import { GuideOffer } from '@/src/features/guides/GuideOffer';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { findQuestion, findTopic } from '@/src/features/topics/topic-operations';
-import { colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
 
 function param(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -348,21 +348,22 @@ export default function ReviewScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.eyebrow}>DUE NOW</Text>
-                <Text style={styles.dashboardTitle}>
-                  {counts.due > 0
-                    ? `${counts.due} ${counts.due === 1 ? 'question is' : 'questions are'} ready.`
-                    : counts.total > 0
-                      ? 'Nothing is due right now.'
-                      : 'No recall material yet.'}
-                </Text>
-                <Text style={styles.dashboardText}>
-                  {counts.due > 0
-                    ? 'MYELIN mixes due material where useful so recall depends less on context.'
-                    : counts.total > 0
-                      ? 'Review will surface cards again when their next time arrives.'
-                      : 'Create recall questions inside Library first.'}
-                </Text>
+                <View style={styles.queueOverview}>
+                  <Text style={styles.queueCaption}>YOUR REVIEW QUEUE</Text>
+                  <View style={styles.queueCountRow}>
+                    <Text style={styles.queueCount}>{counts.due}</Text>
+                    <Text style={styles.queueCountLabel}>{counts.due === 1 ? 'question ready' : 'questions ready'}</Text>
+                  </View>
+                  <Text style={styles.queueDetail}>
+                    {counts.due > 0
+                      ? 'Recall the answer before you reveal it.'
+                      : counts.total > 0
+                        ? 'Your next questions will appear when they are due.'
+                        : 'Add a recall question in Library to get started.'}
+                  </Text>
+                  <View style={styles.queueRule} />
+                  <Text style={styles.queueFoot}>{counts.total} {counts.total === 1 ? 'question' : 'questions'} in your Library</Text>
+                </View>
 
                 {counts.due > 0 ? (
                   <Pressable
@@ -717,7 +718,15 @@ function CompareCard({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   page: { flex: 1 },
-  dashboard: { padding: spacing.lg, paddingBottom: 48 },
+  dashboard: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 48 },
+  queueOverview: { backgroundColor: chalkTheme.hero, borderRadius: 24, borderWidth: 1, borderColor: chalkTheme.dockBorder, paddingHorizontal: 20, paddingVertical: 20 },
+  queueCaption: { color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 16, fontWeight: '700', letterSpacing: 1.3 },
+  queueCountRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, marginTop: 12 },
+  queueCount: { color: chalkTheme.onStage, fontSize: 48, lineHeight: 56, fontWeight: '400', fontVariant: ['tabular-nums'] },
+  queueCountLabel: { color: chalkTheme.onStage, fontSize: 17, lineHeight: 24, flexShrink: 1 },
+  queueDetail: { color: chalkTheme.mutedCream, fontSize: 13, lineHeight: 20, marginTop: 5 },
+  queueRule: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(242,231,208,.28)', marginTop: 18, marginBottom: 12 },
+  queueFoot: { color: chalkTheme.mutedCream, fontSize: 12, lineHeight: 18 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   loading: { color: colors.muted, fontSize: 12 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 42 },
@@ -725,17 +734,17 @@ const styles = StyleSheet.create({
   brand: { color: colors.text, fontSize: 13, fontWeight: '800', letterSpacing: 2.8 },
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
   dashboardTitle: { color: colors.text, fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.2, marginTop: 8 },
-  dashboardText: { color: colors.muted, fontSize: 12.5, lineHeight: 19, marginTop: 9, maxWidth: 560 },
+  dashboardText: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 9, maxWidth: 560 },
   summaryGrid: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
   metric: { flex: 1, minHeight: 76, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 12, justifyContent: 'space-between' },
   metricLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
   metricValue: { color: colors.text, fontSize: 20, fontWeight: '700' },
   primary: { minHeight: 56, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accentFill, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  primaryText: { color: '#25140e', fontSize: 13, fontWeight: '800' },
-  primarySubtext: { color: 'rgba(37,20,14,0.68)', fontSize: 9.5, marginTop: 2 },
+  primaryText: { color: colors.onAccent, fontSize: 15, fontWeight: '800' },
+  primarySubtext: { color: 'rgba(37,20,14,0.8)', fontSize: 12, marginTop: 2 },
   primaryArrow: { color: '#25140e', fontSize: 20 },
   secondaryLarge: { minHeight: 48, marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
-  secondaryLargeText: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  secondaryLargeText: { color: colors.text, fontSize: 14, fontWeight: '700' },
   utilityRow: {
     minHeight: 62,
     marginTop: spacing.lg,
@@ -747,9 +756,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  utilityLabel: { color: colors.subtle, fontSize: 8, fontWeight: '800', letterSpacing: 1.15 },
-  utilityTitle: { color: colors.text, fontSize: 12, fontWeight: '700', marginTop: 3 },
-  utilityArrow: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
+  utilityLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 1.15 },
+  utilityTitle: { color: colors.text, fontSize: 15, fontWeight: '700', marginTop: 3 },
+  utilityArrow: { color: colors.muted, fontSize: 13, fontWeight: '700' },
   completeNotice: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(180,216,174,0.2)', backgroundColor: 'rgba(180,216,174,0.055)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   completeMark: { color: colors.success, fontSize: 18 },
   completeCopy: { flex: 1 },
@@ -766,9 +775,9 @@ const styles = StyleSheet.create({
   clearText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
   emptyCard: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.lg },
   emptyTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  emptyText: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
+  emptyText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 5 },
   emptyAction: { alignSelf: 'flex-start', minHeight: layout.minTouch, marginTop: spacing.md, borderRadius: radius.md, backgroundColor: colors.accentFill, paddingHorizontal: 14, justifyContent: 'center' },
-  emptyActionText: { color: '#25140e', fontSize: 11, fontWeight: '800' },
+  emptyActionText: { color: colors.onAccent, fontSize: 13, fontWeight: '800' },
   textButton: { minHeight: layout.minTouch, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   textButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '600' },
   reviewPage: { flex: 1 },
@@ -780,8 +789,8 @@ const styles = StyleSheet.create({
   blockedHelp: { marginLeft: 'auto', minWidth: layout.minTouch, minHeight: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
   helpText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
   progressCopy: { flex: 1, minWidth: 0, alignItems: 'center' },
-  progressLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.2 },
-  progressValue: { color: colors.text, fontSize: 10.5, fontWeight: '700', marginTop: 2 },
+  progressLabel: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  progressValue: { color: colors.text, fontSize: 13, fontWeight: '700', marginTop: 2 },
   subjectTop: { color: colors.muted, fontSize: 9.5, maxWidth: 44 },
   reviewProgress: { paddingHorizontal: spacing.lg },
   reviewContent: {
@@ -793,9 +802,9 @@ const styles = StyleSheet.create({
     paddingBottom: 56,
   },
   stageCue: {
-    color: colors.subtle,
-    fontSize: 8.5,
-    lineHeight: 12,
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
     fontWeight: '800',
     letterSpacing: 1.35,
     marginBottom: 18,
@@ -812,9 +821,9 @@ const styles = StyleSheet.create({
   },
   hintButton: { alignSelf: 'flex-start', minHeight: layout.minTouch, marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, paddingHorizontal: 13, justifyContent: 'center' },
   hintButtonText: { color: colors.muted, fontSize: 10.5, fontWeight: '700' },
-  hintCard: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,128,91,0.2)', backgroundColor: colors.accentSoft, padding: 12 },
+  hintCard: { marginTop: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: 14 },
   hintLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  hintText: { color: colors.text, fontSize: 11.5, lineHeight: 17, marginTop: 5 },
+  hintText: { color: colors.text, fontSize: 14, lineHeight: 21, marginTop: 5 },
   answerLabel: { color: colors.subtle, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.3, marginTop: spacing.xl, marginBottom: 8 },
   answerInput: {
     minHeight: 156,

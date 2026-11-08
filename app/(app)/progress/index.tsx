@@ -126,8 +126,8 @@ export default function ProgressScreen() {
           />
 
 
-          <NeuralMap workspace={workspace} now={now} anchorRef={guide.anchors['progress.map']} />
           <LearningInsights workspace={workspace} now={insightNow} insights={insights} onRefresh={() => setInsightRefreshAt(Date.now())} actionRef={guide.anchors['progress.practice']} />
+          <NeuralMap workspace={workspace} now={now} anchorRef={guide.anchors['progress.map']} />
           <AdaptationInsightList
             workspace={workspace}
             now={now}
@@ -361,8 +361,8 @@ function StudyBars({
         {points.map((point) => {
           const height = point.minutes === 0 ? 4 : Math.max(8, Math.round((point.minutes / max) * 116));
           return (
-            <View key={point.day} style={styles.barColumn}>
-              <Text style={styles.barValue}>{point.minutes ? formatMinutesCompact(point.minutes) : '—'}</Text>
+            <View key={point.day} style={styles.barColumn} accessible accessibilityLabel={`${point.label}: ${formatMinutesCompact(point.minutes)} recorded`}>
+              <Text style={styles.barValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{point.minutes ? formatMinutesCompact(point.minutes) : '—'}</Text>
               <View style={styles.barTrack}>
                 <View style={[styles.bar, { height }]} />
               </View>
@@ -526,10 +526,10 @@ const styles = StyleSheet.create({
   chart: { minHeight: 154, flexDirection: 'row', alignItems: 'flex-end', gap: 5 },
   barColumn: { flex: 1, alignItems: 'center' },
   barValue: { color: colors.subtle, fontSize: 10.5, marginBottom: 5 },
-  barTrack: { height: 116, width: '70%', maxWidth: 28, justifyContent: 'flex-end', borderRadius: 8, backgroundColor: colors.bg, overflow: 'hidden' },
+  barTrack: { height: 116, width: '52%', maxWidth: 20, justifyContent: 'flex-end', borderRadius: 8, backgroundColor: colors.bg, overflow: 'hidden' },
   bar: { width: '100%', borderRadius: 8, backgroundColor: chalkTheme.progressBlue },
   barLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 6 },
-  chartFoot: { color: colors.muted, fontSize: 12, marginTop: 10, textAlign: 'center' },
+  chartFoot: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 16, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   panel: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   outcome: { marginBottom: 12 },
   outcomeTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   topicStat: { color: colors.subtle, fontSize: 11.5 },
   topicStatStrong: { color: colors.text, fontWeight: '700' },
   topicGrade: { color: colors.muted, fontSize: 11.5, marginTop: 7 },
-  insufficient: { borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lineStrong, padding: spacing.md },
+  insufficient: { borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   insufficientText: { color: colors.muted, fontSize: 13, lineHeight: 19 },
   methodNote: { marginTop: 34, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: spacing.md },
   methodTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700' },

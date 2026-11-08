@@ -1,5 +1,5 @@
 import { isDayMapSuggestionCurrent } from '@/src/features/today/day-map-suggestion';
-import { ChalkGrain } from '@/src/components/app/ChalkGrain';
+import { ChalkGrain, PaperGrain } from '@/src/components/app/ChalkGrain';
 import { currentTimeInsertionIndex } from '@/src/features/planning/timeline-position';
 import { useDaySkip } from '@/src/features/planning/useDaySkip';
 import { daySkipFailureMessage, restorableOccurrenceDates } from '@/src/features/planning/day-skip';
@@ -1217,12 +1217,13 @@ export default function DayMapScreen() {
             })
           ) : (
             <View style={styles.emptyCard}>
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
               <Text style={styles.emptyTitle}>A clear stretch of your day</Text>
               <Text style={styles.emptyText}>
                 {map.free.length ? `${timeLabel(map.free[0].start)}–${timeLabel(map.free[0].end)} · ${readableMinutes(map.free[0].minutes)} open` : 'No open window remains in the mapped day.'}
               </Text>
               <Text style={styles.emptyText}>Add fixed commitments or place a flexible task when exact timing helps.</Text>
-              <Action label="+ Study task" onPress={() => router.push('/(app)/today/task/new')} accent />
+              <Action label="+ Study task" onPress={() => router.push('/(app)/today/task/new')} primary />
             </View>
           )}
 
@@ -1340,10 +1341,12 @@ function Action({
   label,
   onPress,
   accent,
+  primary,
 }: {
   label: string;
   onPress: () => void;
   accent?: boolean;
+  primary?: boolean;
 }) {
   return (
     <Pressable
@@ -1352,9 +1355,10 @@ function Action({
       style={({ pressed }) => [
         styles.action,
         accent && styles.actionAccent,
+        primary && styles.actionPrimary,
         pressed && styles.pressed,
       ]}>
-      <Text style={[styles.actionText, accent && styles.actionTextAccent]}>{label}</Text>
+      <Text style={[styles.actionText, accent && styles.actionTextAccent, primary && styles.actionTextPrimary]}>{label}</Text>
     </Pressable>
   );
 }
@@ -1719,7 +1723,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: chalkTheme.paperRaised,
+    backgroundColor: '#E6D2BB',
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
@@ -1807,7 +1811,7 @@ const styles = StyleSheet.create({
   missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   mini: { minHeight: layout.minTouch, minWidth: 68, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
   miniText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
-  emptyCard: { marginTop: 8, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: chalkTheme.paperRaised, padding: spacing.lg },
+  emptyCard: { marginTop: 8, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: '#B9A18A', backgroundColor: '#E6D2BB', padding: spacing.lg, overflow: 'hidden' },
   emptyTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
   emptyText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
   flexible: { marginTop: spacing.xl },
@@ -1818,10 +1822,12 @@ const styles = StyleSheet.create({
   flexibleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   addRow: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
   action: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  actionAccent: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
+  actionAccent: { borderColor: '#B57A66', backgroundColor: '#EED2C2' },
+  actionPrimary: { flex: 0, minHeight: 52, marginTop: spacing.md, borderRadius: radius.pill, backgroundColor: '#994A38', borderColor: '#994A38' },
+  actionTextPrimary: { color: '#F2E7D0', fontSize: 14, lineHeight: 20 },
   actionText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
   actionTextAccent: { color: colors.accent },
-  rebuild: { minHeight: 68, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paperRaised, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  rebuild: { minHeight: 68, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: '#B9A18A', backgroundColor: '#E6D2BB', paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   rebuildTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   rebuildText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
   rebuildArrow: { color: colors.accent, fontSize: 18 },

@@ -1,0 +1,30 @@
+name: Preview compatibility inspection
+on:
+  push:
+    branches: [codex/preview-check-cad95]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check token availability
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then echo "Expo token is not configured"; exit 1; fi
+          echo "Expo token is configured"
+      - uses: actions/checkout@v5
+        with:
+          ref: cad95bafe4c655a3281797b554e0a4209701910b
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Inspect preview channel
+        run: npx eas-cli@latest channel:view preview --json --non-interactive
+      - name: Inspect recent Android builds
+        run: npx eas-cli@latest build:list --platform android --limit 10 --json --non-interactive

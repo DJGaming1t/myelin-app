@@ -11,13 +11,13 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon, AppIconName } from '@/src/components/app/AppIcon';
-import { appNavClearance } from '@/src/components/app/navLayout';
+import { appNavClearance, dockIndicatorBox, type DockTabSlot } from '@/src/components/app/navLayout';
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { chalkTheme, colors, layout, motion, space, type } from '@/src/theme/tokens';
 
 type NavTab = 'today' | 'topics' | 'review' | 'progress';
-type TabSlot = { x: number; y: number; width: number; height: number };
+type TabSlot = DockTabSlot;
 
 // The dock lives in each peer screen. Remember the last tab so the incoming
 // dock can animate its indicator from the outgoing tab after a native crossfade.
@@ -74,21 +74,17 @@ export function AppNav({
   useEffect(() => {
     if (!compact || !activeTab || !ITEMS.every((item) => slots[item.key])) return;
     const target = slots[activeTab]!;
-    const targetGeometry = {
-      x: target.x + 3,
-      y: target.y + 5,
-      width: Math.max(0, target.width - 6),
-      height: Math.max(0, target.height - 10),
-    };
+    const targetGeometry = dockIndicatorBox(target);
     const firstLayout = selected.current === null;
     const previousKey = firstLayout ? lastDockTab : selected.current;
     const previous = previousKey ? slots[previousKey] : undefined;
+    const previousGeometry = previous ? dockIndicatorBox(previous) : targetGeometry;
 
     if (firstLayout) {
-      highlightX.value = previous ? previous.x + 3 : targetGeometry.x;
-      highlightY.value = previous ? previous.y + 5 : targetGeometry.y;
-      highlightWidth.value = previous ? Math.max(0, previous.width - 6) : targetGeometry.width;
-      highlightHeight.value = previous ? Math.max(0, previous.height - 10) : targetGeometry.height;
+      highlightX.value = previousGeometry.x;
+      highlightY.value = previousGeometry.y;
+      highlightWidth.value = previousGeometry.width;
+      highlightHeight.value = previousGeometry.height;
       highlightOpacity.value = previous && previousKey !== activeTab && !reduceMotion ? 0.72 : 1;
     }
 

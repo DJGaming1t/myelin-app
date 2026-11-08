@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { QuestionForm } from '@/src/features/topics/QuestionForm';
@@ -21,6 +22,7 @@ export default function NewQuestionScreen() {
   if (!topic) {
     return (
       <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
         <ScreenHeader title="Topic not found" onBack={() => router.replace('/(app)/topics')} />
         <Text style={styles.message}>Return to the topic library and choose another topic.</Text>
       </SafeAreaView>
@@ -29,6 +31,7 @@ export default function NewQuestionScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <ScreenHeader
         eyebrow={topic.subject.toUpperCase()}
         title="Add recall question"

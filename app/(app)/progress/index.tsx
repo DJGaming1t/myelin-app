@@ -99,6 +99,16 @@ export default function ProgressScreen() {
           style={styles.scroll}
           contentContainerStyle={[styles.content, { paddingBottom: dockClearance }]}
           showsVerticalScrollIndicator={false}>
+          <Reveal delay={35} distance={7}>
+            <View ref={!insights.length ? guide.anchors['progress.practice'] : undefined}
+              collapsable={false} testID={!insights.length ? 'guide-progress-practice' : undefined} style={styles.summaryGrid}>
+              <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
+              <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
+              <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
+              <Metric label="DUE CORRECTIONS" value={String(snapshot.mistakes.due)} />
+            </View>
+          </Reveal>
+
           <NeuralMap workspace={workspace} now={now} anchorRef={guide.anchors['progress.map']} />
           <LearningInsights workspace={workspace} now={insightNow} insights={insights} onRefresh={() => setInsightRefreshAt(Date.now())} actionRef={guide.anchors['progress.practice']} />
           <AdaptationInsightList
@@ -111,16 +121,6 @@ export default function ProgressScreen() {
               })
             }
           />
-          <Reveal delay={35} distance={7}>
-            <View ref={!insights.length ? guide.anchors['progress.practice'] : undefined}
-              collapsable={false} testID={!insights.length ? 'guide-progress-practice' : undefined} style={styles.summaryGrid}>
-              <Metric label="LAST 7 DAYS" value={formatMinutesCompact(snapshot.study.last7Minutes)} />
-              <Metric label="ACTIVE DAYS" value={`${snapshot.study.activeDaysLast7}/7`} />
-              <Metric label="REVIEWS · 30D" value={String(snapshot.reviews.last30)} />
-              <Metric label="DUE CORRECTIONS" value={String(snapshot.mistakes.due)} />
-            </View>
-          </Reveal>
-
           <GuideOffer tutorialId="progress" screenName="Progress"
             description="See your Neural Map, useful practice and deeper evidence. Replay anytime from ?."
             visible={guideOffer.visible} saveFailed={guideOffer.saveFailed && offerEligible}
@@ -508,75 +508,76 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.panel,
+    marginBottom: spacing.lg,
     overflow: 'hidden',
   },
   metric: {
     width: '50%',
-    minHeight: 72,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    minHeight: 86,
+    paddingHorizontal: 15,
+    paddingVertical: 14,
     justifyContent: 'space-between',
     borderRightWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
   },
-  metricLabel: { color: colors.subtle, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.05 },
-  metricValue: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  metricLabel: { color: colors.muted, fontSize: 11, lineHeight: 16, fontWeight: '700', letterSpacing: .5 },
+  metricValue: { color: colors.text, fontSize: 22, fontWeight: '600' },
   sectionHeading: { marginTop: spacing.xl, marginBottom: 9 },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  sectionSubtitle: { color: colors.muted, fontSize: 10.5, lineHeight: 16, marginTop: 4, maxWidth: 540 },
+  sectionSubtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4, maxWidth: 540 },
   chartPanel: { borderRadius: radius.xl, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panelGlass, padding: 14 },
   chart: { minHeight: 154, flexDirection: 'row', alignItems: 'flex-end', gap: 5 },
   barColumn: { flex: 1, alignItems: 'center' },
-  barValue: { color: colors.subtle, fontSize: 7.5, marginBottom: 5 },
+  barValue: { color: colors.subtle, fontSize: 10.5, marginBottom: 5 },
   barTrack: { height: 116, width: '70%', maxWidth: 28, justifyContent: 'flex-end', borderRadius: 8, backgroundColor: colors.bg, overflow: 'hidden' },
   bar: { width: '100%', borderRadius: 8, backgroundColor: colors.accentFill },
-  barLabel: { color: colors.muted, fontSize: 8.5, fontWeight: '700', marginTop: 6 },
-  chartFoot: { color: colors.muted, fontSize: 9.5, marginTop: 10, textAlign: 'center' },
+  barLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 6 },
+  chartFoot: { color: colors.muted, fontSize: 12, marginTop: 10, textAlign: 'center' },
   panel: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md },
   outcome: { marginBottom: 12 },
   outcomeTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  outcomeLabel: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  outcomeValue: { color: colors.muted, fontSize: 9.5 },
+  outcomeLabel: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
+  outcomeValue: { color: colors.muted, fontSize: 12 },
   dangerText: { color: colors.danger },
   successText: { color: colors.success },
   outcomeTrack: { height: 6, borderRadius: 6, backgroundColor: colors.bg, overflow: 'hidden', marginTop: 6 },
   outcomeFill: { height: 6, borderRadius: 6, backgroundColor: colors.accentFill },
   outcomeDanger: { backgroundColor: colors.danger },
   outcomeSuccess: { backgroundColor: colors.success },
-  panelFoot: { color: colors.subtle, fontSize: 9.5, marginTop: 1 },
+  panelFoot: { color: colors.subtle, fontSize: 12, marginTop: 1 },
   confidenceRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
   confidenceCopy: { flex: 1 },
   confidenceLabel: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  confidenceMeta: { color: colors.subtle, fontSize: 8.8, marginTop: 3 },
+  confidenceMeta: { color: colors.subtle, fontSize: 11.5, marginTop: 3 },
   confidenceGrade: { color: colors.accent, fontSize: 12, fontWeight: '800' },
   insightDivider: { height: 1, backgroundColor: colors.line, marginTop: 10, marginBottom: 11 },
-  insightText: { color: colors.text, fontSize: 10.5, lineHeight: 16 },
-  sampleText: { color: colors.subtle, fontSize: 8.8, lineHeight: 14, marginTop: 5 },
+  insightText: { color: colors.text, fontSize: 13, lineHeight: 19 },
+  sampleText: { color: colors.subtle, fontSize: 11.5, lineHeight: 14, marginTop: 5 },
   timingGrid: { flexDirection: 'row', gap: 7, marginBottom: 12 },
   metricInline: { flex: 1, minHeight: 55, borderRadius: radius.md, backgroundColor: colors.bg, padding: 9, justifyContent: 'space-between' },
-  metricInlineLabel: { color: colors.subtle, fontSize: 7, fontWeight: '800', letterSpacing: 1 },
+  metricInlineLabel: { color: colors.subtle, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   metricInlineValue: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
   mistakeGrid: { flexDirection: 'row', gap: 7 },
   progressActionList: { marginTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
-  inlineAction: { minHeight: layout.minTouch, marginTop: 8, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,161,145,0.22)', backgroundColor: 'rgba(255,161,145,0.045)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  inlineActionText: { color: colors.danger, fontSize: 10.5, fontWeight: '700' },
-  inlineActionArrow: { color: colors.danger, fontSize: 17 },
+  inlineAction: { minHeight: layout.minTouch, marginTop: 8, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  inlineActionText: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
+  inlineActionArrow: { color: colors.textDim, fontSize: 17 },
   topicList: { gap: 8 },
   topicCard: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelGlass, padding: spacing.md, shadowColor: colors.shadow, shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
   topicTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   topicCopy: { flex: 1 },
-  topicSubject: { color: colors.accent, fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },
+  topicSubject: { color: colors.accent, fontSize: 12.5, fontWeight: '800', letterSpacing: 1.1 },
   topicName: { color: colors.text, fontSize: 12.5, fontWeight: '700', marginTop: 4 },
-  topicDirection: { color: colors.muted, fontSize: 8.8, fontWeight: '700' },
+  topicDirection: { color: colors.muted, fontSize: 11.5, fontWeight: '700' },
   topicStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
-  topicStat: { color: colors.subtle, fontSize: 9.2 },
+  topicStat: { color: colors.subtle, fontSize: 11.5 },
   topicStatStrong: { color: colors.text, fontWeight: '700' },
-  topicGrade: { color: colors.muted, fontSize: 9, marginTop: 7 },
+  topicGrade: { color: colors.muted, fontSize: 11.5, marginTop: 7 },
   insufficient: { borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lineStrong, padding: spacing.md },
-  insufficientText: { color: colors.muted, fontSize: 10.5, lineHeight: 16 },
+  insufficientText: { color: colors.muted, fontSize: 13, lineHeight: 19 },
   methodNote: { marginTop: 34, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: spacing.md },
-  methodTitle: { color: colors.text, fontSize: 10.5, fontWeight: '700' },
-  methodText: { color: colors.subtle, fontSize: 9.5, lineHeight: 15, marginTop: 4 },
+  methodTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
+  methodText: { color: colors.subtle, fontSize: 12, lineHeight: 15, marginTop: 4 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.995 }] },
 });

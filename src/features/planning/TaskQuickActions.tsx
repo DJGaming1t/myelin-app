@@ -14,7 +14,7 @@ export { useQuickTaskCompletion as useTaskCompletion } from './useTaskCompletion
 export function TaskDueLabel({ task, now = Date.now() }: { task: StudyTask; now?: number }) {
   const urgency = taskUrgency(task, now);
   if (!urgency) return null;
-  return <Text style={[styles.due, urgency.overdue && styles.overdue]}>{urgency.overdue ? '● ' : ''}{urgency.label}</Text>;
+  return <Text style={[styles.due, urgency.overdue && styles.overdue]}>{urgency.label}</Text>;
 }
 
 export function TaskQuickActions({ task, paper = true, onComplete }: { task: StudyTask; paper?: boolean; onComplete?: (taskId: string) => void }) {
@@ -46,5 +46,5 @@ const styles = StyleSheet.create({
   focusText: { color: colors.accent, fontSize: 12, fontWeight: '800' },
   completeText: { color: colors.success, fontSize: 12, fontWeight: '800' },
   due: { color: colors.accent, fontSize: 12, lineHeight: 18, fontWeight: '700', marginTop: 6 },
-  overdue: { color: colors.danger },
+  overdue: { color: colors.textDim },
 });

@@ -1019,20 +1019,10 @@ export default function TodayScreen() {
 
                     <Text style={styles.heroTitle}>{next.topicName}</Text>
                     {next.taskId ? (
-                      <View
-                        style={{
-                          backgroundColor: colors.accentFaint,
-                          borderRadius: 12,
-                          paddingHorizontal: 12,
-                          paddingBottom: 6,
-                          alignSelf: 'flex-start',
-                          marginTop: 8,
-                        }}>
-                        <TaskDueLabel
-                          task={currentWorkspace.tasks.find((task) => task.id === next.taskId)!}
-                          now={now}
-                        />
-                      </View>
+                      <TaskDueLabel
+                        task={currentWorkspace.tasks.find((task) => task.id === next.taskId)!}
+                        now={now}
+                      />
                     ) : null}
                     {!(
                       next.taskId &&
@@ -1349,7 +1339,7 @@ export default function TodayScreen() {
                       setShowInbox(false);
                     }}
                     style={styles.overdueToggle}>
-                    <Text style={styles.overdueText}>● {overdueCount} overdue</Text>
+                    <Text style={styles.overdueText}>{overdueCount} overdue</Text>
                     <Text style={styles.summaryMeta}>
                       {showOverdue ? 'Hide' : 'View tasks'} {showOverdue ? '−' : '+'}
                     </Text>
@@ -2298,7 +2288,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     marginTop: space.xxs,
   },
-  overdueText: { color: colors.danger, ...type.meta, fontWeight: '700' },
+  overdueText: { color: chalkTheme.inkSoft, ...type.meta, fontWeight: '700' },
   summaryMeta: { color: chalkTheme.inkSoft, ...type.meta, flexShrink: 1 },
   shortcuts: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   shortcutAnchor: { flex: 1 },

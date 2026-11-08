@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { MistakeForm } from '@/src/features/mistakes/MistakeForm';
@@ -22,6 +23,7 @@ export default function NewMistakeScreen() {
   if (!workspace || workspace.topics.length === 0) {
     return (
       <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
         <ScreenHeader title="Add mistake" onBack={() => router.back()} />
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Create a topic first.</Text>
@@ -38,6 +40,7 @@ export default function NewMistakeScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <ScreenHeader
         eyebrow="CAPTURE THE ERROR"
         title="Add mistake"

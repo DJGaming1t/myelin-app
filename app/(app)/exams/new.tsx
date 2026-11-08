@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { ExamForm } from '@/src/features/exams/ExamForm';
@@ -14,6 +15,7 @@ export default function NewExamScreen() {
   if (!workspace) {
     return (
       <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
         <Text style={styles.loading}>Opening exam editor…</Text>
       </SafeAreaView>
     );
@@ -21,6 +23,7 @@ export default function NewExamScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AmbientBackdrop />
       <ScreenHeader
         eyebrow="NEW EXAM"
         title="What are you preparing for?"

@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: colors.accentLine,
-    backgroundColor: colors.accentFaint,
+    backgroundColor: colors.panelRaised,
   },
   chipText: { color: colors.textDim, ...type.meta, fontWeight: '600' },
   activeText: { color: colors.accent },
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  statusRowActive: { backgroundColor: colors.accentFaint },
+  statusRowActive: { backgroundColor: colors.panelRaised },
   statusCopy: { flex: 1, paddingLeft: space.xs },
   statusTitle: { color: colors.text, ...type.bodyStrong },
   statusHelper: { color: colors.muted, ...type.meta, marginTop: 2 },

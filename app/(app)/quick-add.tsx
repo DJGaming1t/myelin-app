@@ -75,12 +75,15 @@ const styles = StyleSheet.create({
   section: {
     color: colors.text,
     ...type.section,
-    marginTop: space.xs,
-    marginBottom: space.xs,
+    marginTop: space.md,
+    marginBottom: space.md,
   },
   list: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.line,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.panel,
+    paddingHorizontal: space.md,
   },
   note: {
     color: colors.subtle,

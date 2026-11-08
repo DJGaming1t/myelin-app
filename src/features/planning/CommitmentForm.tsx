@@ -96,6 +96,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
   const [date, setDate] = useState(localDateKey(existing?.startAt ?? Date.now()));
   const [skippedDates, setSkippedDates] = useState<string[]>(existing?.skippedDates ?? []);
   const [skipDate, setSkipDate] = useState('');
+  const [showSkippedDates, setShowSkippedDates] = useState(Boolean(existing?.skippedDates?.length));
   const [error, setError] = useState('');
 
   if (!workspace) return null;
@@ -291,7 +292,15 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
         <Text style={styles.label}>Date · YYYY-MM-DD</Text>
         <TextInput accessibilityLabel="Fixed block date" value={date} onChangeText={setDate} style={styles.input} />
       </> : <>
-        <Text style={styles.label}>Skip specific dates</Text>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: showSkippedDates }}
+          onPress={() => setShowSkippedDates(value => !value)} style={styles.detailsToggle}>
+          <View style={styles.detailsCopy}>
+            <Text style={styles.detailsTitle}>Skip dates</Text>
+            <Text style={styles.helper}>{skippedDates.length ? `${skippedDates.length} skipped` : 'Optional · for days off and cancellations'}</Text>
+          </View>
+          <Text style={styles.detailsMark}>{showSkippedDates ? '−' : '+'}</Text>
+        </Pressable>
+        {showSkippedDates ? <View>
         <Text style={styles.helper}>Cancelled class or a day off? Skip that occurrence. Your weekly schedule stays the same. For overnight blocks, choose the date they start.</Text>
         <View style={[styles.wrap, { marginTop: 10 }]}>
           {Array.from({ length: 14 }, (_, i) => addLocalDays(Date.now(), i))
@@ -306,6 +315,7 @@ export function CommitmentForm({ commitmentId }: { commitmentId?: string }) {
           <Text style={styles.label}>Skipped dates · tap to restore</Text>
           <View style={styles.wrap}>{skippedDates.map(value => <Chip key={value} label={`${value} ×`} active onPress={() => setSkippedDates(current => current.filter(item => item !== value))} />)}</View>
         </> : null}
+        </View> : null}
       </>}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -392,7 +402,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  active: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
+  active: { borderColor: colors.accentLine, backgroundColor: colors.panelRaised },
   activeText: { color: colors.accent },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   timeInput: {
@@ -419,6 +429,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  detailsToggle: { minHeight: 66, marginTop: spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.lineStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  detailsCopy: { flex: 1 },
+  detailsTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  detailsMark: { color: colors.textDim, fontSize: 23 },
   helper: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 7 },
   error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: spacing.md },
   primary: {

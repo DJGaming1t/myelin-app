@@ -138,6 +138,7 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
   const [actual, setActual] = useState<string | null>(null);
   const [priority, setPriority] = useState<Priority>(existing?.priority ?? 2);
   const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [showDetails, setShowDetails] = useState(Boolean(existing));
   const [error, setError] = useState('');
 
   if (!workspace) return null;
@@ -322,6 +323,16 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
         </View>
       ) : null}
 
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }}
+        accessibilityLabel={showDetails ? 'Hide task details' : 'Show task details'}
+        onPress={() => setShowDetails(value => !value)} style={styles.detailsToggle}>
+        <View style={styles.detailsCopy}>
+          <Text style={styles.detailsTitle}>More details</Text>
+          <Text style={styles.detailsHint}>Type, subject, priority and notes</Text>
+        </View>
+        <Text style={styles.detailsMark}>{showDetails ? '−' : '+'}</Text>
+      </Pressable>
+      {showDetails ? <View>
       <Label>Type</Label>
       <View style={styles.rowWrap}>
         {TYPES.map((item) => (
@@ -406,6 +417,8 @@ function TaskFormEditor({ taskId }: { taskId?: string }) {
         style={[styles.input, styles.notes]}
       />
 
+      </View> : null}
+
       {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
       {conflict && existing ? <Pressable accessibilityRole="button" onPress={() => {
         if (conflict === 'time') { setActual(null); setRecordedBaseline(null); }
@@ -453,6 +466,11 @@ function Chip({ label, active, onPress, flex }: { label: string; active: boolean
 const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: layout.contentMax, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingBottom: 56 },
   label: { color: colors.textDim, fontSize: 12.5, lineHeight: 17, fontWeight: '700', marginTop: spacing.md, marginBottom: 8 },
+  detailsToggle: { minHeight: 66, marginTop: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.lineStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  detailsCopy: { flex: 1 },
+  detailsTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  detailsHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
+  detailsMark: { color: colors.textDim, fontSize: 23 },
   input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 14, paddingHorizontal: 13 },
   disabledInput: { opacity: 0.65 },
   smallInput: { minHeight: layout.minTouch, width: 110, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 13, paddingHorizontal: 13 },
@@ -484,7 +502,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   chip: { minHeight: layout.minTouch, maxWidth: 220, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
-  chipActive: { borderColor: colors.accentLine, backgroundColor: colors.accentSoft },
+  chipActive: { borderColor: colors.accentLine, backgroundColor: colors.panelRaised },
   chipText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   chipTextActive: { color: colors.accent },
   flex: { flex: 1, maxWidth: undefined },

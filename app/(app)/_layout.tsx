@@ -6,6 +6,7 @@ import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { motion } from '@/src/theme/tokens';
 
 const PEER_ROUTE_NAMES = new Set([
   'today',
@@ -63,13 +64,19 @@ export default function AppLayout() {
     <Stack
       screenOptions={({ route }) => ({
         headerShown: false,
-        // Bottom-nav destinations are peers, so crossfade them instead of
-        // implying hierarchy with a slide. Deeper routes keep the hierarchy cue.
+        // Peer tabs arrive with a restrained upward fade; nested detail pages
+        // slide in as a separate navigation layer. The dock animates its
+        // selected indicator independently and stays physically anchored.
         animation: reduceMotion
           ? 'none'
           : PEER_ROUTE_NAMES.has(route.name)
-            ? 'fade'
-            : 'fade_from_bottom',
+            ? 'fade_from_bottom'
+            : 'slide_from_right',
+        animationDuration: reduceMotion
+          ? 0
+          : PEER_ROUTE_NAMES.has(route.name)
+            ? motion.hierarchyMs
+            : motion.enterMs,
       })}>
       <Stack.Screen name="today/index" />
       <Stack.Screen name="topics" />

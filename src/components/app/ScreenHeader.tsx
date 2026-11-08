@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SpringPressable } from '@/src/components/motion/SpringPressable';
-import { colors, layout, radius, space, type } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, space, type } from '@/src/theme/tokens';
 
 type Props = {
   eyebrow?: string;
@@ -13,6 +13,7 @@ type Props = {
   onAction?: () => void;
   onHelp?: () => void;
   variant?: 'hero' | 'standard' | 'compact';
+  dark?: boolean;
 };
 
 export function ScreenHeader({
@@ -25,6 +26,7 @@ export function ScreenHeader({
   onAction,
   onHelp,
   variant = 'standard',
+  dark = false,
 }: Props) {
   return (
     <View style={[styles.wrap, variant === 'compact' && styles.wrapCompact]}>
@@ -39,20 +41,20 @@ export function ScreenHeader({
             scaleTo={0.985}
             lift={0}
             style={styles.backButton}>
-            <Text style={styles.backArrow}>←</Text>
-            <Text style={styles.backText}>{backLabel}</Text>
+            <Text style={[styles.backArrow, dark && { color: chalkTheme.onStage }]}>←</Text>
+            <Text style={[styles.backText, dark && { color: chalkTheme.onStage }]}>{backLabel}</Text>
           </SpringPressable>
         ) : (
           <View style={styles.brandRow} accessible accessibilityLabel="MYELIN">
 
-            <Text style={styles.brand}>MYELIN</Text>
+            <Text style={[styles.brand, dark && { color: chalkTheme.onStage }]}>MYELIN</Text>
           </View>
         )}
 
         <View style={styles.topActions}>
         {onHelp ? <SpringPressable accessibilityRole="button" accessibilityLabel="Teach me this screen"
           onPress={onHelp} lift={0} style={styles.helpButton}>
-          <Text style={styles.helpText}>?</Text>
+          <Text style={[styles.helpText, dark && { color: chalkTheme.onStage }]}>?</Text>
         </SpringPressable> : null}
         {actionLabel && onAction ? (
           <SpringPressable
@@ -63,24 +65,25 @@ export function ScreenHeader({
             scaleTo={0.985}
             lift={0}
             style={styles.actionButton}>
-            <Text style={styles.actionText}>{actionLabel}</Text>
+            <Text style={[styles.actionText, dark && { color: chalkTheme.onStage }]}>{actionLabel}</Text>
           </SpringPressable>
         ) : null}
         </View>
       </View>
 
       <View style={[styles.copy, variant === 'compact' && styles.copyCompact]}>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+        {eyebrow ? <Text style={[styles.eyebrow, dark && { color: chalkTheme.mutedCream }]}>{eyebrow}</Text> : null}
         <Text
           accessibilityRole="header"
           style={[
             styles.title,
+            dark && { color: chalkTheme.onStage },
             variant === 'hero' && styles.titleHero,
             variant === 'compact' && styles.titleCompact,
           ]}>
           {title}
         </Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        {subtitle ? <Text style={[styles.subtitle, dark && { color: chalkTheme.mutedCream }]}>{subtitle}</Text> : null}
       </View>
     </View>
   );

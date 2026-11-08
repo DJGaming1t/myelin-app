@@ -237,10 +237,11 @@ export default function ReviewScreen() {
 
   if (!session) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <AmbientBackdrop />
+      <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
         <View style={styles.page}>
           <ScreenHeader
+            dark
             onHelp={guide.start}
             variant="compact"
             title="Review"
@@ -251,7 +252,7 @@ export default function ReviewScreen() {
             }
           />
 
-          <ScrollView ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={[styles.dashboard, { paddingBottom: dockClearance }]} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.paperScroll} ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={[styles.dashboard, { paddingBottom: dockClearance }]} showsVerticalScrollIndicator={false}>
             {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text> : null}
             <AnimatedDisclosure visible={completedNotice} style={styles.completeNotice}>
               <Text style={styles.completeMark}>✓</Text>
@@ -717,8 +718,10 @@ function CompareCard({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperScroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   page: { flex: 1 },
-  dashboard: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 48 },
+  dashboard: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 48 },
   queueOverview: { backgroundColor: chalkTheme.hero, borderRadius: 24, borderWidth: 1, borderColor: chalkTheme.dockBorder, paddingHorizontal: 20, paddingVertical: 20 },
   queueCaption: { color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 16, fontWeight: '700', letterSpacing: 1.3 },
   queueCountRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, marginTop: 12 },

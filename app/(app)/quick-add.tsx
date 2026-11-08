@@ -5,14 +5,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionRow } from '@/src/components/app/ActionRow';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
-import { colors, layout, space, type } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, space, type } from '@/src/theme/tokens';
 
 export default function QuickAddScreen() {
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <View style={styles.page}>
         <ScreenHeader
+          dark
           variant="compact"
           title="Add to MYELIN"
           subtitle="Capture the thing first. MYELIN can help organise the rest."
@@ -62,9 +63,9 @@ export default function QuickAddScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
   page: { flex: 1 },
-  scroll: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   content: {
     width: '100%',
     maxWidth: layout.contentMax,

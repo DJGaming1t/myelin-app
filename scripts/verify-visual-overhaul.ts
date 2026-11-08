@@ -102,7 +102,7 @@ function main() {
     'app/(app)/settings/tutorial.tsx',
   ]) {
     assert.ok(
-      read(path).includes('<AmbientBackdrop />'),
+      (/<AmbientBackdrop(?:\s+dark)?\s*\/>/).test(read(path)),
       `${path} should use the shared ambient shell.`,
     );
   }

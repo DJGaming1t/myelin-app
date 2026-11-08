@@ -80,10 +80,11 @@ export default function ProgressScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
       <View style={styles.page}>
         <ScreenHeader
+          dark
           onHelp={guide.start}
           variant="compact"
           title="Progress"
@@ -502,11 +503,12 @@ function Insufficient({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
   page: { flex: 1 },
-  scroll: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 12 },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 44 },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 44 },
   summaryHero: {
     backgroundColor: chalkTheme.hero, borderRadius: 24, paddingHorizontal: 20,
     paddingTop: 21, paddingBottom: 15, marginBottom: spacing.md,

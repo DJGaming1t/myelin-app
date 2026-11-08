@@ -1277,7 +1277,7 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 48,
   },
-  setupHeaderBlock: { backgroundColor: chalkTheme.hero, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 26, marginBottom: 0 },
+  setupHeaderBlock: { backgroundColor: chalkTheme.hero, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 26, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, overflow: 'hidden', marginBottom: 0 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   eyebrowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accentFill },
   eyebrow: { color: '#D9A58D', fontSize: 11, lineHeight: 15, fontWeight: '800', letterSpacing: 1.2 },

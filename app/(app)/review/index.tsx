@@ -721,7 +721,7 @@ function CompareCard({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
-  paperScroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+  paperScroll: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   page: { flex: 1 },
   dashboard: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 48 },
   queueOverview: { backgroundColor: chalkTheme.hero, borderRadius: 24, borderWidth: 1, borderColor: chalkTheme.dockBorder, paddingHorizontal: 20, paddingVertical: 20 },

@@ -65,7 +65,7 @@ export default function QuickAddScreen() {
 const styles = StyleSheet.create({
   graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
   page: { flex: 1 },
-  scroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+  scroll: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   content: {
     width: '100%',
     maxWidth: layout.contentMax,

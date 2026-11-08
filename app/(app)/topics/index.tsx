@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionRow } from '@/src/components/app/ActionRow';
+import { PaperGrain } from '@/src/components/app/ChalkGrain';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
@@ -91,6 +92,7 @@ export default function TopicsScreen() {
         />
 
         <View style={styles.paperBody}>
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
         <View style={styles.summary}>
           <Text style={styles.summaryText}>
             {totalTopics} {totalTopics === 1 ? 'topic' : 'topics'} · {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
@@ -292,7 +294,7 @@ function FilterChip({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
-  paperBody: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: space.md },
+  paperBody: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: space.md },
   screen: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
   loadingText: { color: colors.muted, ...type.meta },

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PaperGrain } from '@/src/components/app/ChalkGrain';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppNav, useAppNavClearance } from '@/src/components/app/AppNav';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
@@ -67,6 +68,7 @@ export default function ExamsScreen() {
         />
 
         <View style={styles.paperBody}>
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
         {nextExam ? (
           <Pressable
             accessibilityRole="button"
@@ -219,7 +221,7 @@ function FilterButton({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
-  paperBody: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: 16 },
+  paperBody: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: 16 },
   page: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 13 },

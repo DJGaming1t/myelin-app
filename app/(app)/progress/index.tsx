@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
   page: { flex: 1 },
-  scroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+  scroll: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 12 },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 44 },

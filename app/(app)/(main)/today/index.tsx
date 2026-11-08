@@ -655,8 +655,8 @@ export default function TodayScreen() {
             style={[styles.visualStage, { height: heroStageHeight }]}
             accessibilityLabel="Animated daily task progress">
             {/* Persistent Single-Context 3D Bottle / Stopwatch */}
-            <View style={styles.glStageShift}>
-              <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={isSheetExpanded} />
+            <View style={[styles.glStageShift, { height: heroStageHeight }]}>
+              <ProgressVisual progress={todayTaskProgress} model={heroModel} paused={isSheetExpanded} viewportHeight={heroStageHeight} />
             </View>
 
             {/* Faint chalk typography and pencil marks frame the actual 3D object. */}
@@ -1818,7 +1818,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   glStageShift: {
-    flex: 1,
     marginLeft: -12,
     marginRight: 94,
   },

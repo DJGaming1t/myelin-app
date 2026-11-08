@@ -346,6 +346,9 @@ assert.match(npvSource, /!ready\s*\?\s*<StaticChalkVisualFallback/, 'Show the bu
 assert.ok(!npvSource.includes('Starting 3D…'), 'Do not replace the hero with a repeated loading message');
 assert.match(npvSource, /fallbackWrap:\s*\{[^}]*backgroundColor:\s*'transparent'/s, 'Fallback must not paint an opaque layer over the GL surface');
 assert.match(npvSource, /glView:\s*\{[^}]*\.\.\.StyleSheet\.absoluteFillObject/s, 'The GL view must fill the measured stage');
+assert.match(npvSource, /style=\{\[styles\.glView,\s*\{\s*height:\s*viewportHeight\s*\}\]\}/, 'Pass a non-zero viewport height directly to the native GL wrapper');
+const todaySource = await readFile(new URL('../app/(app)/(main)/today/index.tsx', import.meta.url), 'utf8');
+assert.match(todaySource, /<ProgressVisual[^>]*viewportHeight=\{heroStageHeight\}/, 'Today must pass its calculated hero height to the GL view');
 
 console.log(
   JSON.stringify(

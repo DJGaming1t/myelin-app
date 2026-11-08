@@ -205,6 +205,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
   progress = 0,
   model = 'bottle',
   paused = false,
+  viewportHeight,
 }) {
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
@@ -479,7 +480,7 @@ export const NativeProgressVisual = memo(function NativeProgressVisual({
 
   return (
     <View style={styles.stageContainer} {...pan.panHandlers}>
-      <GLView key={contextKey} style={styles.glView} collapsable={false} onLayout={event => { surfaceLayout.current = event.nativeEvent.layout; }} onContextCreate={onContextCreate} />
+      <GLView key={contextKey} style={[styles.glView, { height: viewportHeight }]} collapsable={false} onLayout={event => { surfaceLayout.current = event.nativeEvent.layout; }} onContextCreate={onContextCreate} />
       {!ready ? <StaticChalkVisualFallback progress={progress} model={model} /> : null}
       {error ? <Pressable accessibilityRole="button" accessibilityLabel="Retry native 3D visual" onPress={() => {
         startupAttempts.current = 0; hasCurrentContext.current = false; cleanup.current(); setReady(false); setError(null); setContextKey(key => key + 1);

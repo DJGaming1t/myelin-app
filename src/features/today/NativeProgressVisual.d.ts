@@ -7,6 +7,7 @@ export declare const NativeProgressVisual: ComponentType<{
   progress: number;
   model?: TodayHeroVisualModel;
   paused?: boolean;
+  viewportHeight: number;
 }>;
 
 export declare const StaticChalkVisualFallback: ComponentType<{

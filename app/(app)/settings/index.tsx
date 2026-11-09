@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { AdaptiveSettings } from '@/src/features/adaptive/AdaptiveSettings';
 import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -822,7 +823,7 @@ function SwitchRow({
         disabled={disabled}
         onValueChange={onValueChange}
         trackColor={{ false: colors.lineStrong, true: colors.accent }}
-        thumbColor={value ? colors.accent : colors.panel}
+        thumbColor={value ? colors.accent : chalkTheme.paper}
       />
     </View>
   );
@@ -939,7 +940,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
   sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   sectionIndicator: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, backgroundColor: chalkTheme.paperRaised, padding: spacing.md, overflow: 'hidden' },
+  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, backgroundColor: paperSurfaces.card, padding: spacing.md, overflow: 'hidden' },
   settingBlock: { paddingVertical: 4, marginBottom: 13 },
   settingTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   settingLabel: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
@@ -962,7 +963,7 @@ const styles = StyleSheet.create({
   infoBox: { marginTop: 11, borderLeftWidth: 2, borderLeftColor: colors.accent, paddingLeft: 10 },
   infoText: { color: colors.muted, fontSize: 12, lineHeight: 18 },
   accountActions: { gap: 7, marginTop: 11 },
-  smallAction: { minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  smallAction: { minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paper, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   smallActionText: { color: colors.text, fontSize: 12.5, lineHeight: 17, fontWeight: '700' },
   smallActionDanger: { borderColor: 'rgba(255,161,145,0.25)', backgroundColor: 'rgba(255,161,145,0.04)' },
   smallActionTextDanger: { color: colors.danger },
@@ -977,10 +978,10 @@ const styles = StyleSheet.create({
   privacyValue: { color: colors.success, fontSize: 11.5, lineHeight: 15, fontWeight: '800' },
   privacyHelper: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 4 },
   dataGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  dataMetric: { width: '31.7%', minHeight: 56, borderRadius: radius.md, backgroundColor: colors.bg, padding: 9, justifyContent: 'space-between' },
+  dataMetric: { width: '31.7%', minHeight: 56, borderRadius: radius.md, backgroundColor: chalkTheme.paper, padding: 9, justifyContent: 'space-between' },
   dataLabel: { color: colors.subtle, fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 0.4 },
   dataValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
-  transferButton: { minHeight: 56, marginTop: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.bg, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  transferButton: { minHeight: 56, marginTop: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: chalkTheme.paper, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
   transferCopy: { flex: 1, minWidth: 0 },
   transferTitle: { color: colors.text, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   transferText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },

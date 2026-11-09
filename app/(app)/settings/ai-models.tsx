@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -411,7 +412,7 @@ export default function AiModelsScreen() {
             thumbColor={
               snapshot.preferences.autoUnload
                 ? colors.accent
-                : colors.panel
+                : settingsChalk.paper
             }
           />
         </View>
@@ -491,7 +492,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.28)',
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.lg,
   },
   eyebrow: {
@@ -545,7 +546,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: 'rgba(255,107,107,0.28)',
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   warningTitle: {
@@ -564,7 +565,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.lg,
   },
   modelHeader: {
@@ -707,7 +708,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: 13,
     flexDirection: 'row',
     alignItems: 'center',
@@ -728,7 +729,7 @@ const styles = StyleSheet.create({
   },
   note: {
     borderRadius: radius.md,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   noteTitle: {

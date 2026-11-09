@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { colors, radius } from '@/src/theme/tokens';
 
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.panelRaised,
+    backgroundColor: paperSurfaces.card,
     borderWidth: 1,
     borderColor: colors.lineStrong,
     alignItems: 'center',
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: radius.sm,
-    backgroundColor: colors.panelRaised,
+    backgroundColor: paperSurfaces.card,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: paperSurfaces.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
   },
   weekDotMuted: {
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panelRaised,
+    backgroundColor: paperSurfaces.card,
   },
   weekDotText: {
     color: colors.subtle,

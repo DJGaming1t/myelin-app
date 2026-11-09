@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { router, useFocusEffect } from 'expo-router';
 import { PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
@@ -5,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
 import { AppAvatar, BlockingGlyph, BlockingGlyphName, ShieldEmblem, StrengthMark, WeekStrip } from './BlockingVisuals';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
-import { colors, layout, radius, space } from '@/src/theme/tokens';
+import { chalkTheme, colors, layout, radius, space } from '@/src/theme/tokens';
 import {
   FocusShieldAttemptEntry, FocusShieldMode, InstalledAndroidApp, activeShieldSummary, addCustomScheduleWindow,
   addCustomShieldTarget, buildHistoricalTemptationAnalytics, focusShieldStorage, formatMinuteOfDay,
@@ -120,14 +121,16 @@ export default function BlockingScreen() {
   function navigate(next: Page) { setPage(next); setPendingDelete(null); setError(''); }
 
   return <SafeAreaView style={s.safe}>
-    <AmbientBackdrop />
+    <AmbientBackdrop darkTop warmPaper />
     <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+    <View style={s.topbarStage}>
       <View style={s.topbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(app)/focus')} style={({ pressed }) => [s.backButton, pressed && s.pressed]}><View style={{ transform: [{ rotate: '180deg' }] }}><BlockingGlyph name="arrow" size={24} /></View></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(app)/focus')} style={({ pressed }) => [s.backButton, pressed && s.pressed]}><View style={{ transform: [{ rotate: '180deg' }] }}><BlockingGlyph name="arrow" size={24} color={chalkTheme.onStage} /></View></Pressable>
         <View style={s.flex}><Text style={s.topbarKicker}>MYELIN / YOUR SPACE</Text><Text accessibilityRole="header" style={s.topbarTitle}>App blocking</Text></View>
-        <View style={s.topbarMark}><BlockingGlyph name="shield" size={19} color={colors.accentBright} /></View>
+        <View style={s.topbarMark}><BlockingGlyph name="shield" size={19} color={chalkTheme.onStage} /></View>
       </View>
+    </View>
+    <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
       <View style={s.hero}>
         <View pointerEvents="none" style={s.heroGlow} />
         <View style={s.heroTop}>
@@ -266,10 +269,11 @@ function DeleteAction({ id, label, pending, onRequest, onConfirm }: { id: string
   return pending === id ? <View style={s.deleteConfirmation}><Text style={s.body}>Remove this rule? You can add it again later.</Text><Action label={label} onPress={onConfirm} /><Action label="Keep it" quiet onPress={() => onRequest(null)} /></View> : <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onRequest(id)} style={s.textAction}><Text style={s.deleteText}>Remove</Text></Pressable>;
 }
 const s = StyleSheet.create({
+  topbarStage: { backgroundColor: chalkTheme.hero, borderBottomLeftRadius: 26, borderBottomRightRadius: 26, paddingHorizontal: space.md, overflow: 'hidden' },
   topbar: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: 0, paddingVertical: 10 },
-  backButton: { width: 44, height: 44, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  topbarKicker: { color: colors.subtle, fontSize: 9, lineHeight: 14, letterSpacing: 1.5, fontWeight: '600' },
-  topbarTitle: { color: colors.text, fontSize: 22, lineHeight: 29, letterSpacing: -0.6, fontWeight: '600' },
+  backButton: { width: 44, height: 44, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'transparent', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  topbarKicker: { color: chalkTheme.mutedCream, fontSize: 9, lineHeight: 14, letterSpacing: 1.5, fontWeight: '600' },
+  topbarTitle: { color: chalkTheme.onStage, fontSize: 22, lineHeight: 29, letterSpacing: -0.6, fontWeight: '600' },
   topbarMark: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   heroKicker: { color: colors.accentBright, fontSize: 8, lineHeight: 14, letterSpacing: 1.1, fontWeight: '600' },
   heroGlow: { position: 'absolute', top: -70, right: -80, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,130,93,0.035)', borderWidth: 1, borderColor: 'rgba(255,160,122,0.045)' },
@@ -278,17 +282,17 @@ const s = StyleSheet.create({
   statTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 4 },
   flatCard: { padding: 0, borderWidth: 0, backgroundColor: 'transparent', gap: 10, marginBottom: 20 },
   headingIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentFaint },
-  siteIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.panelRaised, alignItems: 'center', justifyContent: 'center' },
-  ruleSelected: { borderColor: 'rgba(255,160,122,0.18)', backgroundColor: colors.panelWarm },
+  siteIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: paperSurfaces.card, alignItems: 'center', justifyContent: 'center' },
+  ruleSelected: { borderColor: 'rgba(255,160,122,0.18)', backgroundColor: paperSurfaces.card },
   emptyEmblem: { width: 56, height: 56, borderRadius: 18, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
   radioSelected: { borderColor: colors.accentBright }, radioDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accentBright },
   previewNote: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingVertical: 4 },
   previewText: { flex: 1, color: colors.subtle, fontSize: 11, lineHeight: 17 },
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: chalkTheme.paper },
   content: { paddingHorizontal: space.md, paddingTop: 4, paddingBottom: 48, gap: 16, width: '100%', maxWidth: layout.readingMax, alignSelf: 'center' },
   flex: { flex: 1, minWidth: 0 },
-  hero: { borderWidth: 1, borderColor: 'rgba(255,160,122,0.21)', backgroundColor: colors.panelWarm, borderRadius: 26, padding: 18, gap: 14, overflow: 'hidden' },
+  hero: { borderWidth: 1, borderColor: 'rgba(255,160,122,0.21)', backgroundColor: paperSurfaces.card, borderRadius: 26, padding: 18, gap: 14, overflow: 'hidden' },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   heroTitle: { color: colors.text, fontSize: 24, lineHeight: 30, fontWeight: '600', letterSpacing: -0.8, marginVertical: 5 },
   heroDetail: { color: colors.textDim, fontSize: 14, lineHeight: 21, maxWidth: 380 },
@@ -296,33 +300,33 @@ const s = StyleSheet.create({
   statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.subtle }, statusDotOn: { backgroundColor: colors.accentFill },
   statusText: { color: colors.muted, fontSize: 11, lineHeight: 17, fontWeight: '500', flexShrink: 1 },
   stats: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
-  stat: { flex: 1, minWidth: 0, minHeight: 65, gap: 5, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line }, statValue: { color: colors.text, fontSize: 23, lineHeight: 28, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  stat: { flex: 1, minWidth: 0, minHeight: 65, gap: 5, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, backgroundColor: paperSurfaces.card, borderWidth: 1, borderColor: colors.line }, statValue: { color: colors.text, fontSize: 23, lineHeight: 28, fontWeight: '500', fontVariant: ['tabular-nums'] },
   statLabel: { color: colors.muted, fontSize: 11, lineHeight: 16 }, statDivider: { width: 1, backgroundColor: colors.lineStrong, marginRight: 12, marginVertical: 6 },
   timingRow: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }, timingText: { flex: 1, color: colors.textDim, fontSize: 13, lineHeight: 20 },
-  tabs: { flexDirection: 'row', backgroundColor: colors.panel, borderRadius: 20, padding: 5, borderWidth: 1, borderColor: colors.line, gap: 3 },
+  tabs: { flexDirection: 'row', backgroundColor: paperSurfaces.card, borderRadius: 20, padding: 5, borderWidth: 1, borderColor: colors.line, gap: 3 },
   tab: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', minHeight: 62, gap: 6, paddingHorizontal: 2, paddingVertical: 9, borderRadius: 15 },
   tabActive: { backgroundColor: colors.accentSoft, borderColor: colors.accentLine, borderWidth: 1 }, tabText: { color: colors.muted, fontSize: 11, lineHeight: 15, fontWeight: '600' }, selectedText: { color: colors.accentBright },
-  card: { backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: 16, gap: 12, marginBottom: 16 }, cardHeading: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingBottom: 8 },
+  card: { backgroundColor: paperSurfaces.card, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: 16, gap: 12, marginBottom: 16 }, cardHeading: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingBottom: 8 },
   sectionTitle: { color: colors.text, fontSize: 19, lineHeight: 26, fontWeight: '600', letterSpacing: -0.4, marginBottom: 3 }, rowTitle: { color: colors.text, fontSize: 15, lineHeight: 22, fontWeight: '600' },
   body: { color: colors.muted, fontSize: 13, lineHeight: 21 }, caption: { color: colors.muted, fontSize: 12, lineHeight: 19 }, eyebrow: { color: colors.muted, fontSize: 10, lineHeight: 16, fontWeight: '700', letterSpacing: 1.3, marginTop: 8 },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, minHeight: 56 },
-  input: { minHeight: 52, backgroundColor: colors.bgRaised, borderColor: colors.lineStrong, borderWidth: 1, borderRadius: 12, padding: 14, color: colors.text, fontSize: 15 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: 16 }, searchSymbol: { paddingLeft: 15 }, searchInput: { flex: 1, minWidth: 0, minHeight: 52, color: colors.text, padding: 12, fontSize: 14 }, clearButton: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  input: { minHeight: 52, backgroundColor: chalkTheme.paper, borderColor: colors.lineStrong, borderWidth: 1, borderRadius: 12, padding: 14, color: colors.text, fontSize: 15 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: paperSurfaces.card, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: 16 }, searchSymbol: { paddingLeft: 15 }, searchInput: { flex: 1, minWidth: 0, minHeight: 52, color: colors.text, padding: 12, fontSize: 14 }, clearButton: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, filter: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, justifyContent: 'center', borderWidth: 1, borderColor: colors.lineStrong }, filterActive: { backgroundColor: colors.accentFaint, borderColor: colors.accentLine },
-  appRow: { flexDirection: 'row', alignItems: 'center', gap: 13, minHeight: 76, padding: 13, borderRadius: 19, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel }, appRowSelected: { backgroundColor: colors.panelWarm, borderColor: 'rgba(255,160,122,0.22)' },
-  icon: { width: 40, height: 40, borderRadius: 12 }, iconFallback: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.panelRaised, alignItems: 'center', justifyContent: 'center' }, iconSelected: { backgroundColor: colors.accentSoft },
+  appRow: { flexDirection: 'row', alignItems: 'center', gap: 13, minHeight: 76, padding: 13, borderRadius: 19, borderWidth: 1, borderColor: colors.line, backgroundColor: paperSurfaces.card }, appRowSelected: { backgroundColor: paperSurfaces.card, borderColor: 'rgba(255,160,122,0.22)' },
+  icon: { width: 40, height: 40, borderRadius: 12 }, iconFallback: { width: 40, height: 40, borderRadius: 12, backgroundColor: paperSurfaces.card, alignItems: 'center', justifyContent: 'center' }, iconSelected: { backgroundColor: colors.accentSoft },
   checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' }, checkboxSelected: { backgroundColor: colors.accentFill, borderColor: colors.accent }, checkmark: { color: colors.onAccent, fontSize: 15, fontWeight: '800' }, selectedCaption: { color: colors.accentBright, fontSize: 11, lineHeight: 18 },
   check: { color: colors.accent, fontSize: 24, minWidth: 30, textAlign: 'center' },
   permission: { gap: 12, paddingVertical: 10 }, permissionHeading: { flexDirection: 'row', gap: 10, alignItems: 'center' }, permissionMark: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft }, permissionGranted: { backgroundColor: 'rgba(184,221,177,0.1)' }, successText: { color: colors.success },
-  button: { minHeight: 48, borderRadius: 14, backgroundColor: colors.accentFill, paddingHorizontal: 16, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: colors.onAccent, fontSize: 14, lineHeight: 20, fontWeight: '700', textAlign: 'center' }, quietButton: { backgroundColor: colors.panelRaised, borderWidth: 1, borderColor: colors.lineStrong }, quietText: { color: colors.textDim },
+  button: { minHeight: 48, borderRadius: 14, backgroundColor: colors.accentFill, paddingHorizontal: 16, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: colors.onAccent, fontSize: 14, lineHeight: 20, fontWeight: '700', textAlign: 'center' }, quietButton: { backgroundColor: paperSurfaces.card, borderWidth: 1, borderColor: colors.lineStrong }, quietText: { color: colors.textDim },
   textAction: { minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 8 }, deleteText: { color: colors.muted, fontSize: 12, lineHeight: 18 }, deleteConfirmation: { gap: 8, paddingVertical: 8 },
-  rule: { padding: 14, gap: 2, borderWidth: 1, borderColor: colors.line, borderRadius: 19, backgroundColor: colors.panel }, form: { gap: 14, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.lineStrong }, days: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  day: { minHeight: 48, minWidth: 48, paddingHorizontal: 10, borderRadius: 12, backgroundColor: colors.panelRaised, justifyContent: 'center', alignItems: 'center' }, timeRow: { flexDirection: 'row', gap: 12 },
-  scheduleCard: { borderWidth: 1, borderColor: 'rgba(255,160,122,0.24)', borderRadius: 22, padding: 18, gap: 8, backgroundColor: colors.panelWarm }, schedulePaused: { borderColor: colors.lineStrong, backgroundColor: colors.bgRaised }, scheduleTime: { color: colors.text, fontSize: 30, lineHeight: 40, letterSpacing: -0.7, fontWeight: '500', fontVariant: ['tabular-nums'] }, timeDash: { color: colors.subtle },
-  choice: { flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 94, padding: 16, borderRadius: 21, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel }, choiceSelected: { backgroundColor: colors.accentFaint, borderColor: colors.accentLine },
-  disclosure: { borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, marginBottom: 12 }, disclosureHeading: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 }, disclosureBody: { padding: 16, paddingTop: 0, gap: 12 },
-  empty: { padding: 24, gap: 12, alignItems: 'flex-start', borderRadius: 22, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lineStrong, backgroundColor: colors.panel }, emptyTitle: { color: colors.textDim, fontSize: 17, lineHeight: 24, fontWeight: '600' },
-  infoBox: { gap: 6, padding: 16, backgroundColor: colors.panelRaised, borderRadius: 16, borderWidth: 1, borderColor: colors.line }, safetyNote: { color: colors.muted, fontSize: 12, lineHeight: 19, paddingHorizontal: 8, paddingBottom: 16 },
+  rule: { padding: 14, gap: 2, borderWidth: 1, borderColor: colors.line, borderRadius: 19, backgroundColor: paperSurfaces.card }, form: { gap: 14, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.lineStrong }, days: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  day: { minHeight: 48, minWidth: 48, paddingHorizontal: 10, borderRadius: 12, backgroundColor: paperSurfaces.card, justifyContent: 'center', alignItems: 'center' }, timeRow: { flexDirection: 'row', gap: 12 },
+  scheduleCard: { borderWidth: 1, borderColor: 'rgba(255,160,122,0.24)', borderRadius: 22, padding: 18, gap: 8, backgroundColor: paperSurfaces.card }, schedulePaused: { borderColor: colors.lineStrong, backgroundColor: chalkTheme.paper }, scheduleTime: { color: colors.text, fontSize: 30, lineHeight: 40, letterSpacing: -0.7, fontWeight: '500', fontVariant: ['tabular-nums'] }, timeDash: { color: colors.subtle },
+  choice: { flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 94, padding: 16, borderRadius: 21, borderWidth: 1, borderColor: colors.line, backgroundColor: paperSurfaces.card }, choiceSelected: { backgroundColor: colors.accentFaint, borderColor: colors.accentLine },
+  disclosure: { borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: paperSurfaces.card, marginBottom: 12 }, disclosureHeading: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 }, disclosureBody: { padding: 16, paddingTop: 0, gap: 12 },
+  empty: { padding: 24, gap: 12, alignItems: 'flex-start', borderRadius: 22, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lineStrong, backgroundColor: paperSurfaces.card }, emptyTitle: { color: colors.textDim, fontSize: 17, lineHeight: 24, fontWeight: '600' },
+  infoBox: { gap: 6, padding: 16, backgroundColor: paperSurfaces.card, borderRadius: 16, borderWidth: 1, borderColor: colors.line }, safetyNote: { color: colors.muted, fontSize: 12, lineHeight: 19, paddingHorizontal: 8, paddingBottom: 16 },
   errorBox: { borderWidth: 1, borderColor: colors.accentLine, borderRadius: 16, padding: 14, gap: 8 }, error: { color: colors.danger, fontSize: 13, lineHeight: 21 }, saved: { color: colors.success, fontSize: 13, lineHeight: 20 },
-  noticeBar: { backgroundColor: colors.panelRaised, paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.line }, busy: { opacity: 0.5 }, pressed: { opacity: 0.75 }, feedback: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }, busyBar: { padding: 14, backgroundColor: colors.panelRaised, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
+  noticeBar: { backgroundColor: paperSurfaces.card, paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.line }, busy: { opacity: 0.5 }, pressed: { opacity: 0.75 }, feedback: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }, busyBar: { padding: 14, backgroundColor: paperSurfaces.card, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
 });

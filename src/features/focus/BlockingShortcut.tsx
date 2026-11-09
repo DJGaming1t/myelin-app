@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
-import { colors, radius, spacing } from '@/src/theme/tokens';
+import { chalkTheme, colors, radius, spacing } from '@/src/theme/tokens';
 import { activeShieldSummary, defaultFocusShieldConfig, focusShieldStorage } from './focus-shield';
 
 export function BlockingShortcut({
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paper,
     padding: spacing.md,
     marginBottom: spacing.md,
   },

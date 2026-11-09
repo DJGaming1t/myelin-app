@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: settingsChalk.paper }, page: { flex: 1 },
   searchArea: { width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: space.lg, paddingBottom: space.md },
   intro: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 12 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: settingsChalk.paperRaised, borderRadius: radius.md },
+  searchBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: paperSurfaces.card, borderRadius: radius.md },
   input: { flex: 1, minWidth: 0, minHeight: 52, paddingHorizontal: 14, paddingVertical: 12, color: colors.text, fontSize: 16 },
   clear: { minHeight: 48, minWidth: 56, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 },
   content: { width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: space.lg, paddingBottom: 32 },

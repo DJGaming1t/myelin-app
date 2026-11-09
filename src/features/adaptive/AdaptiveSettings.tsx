@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { clockLabel, parseClock } from './sleep-engine';
-import { colors, radius } from '@/src/theme/tokens';
+import { chalkTheme, colors, radius } from '@/src/theme/tokens';
 
 export function AdaptiveSettings() {
   const { workspace, updateWorkspace } = useWorkspace();
@@ -30,4 +30,4 @@ export function AdaptiveSettings() {
     <Text style={styles.note}>Focus outcomes contain times and counts, never parked thoughts or screen-time tracking. They stay in your private workspace and sync only if you enable cloud sync. Up to 2,000 focus outcomes are kept.</Text>
   </View>;
 }
-const styles = StyleSheet.create({ panel: { paddingVertical: 2 }, title: { color: colors.text, fontSize: 17, fontWeight: '700' }, copy: { color: colors.muted, fontSize: 13, lineHeight: 20, flex: 1 }, note: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 12 }, row: { flexDirection: 'row', gap: 14, alignItems: 'center', marginTop: 12 }, input: { color: colors.text, backgroundColor: colors.bg, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, padding: 12, fontSize: 16, marginTop: 6 }, button: { minHeight: 48, justifyContent: 'center', paddingVertical: 12 }, buttonText: { color: colors.accent, fontSize: 14, fontWeight: '700' } });
+const styles = StyleSheet.create({ panel: { paddingVertical: 2 }, title: { color: colors.text, fontSize: 17, fontWeight: '700' }, copy: { color: colors.muted, fontSize: 13, lineHeight: 20, flex: 1 }, note: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 12 }, row: { flexDirection: 'row', gap: 14, alignItems: 'center', marginTop: 12 }, input: { color: colors.text, backgroundColor: chalkTheme.paper, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, padding: 12, fontSize: 16, marginTop: 6 }, button: { minHeight: 48, justifyContent: 'center', paddingVertical: 12 }, buttonText: { color: colors.accent, fontSize: 14, fontWeight: '700' } });

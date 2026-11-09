@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import Animated, {
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.lg,
     overflow: 'hidden',
     justifyContent: 'center',

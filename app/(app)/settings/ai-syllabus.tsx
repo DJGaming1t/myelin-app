@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -939,7 +940,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -974,7 +975,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.24)',
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   sectionTitle: {
@@ -1030,7 +1031,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.32)',
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   previewTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
@@ -1183,7 +1184,7 @@ const styles = StyleSheet.create({
     width: '48%',
     minHeight: 58,
     borderRadius: radius.sm,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: 8,
   },
   autopilotStatLabel: {
@@ -1236,7 +1237,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: 9,
   },
   autopilotNoticeTitle: {
@@ -1255,7 +1256,7 @@ const styles = StyleSheet.create({
   autopilotLedger: {
     marginTop: 9,
     borderRadius: radius.sm,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: 9,
   },
   autopilotLedgerTitle: {
@@ -1414,7 +1415,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     color: colors.text,
     fontSize: 12,
     lineHeight: 17,
@@ -1445,7 +1446,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',

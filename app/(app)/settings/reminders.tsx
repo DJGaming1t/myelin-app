@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -1286,7 +1287,7 @@ function ToggleRow({
         disabled={disabled}
         onValueChange={onChange}
         trackColor={{ false: colors.lineStrong, true: colors.accent }}
-        thumbColor={value ? colors.accent : colors.panel}
+        thumbColor={value ? colors.accent : settingsChalk.paper}
       />
     </View>
   );
@@ -1476,7 +1477,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   timelineHeader: {
@@ -1651,7 +1652,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   recoveredInsightHeader: {
@@ -1853,7 +1854,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1872,7 +1873,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderLeftWidth: 2,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: 13,
     shadowColor: '#000',
     shadowOpacity: 0.28,
@@ -1931,7 +1932,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   voiceGrid: { flexDirection: 'row', gap: 7 },

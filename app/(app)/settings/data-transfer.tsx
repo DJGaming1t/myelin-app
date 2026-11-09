@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -520,12 +521,12 @@ const styles = StyleSheet.create({
   section: { marginTop: spacing.xl },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   sectionText: { color: colors.subtle, fontSize: 11.5, lineHeight: 17, marginTop: 4 },
-  chooseButton: { minHeight: 64, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: settingsChalk.paperRaised, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  chooseButton: { minHeight: 64, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: paperSurfaces.card, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
   chooseCopy: { flex: 1, minWidth: 0 },
   chooseTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   chooseText: { color: colors.subtle, fontSize: 11, lineHeight: 15, marginTop: 4 },
   chooseArrow: { color: colors.accent, fontSize: 20, flexShrink: 0 },
-  preview: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: settingsChalk.paperRaised, padding: spacing.md },
+  preview: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: paperSurfaces.card, padding: spacing.md },
   previewHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   previewCopy: { flex: 1 },
   previewEyebrow: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.05 },

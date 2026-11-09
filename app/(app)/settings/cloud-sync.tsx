@@ -1,3 +1,4 @@
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -424,7 +425,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: spacing.md,
   },
   statusTop: {
@@ -522,7 +523,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginTop: 7,
@@ -591,7 +592,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: settingsChalk.paperRaised,
+    backgroundColor: paperSurfaces.card,
     padding: 11,
   },
   rule: {

@@ -65,7 +65,9 @@ export default function AppLayout() {
       screenOptions={({ route }) => ({
         headerShown: false,
         ...detailTransition(reduceMotion),
-        animation: reduceMotion ? 'none' : PEER_ROUTE_NAMES.has(route.name) ? 'fade' : 'slide_from_right',
+        animation: reduceMotion
+          ? 'none'
+          : PEER_ROUTE_NAMES.has(route.name) ? 'fade' : 'slide_from_right',
         animationDuration: reduceMotion ? 0 : PEER_ROUTE_NAMES.has(route.name) ? 180 : 260,
       })}>
       <Stack.Screen name="(main)" options={{ animation: 'none' }} />

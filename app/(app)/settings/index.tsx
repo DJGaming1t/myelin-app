@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { PaperGrain } from '@/src/components/app/ChalkGrain';
 import { AppIcon } from '@/src/components/app/AppIcon';
 import { ScreenHeader } from '@/src/components/app/ScreenHeader';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -290,8 +291,20 @@ export default function SettingsScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <BlockingShortcut />
-          <AdaptiveSettings />
+          {(workspace.settings.themePalette ?? 'editorial') === 'editorial' ? <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View> : null}
+          <View style={styles.overview}>
+            <Text style={styles.overviewLabel}>YOUR STUDY SPACE</Text>
+            <Text style={styles.overviewTitle}>Make it yours.</Text>
+            <Text style={styles.overviewCopy}>Shape your time, focus and privacy around the way you study.</Text>
+            <View style={styles.overviewMeta}>
+              <Text style={styles.overviewMetaText}>{workspace.settings.dailyMinutes} min daily</Text>
+              <View style={styles.overviewDot} />
+              <Text style={styles.overviewMetaText}>{workspace.settings.focusMinutes} min focus</Text>
+              <View style={styles.overviewDot} />
+              <Text style={styles.overviewMetaText}>{localMode ? 'On this device' : 'Signed in'}</Text>
+            </View>
+          </View>
+          <Text accessibilityRole="header" style={styles.groupLabel}>YOUR PREFERENCES</Text>
           <Section
             title="Study defaults"
             subtitle="Today can still override available time and energy for a specific day.">
@@ -316,6 +329,18 @@ export default function SettingsScreen() {
               format={(value) => `${value}m`}
               onChange={(value) => changeDefaults('breakMinutes', value)}
             />
+          </Section>
+
+          <Section
+            title="Sleep & learning"
+            subtitle={workspace.settings.sleepEnabled !== false ? 'Sleep window protected · learning options' : 'Sleep protection off · learning options'}>
+            <AdaptiveSettings />
+          </Section>
+
+          <Section
+            title="Focus shield"
+            subtitle="Manage apps, websites and quiet schedules.">
+            <BlockingShortcut />
           </Section>
 
           <Section
@@ -360,7 +385,7 @@ export default function SettingsScreen() {
             </View>
             <SwitchRow
               label="Reduce motion"
-              helper="Removes protected-app route fade transitions. Other motion will also respect this preference as polish is added."
+              helper="Reduces navigation transitions and other motion throughout the app."
               value={workspace.settings.reduceMotion}
               onValueChange={(value) =>
                 updateWorkspace((draft) => {
@@ -397,6 +422,7 @@ export default function SettingsScreen() {
             </Pressable>
           </Section>
 
+          <Text accessibilityRole="header" style={styles.groupLabel}>ACCOUNT & DATA</Text>
           <Section
             title="Account & session"
             subtitle={
@@ -899,20 +925,28 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 13, lineHeight: 18 },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 72 },
+  overview: { borderRadius: 20, backgroundColor: chalkTheme.hero, padding: 20, marginBottom: 22 },
+  overviewLabel: { color: '#D8A18B', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  overviewTitle: { color: chalkTheme.onStage, fontSize: 27, lineHeight: 34, fontWeight: '500', letterSpacing: -.5, marginTop: 8 },
+  overviewCopy: { color: chalkTheme.mutedCream, fontSize: 12.5, lineHeight: 19, marginTop: 6 },
+  overviewMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 9, rowGap: 5, marginTop: 17 },
+  overviewMetaText: { color: chalkTheme.onStage, fontSize: 11, lineHeight: 16, fontWeight: '600' },
+  overviewDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#D98A60' },
+  groupLabel: { color: colors.muted, fontSize: 10, lineHeight: 16, fontWeight: '800', letterSpacing: 1.2, marginTop: 12, marginBottom: 4 },
   section: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
-  sectionHeader: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  sectionHeader: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   sectionHeaderCopy: { flex: 1, minWidth: 0 },
   sectionTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
   sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   sectionIndicator: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, padding: spacing.md, overflow: 'hidden' },
+  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, backgroundColor: colors.panel, padding: spacing.md, overflow: 'hidden' },
   settingBlock: { paddingVertical: 4, marginBottom: 13 },
   settingTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   settingLabel: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
   settingValue: { color: colors.accent, fontSize: 12.5, lineHeight: 17, fontWeight: '800' },
   choiceRow: { gap: 7, paddingTop: 9 },
   choice: { minWidth: 48, minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  choiceActive: { borderColor: 'rgba(255,128,91,0.42)', backgroundColor: colors.accentSoft },
+  choiceActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   choiceText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   choiceTextActive: { color: colors.accent },
   switchRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 12 },

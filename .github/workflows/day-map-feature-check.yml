@@ -1,0 +1,42 @@
+name: Day Map feature verification
+on:
+  push:
+    branches: [codex/day-map-tactile-overhaul, codex/day-map-chalk-summary]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npm run verify:planning
+      - run: npm run verify:today
+      - run: npm run verify:focus
+      - run: npm run verify:visual
+      - name: Check sheet geometry and dock clearance
+        run: node --import tsx scripts/verify-day-map-sheet.ts
+      - name: Check task opening and completion interactions
+        run: node scripts/verify-day-map-sequence.mjs
+      - name: Check native visual engine
+        run: node scripts/verify-native-presentation.mjs
+      - name: Verify Day Map undo and suggestion safety
+        run: node --import tsx scripts/verify-day-map-completion.ts
+      - name: Verify interactive Day Map path
+        run: node scripts/verify-day-map-path.mjs
+      - name: Verify sheet snap decisions
+        run: node --import tsx scripts/verify-day-map-snap.ts
+      - name: Verify timeline marker
+        run: node --import tsx scripts/verify-timeline-position.ts
+      - name: Verify theme contrast
+        run: node scripts/verify-theme-contrast.mjs
+
+      - name: Verify floating dock clearance
+        run: node --import tsx scripts/verify-nav-layout.ts

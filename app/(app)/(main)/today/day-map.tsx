@@ -1,0 +1,1836 @@
+import { isDayMapSuggestionCurrent } from '@/src/features/today/day-map-suggestion';
+import { ChalkGrain, PaperGrain } from '@/src/components/app/ChalkGrain';
+import { currentTimeInsertionIndex } from '@/src/features/planning/timeline-position';
+import { useDaySkip } from '@/src/features/planning/useDaySkip';
+import { daySkipFailureMessage, restorableOccurrenceDates } from '@/src/features/planning/day-skip';
+import type { Commitment, StudyTask } from '@/src/data/schema';
+import { localDateKey } from '@/src/features/planning/commitment-dates';
+import { useDayRebuild } from '@/src/features/planning/useDayRebuild';
+import { rebuildIssueMessage } from '@/src/features/planning/day-rebuild';
+import { useTaskPlanning } from '@/src/features/planning/useTaskPlanning';
+import { planningFailureMessage } from '@/src/features/planning/task-planning';
+import { useScreenClock } from '@/src/features/planning/useScreenClock';
+import { TaskQuickActions, TaskDueLabel, useTaskCompletion } from '@/src/features/planning/TaskQuickActions';
+
+import { router, useLocalSearchParams } from 'expo-router';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
+import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
+import { MotionItem } from '@/src/components/motion/MotionItem';
+import { useWorkspace } from '@/src/data/WorkspaceProvider';
+import { useFocus } from '@/src/features/focus/FocusProvider';
+import { timerRemainingMs } from '@/src/features/focus/focus-engine';
+import {
+  addLocalDays,
+  buildDayMap,
+  startOfLocalDay,
+  suggestTaskSlots,
+} from '@/src/features/planning/day-engine';
+import {
+  extendMetTaskEstimate,
+  taskRemainingMinutes,
+} from '@/src/features/planning/task-engine';
+import { AutopilotReflowNotice } from '@/src/features/exams/AutopilotReflowNotice';
+import {
+  AppliedReclaimedWindow,
+  AutopilotRecoveryOption,
+  AutopilotRecoveryUndo,
+  ReclaimedStudyPlacement,
+  applyAutopilotRecoveryOption,
+  buildAppliedReclaimedWindows,
+  buildAutopilotRecoveryOptions,
+  resolveRecoveredReminderHandoff,
+  undoAutopilotRecovery,
+} from '@/src/features/exams/autopilot-recovery';
+import {
+  AutopilotReflowSummary,
+  buildAutopilotReflowSummary,
+  parseAutopilotReflow,
+} from '@/src/features/exams/autopilot-reflow';
+import {
+  PlanBlock,
+  buildTodayPlan,
+} from '@/src/features/today/planner';
+import { TimeBrick } from '@/src/features/planning/TimeBrick';
+import { chalkTheme, colors, layout, radius, spacing } from '@/src/theme/tokens';
+import { paperSurfaces } from '@/src/theme/paperSurfaces';
+
+function timeLabel(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(timestamp));
+}
+
+function readableMinutes(value: number) {
+  const minutes = Math.max(0, Math.round(value));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? `${hours}h${rest ? ` ${rest}m` : ''}` : `${rest}m`;
+}
+
+function durationLabel(start: number, end: number) {
+  return String(Math.max(0, Math.round((end - start) / 60000))) + 'm';
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function numericParam(value: string | string[] | undefined) {
+  const raw = firstParam(value);
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export default function DayMapScreen() {
+  const params = useLocalSearchParams<{
+    reflow?: string | string[];
+    recoveredCommitmentId?: string | string[];
+    recoveredOccurrenceDateKey?: string | string[];
+    recoveredTopicId?: string | string[];
+    recoveredStart?: string | string[];
+    recoveredEnd?: string | string[];
+    recoveredHandoff?: string | string[];
+  }>();
+  const { workspace, ownerKey, readWorkspace, updateWorkspace } = useWorkspace();
+  const planning = useTaskPlanning();
+  const daySkip = useDaySkip();
+  const moveOwnerRef = useRef(ownerKey); moveOwnerRef.current = ownerKey;
+  const [moveNotice, setMoveNotice] = useState<{ ownerKey: string; text: string } | null>(null);
+  useEffect(() => { setMoveNotice(null); }, [ownerKey]);
+  const completeTaskWithUndo = useTaskCompletion();
+  const { session: focusSession } = useFocus();
+  const scrollRef = useRef<ScrollView | null>(null);
+  const timelinePosition = useRef(0);
+  const handoffConsumedRef = useRef(false);
+  const recoveredLayoutRef = useRef<Record<string, number>>({});
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handoffCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeHandoffIdentityRef = useRef<string | null>(null);
+  const clock = useScreenClock();
+  const [refresh, setNow] = useState(Date.now());
+  const now = Math.max(clock, refresh);
+  const viewedDay = localDateKey(now);
+  const rebuild = useDayRebuild();
+  const proposal = rebuild.preview;
+  const [showPlanning, setShowPlanning] = useState(true);
+  const [reflow, setReflow] = useState<AutopilotReflowSummary | null>(() =>
+    parseAutopilotReflow(params.reflow),
+  );
+  const [selectedRecoveryId, setSelectedRecoveryId] = useState<string | null>(null);
+  const [highlightedRecoveredKey, setHighlightedRecoveredKey] =
+    useState<string | null>(null);
+  const [lastRecovery, setLastRecovery] = useState<{
+    undo: AutopilotRecoveryUndo;
+    appliedRevision: number;
+    label: string;
+    reclaimedWindow: AppliedReclaimedWindow | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const incoming = parseAutopilotReflow(params.reflow);
+    if (incoming) setReflow(incoming);
+  }, [params.reflow]);
+
+  const tasksById = useMemo(() => new Map(workspace?.tasks.map(task => [task.id, task])), [workspace?.tasks]);
+  const commitmentsById = useMemo(() => new Map(workspace?.commitments.map(item => [item.id, item])), [workspace?.commitments]);
+  const map = useMemo(
+    () => (workspace ? buildDayMap(workspace, now) : null),
+    [workspace, now],
+  );
+  const todayPlan = useMemo(
+    () =>
+      workspace ? buildTodayPlan(workspace, now) : null,
+    [workspace, now],
+  );
+
+  const recoveryOptions = useMemo(
+    () =>
+      workspace &&
+      reflow &&
+      (reflow.becameImpossible || reflow.newlyUnallocatedMinutes > 0)
+        ? buildAutopilotRecoveryOptions(workspace, now, 3)
+        : [],
+    [now, reflow, workspace],
+  );
+
+  const reclaimedWindows = useMemo(() => {
+    if (!workspace) return [];
+    const activeFocusRemaining =
+      focusSession?.phase === 'focus'
+        ? timerRemainingMs(focusSession, now)
+        : 0;
+    return buildAppliedReclaimedWindows(workspace, now, {
+      ...(activeFocusRemaining > 0
+        ? {
+            unavailableUntil:
+              now + activeFocusRemaining,
+            activeFocusTopicId:
+              focusSession?.topicId ?? null,
+            activeFocusStartedAt:
+              focusSession?.startedAt ?? null,
+          }
+        : {}),
+      protectionLeadMinutes: 10,
+    });
+  }, [
+    focusSession?.phase,
+    focusSession?.startedAt,
+    focusSession?.topicId,
+    focusSession?.runningSince,
+    focusSession?.elapsedMs,
+    focusSession?.plannedFocusMinutes,
+    now,
+    workspace,
+  ]);
+
+  const visibleReclaimedWindows = useMemo(() => {
+    const windows = [...reclaimedWindows];
+    const immediate =
+      lastRecovery &&
+      workspace &&
+      lastRecovery.appliedRevision === workspace.revision
+        ? lastRecovery.reclaimedWindow
+        : null;
+    if (
+      immediate &&
+      !windows.some(
+        (window) =>
+          window.commitmentId === immediate.commitmentId &&
+          window.occurrenceDateKey === immediate.occurrenceDateKey,
+      )
+    ) {
+      windows.push(immediate);
+    }
+    return windows.sort((a, b) => a.start - b.start);
+  }, [lastRecovery, reclaimedWindows, workspace]);
+
+  const recoveredHandoff = useMemo(() => {
+    if (
+      firstParam(params.recoveredHandoff) !==
+      'notification'
+    ) {
+      return null;
+    }
+
+    const commitmentId = firstParam(
+      params.recoveredCommitmentId,
+    );
+    const occurrenceDateKey = firstParam(
+      params.recoveredOccurrenceDateKey,
+    );
+    if (!commitmentId || !occurrenceDateKey) return null;
+
+    return {
+      commitmentId,
+      occurrenceDateKey,
+      topicId:
+        firstParam(params.recoveredTopicId) ?? null,
+      scheduledStart: numericParam(
+        params.recoveredStart,
+      ),
+      scheduledEnd: numericParam(params.recoveredEnd),
+    };
+  }, [
+    params.recoveredCommitmentId,
+    params.recoveredEnd,
+    params.recoveredHandoff,
+    params.recoveredOccurrenceDateKey,
+    params.recoveredStart,
+    params.recoveredTopicId,
+  ]);
+
+  const recoveredHandoffIdentity = useMemo(
+    () =>
+      recoveredHandoff
+        ? [
+            recoveredHandoff.commitmentId,
+            recoveredHandoff.occurrenceDateKey,
+            recoveredHandoff.topicId ?? '',
+            recoveredHandoff.scheduledStart ?? '',
+            recoveredHandoff.scheduledEnd ?? '',
+          ].join(':')
+        : null,
+    [recoveredHandoff],
+  );
+
+  useEffect(() => {
+    activeHandoffIdentityRef.current =
+      recoveredHandoffIdentity;
+    if (handoffCleanupTimerRef.current) {
+      clearTimeout(handoffCleanupTimerRef.current);
+      handoffCleanupTimerRef.current = null;
+    }
+  }, [recoveredHandoffIdentity]);
+
+  const recoveredHandoffResolution = useMemo(() => {
+    if (!recoveredHandoff) return null;
+    return resolveRecoveredReminderHandoff(
+      visibleReclaimedWindows,
+      recoveredHandoff,
+      now,
+    );
+  }, [
+    now,
+    recoveredHandoff,
+    visibleReclaimedWindows,
+  ]);
+
+  const recoveredHandoffTarget = useMemo(() => {
+    const window =
+      recoveredHandoffResolution?.window ?? null;
+    const placement =
+      recoveredHandoffResolution?.placement ?? null;
+    if (!window) return null;
+
+    return {
+      window,
+      placement,
+      windowKey:
+        window.commitmentId +
+        ':' +
+        window.occurrenceDateKey,
+      placementKey: placement
+        ? placement.kind +
+          ':' +
+          placement.topicId +
+          ':' +
+          placement.start
+        : null,
+    };
+  }, [recoveredHandoffResolution]);
+
+  useEffect(() => {
+    handoffConsumedRef.current = false;
+    if (!recoveredHandoffTarget) return;
+
+    const y =
+      recoveredLayoutRef.current[
+        recoveredHandoffTarget.windowKey
+      ];
+    if (y == null) return;
+
+    handoffConsumedRef.current = true;
+    setHighlightedRecoveredKey(
+      recoveredHandoffTarget.placementKey ??
+        recoveredHandoffTarget.windowKey,
+    );
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, y - 16),
+      animated: true,
+    });
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(
+      () => setHighlightedRecoveredKey(null),
+      4200,
+    );
+    if (recoveredHandoffIdentity) {
+      scheduleRecoveredHandoffCleanup(
+        recoveredHandoffIdentity,
+      );
+    }
+  }, [
+    recoveredHandoffIdentity,
+    recoveredHandoffTarget?.placementKey,
+    recoveredHandoffTarget?.windowKey,
+  ]);
+
+  useEffect(() => {
+    if (
+      !recoveredHandoffIdentity ||
+      !recoveredHandoffResolution ||
+      recoveredHandoffTarget
+    ) {
+      return;
+    }
+
+    scheduleRecoveredHandoffCleanup(
+      recoveredHandoffIdentity,
+    );
+  }, [
+    recoveredHandoffIdentity,
+    recoveredHandoffResolution,
+    recoveredHandoffTarget,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+      if (handoffCleanupTimerRef.current) {
+        clearTimeout(handoffCleanupTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  if (!workspace || !map) return null;
+
+  function clearRecoveredHandoffRoute(
+    expectedIdentity: string,
+  ) {
+    if (
+      activeHandoffIdentityRef.current !==
+      expectedIdentity
+    ) {
+      return;
+    }
+
+    activeHandoffIdentityRef.current = null;
+    handoffConsumedRef.current = false;
+    setHighlightedRecoveredKey(null);
+
+    const reflowParam = firstParam(params.reflow);
+    router.replace({
+      pathname: '/(app)/today/day-map',
+      ...(reflowParam
+        ? { params: { reflow: reflowParam } }
+        : {}),
+    });
+  }
+
+  function scheduleRecoveredHandoffCleanup(
+    expectedIdentity: string,
+  ) {
+    if (handoffCleanupTimerRef.current) {
+      clearTimeout(handoffCleanupTimerRef.current);
+    }
+
+    handoffCleanupTimerRef.current = setTimeout(() => {
+      handoffCleanupTimerRef.current = null;
+      clearRecoveredHandoffRoute(expectedIdentity);
+    }, 4400);
+  }
+
+  function updateWithReflow(change: Parameters<typeof updateWorkspace>[0]) {
+    const before = workspace!;
+    const next = updateWorkspace(change);
+    if (next) {
+      setReflow(
+        buildAutopilotReflowSummary(before, next, Date.now()),
+      );
+    }
+    return next;
+  }
+
+  const nowIndex = currentTimeInsertionIndex(map.entries, now);
+  const flexible = workspace.tasks
+    .filter(
+      (task) =>
+        task.status === 'open' &&
+        (task.planState === 'today' || (task.planState === 'inbox' && task.id === todayPlan?.nextBlock?.taskId)) &&
+        task.postponedUntil <= now,
+    )
+    .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
+
+  function skipOccurrence(item: Commitment, date: string, restore = false) {
+    if (!ownerKey || moveOwnerRef.current !== ownerKey) return;
+    const result = daySkip.occurrence(item, date, restore, viewedDay);
+    if (!result.ok && (result.reason === 'consumed' || result.reason === 'owner')) return;
+    if (!result.ok) {
+      setMoveNotice({ ownerKey, text: daySkipFailureMessage(result.reason, 'occurrence') });
+      if (result.reason === 'expired') setNow(Date.now());
+      return;
+    }
+    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+    setMoveNotice({ ownerKey, text: `Occurrence ${restore ? 'restored' : 'skipped'} · Future repeats unchanged.` });
+    setNow(Date.now());
+  }
+
+  function moveTask(taskId: string) {
+    if (!ownerKey || moveOwnerRef.current !== ownerKey) return;
+    const latest = readWorkspace(ownerKey);
+    const task = latest?.tasks.find(item => item.id === taskId);
+    if (!latest || !task || task.status !== 'open') return;
+    const offeredAt = Date.now();
+    const slot = suggestTaskSlots(latest, task, offeredAt, 1)[0];
+    if (!slot) { setMoveNotice({ ownerKey, text: 'No open suggestion was found. Your current plan was kept.' }); return; }
+    const date = new Date(slot.start).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const message = `${date} · ${timeLabel(slot.start)}–${timeLabel(slot.end)}\nYour deadline will stay the same.`;
+    Alert.alert('Schedule ' + task.title + '?', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Schedule', onPress: () => {
+        if (moveOwnerRef.current !== ownerKey) return;
+        const current = readWorkspace(ownerKey);
+        if (!current || !isDayMapSuggestionCurrent({ offeredRevision: latest.revision, currentRevision: current.revision, offeredAt, start: slot.start, end: slot.end, now: Date.now() })) {
+          setMoveNotice({ ownerKey, text: 'Your plan or the suggested time changed. Request a fresh suggestion.' });
+          return;
+        }
+        const result = planning.schedule(task, { kind: 'suggested', start: slot.start, end: slot.end, offeredAt });
+        if (!result.ok && result.reason === 'consumed') return;
+        if (!result.ok) { setMoveNotice({ ownerKey, text: planningFailureMessage(result.reason, 'move') }); return; }
+        setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+        setMoveNotice({ ownerKey, text: 'Task scheduled · Deadline unchanged.' });
+        setNow(Date.now());
+      } },
+    ]);
+  }
+
+  // A fully logged task can remain open after a sync or manual edit. Its
+  // saved slot is informational and the student chooses what happens next.
+  function confirmLoggedTaskCompletion(taskId: string) {
+    const task = workspace?.tasks.find((item) => item.id === taskId);
+    if (!task || task.status !== 'open' || task.estimatedMinutes <= 0 ||
+        taskRemainingMinutes(task) > 0) return;
+    Alert.alert(
+      'Mark this task complete?',
+      `“${task.title}” has ${task.actualMinutes} minutes recorded against a ${task.estimatedMinutes}-minute estimate. This marks the task complete; you can undo it from the achievement message.`,
+      [
+        { text: 'Keep open', style: 'cancel' },
+        {
+          text: 'Mark complete',
+          onPress: () => {
+            completeTaskWithUndo(taskId);
+            setNow(Date.now());
+          },
+        },
+      ],
+    );
+  }
+
+  function extendLoggedTask(taskId: string) {
+    const task = workspace?.tasks.find((item) => item.id === taskId);
+    if (!task || task.status !== 'open' || task.estimatedMinutes <= 0 ||
+        taskRemainingMinutes(task) > 0) return;
+    const base = Math.max(task.actualMinutes, task.estimatedMinutes);
+    Alert.alert(
+      'Extend this estimate?',
+      `“${task.title}” has ${task.actualMinutes} minutes recorded. Add 25 minutes of work or choose your own new total in Edit task. Nothing changes until you choose.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Edit minutes',
+          onPress: () => router.push({
+            pathname: '/(app)/today/task/[taskId]',
+            params: { taskId },
+          }),
+        },
+        {
+          text: 'Add 25 min',
+          onPress: () => {
+            if (base + 25 > 720) {
+              Alert.alert('Estimate limit', 'The total estimate cannot exceed 720 minutes. Review the estimate in Edit task instead.');
+              return;
+            }
+            updateWithReflow((draft) => {
+              const current = draft.tasks.find((item) => item.id === taskId);
+              if (current) extendMetTaskEstimate(current, 25);
+            });
+            setNow(Date.now());
+          },
+        },
+      ],
+    );
+  }
+
+  function skipToday(task: StudyTask) {
+    if (!ownerKey || moveOwnerRef.current !== ownerKey) return;
+    const result = daySkip.skipTask(task, viewedDay);
+    if (!result.ok && (result.reason === 'consumed' || result.reason === 'owner')) return;
+    if (!result.ok) {
+      setMoveNotice({ ownerKey, text: daySkipFailureMessage(result.reason, 'task') });
+      if (result.reason === 'expired') setNow(Date.now());
+      return;
+    }
+    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+    setMoveNotice({ ownerKey, text: 'Task skipped until tomorrow · Deadline unchanged.' });
+    setNow(Date.now());
+  }
+
+  function startCurrentTodayAction(
+    block: PlanBlock,
+  ) {
+    if (focusSession) {
+      router.push('/(app)/focus');
+      return;
+    }
+
+    if (
+      block.mode === 'review' &&
+      block.dueQuestionCount > 0 &&
+      block.topicId
+    ) {
+      router.push({
+        pathname: '/(app)/review',
+        params: { topicId: block.topicId },
+      });
+      return;
+    }
+
+    if (!block.topicId && !block.taskId) {
+      router.replace('/(app)/today');
+      return;
+    }
+
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        ...(block.topicId
+          ? { topicId: block.topicId }
+          : {}),
+        ...(block.taskId
+          ? { taskId: block.taskId }
+          : {}),
+        minutes: String(block.minutes),
+        breakMinutes: String(
+          todayPlan?.breakMinutes ??
+            workspace!.settings.breakMinutes,
+        ),
+      },
+    });
+  }
+
+  function startReclaimedPlacement(
+    placement: ReclaimedStudyPlacement,
+  ) {
+    router.push({
+      pathname: '/(app)/focus',
+      params: {
+        topicId: placement.topicId,
+        minutes: String(placement.minutes),
+        breakMinutes: String(
+          workspace!.settings.breakMinutes,
+        ),
+      },
+    });
+  }
+
+  function previewRecovery(option: AutopilotRecoveryOption) {
+    setSelectedRecoveryId((current) =>
+      current === option.id ? null : option.id,
+    );
+  }
+
+  function applyRecovery(option: AutopilotRecoveryOption) {
+    let undo = null as AutopilotRecoveryUndo | null;
+    const next = updateWithReflow((draft) => {
+      undo = applyAutopilotRecoveryOption(
+        draft,
+        option,
+        Date.now(),
+      );
+    });
+    if (next && undo) {
+      setLastRecovery({
+        undo,
+        appliedRevision: next.revision,
+        label: option.title,
+        reclaimedWindow:
+          option.kind === 'reclaim-commitment'
+            ? {
+                commitmentId: option.commitmentId,
+                commitmentTitle: option.commitmentTitle,
+                occurrenceDateKey: option.occurrenceDateKey,
+                start: option.occurrenceStart,
+                end: option.occurrenceEnd,
+                placements: option.placements,
+                missed: null,
+                protection: null,
+              }
+            : null,
+      });
+      setSelectedRecoveryId(null);
+      setNow(Date.now());
+    }
+  }
+
+  function undoRecovery() {
+    const recovery = lastRecovery;
+    if (
+      !recovery ||
+      workspace!.revision !== recovery.appliedRevision
+    ) {
+      setLastRecovery(null);
+      return;
+    }
+
+    let restored = false;
+    const next = updateWithReflow((draft) => {
+      restored = undoAutopilotRecovery(
+        draft,
+        recovery.undo,
+      );
+    });
+    if (next && restored) {
+      setLastRecovery(null);
+      setSelectedRecoveryId(null);
+      setNow(Date.now());
+    }
+  }
+
+  function buildProposal() { rebuild.build(); }
+  function cancelProposal() { if (proposal) rebuild.cancel(proposal); }
+  function refreshProposal() { if (proposal) rebuild.refresh(proposal); }
+  function applyProposal() {
+    if (!proposal || moveOwnerRef.current !== ownerKey) return;
+    const result = rebuild.apply(proposal);
+    if (!result.ok) return;
+    setReflow(buildAutopilotReflowSummary(result.before, result.after, Date.now()));
+    setMoveNotice({ ownerKey: proposal.ownerKey, text: 'Rebuilt plan applied · Deadlines unchanged.' });
+    setNow(Date.now());
+  }
+
+  return (
+    <SafeAreaView style={styles.graphiteSafe}>
+      <AmbientBackdrop dark />
+      <View style={styles.page}>
+        <ScreenHeader
+          dark
+          variant="compact"
+          title="Day Map"
+          secondaryActionLabel="Timeline"
+          onSecondaryAction={() => scrollRef.current?.scrollTo({ y: Math.max(0, timelinePosition.current - 16), animated: true })}
+          actionLabel="Add"
+          onAction={() => router.push('/(app)/quick-add')}
+          onBack={() => router.replace('/(app)/today')}
+        />
+
+        <View style={styles.paperBody}>
+        <ChalkGrain paper />
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.daySummary}>
+            <Text style={styles.daySummaryText}>
+              {readableMinutes(map.plannedStudyMinutes)} scheduled
+              {' · '}
+              {readableMinutes(map.availableMinutes)} open
+            </Text>
+            <Text style={[styles.daySummaryMeta, map.overloadMinutes > 0 && styles.daySummaryWarning]}>
+              {map.overloadMinutes > 0 ? `${map.overloadMinutes}m over capacity` : `${map.free.length} free ${map.free.length === 1 ? 'window' : 'windows'}`}
+            </Text>
+          </View>
+
+          {todayPlan?.nextBlock?.taskId && !map.entries.some(entry => entry.kind === 'task' && entry.taskId === todayPlan.nextBlock?.taskId) ? (
+            <Text style={styles.daySummaryMeta}>Next recommendation is flexible; schedule it to reserve a time.</Text>
+          ) : null}
+          <AutopilotReflowNotice
+            summary={reflow}
+            recoveryOptions={recoveryOptions}
+            selectedRecoveryId={selectedRecoveryId}
+            onPreviewRecovery={previewRecovery}
+            onApplyRecovery={applyRecovery}
+            undoLabel={
+              lastRecovery &&
+              lastRecovery.appliedRevision === workspace.revision
+                ? lastRecovery.label
+                : null
+            }
+            onUndoRecovery={
+              lastRecovery &&
+              lastRecovery.appliedRevision === workspace.revision
+                ? undoRecovery
+                : undefined
+            }
+          />
+
+          {recoveredHandoffResolution?.status ===
+          'updated' ? (
+            <View style={styles.reminderUpdated}>
+              <Text style={styles.reminderUpdatedKicker}>
+                PLAN UPDATED SINCE THIS REMINDER
+              </Text>
+              <Text style={styles.reminderUpdatedTitle}>
+                {recoveredHandoffResolution.placement
+                  ? `The old recovered block is no longer current. MYELIN moved you to ${recoveredHandoffResolution.placement.topicName}.`
+                  : todayPlan?.nextBlock
+                    ? `That recovered block is finished or no longer active. ${todayPlan.nextBlock.topicName} is your current next action.`
+                    : 'That recovered block is finished or no longer active. Your current Day Map is already up to date.'}
+              </Text>
+              <Text style={styles.reminderUpdatedText}>
+                {recoveredHandoffResolution.reason ===
+                'missed'
+                  ? 'The reminded slot was missed, so remaining work was reflowed from the latest plan.'
+                  : recoveredHandoffResolution.reason ===
+                      'reflowed'
+                    ? 'The reservation changed after the reminder was scheduled.'
+                    : recoveredHandoffResolution.reason ===
+                        'next-window'
+                      ? 'The original recovered window has no live block left, so the next recovered action is highlighted.'
+                      : 'MYELIN is using the latest completed work, schedule, and capacity instead of the stale notification time.'}
+              </Text>
+              {recoveredHandoffResolution.placement ? (
+                <Text style={styles.reminderUpdatedMeta}>
+                  Current recovered action ·{' '}
+                  {timeLabel(
+                    recoveredHandoffResolution.placement
+                      .start,
+                  )}{' '}
+                  ·{' '}
+                  {
+                    recoveredHandoffResolution.placement
+                      .minutes
+                  }
+                  m
+                </Text>
+              ) : todayPlan?.nextBlock ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open current next action: ${todayPlan.nextBlock.topicName}`}
+                  onPress={() =>
+                    startCurrentTodayAction(
+                      todayPlan.nextBlock!,
+                    )
+                  }
+                  style={({ pressed }) => [
+                    styles.reminderUpdatedAction,
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      style={
+                        styles.reminderUpdatedActionTitle
+                      }>
+                      {todayPlan.nextBlock.topicName}
+                    </Text>
+                    <Text
+                      style={
+                        styles.reminderUpdatedActionMeta
+                      }>
+                      {todayPlan.nextBlock.minutes}m ·{' '}
+                      {todayPlan.nextBlock.mode ===
+                      'review'
+                        ? 'review'
+                        : 'focus'}
+                    </Text>
+                  </View>
+                  <Text
+                    style={
+                      styles.reminderUpdatedActionArrow
+                    }>
+                    →
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
+          {visibleReclaimedWindows.length ? (
+            <View style={styles.reclaimedSection}>
+              <Text style={styles.sectionLabel}>RECOVERED AUTOPILOT WINDOW</Text>
+              <Text style={styles.reclaimedIntro}>
+                These blocks are reserved by Autopilot from skipped tuition/coaching time.
+                They are not task records.
+              </Text>
+              {visibleReclaimedWindows.map((window) => (
+                <View
+                  key={`${window.commitmentId}:${window.occurrenceDateKey}`}
+                  onLayout={(event) => {
+                    const windowKey =
+                      window.commitmentId +
+                      ':' +
+                      window.occurrenceDateKey;
+                    recoveredLayoutRef.current[windowKey] =
+                      event.nativeEvent.layout.y;
+                    const isTarget =
+                      recoveredHandoffTarget?.windowKey ===
+                      windowKey;
+                    if (
+                      !isTarget ||
+                      handoffConsumedRef.current
+                    ) {
+                      return;
+                    }
+
+                    handoffConsumedRef.current = true;
+                    const targetKey =
+                      recoveredHandoffTarget?.placementKey ??
+                      recoveredHandoffTarget?.windowKey ??
+                      null;
+                    setHighlightedRecoveredKey(targetKey);
+                    scrollRef.current?.scrollTo({
+                      y: Math.max(
+                        0,
+                        event.nativeEvent.layout.y - 16,
+                      ),
+                      animated: true,
+                    });
+                    if (highlightTimerRef.current) {
+                      clearTimeout(
+                        highlightTimerRef.current,
+                      );
+                    }
+                    highlightTimerRef.current = setTimeout(
+                      () =>
+                        setHighlightedRecoveredKey(null),
+                      4200,
+                    );
+                    if (recoveredHandoffIdentity) {
+                      scheduleRecoveredHandoffCleanup(
+                        recoveredHandoffIdentity,
+                      );
+                    }
+                  }}
+                  style={[
+                    styles.reclaimedWindow,
+                    highlightedRecoveredKey ===
+                      window.commitmentId +
+                        ':' +
+                        window.occurrenceDateKey &&
+                      styles.reclaimedWindowHandoff,
+                  ]}>
+                  <View style={styles.reclaimedWindowHeader}>
+                    <View style={styles.reclaimedHeaderCopy}>
+                      <Text style={styles.reclaimedWindowTitle}>
+                        {window.commitmentTitle} cancelled
+                      </Text>
+                      <Text style={styles.reclaimedWindowMeta}>
+                        {localDateKey(window.start) !== localDateKey(now)
+                          ? new Date(window.start).toLocaleDateString(undefined, {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            }) + ' · '
+                          : ''}
+                        {timeLabel(window.start)}–{timeLabel(window.end)} · Autopilot reserved
+                      </Text>
+                    </View>
+                    <Text style={styles.reclaimedBadge}>
+                      {recoveredHandoffTarget?.windowKey ===
+                        window.commitmentId +
+                          ':' +
+                          window.occurrenceDateKey
+                        ? recoveredHandoffResolution?.status ===
+                          'updated'
+                          ? 'CURRENT PLAN'
+                          : 'FROM REMINDER'
+                        : 'RECOVERED'}
+                    </Text>
+                  </View>
+
+                  {window.protection ? (
+                    <View style={styles.reclaimedProtection}>
+                      <Text style={styles.reclaimedProtectionKicker}>
+                        PRE-MISS PROTECTION
+                      </Text>
+                      <Text style={styles.reclaimedProtectionTitle}>
+                        {window.protection.reason === 'active-focus'
+                          ? 'Another Focus session overlaps this recovered block'
+                          : 'A later schedule change shrank this recovered window'}
+                      </Text>
+                      <Text style={styles.reclaimedProtectionText}>
+                        {window.protection.reason === 'active-focus' &&
+                        window.protection.protectedUntil
+                          ? `MYELIN moved the reservation to start after ${timeLabel(window.protection.protectedUntil)} before it could become a miss.`
+                          : 'MYELIN repacked the reservation around the new fixed time before it could become a miss.'}
+                        {window.protection.displacedMinutes > 0
+                          ? ` ${window.protection.displacedMinutes}m no longer fits inside this recovered window and stays in the wider Autopilot plan.`
+                          : ''}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {window.missed ? (
+                    <View style={styles.reclaimedMissed}>
+                      <Text style={styles.reclaimedMissedKicker}>
+                        MISSED RECOVERED SLOT
+                      </Text>
+                      <Text style={styles.reclaimedMissedTitle}>
+                        {window.missed.missedMinutes}m passed without a completed Focus
+                      </Text>
+                      <Text style={styles.reclaimedMissedText}>
+                        {window.missed.reflowedMinutes > 0
+                          ? `${window.missed.reflowedMinutes}m has been reflowed into the remaining exam plan.`
+                          : 'No missed minutes could be safely reflowed.'}
+                        {window.missed.newlyUnallocatedMinutes > 0
+                          ? ` ${window.missed.newlyUnallocatedMinutes}m no longer fits before the deadline.`
+                          : ''}
+                      </Text>
+                      {window.missed.becameImpossible ? (
+                        <Text style={styles.reclaimedMissedDanger}>
+                          This miss makes the current deadline no longer fit at safe capacity.
+                        </Text>
+                      ) : window.missed.deadlineTightened ? (
+                        <Text style={styles.reclaimedMissedWarning}>
+                          Plan strain: {window.missed.strainBeforeMiss} →{' '}
+                          {window.missed.strainAfterMiss}
+                          {window.missed.addedOverloadMinutes > 0
+                            ? ` · +${window.missed.addedOverloadMinutes}m overload`
+                            : ''}
+                        </Text>
+                      ) : (
+                        <Text style={styles.reclaimedMissedSafe}>
+                          The deadline still fits; MYELIN absorbed this miss into later capacity.
+                        </Text>
+                      )}
+                      <View style={styles.reclaimedMissedList}>
+                        {window.missed.placements.slice(0, 2).map((placement, index) => (
+                          <Text
+                            key={`missed:${placement.topicId}:${placement.start}:${index}`}
+                            style={styles.reclaimedMissedItem}>
+                            {timeLabel(placement.start)}–{timeLabel(placement.end)} ·{' '}
+                            {placement.topicName} · {placement.minutes}m missed
+                          </Text>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {window.placements.map((placement, index) => (
+                    <View
+                      key={`${placement.kind}:${placement.topicId}:${placement.start}:${index}`}
+                      style={styles.reclaimedRow}>
+                      <View style={styles.reclaimedTimeCol}>
+                        <Text style={styles.reclaimedTime}>
+                          {timeLabel(placement.start)}
+                        </Text>
+                        <Text style={styles.reclaimedEnd}>
+                          {timeLabel(placement.end)}
+                        </Text>
+                      </View>
+                      <View style={styles.reclaimedRail}>
+                        <TimeBrick size={34} />
+                        <View style={styles.railLine} />
+                      </View>
+                      <View
+                        style={[
+                          styles.reclaimedBlock,
+                          highlightedRecoveredKey ===
+                            placement.kind +
+                              ':' +
+                              placement.topicId +
+                              ':' +
+                              placement.start &&
+                            styles.reclaimedBlockHandoff,
+                        ]}>
+                        <Text style={styles.blockKicker}>
+                          {placement.subject.toUpperCase()}
+                        </Text>
+                        <Text style={styles.blockTitle}>{placement.topicName}</Text>
+                        <Text style={styles.blockMeta}>
+                          {placement.minutes}m ·{' '}
+                          {placement.kind === 'revision' ? 'revision' : 'preparation'} ·
+                          no task created
+                        </Text>
+                        {recoveredHandoffTarget?.placementKey ===
+                        placement.kind +
+                          ':' +
+                          placement.topicId +
+                          ':' +
+                          placement.start ? (
+                          <Text style={styles.reclaimedHandoffHint}>
+                            {recoveredHandoffResolution?.status ===
+                            'updated'
+                              ? 'Current block after your plan changed'
+                              : 'Opened from your recovered-window reminder'}
+                          </Text>
+                        ) : null}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Start ${placement.minutes} minute focus for ${placement.topicName}`}
+                          onPress={() => startReclaimedPlacement(placement)}
+                          style={({ pressed }) => [
+                            styles.reclaimedStart,
+                            pressed && styles.pressed,
+                          ]}>
+                          <Text style={styles.reclaimedStartText}>
+                            {recoveredHandoffTarget?.placementKey ===
+                            placement.kind +
+                              ':' +
+                              placement.topicId +
+                              ':' +
+                              placement.start
+                              ? recoveredHandoffResolution?.status ===
+                                'updated'
+                                ? 'Start current focus'
+                                : 'Start this focus'
+                              : 'Start focus'}
+                          </Text>
+                          <Text style={styles.reclaimedStartArrow}>→</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <AnimatedDisclosure visible={map.overloadMinutes > 0}>
+            <View style={styles.overload}>
+              <Text style={styles.overloadLabel}>TODAY IS OVERLOADED</Text>
+              <Text style={styles.overloadTitle}>
+                About {map.overloadMinutes} more study minutes are planned than fit the current free windows.
+              </Text>
+              <View style={styles.overloadActions}>
+                <Action label="Rebalance" onPress={buildProposal} accent />
+                <Action label="Keep it" onPress={cancelProposal} />
+              </View>
+            </View>
+          </AnimatedDisclosure>
+
+          <AnimatedDisclosure visible={Boolean(proposal)}>
+            {proposal ? (
+            <View testID="day-rebuild-preview" style={styles.proposal}>
+              <Text style={styles.sectionLabel}>REBUILD EVENING · PREVIEW</Text>
+              <Text style={styles.proposalText}>
+                {proposal.moves.length} {proposal.moves.length === 1 ? 'activity' : 'activities'} proposed
+                {proposal.unscheduledCount ? ' · ' + proposal.unscheduledCount + ' still flexible' : ''}.
+              </Text>
+              {proposal.moves.map((move) => {
+                const previewDay = localDateKey(proposal.createdAt);
+                const day = localDateKey(move.start);
+                const label = day === previewDay ? 'Today' : day === localDateKey(addLocalDays(proposal.createdAt, 1)) ? 'Tomorrow'
+                  : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(move.start));
+                return (
+                  <View key={move.taskId} testID={`day-rebuild-row-${move.taskId}`} style={styles.proposalRow}>
+                    <View style={styles.proposalTimeCell}><Text style={styles.proposalDay}>{label}</Text><Text style={styles.proposalTime}>{timeLabel(move.start)}</Text></View>
+                    <Text style={styles.proposalTitle} numberOfLines={1}>{proposal.titles[move.taskId]}</Text>
+                    <Text style={styles.proposalDuration}>{durationLabel(move.start, move.end)}</Text>
+                  </View>
+                );
+              })}
+              {rebuild.issue ? <Text accessibilityLiveRegion="polite" style={styles.proposalText}>{rebuildIssueMessage(rebuild.issue)}</Text> : null}
+              <View style={styles.proposalActions}>
+                {rebuild.issue ? <Action label="Refresh preview" onPress={refreshProposal} accent /> : <Action label="Apply plan" onPress={applyProposal} accent />}
+                <Action label="Cancel" onPress={cancelProposal} />
+              </View>
+            </View>
+            ) : null}
+          </AnimatedDisclosure>
+
+          <View style={styles.timelineHeader} onLayout={event => { timelinePosition.current = event.nativeEvent.layout.y; }}> 
+            <Text style={styles.sectionLabel}>TIMELINE</Text>
+            <Text style={styles.nowLabel}>Now · {timeLabel(now)}</Text>
+          </View>
+
+          {map.entries.length ? (
+            map.entries.map((entry, entryIndex) => {
+              const passed = entry.end < now;
+              if (entry.kind === 'commitment') {
+                const sourceId = entry.commitmentId;
+                const commitment = commitmentsById.get(sourceId);
+                return (
+                  <Fragment key={entry.id}>
+                  {entryIndex === nowIndex ? <NowMarker now={now} /> : null}
+                  <MotionItem>
+                  <View style={[styles.timelineRow, passed && styles.passed]}>
+                    <View style={styles.timeCol}>
+                      <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
+                      <Text style={styles.timeEnd}>{timeLabel(entry.end)}</Text>
+                    </View>
+                    <View style={styles.rail}><TimeBrick size={34} /><View style={styles.railLine} /></View>
+                    <View style={[styles.block, styles.fixedBlock]}>
+                      <Pressable accessibilityRole="button" accessibilityLabel={'Edit fixed block ' + entry.title}
+                        onPress={() => router.push({ pathname: '/(app)/today/commitment/[commitmentId]', params: { commitmentId: sourceId } })} style={styles.blockCopy}>
+                        <Text style={styles.blockKicker}>{entry.label.toUpperCase()}</Text>
+                        <Text style={styles.blockTitle}>{entry.title}</Text>
+                        <Text style={styles.blockMeta}>{durationLabel(entry.start, entry.end)} · fixed</Text>
+                      </Pressable>
+                      {commitment?.recurrenceDays.length ? <Mini label="Skip this occurrence" onPress={() => skipOccurrence(commitment, entry.occurrenceDateKey)} /> : null}
+                    </View>
+                  </View>
+                  </MotionItem>
+                  </Fragment>
+                );
+              }
+
+              const task = entry.taskId ? tasksById.get(entry.taskId) : undefined;
+              if (!task) return null;
+              const estimateMet = task.status === 'open' && task.estimatedMinutes > 0 &&
+                taskRemainingMinutes(task) <= 0;
+              return (
+                <Fragment key={entry.id}>
+                {entryIndex === nowIndex ? <NowMarker now={now} /> : null}
+                <MotionItem>
+                <View style={[styles.timelineRow, passed && !entry.missed && styles.passed]}>
+                  <View style={styles.timeCol}>
+                    <Text style={styles.timeMain}>{timeLabel(entry.start)}</Text>
+                    <Text style={styles.timeEnd}>{timeLabel(entry.end)}</Text>
+                  </View>
+                  <View style={styles.rail}>
+                    <TimeBrick size={36} tone={entry.missed ? 'missed' : task.status === 'completed' ? 'done' : entry.start <= now && now < entry.end ? 'current' : 'fixed'} />
+                    <View style={styles.railLine} />
+                  </View>
+                  <View style={[styles.block, entry.missed && styles.missedBlock]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(app)/today/task/[taskId]',
+                          params: { taskId: task.id },
+                        })
+                      }
+                      style={({ pressed }) => [styles.blockCopy, pressed && styles.pressed]}>
+                      <Text style={styles.blockKicker}>{(task.subject || task.type).toUpperCase()}</Text>
+                      <Text style={styles.blockTitle}>{task.title}</Text>
+                      <Text style={styles.blockMeta}>
+                        {durationLabel(entry.start, entry.end)}
+                        {task.actualMinutes > 0 ? ' · ' + task.actualMinutes + 'm done' : ''}
+                      </Text>
+                    </Pressable>
+
+                    <TaskDueLabel task={task} now={now} />
+                    {estimateMet ? (
+                      <View style={styles.estimateReview}>
+                        <Text style={styles.estimateReviewTitle}>ESTIMATE MET · REVIEW TASK</Text>
+                        <Text style={styles.estimateReviewCopy}>
+                          {`The recorded ${task.actualMinutes} min meets the ${task.estimatedMinutes}-min estimate.`}
+                          This saved slot no longer blocks study time. Choose whether the work is finished or needs more time.
+                        </Text>
+                        <View style={styles.estimateReviewActions}>
+                          <Action label="Mark complete" onPress={() => confirmLoggedTaskCompletion(task.id)} accent />
+                          <Action label="Extend estimate" onPress={() => extendLoggedTask(task.id)} />
+                        </View>
+                      </View>
+                    ) : <TaskQuickActions task={task} />}
+
+                    {!entry.missed && !estimateMet && task.status === 'open' ? (
+                      <Mini label="Move" onPress={() => moveTask(task.id)} />
+                    ) : null}
+                    {entry.missed && !estimateMet ? (
+                      <View style={styles.missedActions}>
+                        <Mini label="Move" onPress={() => moveTask(task.id)} />
+                        <Mini
+                          label="Did some"
+                          onPress={() =>
+                            router.push({
+                              pathname: '/(app)/today/task/[taskId]',
+                              params: { taskId: task.id },
+                            })
+                          }
+                        />
+                        <Mini label="Skip" onPress={() => skipToday(task)} />
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+                </MotionItem>
+                </Fragment>
+              );
+            })
+          ) : (
+            <View style={styles.emptyCard}>
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
+              <Text style={styles.emptyTitle}>A clear stretch of your day</Text>
+              <Text style={styles.emptyText}>
+                {map.free.length ? `${timeLabel(map.free[0].start)}–${timeLabel(map.free[0].end)} · ${readableMinutes(map.free[0].minutes)} open` : 'No open window remains in the mapped day.'}
+              </Text>
+              <Text style={styles.emptyText}>Add fixed commitments or place a flexible task when exact timing helps.</Text>
+              <Action label="+ Study task" onPress={() => router.push('/(app)/today/task/new')} primary />
+            </View>
+          )}
+
+          {map.entries.length > 0 && nowIndex === map.entries.length ? <NowMarker now={now} /> : null}
+          {workspace.commitments.flatMap(item => restorableOccurrenceDates(item, now)
+            .map(date => <View key={`${item.id}:${date}`} style={{ paddingVertical: 12 }}>
+              <Text style={styles.blockMeta}>{item.title} · skipped {date}</Text>
+              <Mini label="Restore occurrence" onPress={() => skipOccurrence(item, date, true)} />
+            </View>))}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showPlanning }}
+            onPress={() => setShowPlanning((current) => !current)}
+            style={({ pressed }) => [styles.planningToggle, pressed && styles.pressed]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.planningToggleTitle}>Planning options</Text>
+              <Text style={styles.planningToggleMeta}>
+                Free windows · flexible tasks · rebuild evening
+              </Text>
+            </View>
+            <Text style={styles.planningToggleMark}>{showPlanning ? '−' : '+'}</Text>
+          </Pressable>
+
+          {moveNotice?.ownerKey === ownerKey ? <Text accessibilityLiveRegion="polite" style={styles.flexibleIntro}>{moveNotice.text}</Text> : null}
+
+          <AnimatedDisclosure visible={showPlanning}>
+          <View style={styles.freeStrip}>
+            <View style={styles.fitHeader}>
+              <Text style={styles.sectionLabel}>WHERE STUDY CAN FIT</Text>
+              <Text style={styles.fitHint}>Open windows around the fixed timeline</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.freeRow}>
+              {map.free.length ? (
+                map.free.slice(0, 6).map((window) => (
+                  <View key={String(window.start)} style={styles.freePill}>
+                    <Text style={styles.freeTime}>{timeLabel(window.start)}</Text>
+                    <Text style={styles.freeMinutes}>
+                      {timeLabel(window.end)} · {readableMinutes(window.minutes)} free
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>No open gap remains in the mapped day.</Text>
+              )}
+            </ScrollView>
+          </View>
+
+          {flexible.length ? (
+            <View style={styles.flexible}>
+              <Text style={styles.sectionLabel}>FLEXIBLE TODAY</Text>
+              <Text style={styles.flexibleIntro}>
+                These are part of today without being forced onto a clock.
+              </Text>
+              {flexible.map((task, index) => (
+                <MotionItem key={task.id} delay={Math.min(index * 30, 90)} style={styles.flexibleTask}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(app)/today/task/[taskId]',
+                        params: { taskId: task.id },
+                      })
+                    }
+                    style={[styles.flexibleCopy, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+                    <TimeBrick size={36} />
+                    <View style={{ flex: 1 }}>
+                    <Text style={styles.flexibleTitle}>{task.title}</Text>
+                    <Text style={styles.flexibleMeta}>
+                      {taskRemainingMinutes(task) || task.estimatedMinutes || 25}m · {task.subject || task.type}
+                    </Text>
+                    </View>
+                  </Pressable>
+                  <TaskDueLabel task={task} now={now} />
+                  <TaskQuickActions task={task} />
+                  <Action label="Plan next gap" onPress={() => moveTask(task.id)} accent />
+                </MotionItem>
+              ))}
+            </View>
+          ) : null}
+
+          <View style={styles.addRow}>
+            <Action label="+ Study task" onPress={() => router.push('/(app)/today/task/new')} accent />
+            <Action label="+ Fixed time" onPress={() => router.push('/(app)/today/commitment/new')} />
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={buildProposal}
+            style={({ pressed }) => [styles.rebuild, pressed && styles.pressed]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.rebuildTitle}>Rebuild my evening</Text>
+              <Text style={styles.rebuildText}>Preview a calmer arrangement of unfinished Today work.</Text>
+            </View>
+            <Text style={styles.rebuildArrow}>→</Text>
+          </Pressable>
+          </AnimatedDisclosure>
+        </ScrollView>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function NowMarker({ now }: { now: number }) {
+  return <View accessible accessibilityLabel={`Current time ${timeLabel(now)}`} style={styles.nowMarker}>
+    <Text style={styles.nowMarkerText}>NOW · {timeLabel(now)}</Text><View style={styles.nowMarkerLine} />
+  </View>;
+}
+
+function Action({
+  label,
+  onPress,
+  accent,
+  primary,
+}: {
+  label: string;
+  onPress: () => void;
+  accent?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.action,
+        accent && styles.actionAccent,
+        primary && styles.actionPrimary,
+        pressed && styles.pressed,
+      ]}>
+      <Text style={[styles.actionText, accent && styles.actionTextAccent, primary && styles.actionTextPrimary]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function Mini({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.mini, pressed && styles.pressed]}>
+      <Text style={styles.miniText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bg },
+  graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
+  page: { flex: 1, backgroundColor: chalkTheme.hero },
+  paperBody: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingTop: spacing.md },
+  toggle: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    gap: 7,
+    marginBottom: 4,
+  },
+  toggleButton: {
+    flex: 1,
+    minHeight: layout.minTouch,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleActive: { backgroundColor: colors.accentSoft, borderColor: colors.accentLine },
+  toggleText: { color: colors.muted, fontSize: 10.5, fontWeight: '800' },
+  toggleTextActive: { color: colors.accent },
+  content: {
+    width: '100%',
+    maxWidth: layout.contentMax,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 64,
+  },
+  daySummary: {
+    minHeight: 48,
+    marginTop: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  daySummaryText: { color: colors.textDim, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
+  daySummaryMeta: { color: colors.muted, fontSize: 10.5, lineHeight: 15 },
+  daySummaryWarning: { color: colors.accent, fontWeight: '700' },
+  reminderUpdated: {
+    marginTop: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    padding: spacing.md,
+  },
+  reminderUpdatedKicker: {
+    color: colors.accent,
+    fontSize: 8,
+    lineHeight: 11,
+    fontWeight: '900',
+    letterSpacing: 0.65,
+  },
+  reminderUpdatedTitle: {
+    color: colors.text,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  reminderUpdatedText: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 4,
+  },
+  reminderUpdatedMeta: {
+    color: colors.accent,
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  reminderUpdatedAction: {
+    minHeight: layout.minTouch,
+    marginTop: 9,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: chalkTheme.paperRaised,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reminderUpdatedActionTitle: {
+    color: colors.text,
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  reminderUpdatedActionMeta: {
+    color: colors.muted,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 2,
+  },
+  reminderUpdatedActionArrow: {
+    color: colors.accent,
+    fontSize: 17,
+    lineHeight: 19,
+  },
+  reclaimedSection: {
+    marginTop: spacing.md,
+  },
+  reclaimedIntro: {
+    color: colors.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  reclaimedWindow: {
+    marginTop: 9,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: chalkTheme.paperRaised,
+    overflow: 'hidden',
+  },
+  reclaimedWindowHandoff: {
+    borderWidth: 2,
+    borderColor: colors.accent,
+  },
+  reclaimedWindowHeader: {
+    minHeight: 54,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.accentFaint,
+  },
+  reclaimedHeaderCopy: { flex: 1, minWidth: 0 },
+  reclaimedWindowTitle: {
+    color: colors.text,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '800',
+  },
+  reclaimedWindowMeta: {
+    color: colors.muted,
+    fontSize: 9,
+    lineHeight: 13,
+    marginTop: 2,
+  },
+  reclaimedBadge: {
+    color: colors.accent,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  reclaimedProtection: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: chalkTheme.paperRaised,
+    padding: 10,
+  },
+  reclaimedProtectionKicker: {
+    color: colors.accent,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  reclaimedProtectionTitle: {
+    color: colors.text,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  reclaimedProtectionText: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 3,
+  },
+  reclaimedMissed: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentFaint,
+    padding: 10,
+  },
+  reclaimedMissedKicker: {
+    color: colors.accent,
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  reclaimedMissedTitle: {
+    color: colors.text,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  reclaimedMissedText: {
+    color: colors.muted,
+    fontSize: 9.5,
+    lineHeight: 14,
+    marginTop: 3,
+  },
+  reclaimedMissedDanger: {
+    color: colors.accent,
+    fontSize: 9.5,
+    lineHeight: 14,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  reclaimedMissedWarning: {
+    color: colors.textDim,
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  reclaimedMissedSafe: {
+    color: colors.textDim,
+    fontSize: 9,
+    lineHeight: 13,
+    marginTop: 6,
+  },
+  reclaimedMissedList: {
+    marginTop: 6,
+    gap: 3,
+  },
+  reclaimedMissedItem: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+  },
+  reclaimedRow: {
+    minHeight: 88,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingHorizontal: 10,
+  },
+  reclaimedTimeCol: {
+    width: 62,
+    paddingTop: 12,
+  },
+  reclaimedTime: {
+    color: colors.accent,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  reclaimedEnd: {
+    color: colors.subtle,
+    fontSize: 8.5,
+    lineHeight: 12,
+    marginTop: 2,
+  },
+  reclaimedRail: {
+    width: 44,
+    alignItems: 'center',
+    paddingTop: 4,
+  },
+  reclaimedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: colors.accentFill,
+    marginTop: 16,
+  },
+  reclaimedBlock: {
+    flex: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+    paddingVertical: 10,
+    paddingLeft: 8,
+  },
+  reclaimedBlockHandoff: {
+    marginVertical: 5,
+    marginRight: 4,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.accentFaint,
+    paddingRight: 8,
+  },
+  reclaimedHandoffHint: {
+    color: colors.accent,
+    fontSize: 8.5,
+    lineHeight: 12,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  reclaimedStart: {
+    minHeight: 40,
+    marginTop: 8,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reclaimedStartText: {
+    color: colors.accent,
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '900',
+  },
+  reclaimedStartArrow: {
+    color: colors.accent,
+    fontSize: 16,
+    lineHeight: 18,
+  },
+  overload: { marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: colors.accentFaint, padding: spacing.md },
+  overloadLabel: { color: colors.accent, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  overloadTitle: { color: colors.text, fontSize: 12, lineHeight: 18, fontWeight: '700', marginTop: 5 },
+  overloadActions: { flexDirection: 'row', gap: 8, marginTop: 11 },
+  planningToggle: { minHeight: 66, marginTop: spacing.xl, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  planningToggleTitle: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
+  planningToggleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
+  planningToggleMark: { color: colors.accent, fontSize: 22, lineHeight: 24 },
+  freeStrip: { marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
+  fitHeader: { gap: 5 },
+  fitHint: { color: colors.muted, fontSize: 11.5, lineHeight: 16 },
+  sectionLabel: { color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.55 },
+  freeRow: { gap: 8, paddingTop: 10 },
+  freePill: {
+    minHeight: 52,
+    minWidth: 142,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: paperSurfaces.card,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  freeTime: { color: colors.text, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
+  freeMinutes: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
+  proposal: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accentLine, backgroundColor: chalkTheme.paperRaised, padding: spacing.md },
+  proposalText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5, marginBottom: 8 },
+  proposalRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: colors.line },
+  proposalTimeCell: { width: 78 },
+  proposalDay: { color: colors.muted, fontSize: 9, lineHeight: 13 },
+  proposalTime: { width: 78, color: colors.accent, fontSize: 9.5, fontWeight: '800' },
+  proposalTitle: { flex: 1, minWidth: 0, color: colors.text, fontSize: 10.5, fontWeight: '700' },
+  proposalDuration: { color: colors.subtle, fontSize: 9 },
+  proposalActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  nowMarker: { flexDirection: 'row', alignItems: 'center', gap: 9, marginVertical: 8 },
+  nowMarkerText: { color: '#8E5147', fontSize: 10, fontWeight: '700' },
+  nowMarkerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#B27B6D' },
+  timelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    marginBottom: 10,
+  },
+  nowLabel: { color: colors.accent, fontSize: 9, fontWeight: '700' },
+  timelineRow: { minHeight: 88, flexDirection: 'row', alignItems: 'stretch' },
+  timeCol: { width: 68, paddingTop: 10 },
+  timeMain: { color: colors.textDim, fontSize: 11, lineHeight: 15, fontWeight: '700' },
+  timeEnd: { color: colors.subtle, fontSize: 9, lineHeight: 13, marginTop: 3 },
+  rail: { width: 44, alignItems: 'center', paddingTop: 4 },
+  railLine: { flex: 1, width: 1, backgroundColor: colors.lineStrong },
+  railDotFixed: { width: 7, height: 7, borderRadius: 7, backgroundColor: colors.muted, marginTop: 14 },
+  railDotStudy: { width: 8, height: 8, borderRadius: 8, backgroundColor: colors.accentFill, marginTop: 14 },
+  block: {
+    flex: 1,
+    marginBottom: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderLeftWidth: 1,
+    borderLeftColor: chalkTheme.paperLine,
+    backgroundColor: 'rgba(255,252,243,.34)',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+  },
+  fixedBlock: {
+    borderLeftColor: chalkTheme.paperLine,
+    backgroundColor: 'rgba(126,152,164,.10)',
+  },
+  missedBlock: { borderStyle: 'dashed' },
+  estimateReview: {
+    marginTop: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    backgroundColor: chalkTheme.paperRaised,
+    padding: 10,
+  },
+  estimateReviewTitle: {
+    color: colors.accent,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  estimateReviewCopy: {
+    color: colors.textDim,
+    fontSize: 11.5,
+    lineHeight: 17,
+    marginTop: 5,
+  },
+  estimateReviewActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+
+  blockCopy: { minHeight: 48 },
+  blockKicker: { color: colors.subtle, fontSize: 10.5, lineHeight: 14, fontWeight: '700', letterSpacing: 0.45 },
+  blockTitle: { color: colors.text, fontSize: 16, lineHeight: 21, fontWeight: '700', marginTop: 4 },
+  blockMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 4 },
+  passed: { opacity: 0.82 },
+  blockActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  missedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  mini: { minHeight: layout.minTouch, minWidth: 68, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
+  miniText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
+  emptyCard: { marginTop: 8, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border, backgroundColor: paperSurfaces.card, padding: spacing.lg, overflow: 'hidden' },
+  emptyTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  emptyText: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
+  flexible: { marginTop: spacing.xl },
+  flexibleIntro: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 5, marginBottom: 8 },
+  flexibleTask: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 12, gap: 8 },
+  flexibleCopy: { flex: 1, minHeight: layout.minTouch, justifyContent: 'center' },
+  flexibleTitle: { color: colors.text, fontSize: 11, fontWeight: '700' },
+  flexibleMeta: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
+  addRow: { flexDirection: 'row', gap: 8, marginTop: spacing.xl },
+  action: { flex: 1, minHeight: layout.minTouch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  actionAccent: { borderColor: paperSurfaces.accentLine, backgroundColor: paperSurfaces.accentSoft },
+  actionPrimary: { flex: 0, minHeight: 52, marginTop: spacing.md, borderRadius: radius.pill, backgroundColor: paperSurfaces.accent, borderColor: paperSurfaces.accent },
+  actionTextPrimary: { color: paperSurfaces.onAccent, fontSize: 14, lineHeight: 20 },
+  actionText: { color: colors.muted, fontSize: 11.5, lineHeight: 15, fontWeight: '700' },
+  actionTextAccent: { color: colors.accent },
+  rebuild: { minHeight: 68, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border, backgroundColor: paperSurfaces.card, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  rebuildTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
+  rebuildText: { color: colors.muted, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
+  rebuildArrow: { color: colors.accent, fontSize: 18 },
+  pressed: { opacity: 0.66 },
+});

@@ -1,0 +1,29 @@
+name: Publish navigation repair preview
+on:
+  push:
+    branches: [codex/preview-nav-repair-dcb8fa9]
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: dcb8fa91d0e671e82e7cc42a1bbd1956bd47ca40
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify source and runtime
+        run: |
+          test -n "$EXPO_TOKEN"
+          test "$(git rev-parse HEAD)" = "dcb8fa91d0e671e82e7cc42a1bbd1956bd47ca40"
+          test -z "$(git status --porcelain)"
+          node -e "const a=require('./app.json').expo; if(a.version!=='0.2.20'||a.runtimeVersion.policy!=='appVersion'||a.extra.eas.projectId!=='2171936c-83f9-459f-9bb6-dddc4768484e') process.exit(1)"
+      - name: Publish Android preview only
+        run: npx eas-cli@latest update --channel preview --environment preview --platform android --non-interactive --message "Navigation repair dcb8fa91d0e671e82e7cc42a1bbd1956bd47ca40"

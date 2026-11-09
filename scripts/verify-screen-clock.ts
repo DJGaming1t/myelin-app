@@ -1,0 +1,14 @@
+import { strict as assert } from 'node:assert';
+import { screenClockLifecycle } from '../src/features/planning/screenClockLifecycle';
+let refreshes = 0, starts = 0, stops = 0;
+let callback: (() => void) | undefined;
+const schedule = ((fn: () => void, delay: number) => { assert.equal(delay, 30_000); starts++; callback = fn; return 1; }) as unknown as typeof setInterval;
+const cancel = (() => { stops++; callback = undefined; }) as typeof clearInterval;
+const clock = screenClockLifecycle(() => { refreshes++; }, schedule, cancel);
+clock.setActive(true); clock.setActive(true);
+assert.equal(starts, 1); assert.equal(refreshes, 1);
+callback?.(); assert.equal(refreshes, 2);
+clock.setActive(false); assert.equal(stops, 1); assert.equal(callback, undefined);
+clock.setActive(true); assert.equal(starts, 2); assert.equal(refreshes, 3);
+clock.dispose(); clock.dispose(); assert.equal(stops, 2);
+console.log('Screen clock lifecycle checks passed');

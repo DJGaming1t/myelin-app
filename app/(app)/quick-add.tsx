@@ -37,7 +37,7 @@ export default function QuickAddScreen() {
               icon="today"
               title="Task"
               detail="Homework, practice, revision or an assignment"
-              onPress={() => router.push('/(app)/today/task/new')}
+              onPress={() => router.push('/(app)/new-task')}
             />
             <ActionRow
               icon="calendar"

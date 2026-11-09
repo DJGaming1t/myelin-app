@@ -1,21 +1,18 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { AppState } from 'react-native';
+import { screenClockLifecycle } from './screenClockLifecycle';
 
-// Re-evaluate due dates, capacity and greetings on return and across midnight.
-// Only the visible screen ticks, and background ticks do not trigger renders.
+// Refresh on return and across midnight; stop the timer when not visible or active.
 export function useScreenClock() {
   const [now, setNow] = useState(Date.now);
   useFocusEffect(useCallback(() => {
-    const refresh = () => setNow(Date.now());
-    refresh();
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') refresh();
+    const clock = screenClockLifecycle(() => setNow(Date.now()));
+    clock.setActive(AppState.currentState === 'active');
+    const subscription = AppState.addEventListener('change', state => {
+      clock.setActive(state === 'active');
     });
-    const timer = setInterval(() => {
-      if (AppState.currentState === 'active') refresh();
-    }, 30_000);
-    return () => { clearInterval(timer); subscription.remove(); };
+    return () => { clock.dispose(); subscription.remove(); };
   }, []));
   return now;
 }

@@ -6,7 +6,7 @@ import { useAuth } from '@/src/features/auth/AuthProvider';
 import { useOnboarding } from '@/src/features/onboarding/OnboardingProvider';
 import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTransitionProvider';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
-import { chalkTheme, motion } from '@/src/theme/tokens';
+import { detailTransition } from '@/src/features/navigation/transition';
 
 const PEER_ROUTE_NAMES = new Set([
   'today',
@@ -64,19 +64,9 @@ export default function AppLayout() {
     <Stack
       screenOptions={({ route }) => ({
         headerShown: false,
-        contentStyle: { backgroundColor: chalkTheme.hero },
-        // Peer screens crossfade in place, keeping their floating docks aligned.
-        // Detail screens retain the directional navigation cue.
-        animation: reduceMotion
-          ? 'none'
-          : PEER_ROUTE_NAMES.has(route.name)
-            ? 'fade'
-            : 'slide_from_right',
-        animationDuration: reduceMotion
-          ? 0
-          : PEER_ROUTE_NAMES.has(route.name)
-            ? 180
-            : motion.enterMs,
+        ...detailTransition(reduceMotion),
+        animation: reduceMotion ? 'none' : PEER_ROUTE_NAMES.has(route.name) ? 'fade' : 'slide_from_right',
+        animationDuration: reduceMotion ? 0 : PEER_ROUTE_NAMES.has(route.name) ? 180 : 260,
       })}>
       <Stack.Screen name="(main)" options={{ animation: 'none' }} />
     </Stack>

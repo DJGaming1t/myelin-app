@@ -1,14 +1,15 @@
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { detailTransition } from '@/src/features/navigation/transition';
 import { Stack } from 'expo-router';
 
-import { chalkTheme } from '@/src/theme/tokens';
 
 export default function TopicsLayout() {
+  const reduceMotion = useReducedMotion();
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: chalkTheme.hero },
-        animation: 'slide_from_right',
+        ...detailTransition(reduceMotion),
       }}>
       <Stack.Screen name="index" options={{ animation: 'none' }} />
     </Stack>

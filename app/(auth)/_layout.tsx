@@ -1,3 +1,5 @@
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { detailTransition } from '@/src/features/navigation/transition';
 import { MyelinArrival } from '@/src/components/app/MyelinArrival';
 import { Redirect, Stack } from 'expo-router';
 
@@ -6,6 +8,7 @@ import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTra
 import { colors } from '@/src/theme/tokens';
 
 export default function AuthLayout() {
+  const reduceMotion = useReducedMotion();
   const { ready, user, localMode } = useAuth();
   const { transitionPending } = useOnboardingTransition();
 
@@ -26,7 +29,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'fade',
+        ...detailTransition(reduceMotion),
         contentStyle: { backgroundColor: colors.bg },
       }}
     />

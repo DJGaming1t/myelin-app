@@ -1,3 +1,5 @@
+import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
+import { detailTransition } from '@/src/features/navigation/transition';
 import { Redirect, Stack } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
@@ -6,6 +8,7 @@ import { useOnboardingTransition } from '@/src/features/onboarding/OnboardingTra
 import { colors } from '@/src/theme/tokens';
 
 export default function VerificationLayout() {
+  const reduceMotion = useReducedMotion();
   const { ready, user, localMode } = useAuth();
   const { transitionPending } = useOnboardingTransition();
 
@@ -23,7 +26,7 @@ export default function VerificationLayout() {
     return <Redirect href="/(app)" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false, animation: 'none' }} />;
+  return <Stack screenOptions={{ headerShown: false, ...detailTransition(reduceMotion) }} />;
 }
 
 const styles = StyleSheet.create({

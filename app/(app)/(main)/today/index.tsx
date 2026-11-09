@@ -384,7 +384,7 @@ export default function TodayScreen() {
       Extrapolation.CLAMP,
     );
     return {
-      opacity: interpolate(progress, [0, 0.85, 1], [1, 0.12, 0], Extrapolation.CLAMP),
+      opacity: interpolate(progress, [0, 0.45, 0.65], [1, 0.18, 0], Extrapolation.CLAMP),
       transform: [
         {
           scale: interpolate(progress, [0, 1], [1, 0.96], Extrapolation.CLAMP),

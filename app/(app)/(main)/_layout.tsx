@@ -21,7 +21,11 @@ export default function MainTabsLayout() {
       tabBar={({ navigation }) => ROOT_PATHS.has(pathname) ? (
         <AppNav overlay onNavigateTab={(tab) => {
           const route = tab === 'review' || tab === 'progress' ? `${tab}/index` : tab;
-          navigation.navigate(route);
+          if (tab === 'today' || tab === 'topics') {
+            navigation.navigate(route, { screen: 'index' });
+          } else {
+            navigation.navigate(route);
+          }
         }} />
       ) : null}>
       <Tabs.Screen name="today" />

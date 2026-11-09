@@ -51,7 +51,7 @@ export default function RootLayout() {
 function RootNavigator() {
   const pathname = usePathname();
   const { session: reviewSession } = useReview();
-  const darkStage = pathname === '/focus' || pathname.startsWith('/focus/') || pathname === '/today' || pathname === '/today/' || pathname === '/topics' || pathname === '/topics/new' || pathname === '/exams' || pathname === '/exams/new' || pathname === '/mistakes' || pathname === '/progress' || pathname === '/settings' || pathname === '/quick-add' || pathname === '/today/day-map' || pathname === '/today/task/new' || pathname === '/today/commitment/new' || (pathname === '/review' && !reviewSession);
+  const darkStage = pathname === '/new-topic' || pathname === '/new-fixed-time' || pathname === '/focus' || pathname.startsWith('/focus/') || pathname === '/today' || pathname === '/today/' || pathname === '/topics' || pathname === '/topics/new' || pathname === '/exams' || pathname === '/exams/new' || pathname === '/mistakes' || pathname === '/progress' || pathname === '/settings' || pathname === '/quick-add' || pathname === '/today/day-map' || pathname === '/today/task/new' || pathname === '/today/commitment/new' || (pathname === '/review' && !reviewSession);
   return (
     <>
       <StatusBar style={darkStage ? "light" : "dark"} />

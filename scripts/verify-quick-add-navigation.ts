@@ -1,0 +1,11 @@
+import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+const add = readFileSync('app/(app)/quick-add.tsx', 'utf8');
+const tabs = readFileSync('app/(app)/(main)/_layout.tsx', 'utf8');
+const today = readFileSync('app/(app)/(main)/today/index.tsx', 'utf8');
+assert.ok(add.includes("router.push('/(app)/new-topic')"));
+assert.ok(add.includes("router.push('/(app)/new-fixed-time')"));
+assert.ok(tabs.includes("navigation.navigate(route, { screen: 'index' })"));
+assert.ok(today.includes('[0, 0.45, 0.65], [1, 0.18, 0]'));
+assert.ok(today.includes('[0, expandDistance * .65, expandDistance], [0, 0, 1]'));
+console.log('Quick Add routing and Today transition checks passed');

@@ -31,7 +31,7 @@ export default function QuickAddScreen() {
               title="Topic"
               detail="Something you are learning or revising"
               accent
-              onPress={() => router.push('/(app)/topics/new')}
+              onPress={() => router.push('/(app)/new-topic')}
             />
             <ActionRow
               icon="today"
@@ -49,7 +49,7 @@ export default function QuickAddScreen() {
               icon="today"
               title="Fixed time"
               detail="School, tuition, commute or another commitment"
-              onPress={() => router.push('/(app)/today/commitment/new')}
+              onPress={() => router.push('/(app)/new-fixed-time')}
             />
           </View>
 

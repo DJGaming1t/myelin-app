@@ -14,7 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { Reveal } from '@/src/components/motion/Reveal';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
@@ -316,7 +317,7 @@ export default function RemindersScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop warmPaper />
       <ScreenHeader
         eyebrow="NUDGES, NOT PRESSURE"
         title="Reminder Studio"
@@ -1405,7 +1406,7 @@ function Rule({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: settingsChalk.paper },
   content: { paddingHorizontal: spacing.md, paddingBottom: 60 },
   wrapRow: { flexWrap: 'wrap' },
   heroCompact: { flexWrap: 'wrap', gap: 9 },
@@ -1475,7 +1476,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   timelineHeader: {
@@ -1528,7 +1529,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.bgRaised,
+    backgroundColor: settingsChalk.paper,
   },
   timelineRailDotScheduled: {
     borderColor: colors.accent,
@@ -1582,7 +1583,7 @@ const styles = StyleSheet.create({
   },
   timelineDecisionCollision: {
     borderColor: colors.lineStrong,
-    backgroundColor: colors.bgRaised,
+    backgroundColor: settingsChalk.paper,
   },
   timelineDecisionText: {
     color: colors.muted,
@@ -1610,7 +1611,7 @@ const styles = StyleSheet.create({
   timelineUsefulness: {
     marginTop: 6,
     borderRadius: radius.sm,
-    backgroundColor: colors.bgRaised,
+    backgroundColor: settingsChalk.paper,
     paddingHorizontal: 8,
     paddingVertical: 7,
   },
@@ -1650,7 +1651,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   recoveredInsightHeader: {
@@ -1690,7 +1691,7 @@ const styles = StyleSheet.create({
   },
   recoveredInsightStatusSuppressed: {
     borderColor: colors.lineStrong,
-    backgroundColor: colors.bgRaised,
+    backgroundColor: settingsChalk.paper,
   },
   recoveredInsightStatusText: {
     color: colors.textDim,
@@ -1852,7 +1853,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1871,7 +1872,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderLeftWidth: 2,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 13,
     shadowColor: '#000',
     shadowOpacity: 0.28,
@@ -1930,7 +1931,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   voiceGrid: { flexDirection: 'row', gap: 7 },
@@ -1940,7 +1941,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 11,
   },
   voiceCardActive: {
@@ -1971,7 +1972,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 10,
     justifyContent: 'center',
   },
@@ -1997,7 +1998,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 9,
   },
   presetActive: {

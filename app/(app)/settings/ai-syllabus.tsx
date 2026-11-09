@@ -13,7 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { applyPreparedAssistantActionBatch } from '@/src/features/assistant/assistant-action-session';
 import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
@@ -296,7 +297,7 @@ export default function LocalAiSyllabusScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop warmPaper />
       <KeyboardAvoidingView
         style={styles.page}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -920,7 +921,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: settingsChalk.paper },
   page: { flex: 1 },
   scroll: { flex: 1 },
   content: {
@@ -938,7 +939,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -968,12 +969,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   ready: { color: colors.success, backgroundColor: 'rgba(116,201,152,0.10)' },
-  blocked: { color: colors.subtle, backgroundColor: colors.bg },
+  blocked: { color: colors.subtle, backgroundColor: settingsChalk.paper },
   formCard: {
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.24)',
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   sectionTitle: {
@@ -990,7 +991,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     color: colors.text,
     fontSize: 13,
     paddingHorizontal: 12,
@@ -1002,7 +1003,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     color: colors.text,
     fontSize: 13,
     lineHeight: 19,
@@ -1029,7 +1030,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.32)',
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   previewTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
@@ -1065,7 +1066,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 57,
     borderRadius: radius.sm,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 8,
     justifyContent: 'space-between',
   },
@@ -1126,7 +1127,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.24)',
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 11,
   },
   autopilotTop: {
@@ -1182,7 +1183,7 @@ const styles = StyleSheet.create({
     width: '48%',
     minHeight: 58,
     borderRadius: radius.sm,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 8,
   },
   autopilotStatLabel: {
@@ -1235,7 +1236,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 9,
   },
   autopilotNoticeTitle: {
@@ -1254,7 +1255,7 @@ const styles = StyleSheet.create({
   autopilotLedger: {
     marginTop: 9,
     borderRadius: radius.sm,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 9,
   },
   autopilotLedgerTitle: {
@@ -1372,7 +1373,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 11,
   },
   topicEditorTop: {
@@ -1413,7 +1414,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     color: colors.text,
     fontSize: 12,
     lineHeight: 17,
@@ -1444,7 +1445,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1476,7 +1477,7 @@ const styles = StyleSheet.create({
   guardrail: {
     marginTop: 12,
     borderRadius: radius.md,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 11,
   },
   guardrailTitle: {

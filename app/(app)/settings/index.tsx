@@ -291,7 +291,7 @@ export default function SettingsScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          {(workspace.settings.themePalette ?? 'editorial') === 'editorial' ? <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View> : null}
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
           <View style={styles.overview}>
             <Text style={styles.overviewLabel}>YOUR STUDY SPACE</Text>
             <Text style={styles.overviewTitle}>Make it yours.</Text>
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
   page: { flex: 1 },
-  scroll: { flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+  scroll: { flex: 1, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 13, lineHeight: 18 },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 72 },
@@ -939,13 +939,13 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
   sectionSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   sectionIndicator: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, backgroundColor: colors.panel, padding: spacing.md, overflow: 'hidden' },
+  sectionBody: { marginBottom: spacing.md, borderRadius: radius.md, backgroundColor: chalkTheme.paperRaised, padding: spacing.md, overflow: 'hidden' },
   settingBlock: { paddingVertical: 4, marginBottom: 13 },
   settingTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   settingLabel: { color: colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' },
   settingValue: { color: colors.accent, fontSize: 12.5, lineHeight: 17, fontWeight: '800' },
   choiceRow: { gap: 7, paddingTop: 9 },
-  choice: { minWidth: 48, minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  choice: { minWidth: 48, minHeight: layout.minTouch, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: chalkTheme.paper, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   choiceActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   choiceText: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
   choiceTextActive: { color: colors.accent },

@@ -6,15 +6,15 @@ import { chalkTheme, colors, getActiveThemePalette, subscribeThemePalette } from
 
 const subscribe = (listener: () => void) => subscribeThemePalette(listener);
 
-export function AmbientBackdrop({ dark = false, darkTop = false }: { dark?: boolean; darkTop?: boolean }) {
+export function AmbientBackdrop({ dark = false, darkTop = false, warmPaper = false }: { dark?: boolean; darkTop?: boolean; warmPaper?: boolean }) {
   const insets = useSafeAreaInsets();
   const palette = useSyncExternalStore(subscribe, getActiveThemePalette, getActiveThemePalette);
   return (
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[StyleSheet.absoluteFill, styles.clip]}>
-      <View style={[StyleSheet.absoluteFill, styles.base, dark && { backgroundColor: chalkTheme.hero }]} />
-      {!dark && palette === 'editorial' ? <PaperGrain /> : null}
-      {!dark ? <View style={styles.orbTop} /> : null}
-      {!dark ? <View style={styles.rule} /> : null}
+      <View style={[StyleSheet.absoluteFill, styles.base, warmPaper && { backgroundColor: chalkTheme.paper }, dark && { backgroundColor: chalkTheme.hero }]} />
+      {!dark && (warmPaper || palette === 'editorial') ? <PaperGrain /> : null}
+      {!dark && !warmPaper ? <View style={styles.orbTop} /> : null}
+      {!dark && !warmPaper ? <View style={styles.rule} /> : null}
       {darkTop ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: insets.top, backgroundColor: chalkTheme.hero }} /> : null}
     </View>
   );

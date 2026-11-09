@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import {
   CloudSyncStatus,
@@ -133,7 +134,7 @@ export default function CloudSyncScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop warmPaper />
       <ScreenHeader
         eyebrow="CLOUD"
         title="Cloud sync"
@@ -417,13 +418,13 @@ function Rule({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: settingsChalk.paper },
   content: { paddingHorizontal: spacing.lg, paddingBottom: 56 },
   statusCard: {
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   statusTop: {
@@ -498,7 +499,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 10,
   },
   messageDanger: {
@@ -521,7 +522,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginTop: 7,
@@ -581,7 +582,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 10,
   },
   choiceTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
@@ -590,7 +591,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 11,
   },
   rule: {

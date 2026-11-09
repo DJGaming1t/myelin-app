@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { useReview } from '@/src/features/review/ReviewProvider';
@@ -279,7 +280,7 @@ export default function DataTransferScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop warmPaper />
       <ScreenHeader
         eyebrow="PORTABLE DATA"
         title="Backup & migration"
@@ -505,7 +506,7 @@ function Rule({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: settingsChalk.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loading: { color: colors.muted, fontSize: 12 },
   content: { paddingHorizontal: spacing.lg, paddingBottom: 56 },
@@ -519,12 +520,12 @@ const styles = StyleSheet.create({
   section: { marginTop: spacing.xl },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   sectionText: { color: colors.subtle, fontSize: 11.5, lineHeight: 17, marginTop: 4 },
-  chooseButton: { minHeight: 64, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  chooseButton: { minHeight: 64, marginTop: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: settingsChalk.paperRaised, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
   chooseCopy: { flex: 1, minWidth: 0 },
   chooseTitle: { color: colors.text, fontSize: 11.5, fontWeight: '700' },
   chooseText: { color: colors.subtle, fontSize: 11, lineHeight: 15, marginTop: 4 },
   chooseArrow: { color: colors.accent, fontSize: 20, flexShrink: 0 },
-  preview: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, padding: spacing.md },
+  preview: { marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: settingsChalk.paperRaised, padding: spacing.md },
   previewHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   previewCopy: { flex: 1 },
   previewEyebrow: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.05 },
@@ -537,7 +538,7 @@ const styles = StyleSheet.create({
   metaLabel: { color: colors.subtle, fontSize: 10.5 },
   metaValue: { flex: 1, minWidth: 0, color: colors.muted, fontSize: 10.8, textAlign: 'right' },
   countGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },
-  count: { width: '31.7%', minHeight: 54, borderRadius: radius.md, backgroundColor: colors.bg, padding: 9, justifyContent: 'space-between' },
+  count: { width: '31.7%', minHeight: 54, borderRadius: radius.md, backgroundColor: settingsChalk.paper, padding: 9, justifyContent: 'space-between' },
   countLabel: { color: colors.subtle, fontSize: 9.2, fontWeight: '800', letterSpacing: 0.75 },
   countValue: { color: colors.text, fontSize: 13.5, fontWeight: '700' },
   notice: { marginTop: 9, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: 10 },

@@ -3,7 +3,8 @@ import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleS
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { AnimatedDisclosure } from '@/src/components/motion/AnimatedDisclosure';
 import { FEATURE_GUIDES, FeatureGuide, GuideAction, tutorialDestination } from '@/src/features/guides/guide-registry';
 import { HELP_EXAMPLES, searchGuides } from '@/src/features/guides/help-search';
@@ -32,7 +33,7 @@ export default function HelpScreen() {
   }
 
   return <SafeAreaView style={styles.safe}>
-    <AmbientBackdrop />
+    <AmbientBackdrop darkTop warmPaper />
     <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScreenHeader title="Help" variant="compact" backLabel="Back"
         onBack={() => router.canGoBack() ? router.back() : router.replace('/(app)/settings')} />
@@ -99,10 +100,10 @@ export default function HelpScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg }, page: { flex: 1 },
+  safe: { flex: 1, backgroundColor: settingsChalk.paper }, page: { flex: 1 },
   searchArea: { width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: space.lg, paddingBottom: space.md },
   intro: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 12 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, borderRadius: radius.md },
+  searchBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: settingsChalk.paperRaised, borderRadius: radius.md },
   input: { flex: 1, minWidth: 0, minHeight: 52, paddingHorizontal: 14, paddingVertical: 12, color: colors.text, fontSize: 16 },
   clear: { minHeight: 48, minWidth: 56, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 },
   content: { width: '100%', maxWidth: layout.readingMax, alignSelf: 'center', paddingHorizontal: space.lg, paddingBottom: 32 },

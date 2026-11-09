@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { useLocalAi } from '@/src/features/assistant/local-ai/LocalAiProvider';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
 
@@ -131,7 +132,7 @@ export default function AiModelsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop warmPaper />
       <ScreenHeader
         title="On-device AI"
         eyebrow="EXPERIMENTAL"
@@ -475,7 +476,7 @@ function FlowStep({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
   },
   scroll: { flex: 1 },
   content: {
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.28)',
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.lg,
   },
   eyebrow: {
@@ -522,7 +523,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 64,
     borderRadius: radius.md,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 11,
     justifyContent: 'space-between',
   },
@@ -544,7 +545,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: 'rgba(255,107,107,0.28)',
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   warningTitle: {
@@ -563,7 +564,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.lg,
   },
   modelHeader: {
@@ -706,7 +707,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 13,
     flexDirection: 'row',
     alignItems: 'center',
@@ -727,7 +728,7 @@ const styles = StyleSheet.create({
   },
   note: {
     borderRadius: radius.md,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   noteTitle: {

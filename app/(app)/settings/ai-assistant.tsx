@@ -15,7 +15,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { useWorkspace } from '@/src/data/WorkspaceProvider';
 import { useAuth } from '@/src/features/auth/AuthProvider';
 import { auth } from '@/src/lib/firebase';
@@ -512,7 +513,7 @@ export default function LocalAiAssistantScreen() {
   const hasMessages = chat.ownerKey === ownerKey && chat.messages.length > 0;
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop warmPaper />
       <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScreenHeader title="MYELIN assistant" variant="compact" onBack={() => router.back()} actionLabel="New chat" onAction={newChat} />
         <View style={styles.chatStatus}>
@@ -622,7 +623,7 @@ const styles = StyleSheet.create({
   chatStatus: { marginHorizontal: spacing.lg, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 },
   cloudChatRow: { marginHorizontal: spacing.lg, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 7,
     borderRadius: radius.md, borderWidth: 1, borderColor: colors.line,
-    backgroundColor: colors.panel, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    backgroundColor: settingsChalk.paperRaised, flexDirection: 'row', alignItems: 'center', gap: 8 },
   cloudChatCopy: { flex: 1, gap: 4 },
   cloudChatTitle: { color: colors.text, fontSize: 12.5, fontWeight: '700', lineHeight: 18 },
   cloudChatHint: { color: colors.muted, fontSize: 11, lineHeight: 16 },
@@ -635,17 +636,17 @@ const styles = StyleSheet.create({
   welcomeText: { color: colors.muted, fontSize: 14, lineHeight: 21 },
   chatBubble: { maxWidth: '94%', borderRadius: radius.lg, padding: 14, gap: 6 },
   userBubble: { alignSelf: 'flex-end', backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: 'rgba(255,128,91,0.22)' },
-  assistantBubble: { alignSelf: 'flex-start', backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line },
+  assistantBubble: { alignSelf: 'flex-start', backgroundColor: settingsChalk.paperRaised, borderWidth: 1, borderColor: colors.line },
   bubbleLabel: { color: colors.subtle, fontSize: 10, lineHeight: 14, fontWeight: '800', letterSpacing: 0.6 },
   bubbleText: { color: colors.text, fontSize: 14, lineHeight: 22 },
-  composer: { paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 8, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.bg, gap: 5 },
+  composer: { paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 8, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: settingsChalk.paper, gap: 5 },
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  chatInput: { flex: 1, minHeight: layout.minTouch, maxHeight: 130, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panel, color: colors.text, fontSize: 14, lineHeight: 21, paddingHorizontal: 12, paddingVertical: 12 },
+  chatInput: { flex: 1, minHeight: layout.minTouch, maxHeight: 130, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: settingsChalk.paperRaised, color: colors.text, fontSize: 14, lineHeight: 21, paddingHorizontal: 12, paddingVertical: 12 },
   sendButton: { minHeight: layout.minTouch, borderRadius: radius.md, backgroundColor: colors.accentFill, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   composerNote: { color: colors.subtle, fontSize: 10, lineHeight: 15, paddingTop: 3 },
   answerHint: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between', gap: 4 },
   answerHintText: { color: colors.muted, fontSize: 12, lineHeight: 18 },
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: settingsChalk.paper },
   page: { flex: 1 },
   scroll: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -657,7 +658,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
   },
@@ -675,7 +676,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,128,91,0.32)',
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.md,
   },
   previewKicker: { color: colors.accent, fontSize: 9.5, fontWeight: '900', letterSpacing: 0.55 },
@@ -707,7 +708,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     padding: 12,
   },
   planHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
@@ -731,7 +732,7 @@ const styles = StyleSheet.create({
     width: '48%',
     minHeight: 66,
     borderRadius: radius.sm,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 9,
   },
   planStatLabel: { color: colors.subtle, fontSize: 8.5, lineHeight: 11, fontWeight: '800', letterSpacing: 0.4 },
@@ -743,7 +744,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: 9,
   },
   ledgerSummaryTitle: { color: colors.accent, fontSize: 8.5, lineHeight: 12, fontWeight: '900', letterSpacing: 0.45 },
@@ -850,7 +851,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: layout.minTouch,
     borderRadius: radius.md,
-    backgroundColor: colors.bg,
+    backgroundColor: settingsChalk.paper,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,

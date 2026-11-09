@@ -14,7 +14,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientBackdrop } from '@/src/components/app/AmbientBackdrop';
-import { ScreenHeader } from '@/src/components/app/ScreenHeader';
+import { SettingsHeader as ScreenHeader } from '@/src/components/app/SettingsHeader';
+import { chalkTheme as settingsChalk } from '@/src/theme/tokens';
 import { useReducedMotion } from '@/src/features/accessibility/useReducedMotion';
 import { CORE_GUIDE_STEPS, tutorialDestination } from '@/src/features/guides/guide-registry';
 import { colors, layout, radius, spacing } from '@/src/theme/tokens';
@@ -61,7 +62,7 @@ export default function TutorialReplayScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AmbientBackdrop />
+      <AmbientBackdrop darkTop warmPaper />
       <View style={styles.page}>
         <ScreenHeader
           eyebrow="HELP"
@@ -157,7 +158,7 @@ export default function TutorialReplayScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: settingsChalk.paper },
   page: { flex: 1 },
   scroll: { flex: 1 },
   progress: {
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: settingsChalk.paperRaised,
     padding: spacing.lg,
     overflow: 'hidden',
     justifyContent: 'center',
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.bgRaised,
+    backgroundColor: settingsChalk.paper,
     alignItems: 'center',
     justifyContent: 'center',
   },

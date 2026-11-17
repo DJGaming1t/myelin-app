@@ -1,0 +1,31 @@
+name: Publish refined focus preview
+on:
+  push:
+    branches: [codex/preview-focus-refine-b4671f7]
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: b4671f7f714d3e8d9d12cda5c219550512a1d829
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify source and runtime
+        run: |
+          test -n "$EXPO_TOKEN"
+          test "$(git rev-parse HEAD)" = "b4671f7f714d3e8d9d12cda5c219550512a1d829"
+          test -z "$(git status --porcelain)"
+          node -e "const a=require('./app.json').expo; if(a.version!=='0.2.20'||a.runtimeVersion.policy!=='appVersion'||a.extra.eas.projectId!=='2171936c-83f9-459f-9bb6-dddc4768484e') process.exit(1)"
+      - run: node --import tsx scripts/verify-focus-composition.ts
+      - run: node --import tsx scripts/verify-focus-personalization.ts
+      - name: Publish Android preview only
+        run: npx eas-cli@latest update --channel preview --environment preview --platform android --non-interactive --message "Focus refinement b4671f7"

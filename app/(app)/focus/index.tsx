@@ -36,14 +36,15 @@ import {
   formatTimer,
   timerIsComplete,
   timerRemainingMs,
+  timerElapsedMs,
 } from '@/src/features/focus/focus-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
+import { FocusTimerMode } from '@/src/features/focus/types';
 import {
   focusDialMarkPosition,
   focusDialMarkState,
   focusDialSize,
   focusDurationPresets,
-  focusPaceLabel,
 } from '@/src/features/focus/focus-dial-layout';
 import {
   FocusShieldActiveBanner,
@@ -98,6 +99,7 @@ export default function FocusScreen() {
     park,
     removeParked,
     completeFocus,
+    startBreak,
     completeBreak,
     skipBreak,
     discard,
@@ -114,11 +116,16 @@ export default function FocusScreen() {
     5,
     Math.min(240, intParam(params.minutes, workspace?.settings.focusMinutes ?? 45)),
   );
-  const breakMinutes = Math.max(
+  const defaultBreakMinutes = Math.max(
     1,
     Math.min(30, intParam(params.breakMinutes, workspace?.settings.breakMinutes ?? 10)),
   );
 
+  const [timerMode, setTimerMode] = useState<FocusTimerMode>('countdown');
+  const pomodoroConfigured = useRef(false);
+  const [breakMinutes, setBreakMinutes] = useState(defaultBreakMinutes);
+  const [customFocus, setCustomFocus] = useState('');
+  const [customBreak, setCustomBreak] = useState('');
   const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
   const plannedMinutes = selectedMinutes ?? suggestedMinutes;
   const durationPresets = useMemo(
@@ -136,7 +143,7 @@ export default function FocusScreen() {
   );
   const [finishing, setFinishing] = useState(false);
   const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [breakTransition, setBreakTransition] = useState<'finish' | 'retrieve' | 'skip' | null>(null);
+  const [breakTransition, setBreakTransition] = useState<'finish' | 'retrieve' | 'skip' | 'next' | null>(null);
   const breakTransitionLock = useRef(false);
 
   // Android suspends JS intervals while the app is backgrounded. The timer
@@ -224,12 +231,20 @@ export default function FocusScreen() {
   async function begin(launchMode: 'full' | 'five-minute', firstStep = tinyStep) {
     if (!topic && !task) return;
     setFocusError('');
+    const typedFocus = customFocus.trim() ? Number(customFocus) : plannedMinutes;
+    const typedBreak = customBreak.trim() ? Number(customBreak) : breakMinutes;
+    if ((timerMode !== 'stopwatch' && (!Number.isInteger(typedFocus) || typedFocus < 5 || typedFocus > 240)) ||
+      !Number.isInteger(typedBreak) || typedBreak < 1 || typedBreak > 30) {
+      setFocusError('Choose 5–240 minutes for focus and 1–30 minutes for your suggested break.');
+      return;
+    }
     try {
       const next = await start({
         ...(topic ? { topicId: topic.id } : {}),
         ...(task ? { taskId: task.id } : {}),
-        plannedMinutes,
-        breakMinutes,
+        plannedMinutes: timerMode === 'stopwatch' ? (launchMode === 'five-minute' ? suggestedMinutes : 240) : typedFocus,
+        breakMinutes: typedBreak,
+        timerMode: launchMode === 'five-minute' ? 'countdown' : timerMode,
         launchMode,
         tinyStep: firstStep,
       });
@@ -292,7 +307,7 @@ export default function FocusScreen() {
     finally { setSavingFocus(false); }
   }
 
-  async function runBreakTransition(action: 'finish' | 'retrieve' | 'skip') {
+  async function runBreakTransition(action: 'finish' | 'retrieve' | 'skip' | 'next') {
     // Use an immediate ref guard: state-only disabling does not stop two
     // rapid presses before React has rendered the disabled button.
     if (breakTransitionLock.current || session?.phase !== 'break') return;
@@ -303,7 +318,24 @@ export default function FocusScreen() {
     try {
       // Snapshot the optional retrieval destination before clearing the break.
       const suggestion = action === 'retrieve' ? retrievalSuggestion : null;
-      if (action === 'skip') {
+      if (action === 'next') {
+        const previous = session;
+        if (previous.breakSuggested) await skipBreak(Date.now());
+        else await completeBreak(Date.now());
+        const next = await start({
+          ...(previous.topicId ? { topicId: previous.topicId } : {}),
+          ...(previous.taskId ? { taskId: previous.taskId } : {}),
+          plannedMinutes: previous.fullTargetMinutes,
+          breakMinutes: previous.breakMinutes,
+          launchMode: 'full', timerMode: 'pomodoro', tinyStep: previous.tinyStep,
+        });
+        if (!next) {
+          router.replace('/(app)/today');
+          return;
+        }
+        setNow(Date.now());
+        return;
+      } else if (action === 'skip') {
         await skipBreak(Date.now());
       } else {
         await completeBreak(Date.now());
@@ -436,27 +468,24 @@ export default function FocusScreen() {
               <View style={styles.cadenceCard}>
                 <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
                 <Text accessibilityRole="header" style={styles.cadenceHeading}>Your focus session</Text>
-                <Text style={styles.cadenceIntro}>Choose your focus length</Text>
-                <View style={styles.planStrip}>
-                  <Metric
-                    label="FULL BLOCK"
-                    value={`${plannedMinutes} min`}
-                    detail={focusPaceLabel(plannedMinutes)}
-                  />
-                  <Metric
-                    label="BREAK"
-                    value={`${breakMinutes} min`}
-                    detail="Recovery"
-                  />
+                <Text style={styles.cadenceIntro}>Choose how you want to focus today.</Text>
+                <View style={styles.modeRow}>
+                  {([['countdown', 'Timer'], ['pomodoro', 'Pomodoro'], ['stopwatch', 'Stopwatch']] as const).map(([mode, label]) => (
+                    <Pressable key={mode} accessibilityRole="button" accessibilityState={{ selected: timerMode === mode }}
+                      onPress={() => { setTimerMode(mode); setFocusError(''); if (mode === 'pomodoro' && !pomodoroConfigured.current) { pomodoroConfigured.current = true; setSelectedMinutes(25); setBreakMinutes(5); setCustomFocus(''); setCustomBreak(''); } }}
+                      style={[styles.modeChoice, timerMode === mode && styles.modeChoiceActive]}>
+                      <Text style={[styles.modeChoiceText, timerMode === mode && styles.modeChoiceTextActive]}>{label}</Text>
+                    </Pressable>
+                  ))}
                 </View>
-
+                <Text style={styles.modeHint}>{timerMode === 'stopwatch' ? 'Count up at your own pace, up to 4 hours.' : timerMode === 'pomodoro' ? 'A focused block followed by an optional break.' : 'Choose a target and finish when you are ready.'}</Text>
                 <View
                   ref={guide.anchors['focus.primary']}
                   collapsable={false}
                   testID="guide-focus-primary"
                   style={styles.durationChipRow}>
-                  {durationPresets.map(minutes => {
-                    const selected = plannedMinutes === minutes;
+                  {timerMode !== 'stopwatch' && durationPresets.map(minutes => {
+                    const selected = !customFocus.trim() && plannedMinutes === minutes;
                     return (
                       <SpringPressable
                         key={minutes}
@@ -465,7 +494,7 @@ export default function FocusScreen() {
                         accessibilityState={{ selected }}
                         scaleTo={0.975}
                         lift={0}
-                        onPress={() => setSelectedMinutes(minutes)}
+                        onPress={() => { setSelectedMinutes(minutes); setCustomFocus(''); }}
                         style={[
                           styles.secondary,
                           styles.durationChip,
@@ -481,6 +510,18 @@ export default function FocusScreen() {
                       </SpringPressable>
                     );
                   })}
+                </View>
+                <View style={styles.customTimeRow}>
+                  {timerMode !== 'stopwatch' ? <View style={styles.customTimeField}>
+                    <Text style={styles.customTimeLabel}>Custom focus · min</Text>
+                    <TextInput accessibilityLabel="Custom focus minutes, 5 to 240" keyboardType="number-pad" maxLength={3}
+                      value={customFocus} onChangeText={setCustomFocus} placeholder={String(plannedMinutes)} placeholderTextColor={colors.subtle} style={styles.customTimeInput} />
+                  </View> : null}
+                  <View style={styles.customTimeField}>
+                    <Text style={styles.customTimeLabel}>Suggested break · min</Text>
+                    <TextInput accessibilityLabel="Suggested break minutes, 1 to 30" keyboardType="number-pad" maxLength={2}
+                      value={customBreak} onChangeText={setCustomBreak} placeholder={String(breakMinutes)} placeholderTextColor={colors.subtle} style={styles.customTimeInput} />
+                  </View>
                 </View>
               </View>
             </Reveal>
@@ -511,11 +552,12 @@ export default function FocusScreen() {
                 onPress={() => begin('full')}
                 style={styles.primary}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.primaryText}>Start {plannedMinutes}-minute focus</Text>
+                  <Text style={styles.primaryText}>{timerMode === 'stopwatch' ? 'Start stopwatch' : `Start ${customFocus || plannedMinutes}-minute focus`}</Text>
   
                 </View>
                 <Text style={styles.buttonArrow}>→</Text>
               </SpringPressable>
+              {focusError ? <Text accessibilityRole="alert" style={styles.storageWarning}>{focusError}</Text> : null}
 
               <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support">
                 <SpringPressable
@@ -542,8 +584,8 @@ export default function FocusScreen() {
               onLater={() => guideOffer.choose('later')} onRetry={guideOffer.retry} />
 
             <DistractionShield />
-            {focusError || saveError ? (
-              <Text accessibilityRole="alert" style={styles.storageWarning}>{focusError || saveError}</Text>
+            {saveError ? (
+              <Text accessibilityRole="alert" style={styles.storageWarning}>{saveError}</Text>
             ) : null}
             <Text style={styles.recoveryNote}>
               The timer survives leaving or closing MYELIN.
@@ -565,7 +607,7 @@ export default function FocusScreen() {
             onHelp={guide.start}
             label="Break"
             onBack={() => router.replace('/(app)/today')}
-            helper={timerDone ? 'Timer complete' : session.runningSince ? 'Timer stays active' : 'Timer paused'}
+            helper={session.breakSuggested ? 'Your break is optional' : timerDone ? 'Timer complete' : session.runningSince ? 'Timer stays active' : 'Timer paused'}
           />
 
           <ScrollView
@@ -574,10 +616,10 @@ export default function FocusScreen() {
             showsVerticalScrollIndicator={false}>
             <View style={styles.sessionModePillBreak}>
               <Text style={styles.sessionModePillBreakText}>
-                RECOVERY · {session.breakMinutes} MIN BREAK
+                {session.breakSuggested ? 'SUGGESTED' : 'RECOVERY'} · {session.breakMinutes} MIN BREAK
               </Text>
             </View>
-            <Text style={styles.sessionTitle}>Leave the work alone.</Text>
+            <Text style={styles.sessionTitle}>{session.breakSuggested ? 'Time for a break?' : 'Leave the work alone.'}</Text>
             {session.focusLogged ? (
               <Reveal key={`focus-saved:${session.id}`} distance={5}>
                 <Text style={styles.focusSavedCue}>
@@ -588,7 +630,7 @@ export default function FocusScreen() {
 
             <TimerDial
               value={formatTimer(remaining)}
-              label={timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
+              label={session.breakSuggested ? 'READY WHEN YOU ARE' : timerDone ? 'BREAK COMPLETE' : session.runningSince ? 'BREAK' : 'PAUSED'}
               complete={timerDone}
               paused={!session.runningSince && !timerDone}
               phase="break"
@@ -603,7 +645,7 @@ export default function FocusScreen() {
               />
               <View style={styles.phaseMetaRow}>
                 <Text style={styles.phaseMetaText}>
-                  {timerDone ? 'Rest complete' : session.runningSince ? 'Resting' : 'Break paused'}
+                  {session.breakSuggested ? 'Not started' : timerDone ? 'Rest complete' : session.runningSince ? 'Resting' : 'Break paused'}
                 </Text>
                 <Text style={styles.phaseMetaText}>{Math.round(phaseProgress * 100)}%</Text>
               </View>
@@ -713,9 +755,9 @@ export default function FocusScreen() {
                     accessibilityRole="button"
                     scaleTo={0.98}
                     lift={0}
-                    onPress={session.runningSince ? pause : resume}
-                    style={styles.secondary}>
-                    <Text style={styles.secondaryText}>{session.runningSince ? 'Pause' : 'Resume'}</Text>
+                    onPress={session.breakSuggested ? startBreak : session.runningSince ? pause : resume}
+                    style={[styles.secondary, session.breakSuggested && styles.sessionActionPrimary]}>
+                    <Text style={[styles.secondaryText, session.breakSuggested && styles.sessionActionPrimaryText]}>{session.breakSuggested ? 'Start break' : session.runningSince ? 'Pause' : 'Resume'}</Text>
                   </SpringPressable>
                   <Pressable
                     accessibilityRole="button"
@@ -728,11 +770,19 @@ export default function FocusScreen() {
                       pressed && !breakTransition && styles.pressed,
                     ]}>
                     <Text style={styles.secondaryText}>
-                      {breakTransition === 'skip' ? 'Saving…' : 'End break'}
+                      {breakTransition === 'skip' ? 'Saving…' : session.breakSuggested ? 'Skip break' : 'End break'}
                     </Text>
                   </Pressable>
                 </View>
               )}
+              {session.timerMode === 'pomodoro' && (session.breakSuggested || timerDone) ? (
+                <Pressable accessibilityRole="button" disabled={Boolean(breakTransition)}
+                  accessibilityState={{ disabled: Boolean(breakTransition), busy: breakTransition === 'next' }}
+                  onPress={() => void runBreakTransition('next')}
+                  style={({ pressed }) => [styles.textButton, breakTransition && styles.disabled, pressed && styles.pressed]}>
+                  <Text style={styles.textButtonText}>{breakTransition === 'next' ? 'Starting…' : session.breakSuggested ? 'Skip break & start next block' : 'Start next focus block'}</Text>
+                </Pressable>
+              ) : null}
             </Reveal>
             </View>
           </ScrollView>
@@ -761,12 +811,13 @@ export default function FocusScreen() {
           <FocusShieldActiveBanner shield={shield} />
           {saveError ? <Text accessibilityRole="alert" style={styles.storageWarning}>{saveError}</Text> : null}
           <FocusStopwatch
-            value={formatTimer(remaining)}
+            value={formatTimer(session.timerMode === 'stopwatch' ? Math.min(timerElapsedMs(session, now), 240 * 60_000) : remaining)}
+            readoutLabel={session.timerMode === 'stopwatch' ? 'TIME ELAPSED' : 'TIME REMAINING'}
             title={session.topicName}
             subject={session.subject}
-            detail={session.launchMode === 'five-minute'
+            detail={session.timerMode === 'stopwatch' ? 'STOPWATCH · UP TO 4 HOURS' : session.launchMode === 'five-minute'
               ? `5 MIN LAUNCH · ${session.fullTargetMinutes} MIN TARGET`
-              : `${session.plannedFocusMinutes} MIN FOCUS · ${session.breakMinutes} MIN BREAK`}
+              : `${session.plannedFocusMinutes} MIN FOCUS · ${session.breakMinutes} MIN BREAK SUGGESTED`}
             tinyStep={session.tinyStep}
             label={
               timerDone
@@ -777,9 +828,9 @@ export default function FocusScreen() {
                   ? 'FOCUSING'
                   : 'PAUSED'
             }
-            progress={phaseProgress}
+            progress={session.timerMode === 'stopwatch' ? 0 : phaseProgress}
           />
-          <View style={styles.phaseProgress}>
+          {session.timerMode !== 'stopwatch' ? <View style={styles.phaseProgress}>
             <AnimatedProgress
               value={phaseProgress}
               tone={timerDone ? 'success' : 'accent'}
@@ -795,7 +846,7 @@ export default function FocusScreen() {
               </Text>
               <Text style={styles.phaseMetaText}>{Math.round(phaseProgress * 100)}%</Text>
             </View>
-          </View>
+          </View> : null}
 
           <Animated.View
             layout={reduceMotion ? undefined : LinearTransition.duration(motion.stateMs)}>
@@ -842,7 +893,7 @@ export default function FocusScreen() {
           ) : finishing || timerDone ? (
             <View style={styles.finishPanel}>
               <Text style={styles.finishTitle}>
-                {timerDone ? 'Block complete.' : 'Finish this block early?'}
+                {timerDone ? 'Block complete.' : session.timerMode === 'stopwatch' ? 'Finish this session?' : 'Finish this block early?'}
               </Text>
               <Text style={styles.finishText}>
                 How demanding did this block feel? This is about workload calibration, not judging
@@ -918,7 +969,7 @@ export default function FocusScreen() {
                 lift={0}
                 onPress={requestFinishEarly}
                 style={styles.secondary}>
-                <Text style={styles.secondaryText}>Finish early</Text>
+                <Text style={styles.secondaryText}>{session.timerMode === 'stopwatch' ? 'Finish' : 'Finish early'}</Text>
               </SpringPressable>
             </View>
           )}
@@ -1067,7 +1118,7 @@ function Metric({
   );
 }
 
-function FocusStopwatch({ value, label, progress, title, subject, detail, tinyStep }: {
+function FocusStopwatch({ value, label, progress, title, subject, detail, tinyStep, readoutLabel }: {
   value: string;
   label: string;
   progress: number;
@@ -1075,6 +1126,7 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
   subject: string;
   detail: string;
   tinyStep?: string;
+  readoutLabel: string;
 }) {
   const { width } = useWindowDimensions();
   const visualHeight = Math.max(144, Math.min(180, width - 160));
@@ -1093,9 +1145,9 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
           <NativeProgressVisual model="stopwatch" progress={progress * 100} viewportHeight={visualHeight} />
         </View>
       </View>
-      <View accessible accessibilityLabel={`${value} remaining. ${label.toLowerCase()}.`} style={styles.stopwatchReadout}>
+      <View accessible accessibilityLabel={`${value} ${readoutLabel === 'TIME ELAPSED' ? 'elapsed' : 'remaining'}. ${label.toLowerCase()}.`} style={styles.stopwatchReadout}>
         <Text style={styles.stopwatchValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
-        <Text style={styles.stopwatchLabel}>TIME REMAINING</Text>
+        <Text style={styles.stopwatchLabel}>{readoutLabel}</Text>
       </View>
     </View>
   );
@@ -1300,6 +1352,16 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 14,
   },
+  modeRow: { flexDirection: 'row', gap: 6, marginTop: 14 },
+  modeChoice: { flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: paperSurfaces.border, borderRadius: 12, paddingHorizontal: 4 },
+  modeChoiceActive: { backgroundColor: chalkTheme.hero, borderColor: chalkTheme.hero },
+  modeChoiceText: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  modeChoiceTextActive: { color: chalkTheme.onStage },
+  modeHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 8, marginBottom: 12 },
+  customTimeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14 },
+  customTimeField: { flex: 1, minWidth: 120 },
+  customTimeLabel: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  customTimeInput: { minHeight: 46, borderWidth: 1, borderColor: paperSurfaces.border, borderRadius: 12, paddingHorizontal: 12, backgroundColor: chalkTheme.paper, color: colors.text, fontSize: 16 },
   cadenceHeading: { color: colors.text, fontSize: 23, lineHeight: 30, fontWeight: '500', letterSpacing: -.5 },
   cadenceIntro: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 16 },
   cadenceKicker: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },

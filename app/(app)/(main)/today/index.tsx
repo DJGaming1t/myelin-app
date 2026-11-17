@@ -953,11 +953,11 @@ export default function TodayScreen() {
                 ) : activeFocus ? (
                   <View style={styles.hero}>
                     <Text style={styles.heroMeta}>
-                      {activeFocus.phase === 'break' ? 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
+                      {activeFocus.phase === 'break' ? activeFocus.breakSuggested ? 'BREAK SUGGESTED' : 'BREAK IN PROGRESS' : 'FOCUS IN PROGRESS'}
                     </Text>
                     <Text style={styles.heroTitle}>{activeFocus.topicName}</Text>
                     <Text style={styles.heroReason}>
-                      The timer stays intact while you are away.
+                      {activeFocus.breakSuggested ? 'Your focus is saved. Start a break when you are ready.' : 'The timer stays intact while you are away.'}
                     </Text>
                     <View
                       ref={guide.anchors['today.next']}

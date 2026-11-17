@@ -17,7 +17,8 @@ import { findTopic } from '@/src/features/topics/topic-operations';
 
 import {
   addParkedDistraction,
-  beginBreak,
+  suggestBreak,
+  startSuggestedBreak,
   breakActualMinutes,
   createFocusSession,
   extendFiveMinuteLaunch,
@@ -27,7 +28,7 @@ import {
   resumeFocusTimer,
 } from './focus-engine';
 import { focusStorage } from './focus-storage';
-import { FocusLaunchMode, FocusSessionState } from './types';
+import { FocusLaunchMode, FocusSessionState, FocusTimerMode } from './types';
 
 type StartInput = {
   topicId?: string;
@@ -35,6 +36,7 @@ type StartInput = {
   plannedMinutes: number;
   breakMinutes: number;
   launchMode: FocusLaunchMode;
+  timerMode?: FocusTimerMode;
   tinyStep: string;
 };
 
@@ -45,6 +47,7 @@ type FocusContextValue = {
   start: (input: StartInput) => Promise<FocusSessionState | null>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
+  startBreak: () => Promise<void>;
   extendLaunch: () => Promise<void>;
   park: (text: string) => Promise<void>;
   removeParked: (id: string) => Promise<void>;
@@ -169,7 +172,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
   const start = useCallback(
     async (input: StartInput) => {
-      if (!workspace || !ownerRef.current || sessionRef.current) return null;
+      if (!workspace || !ownerKey || ownerRef.current !== ownerKey || sessionRef.current) return null;
 
       const task = input.taskId ? taskById(workspace, input.taskId) : null;
       if (input.taskId && (!task || task.status !== 'open')) return null;
@@ -191,6 +194,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
         plannedMinutes: input.plannedMinutes,
         breakMinutes: input.breakMinutes,
         launchMode: input.launchMode,
+        timerMode: input.timerMode,
         tinyStep: input.tinyStep,
       });
 
@@ -198,7 +202,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
       updateWorkspace(draft => recordFocusOutcome(draft, next, 'started'));
       return next;
     },
-    [commitSession, workspace, updateWorkspace],
+    [commitSession, ownerKey, workspace, updateWorkspace],
   );
 
   const transform = useCallback(
@@ -220,6 +224,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
 
       pause: () => transform((current) => pauseFocusTimer(current)),
       resume: () => transform((current) => resumeFocusTimer(current)),
+      startBreak: () => transform((current) => startSuggestedBreak(current)),
       extendLaunch: () => transform((current) => extendFiveMinuteLaunch(current)),
       park: (text) => transform((current) => addParkedDistraction(current, text)),
       removeParked: (id) =>
@@ -258,7 +263,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
               prompt: '',
               response: '',
               confidence: 'unsure',
-              plannedMinutes: current.plannedFocusMinutes,
+              ...(current.timerMode === 'stopwatch' ? {} : { plannedMinutes: current.plannedFocusMinutes }),
               startedAt: current.startedAt,
               endedAt: now,
               launchMode: current.launchMode,
@@ -313,7 +318,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
         // session advances to break. Topic sessions write history; standalone
         // task sessions update task minutes with an idempotency marker.
         await waitForSaves();
-        await commitSession(beginBreak(current, actualMinutes, now));
+        await commitSession(suggestBreak(current, actualMinutes, now));
         celebrate({ title: 'Focus complete!', detail: `${actualMinutes} focused minutes · ${current.topicName}` });
       },
 

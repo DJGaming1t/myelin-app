@@ -2,6 +2,7 @@ import {
   FOCUS_SESSION_FORMAT,
   FOCUS_SESSION_VERSION,
   FocusLaunchMode,
+  FocusTimerMode,
   FocusSessionState,
   ParkedDistraction,
 } from './types';
@@ -24,12 +25,14 @@ export function createFocusSession(input: {
   plannedMinutes: number;
   breakMinutes: number;
   launchMode: FocusLaunchMode;
+  timerMode?: FocusTimerMode;
   tinyStep: string;
   now?: number;
   id?: string;
 }): FocusSessionState {
   const now = input.now ?? Date.now();
-  const fullTargetMinutes = clampMinutes(input.plannedMinutes, 5, 240);
+  const mode = input.launchMode === 'five-minute' ? 'countdown' : input.timerMode ?? 'countdown';
+  const fullTargetMinutes = mode === 'stopwatch' ? 240 : clampMinutes(input.plannedMinutes, 5, 240);
   const plannedFocusMinutes = input.launchMode === 'five-minute' ? 5 : fullTargetMinutes;
 
   return {
@@ -42,6 +45,7 @@ export function createFocusSession(input: {
     subject: input.subject,
     phase: 'focus',
     launchMode: input.launchMode,
+    timerMode: mode,
     tinyStep: input.tinyStep.trim(),
     fullTargetMinutes,
     plannedFocusMinutes,
@@ -160,6 +164,17 @@ export function beginBreak(
     focusLogged: true,
     focusActualMinutes: Math.max(0, Math.round(actualMinutes)),
   };
+}
+
+/** Offer rest without starting the break clock. */
+export function suggestBreak(session: FocusSessionState, actualMinutes: number, now = Date.now()): FocusSessionState {
+  return { ...beginBreak(session, actualMinutes, now), runningSince: null, breakSuggested: true };
+}
+
+/** Start a suggested break at the moment the user chooses it. */
+export function startSuggestedBreak(session: FocusSessionState, now = Date.now()): FocusSessionState {
+  if (session.phase !== 'break' || !session.breakSuggested) return session;
+  return { ...session, breakSuggested: false, phaseStartedAt: now, elapsedMs: 0, runningSince: now };
 }
 
 export function breakActualMinutes(session: FocusSessionState, now = Date.now()) {

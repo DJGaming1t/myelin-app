@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import { createFocusSession, pauseFocusTimer, resumeFocusTimer, suggestBreak, startSuggestedBreak, timerElapsedMs, timerRemainingMs, focusActualMinutes, breakActualMinutes } from '../src/features/focus/focus-engine';
+import { validateFocusSession } from '../src/features/focus/focus-storage';
+import { createEmptyWorkspace } from '../src/data/schema';
+import { migrateAndValidateWorkspace } from '../src/data/migrations';
+import { recordFocusOutcome, outcomeSnapshot } from '../src/features/adaptive/outcome-engine';
+const minute = 60_000, now = 1_800_000_000_000;
+const make = (timerMode: 'countdown' | 'pomodoro' | 'stopwatch') => createFocusSession({ taskId: 'task', topicName: 'Study', subject: 'Maths', plannedMinutes: 25, breakMinutes: 5, launchMode: 'full', timerMode, tinyStep: '', now });
+for (const mode of ['countdown', 'pomodoro', 'stopwatch'] as const) assert.equal(validateFocusSession(make(mode)).timerMode, mode);
+const stopwatch = make('stopwatch');
+assert.equal(timerElapsedMs(stopwatch, now + 31 * minute), 31 * minute);
+assert.equal(focusActualMinutes(stopwatch, now + 31 * minute), 31);
+const workspace = createEmptyWorkspace(now);
+recordFocusOutcome(workspace, stopwatch, 'started', 0, now);
+recordFocusOutcome(workspace, stopwatch, 'finished', 31, now + 31 * minute);
+const restoredWorkspace = migrateAndValidateWorkspace(workspace);
+assert.equal(restoredWorkspace.focusOutcomes?.[0]?.timerMode, 'stopwatch');
+assert.equal(restoredWorkspace.focusOutcomes?.[0]?.minutes, 31);
+assert.equal(outcomeSnapshot(restoredWorkspace, now + 31 * minute).fullBlocks, 0);
+assert.equal(timerRemainingMs(stopwatch, now + 31 * minute), 209 * minute);
+const paused = pauseFocusTimer(stopwatch, now + minute);
+assert.equal(timerElapsedMs(resumeFocusTimer(paused, now + 5 * minute), now + 6 * minute), 2 * minute);
+const suggested = suggestBreak(make('pomodoro'), 25, now + 25 * minute);
+assert.equal(suggested.breakSuggested, true);
+assert.equal(breakActualMinutes(suggested, now + 60 * minute), 0);
+assert.equal(validateFocusSession(suggested).breakSuggested, true);
+assert.throws(() => validateFocusSession({ ...suggested, runningSince: now }));
+const started = startSuggestedBreak(suggested, now + 60 * minute);
+assert.equal(breakActualMinutes(started, now + 62 * minute), 2);
+assert.equal(started.phaseStartedAt, now + 60 * minute);
+const nextBlock = createFocusSession({ taskId: suggested.taskId, topicName: suggested.topicName,
+  subject: suggested.subject, plannedMinutes: suggested.fullTargetMinutes,
+  breakMinutes: suggested.breakMinutes, launchMode: 'full', timerMode: 'pomodoro', tinyStep: suggested.tinyStep,
+  now: now + 65 * minute });
+assert.notEqual(nextBlock.id, suggested.id);
+assert.equal(nextBlock.plannedFocusMinutes, 25);
+assert.equal(nextBlock.breakMinutes, 5);
+assert.equal(nextBlock.focusLogged, false);
+const legacy = { ...make('countdown'), timerMode: undefined };
+assert.equal(validateFocusSession(legacy).timerMode, 'countdown');
+assert.throws(() => validateFocusSession({ ...legacy, timerMode: 'bad' }));
+console.log('Focus mode, break consent, pause and storage checks passed');

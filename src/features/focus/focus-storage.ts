@@ -61,6 +61,18 @@ export function validateFocusSession(raw: unknown): FocusSessionState {
     throw new Error('Invalid focus launch mode.');
   }
 
+  const timerMode = session.timerMode ?? 'countdown';
+  if (timerMode !== 'countdown' && timerMode !== 'pomodoro' && timerMode !== 'stopwatch') {
+    throw new Error('Invalid timer mode.');
+  }
+  if (session.breakSuggested != null && typeof session.breakSuggested !== 'boolean') {
+    throw new Error('Invalid break suggestion state.');
+  }
+  if (session.breakSuggested === true &&
+      (phase !== 'break' || session.runningSince !== null || session.focusLogged !== true || session.elapsedMs !== 0)) {
+    throw new Error('Invalid pending break.');
+  }
+
   const distractionsRaw = session.distractions;
   if (!Array.isArray(distractionsRaw) || distractionsRaw.length > 30) {
     throw new Error('Invalid distraction list.');
@@ -80,6 +92,8 @@ export function validateFocusSession(raw: unknown): FocusSessionState {
     subject: text(session.subject, 'subject', 120),
     phase,
     launchMode,
+    timerMode,
+    ...(session.breakSuggested === true ? { breakSuggested: true } : {}),
     tinyStep: text(session.tinyStep ?? '', 'tiny step', 500),
     fullTargetMinutes: number(session.fullTargetMinutes, 'full target', 5, 240),
     plannedFocusMinutes: number(session.plannedFocusMinutes, 'focus target', 5, 240),

@@ -130,7 +130,7 @@ function allStudySessions(workspace: WorkspaceState): StudySession[] {
   return [...workspace.history, ...standalone.map(o => ({
     id: `outcome_${o.id}`, topicId: '', at: o.endedAt, kind: 'study' as const,
     minutes: o.minutes, grade: 0 as const, effort: 3 as const, prompt: '', response: '',
-    confidence: 'unsure' as const, plannedMinutes: o.plannedMinutes,
+    confidence: 'unsure' as const, ...(o.timerMode === 'stopwatch' ? {} : { plannedMinutes: o.plannedMinutes }),
   }))];
 }
 

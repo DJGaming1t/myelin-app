@@ -67,6 +67,7 @@ export type FocusOutcome = {
   endedAt: number;
   status: 'started' | 'finished' | 'abandoned';
   plannedMinutes: number;
+  timerMode?: 'countdown' | 'pomodoro' | 'stopwatch';
   minutes: number;
   launchMode: 'full' | 'five-minute';
   taskOnly: boolean;

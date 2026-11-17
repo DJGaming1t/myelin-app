@@ -1,6 +1,7 @@
 export const FOCUS_SESSION_FORMAT = 'myelin.native.focus' as const;
 export const FOCUS_SESSION_VERSION = 1 as const;
 
+export type FocusTimerMode = 'countdown' | 'pomodoro' | 'stopwatch';
 export type FocusLaunchMode = 'full' | 'five-minute';
 export type FocusPhase = 'focus' | 'break';
 
@@ -20,6 +21,8 @@ export type FocusSessionState = {
   subject: string;
   phase: FocusPhase;
   launchMode: FocusLaunchMode;
+  timerMode?: FocusTimerMode;
+  breakSuggested?: boolean;
   tinyStep: string;
   fullTargetMinutes: number;
   plannedFocusMinutes: number;

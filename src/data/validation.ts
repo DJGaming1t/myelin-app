@@ -94,9 +94,11 @@ function outcome(raw: unknown): FocusOutcome {
   const startedAt = number(o.startedAt, 'outcome start', 1);
   const endedAt = number(o.endedAt, 'outcome end');
   const status = oneOf(o.status, ['started', 'finished', 'abandoned'] as const, 'outcome status');
+  const plannedMinutes = number(o.plannedMinutes, 'outcome planned minutes', 5, 240);
   if ((status === 'started' && endedAt !== 0) || (status !== 'started' && endedAt < startedAt)) throw new Error('Invalid outcome timing.');
   return { id: id(o.id), startedAt, endedAt, status,
-    plannedMinutes: number(o.plannedMinutes, 'outcome planned minutes', 5, 240),
+    plannedMinutes,
+    ...(o.timerMode == null ? {} : { timerMode: oneOf(o.timerMode, ['countdown', 'pomodoro', 'stopwatch'] as const, 'outcome timer mode') }),
     minutes: number(o.minutes, 'outcome minutes', 0, 240),
     launchMode: oneOf(o.launchMode, ['full', 'five-minute'] as const, 'outcome launch'),
     taskOnly: o.taskOnly === true, overdue: o.overdue === true };

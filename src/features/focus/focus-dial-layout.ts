@@ -7,14 +7,14 @@ const DIAL_EDGE_RESERVE = 24;
 const PROGRESS_MARKS = FOCUS_PROGRESS_MARKS;
 const BASE_PRESETS = [10, 25, 45] as const;
 
-// Keep the clock artwork and readout side by side only when both have room.
-// Large text and narrow phones use a vertical composition instead of clipping.
+// Give the stopwatch its own centered stage and reserve space around it on
+// narrow phones. Larger accessibility text gets a little more vertical room.
 export function focusStageLayout(windowWidth: number, fontScale: number) {
-  const width = Number.isFinite(windowWidth) ? Math.max(0, windowWidth) : 0;
+  const width = Number.isFinite(windowWidth) && windowWidth > 0 ? windowWidth : 320;
   const scale = Number.isFinite(fontScale) ? Math.max(1, fontScale) : 1;
-  const stacked = width < 350 || scale > 1.2;
-  const artworkSize = stacked ? 144 : Math.max(128, Math.min(164, Math.floor((width - 72) * 0.43)));
-  return { stacked, artworkSize };
+  const available = Math.max(0, width - 80);
+  const artworkSize = Math.min(scale > 1.2 ? 205 : 232, available);
+  return { artworkSize };
 }
 
 

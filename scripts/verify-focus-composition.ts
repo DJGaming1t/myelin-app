@@ -1,16 +1,13 @@
 import { strict as assert } from 'node:assert';
 import { focusStageLayout } from '../src/features/focus/focus-dial-layout';
 
-// The artwork and timer can share a row on ordinary phones, while narrow
-// displays and accessibility text sizes get a full-width readout.
-for (const width of [350, 360, 393, 430, 768]) {
+// The centered artwork leaves room for the surrounding page padding and
+// scales down for accessibility text without forcing horizontal overflow.
+for (const width of [280, 320, 350, 360, 393, 430, 768]) {
   const layout = focusStageLayout(width, 1);
-  assert.equal(layout.stacked, false);
-  assert.ok(layout.artworkSize >= 128 && layout.artworkSize <= 164);
-  assert.ok(width - 48 - 14 - layout.artworkSize >= 120, 'readout needs usable space');
+  assert.ok(layout.artworkSize > 0 && layout.artworkSize <= 232);
+  assert.ok(layout.artworkSize <= width - 48, 'artwork needs side clearance');
 }
-assert.equal(focusStageLayout(320, 1).stacked, true);
-assert.equal(focusStageLayout(393, 1.5).stacked, true);
-assert.equal(focusStageLayout(Number.NaN, Number.NaN).stacked, true);
-assert.ok(focusStageLayout(320, 1).artworkSize <= 320 - 48);
+assert.ok(focusStageLayout(393, 1.5).artworkSize < focusStageLayout(393, 1).artworkSize);
+assert.ok(focusStageLayout(Number.NaN, Number.NaN).artworkSize > 0);
 console.log('Focus composition: narrow, regular, tablet and enlarged-text layouts passed');

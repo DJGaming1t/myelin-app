@@ -880,6 +880,7 @@ export default function FocusScreen() {
 
         <ScrollView
           ref={guide.scroll} onScroll={event => { guide.offset.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
+          style={styles.focusScroll}
           contentContainerStyle={[styles.sessionContent, styles.focusSessionContent]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -1265,7 +1266,7 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
   readoutLabel: string;
 }) {
   const { width, fontScale } = useWindowDimensions();
-  const { stacked, artworkSize } = focusStageLayout(width, fontScale);
+  const { artworkSize } = focusStageLayout(width, fontScale);
   return (
     <View style={styles.stopwatchPanel}>
       <View style={styles.stopwatchHeader}>
@@ -1275,17 +1276,17 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
       <Text accessibilityRole="header" style={styles.stopwatchTitle}>{title}</Text>
       <Text style={styles.stopwatchDetail}>{detail}</Text>
       {tinyStep ? <Text style={styles.stopwatchStep}>First step · {tinyStep}</Text> : null}
-      <View style={[styles.stopwatchStage, stacked && styles.stopwatchStageStacked]}>
+      <View style={styles.stopwatchStage}>
         <View style={[styles.stopwatchArtFrame, { width: artworkSize, height: artworkSize }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <View pointerEvents="none" style={[styles.stopwatchOrbit, { width: artworkSize, height: artworkSize, borderRadius: artworkSize / 2 }]} />
+          <View pointerEvents="none" style={styles.stopwatchOrbitMark} />
           <View style={[styles.stopwatchVisual, { width: artworkSize, height: artworkSize }]}>
             <NativeProgressVisual model="stopwatch" progress={progress * 100} viewportHeight={artworkSize} />
           </View>
         </View>
-        <View accessible accessibilityLabel={`${value} ${readoutLabel === 'TIME ELAPSED' ? 'elapsed' : 'remaining'}. ${label.toLowerCase()}.`} style={[styles.stopwatchReadout, stacked && styles.stopwatchReadoutStacked]}>
-          <Text style={styles.stopwatchLabel}>{readoutLabel}</Text>
+        <View accessible accessibilityLabel={`${value} ${readoutLabel === 'TIME ELAPSED' ? 'elapsed' : 'remaining'}. ${label.toLowerCase()}.`} style={styles.stopwatchReadout}>
           <Text style={styles.stopwatchValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{value}</Text>
-          <View style={styles.readoutRule} />
+          <Text style={styles.stopwatchLabel}>{readoutLabel}</Text>
         </View>
       </View>
     </View>
@@ -1608,16 +1609,17 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: 56,
   },
-  focusSessionContent: { paddingTop: 0 },
-  focusPaper: { marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 12, paddingBottom: 18, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+  focusScroll: { backgroundColor: chalkTheme.hero },
+  focusSessionContent: { paddingTop: 0, paddingBottom: 0, flexGrow: 1 },
+  focusPaper: { flexGrow: 1, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 8, paddingBottom: 48, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden' },
   sessionHeading: { alignItems: 'center' },
   stopwatchPanel: { marginHorizontal: -spacing.lg, backgroundColor: chalkTheme.hero, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 30, overflow: 'hidden' },
-  stopwatchStage: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 20 },
-  stopwatchStageStacked: { flexDirection: 'column', alignItems: 'center' },
+  stopwatchStage: { alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   stopwatchArtFrame: { alignItems: 'center', justifyContent: 'center' },
-  stopwatchOrbit: { position: 'absolute', borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.23)' },
+  stopwatchOrbit: { position: 'absolute', borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.24)' },
+  stopwatchOrbitMark: { position: 'absolute', top: -2, left: '50%', marginLeft: -2, width: 4, height: 4, borderRadius: 2, backgroundColor: colors.accentFill },
   stopwatchHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  stopwatchStatus: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(242,231,208,0.28)', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 1 },
+  stopwatchStatus: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 6, flexShrink: 1 },
   stopwatchStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D98A60' },
   stopwatchStatusDotPaused: { backgroundColor: chalkTheme.mutedCream },
   stopwatchKicker: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '800', letterSpacing: 1.4, flexShrink: 1 },
@@ -1626,11 +1628,9 @@ const styles = StyleSheet.create({
   stopwatchDetail: { color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 17, letterSpacing: .35, marginTop: 5 },
   stopwatchStep: { color: chalkTheme.onStage, fontSize: 12, lineHeight: 18, marginTop: 10 },
   stopwatchVisual: { alignSelf: 'center' },
-  stopwatchReadout: { flex: 1, minWidth: 0, alignItems: 'flex-start', justifyContent: 'center' },
-  stopwatchReadoutStacked: { flex: 0, width: '100%', alignItems: 'center' },
-  stopwatchValue: { color: chalkTheme.onStage, alignSelf: 'stretch', fontSize: 52, lineHeight: 64, letterSpacing: -1.5, fontVariant: ['tabular-nums'], textAlign: 'center' },
+  stopwatchReadout: { width: '100%', alignItems: 'center', marginTop: 4 },
+  stopwatchValue: { color: chalkTheme.onStage, alignSelf: 'stretch', fontSize: 58, lineHeight: 66, letterSpacing: -1.5, fontVariant: ['tabular-nums'], textAlign: 'center' },
   stopwatchLabel: { color: chalkTheme.mutedCream, alignSelf: 'center', fontSize: 10, lineHeight: 16, letterSpacing: 1.1, fontWeight: '800', textAlign: 'center' },
-  readoutRule: { alignSelf: 'center', width: 40, height: 2, backgroundColor: colors.accentFill, marginTop: 7 },
   sessionModePill: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1769,11 +1769,11 @@ const styles = StyleSheet.create({
   timerActions: { flexDirection: 'row', flexWrap: 'wrap', alignSelf: 'center', gap: 10, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
   secondary: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: paperSurfaces.border, backgroundColor: chalkTheme.paper, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   secondaryText: { color: colors.text, fontSize: 12, fontWeight: '700' },
-  sessionActionPrimary: { borderColor: paperSurfaces.accent, backgroundColor: paperSurfaces.accent },
-  sessionActionPrimaryText: { color: paperSurfaces.onAccent, fontSize: 12, fontWeight: '800' },
+  sessionActionPrimary: { borderColor: colors.accentFill, backgroundColor: colors.accentFill },
+  sessionActionPrimaryText: { color: '#25140e', fontSize: 12, fontWeight: '800' },
   extendControl: { minHeight: 44, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 18 },
   extendControlText: { color: colors.accent, fontSize: 12, fontWeight: '700' },
-  reminderPanel: { marginTop: 18, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border },
+  reminderPanel: { marginTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border },
   reminderToggle: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
   reminderTitle: { color: colors.text, fontSize: 14, lineHeight: 19, fontWeight: '700' },
   reminderCopy: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
@@ -1809,7 +1809,7 @@ const styles = StyleSheet.create({
   textButton: { minHeight: layout.minTouch, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   textButtonText: { color: colors.muted, fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   parkingShell: {
-    marginTop: spacing.lg,
+    marginTop: 0,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: paperSurfaces.border,

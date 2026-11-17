@@ -49,6 +49,7 @@ import {
   focusDialSize,
   focusDurationPresets,
   focusStageLayout,
+  focusOrbitDots,
 } from '@/src/features/focus/focus-dial-layout';
 import {
   FocusShieldActiveBanner,
@@ -1267,6 +1268,9 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
 }) {
   const { width, fontScale } = useWindowDimensions();
   const { artworkSize } = focusStageLayout(width, fontScale);
+  const orbitDots = useMemo(() => focusOrbitDots(artworkSize), [artworkSize]);
+  const frameWidth = artworkSize + 32;
+  const frameHeight = artworkSize + 56;
   return (
     <View style={styles.stopwatchPanel}>
       <View style={styles.stopwatchHeader}>
@@ -1277,16 +1281,21 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
       <Text style={styles.stopwatchDetail}>{detail}</Text>
       {tinyStep ? <Text style={styles.stopwatchStep}>First step · {tinyStep}</Text> : null}
       <View style={styles.stopwatchStage}>
-        <View style={[styles.stopwatchArtFrame, { width: artworkSize, height: artworkSize }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <View pointerEvents="none" style={[styles.stopwatchOrbit, { width: artworkSize, height: artworkSize, borderRadius: artworkSize / 2 }]} />
-          <View pointerEvents="none" style={styles.stopwatchOrbitMark} />
+        <View style={[styles.stopwatchArtFrame, { width: frameWidth, height: frameHeight }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <View style={[styles.stopwatchVisual, { width: artworkSize, height: artworkSize }]}>
             <NativeProgressVisual model="stopwatch" progress={progress * 100} viewportHeight={artworkSize} />
+          </View>
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            {orbitDots.map((dot, index) => <View key={index} style={[styles.stopwatchOrbitDot, dot]} />)}
           </View>
         </View>
         <View accessible accessibilityLabel={`${value} ${readoutLabel === 'TIME ELAPSED' ? 'elapsed' : 'remaining'}. ${label.toLowerCase()}.`} style={styles.stopwatchReadout}>
           <Text style={styles.stopwatchValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{value}</Text>
-          <Text style={styles.stopwatchLabel}>{readoutLabel}</Text>
+          <View style={styles.stopwatchCaption}>
+            <View style={styles.stopwatchCaptionRule} />
+            <Text style={styles.stopwatchLabel}>{readoutLabel}</Text>
+            <View style={styles.stopwatchCaptionRule} />
+          </View>
         </View>
       </View>
     </View>
@@ -1616,8 +1625,7 @@ const styles = StyleSheet.create({
   stopwatchPanel: { marginHorizontal: -spacing.lg, backgroundColor: chalkTheme.hero, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 30, overflow: 'hidden' },
   stopwatchStage: { alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   stopwatchArtFrame: { alignItems: 'center', justifyContent: 'center' },
-  stopwatchOrbit: { position: 'absolute', borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.24)' },
-  stopwatchOrbitMark: { position: 'absolute', top: -2, left: '50%', marginLeft: -2, width: 4, height: 4, borderRadius: 2, backgroundColor: colors.accentFill },
+  stopwatchOrbitDot: { position: 'absolute', width: 2, height: 2, borderRadius: 1, backgroundColor: chalkTheme.onStage },
   stopwatchHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   stopwatchStatus: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 6, flexShrink: 1 },
   stopwatchStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D98A60' },
@@ -1631,6 +1639,8 @@ const styles = StyleSheet.create({
   stopwatchReadout: { width: '100%', alignItems: 'center', marginTop: 4 },
   stopwatchValue: { color: chalkTheme.onStage, alignSelf: 'stretch', fontSize: 58, lineHeight: 66, letterSpacing: -1.5, fontVariant: ['tabular-nums'], textAlign: 'center' },
   stopwatchLabel: { color: chalkTheme.mutedCream, alignSelf: 'center', fontSize: 10, lineHeight: 16, letterSpacing: 1.1, fontWeight: '800', textAlign: 'center' },
+  stopwatchCaption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 1 },
+  stopwatchCaptionRule: { width: 24, height: StyleSheet.hairlineWidth, backgroundColor: chalkTheme.mutedCream, opacity: 0.55 },
   sessionModePill: {
     flexDirection: 'row',
     flexWrap: 'wrap',

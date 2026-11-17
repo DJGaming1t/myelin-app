@@ -12,9 +12,27 @@ const BASE_PRESETS = [10, 25, 45] as const;
 export function focusStageLayout(windowWidth: number, fontScale: number) {
   const width = Number.isFinite(windowWidth) && windowWidth > 0 ? windowWidth : 320;
   const scale = Number.isFinite(fontScale) ? Math.max(1, fontScale) : 1;
-  const available = Math.max(0, width - 80);
+  const available = Math.max(0, width - 112);
   const artworkSize = Math.min(scale > 1.2 ? 205 : 232, available);
   return { artworkSize };
+}
+
+// Two short arcs stay outside the GL surface so they remain visible even
+// when Android places the graphics surface in a separate compositing layer.
+export function focusOrbitDots(artworkSize: number) {
+  const frameWidth = artworkSize + 32;
+  const frameHeight = artworkSize + 56;
+  const radius = frameWidth * 1.05;
+  return [false, true].flatMap(bottom => Array.from({ length: 21 }, (_, index) => {
+    const x = ((index - 10) / 10) * frameWidth * 0.36;
+    const curve = radius - Math.sqrt(radius * radius - x * x);
+    const fade = 1 - Math.abs(index - 10) / 10;
+    return {
+      left: frameWidth / 2 + x - 1,
+      top: bottom ? frameHeight - curve - 4 : curve + 2,
+      opacity: 0.18 + fade * 0.28,
+    };
+  }));
 }
 
 

@@ -48,6 +48,7 @@ import {
   focusDialMarkState,
   focusDialSize,
   focusDurationPresets,
+  focusStageLayout,
 } from '@/src/features/focus/focus-dial-layout';
 import {
   FocusShieldActiveBanner,
@@ -436,7 +437,7 @@ export default function FocusScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-        <AmbientBackdrop darkTop />
+        <AmbientBackdrop darkTop warmPaper />
         <View style={styles.setupPage}>
           <TopBar onHelp={guide.start} label="Focus" backLabel="Review" onBack={() => router.replace('/(app)/review')} />
           <View style={styles.missing}>
@@ -466,7 +467,7 @@ export default function FocusScreen() {
       return (
         <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-          <AmbientBackdrop darkTop />
+          <AmbientBackdrop darkTop warmPaper />
           <View style={styles.setupPage}>
             <TopBar onHelp={guide.start} label="Focus" onBack={() => router.replace('/(app)/today')} />
             <View style={styles.missing}>
@@ -494,7 +495,7 @@ export default function FocusScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-        <AmbientBackdrop darkTop />
+        <AmbientBackdrop darkTop warmPaper />
         <View style={styles.setupPage}>
           <TopBar onHelp={guide.start} label="Focus" backLabel="Back" onBack={() => router.back()} />
 
@@ -526,8 +527,8 @@ export default function FocusScreen() {
             <Reveal delay={55} distance={8}>
               <View style={styles.cadenceCard}>
                 <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
-                <Text accessibilityRole="header" style={styles.cadenceHeading}>Your focus session</Text>
-                <Text style={styles.cadenceIntro}>Choose how you want to focus today.</Text>
+                <Text accessibilityRole="header" style={styles.cadenceHeading}>Make space to focus.</Text>
+                <Text style={styles.cadenceIntro}>Choose a rhythm that works for you.</Text>
                 <View style={styles.modeRow}>
                   {([['countdown', 'Timer'], ['pomodoro', 'Pomodoro'], ['stopwatch', 'Stopwatch']] as const).map(([mode, label]) => (
                     <Pressable key={mode} accessibilityRole="button" accessibilityState={{ selected: timerMode === mode }}
@@ -543,6 +544,7 @@ export default function FocusScreen() {
                     <Text style={styles.habitSuggestionText}>Try {habitualInterval.minutes} min · based on {habitualInterval.samples} completed sessions</Text>
                   </Pressable>
                 ) : null}
+                {timerMode !== 'stopwatch' ? <Text style={styles.durationHeading}>FOCUS LENGTH</Text> : null}
                 <View
                   ref={guide.anchors['focus.primary']}
                   collapsable={false}
@@ -674,7 +676,7 @@ export default function FocusScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-        <AmbientBackdrop darkTop />
+        <AmbientBackdrop darkTop warmPaper />
         <View style={styles.sessionPage}>
           <TopBar
             onHelp={guide.start}
@@ -713,7 +715,7 @@ export default function FocusScreen() {
             <View style={styles.phaseProgress}>
               <AnimatedProgress
                 value={phaseProgress}
-                tone="success"
+                tone="accent"
                 accessibilityLabel={`Break progress: ${Math.round(phaseProgress * 100)}%`}
               />
               <View style={styles.phaseMetaRow}>
@@ -868,7 +870,7 @@ export default function FocusScreen() {
   return (
     <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
-      <AmbientBackdrop darkTop />
+      <AmbientBackdrop darkTop warmPaper />
       <View style={styles.sessionPage}>
         <TopBar
           onHelp={guide.start}
@@ -903,6 +905,8 @@ export default function FocusScreen() {
             }
             progress={session.timerMode === 'stopwatch' ? 0 : phaseProgress}
           />
+          <View style={styles.focusPaper}>
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}><PaperGrain /></View>
           {session.timerMode !== 'stopwatch' ? <View style={styles.phaseProgress}>
             <AnimatedProgress
               value={phaseProgress}
@@ -1188,6 +1192,7 @@ export default function FocusScreen() {
             style={({ pressed }) => [styles.discard, pressed && styles.pressed]}>
             <Text style={styles.discardText}>Discard session</Text>
           </Pressable>
+          </View>
         </ScrollView>
       </View>
       {guideOverlay}
@@ -1259,26 +1264,29 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
   tinyStep?: string;
   readoutLabel: string;
 }) {
-  const { width } = useWindowDimensions();
-  const visualHeight = Math.max(144, Math.min(180, width - 160));
+  const { width, fontScale } = useWindowDimensions();
+  const { stacked, artworkSize } = focusStageLayout(width, fontScale);
   return (
     <View style={styles.stopwatchPanel}>
       <View style={styles.stopwatchHeader}>
         <Text style={styles.stopwatchKicker}>{subject.toUpperCase() || 'FOCUS SESSION'}</Text>
-        <View style={styles.stopwatchStatus}><View style={styles.stopwatchStatusDot} /><Text style={styles.stopwatchCounter}>{label}</Text></View>
+        <View style={styles.stopwatchStatus}><View style={[styles.stopwatchStatusDot, label === 'PAUSED' && styles.stopwatchStatusDotPaused]} /><Text style={styles.stopwatchCounter}>{label}</Text></View>
       </View>
       <Text accessibilityRole="header" style={styles.stopwatchTitle}>{title}</Text>
       <Text style={styles.stopwatchDetail}>{detail}</Text>
       {tinyStep ? <Text style={styles.stopwatchStep}>First step · {tinyStep}</Text> : null}
-      <View style={styles.stopwatchStage}>
-        <View pointerEvents="none" style={styles.stopwatchOrbit} />
-        <View style={[styles.stopwatchVisual, { height: visualHeight }]}>
-          <NativeProgressVisual model="stopwatch" progress={progress * 100} viewportHeight={visualHeight} />
+      <View style={[styles.stopwatchStage, stacked && styles.stopwatchStageStacked]}>
+        <View style={[styles.stopwatchArtFrame, { width: artworkSize, height: artworkSize }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View pointerEvents="none" style={[styles.stopwatchOrbit, { width: artworkSize, height: artworkSize, borderRadius: artworkSize / 2 }]} />
+          <View style={[styles.stopwatchVisual, { width: artworkSize, height: artworkSize }]}>
+            <NativeProgressVisual model="stopwatch" progress={progress * 100} viewportHeight={artworkSize} />
+          </View>
         </View>
-      </View>
-      <View accessible accessibilityLabel={`${value} ${readoutLabel === 'TIME ELAPSED' ? 'elapsed' : 'remaining'}. ${label.toLowerCase()}.`} style={styles.stopwatchReadout}>
-        <Text style={styles.stopwatchValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
-        <Text style={styles.stopwatchLabel}>{readoutLabel}</Text>
+        <View accessible accessibilityLabel={`${value} ${readoutLabel === 'TIME ELAPSED' ? 'elapsed' : 'remaining'}. ${label.toLowerCase()}.`} style={[styles.stopwatchReadout, stacked && styles.stopwatchReadoutStacked]}>
+          <Text style={styles.stopwatchLabel}>{readoutLabel}</Text>
+          <Text style={styles.stopwatchValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{value}</Text>
+          <View style={styles.readoutRule} />
+        </View>
       </View>
     </View>
   );
@@ -1330,8 +1338,8 @@ function TimerDial({
   const animatedRingStyle = useAnimatedStyle(() => ({ opacity: ringOpacity.get() * 0.55 }));
 
   const isBreakPhase = phase === 'break';
-  const activeTickColor = complete || isBreakPhase ? colors.success : colors.accent;
-  const headTickColor = complete || isBreakPhase ? colors.success : colors.accentBright;
+  const activeTickColor = paperSurfaces.accent;
+  const headTickColor = colors.accentBright;
 
   return (
     <Reveal distance={8} style={{ alignSelf: 'center' }}>
@@ -1517,6 +1525,7 @@ const styles = StyleSheet.create({
   customTimeInput: { minHeight: 46, borderWidth: 1, borderColor: paperSurfaces.border, borderRadius: 12, paddingHorizontal: 12, backgroundColor: chalkTheme.paper, color: colors.text, fontSize: 16 },
   cadenceHeading: { color: colors.text, fontSize: 23, lineHeight: 30, fontWeight: '500', letterSpacing: -.5 },
   cadenceIntro: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 16 },
+  durationHeading: { color: chalkTheme.inkSoft, fontSize: 11, lineHeight: 16, fontWeight: '800', letterSpacing: 1, marginTop: 4 },
   cadenceKicker: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
   planStrip: { flexDirection: 'row', gap: 12, paddingVertical: 12, paddingHorizontal: 15, backgroundColor: '#E6D8C3', borderRadius: 16 },
   metric: {
@@ -1600,22 +1609,28 @@ const styles = StyleSheet.create({
     paddingBottom: 56,
   },
   focusSessionContent: { paddingTop: 0 },
+  focusPaper: { marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, paddingTop: 12, paddingBottom: 18, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
   sessionHeading: { alignItems: 'center' },
-  stopwatchPanel: { marginTop: 0, marginHorizontal: -spacing.lg, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, backgroundColor: chalkTheme.hero, paddingHorizontal: spacing.lg, paddingTop: 22, paddingBottom: 24, overflow: 'hidden' },
-  stopwatchStage: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', width: 200, height: 200, marginTop: 12 },
-  stopwatchOrbit: { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.23)' },
+  stopwatchPanel: { marginHorizontal: -spacing.lg, backgroundColor: chalkTheme.hero, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 30, overflow: 'hidden' },
+  stopwatchStage: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 20 },
+  stopwatchStageStacked: { flexDirection: 'column', alignItems: 'center' },
+  stopwatchArtFrame: { alignItems: 'center', justifyContent: 'center' },
+  stopwatchOrbit: { position: 'absolute', borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.23)' },
   stopwatchHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   stopwatchStatus: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(242,231,208,0.28)', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 1 },
   stopwatchStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D98A60' },
+  stopwatchStatusDotPaused: { backgroundColor: chalkTheme.mutedCream },
   stopwatchKicker: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '800', letterSpacing: 1.4, flexShrink: 1 },
   stopwatchCounter: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '700', letterSpacing: .8, flexShrink: 1, textAlign: 'right' },
-  stopwatchTitle: { color: chalkTheme.onStage, fontSize: 25, lineHeight: 31, letterSpacing: -.6, marginTop: 14, fontWeight: '600' },
-  stopwatchDetail: { color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 16, letterSpacing: .5, marginTop: 4 },
+  stopwatchTitle: { color: chalkTheme.onStage, fontSize: 29, lineHeight: 36, letterSpacing: -.6, marginTop: 14, fontWeight: '500' },
+  stopwatchDetail: { color: chalkTheme.mutedCream, fontSize: 11, lineHeight: 17, letterSpacing: .35, marginTop: 5 },
   stopwatchStep: { color: chalkTheme.onStage, fontSize: 12, lineHeight: 18, marginTop: 10 },
-  stopwatchVisual: { width: '100%', maxWidth: 208, alignSelf: 'center' },
-  stopwatchReadout: { alignItems: 'center', marginTop: 8 },
-  stopwatchValue: { color: chalkTheme.onStage, fontSize: 52, lineHeight: 60, letterSpacing: -2, fontVariant: ['tabular-nums'] },
-  stopwatchLabel: { color: chalkTheme.mutedCream, fontSize: 10, lineHeight: 16, letterSpacing: 1.3, fontWeight: '800' },
+  stopwatchVisual: { alignSelf: 'center' },
+  stopwatchReadout: { flex: 1, minWidth: 0, alignItems: 'flex-start', justifyContent: 'center' },
+  stopwatchReadoutStacked: { flex: 0, width: '100%', alignItems: 'center' },
+  stopwatchValue: { color: chalkTheme.onStage, alignSelf: 'stretch', fontSize: 52, lineHeight: 64, letterSpacing: -1.5, fontVariant: ['tabular-nums'], textAlign: 'center' },
+  stopwatchLabel: { color: chalkTheme.mutedCream, alignSelf: 'center', fontSize: 10, lineHeight: 16, letterSpacing: 1.1, fontWeight: '800', textAlign: 'center' },
+  readoutRule: { alignSelf: 'center', width: 40, height: 2, backgroundColor: colors.accentFill, marginTop: 7 },
   sessionModePill: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1635,13 +1650,13 @@ const styles = StyleSheet.create({
   sessionModePillBreak: {
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(184,221,177,0.28)',
-    backgroundColor: 'rgba(184,221,177,0.06)',
+    borderColor: paperSurfaces.accentLine,
+    backgroundColor: paperSurfaces.accentSoft,
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
   sessionModePillBreakText: {
-    color: colors.success,
+    color: paperSurfaces.accent,
     fontSize: 10.5,
     lineHeight: 14,
     fontWeight: '800',
@@ -1661,7 +1676,7 @@ const styles = StyleSheet.create({
   },
   stepLabel: { color: colors.accent, fontSize: 10, lineHeight: 14, fontWeight: '800', letterSpacing: 0.9, textAlign: 'center' },
   stepText: { color: colors.text, fontSize: 14, lineHeight: 20, marginTop: 4, textAlign: 'center' },
-  timerArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, paddingBottom: 40 },
+  timerArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, paddingBottom: 40, backgroundColor: chalkTheme.paper, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
   breakActions: { width: '100%', maxWidth: 430 },
   dial: {
     position: 'relative',
@@ -1674,14 +1689,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dialBreak: {
-    borderColor: 'rgba(184,221,177,0.28)',
-    backgroundColor: 'rgba(184,221,177,0.025)',
+    borderColor: paperSurfaces.border,
+    backgroundColor: chalkTheme.paper,
   },
   dialPaused: {
     borderColor: colors.lineStrong,
     backgroundColor: 'rgba(255,255,255,0.015)',
   },
-  dialComplete: { borderColor: 'rgba(180,216,174,0.38)', backgroundColor: 'rgba(180,216,174,0.05)' },
+  dialComplete: { borderColor: paperSurfaces.accentLine, backgroundColor: paperSurfaces.accentSoft },
   dialOuterRing: {
     position: 'absolute',
     top: -10,
@@ -1715,13 +1730,13 @@ const styles = StyleSheet.create({
   dialInner: {
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.panel,
+    backgroundColor: chalkTheme.paper,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
   },
   dialInnerPaused: {
-    backgroundColor: colors.bgRaised,
+    backgroundColor: chalkTheme.paper,
   },
   timerValue: {
     color: colors.text,
@@ -1733,7 +1748,7 @@ const styles = StyleSheet.create({
   },
   timerValueCompact: { fontSize: 38, lineHeight: 46 },
   timerValueTiny: { fontSize: 27, lineHeight: 34, letterSpacing: -1.2 },
-  timerValueComplete: { color: colors.success },
+  timerValueComplete: { color: paperSurfaces.accent },
   timerStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1749,9 +1764,9 @@ const styles = StyleSheet.create({
   },
   timerStatusDotActive: { backgroundColor: colors.accentFill },
   timerStatusDotPaused: { backgroundColor: colors.subtle },
-  timerStatusDotSuccess: { backgroundColor: colors.success },
+  timerStatusDotSuccess: { backgroundColor: paperSurfaces.accent },
   timerLabel: { flexShrink: 1, color: colors.subtle, fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.8, textAlign: 'center', paddingHorizontal: 4 },
-  timerActions: { flexDirection: 'row', alignSelf: 'center', gap: 9, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
+  timerActions: { flexDirection: 'row', flexWrap: 'wrap', alignSelf: 'center', gap: 10, marginTop: spacing.lg, width: '100%', maxWidth: 430 },
   secondary: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: paperSurfaces.border, backgroundColor: chalkTheme.paper, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   secondaryText: { color: colors.text, fontSize: 12, fontWeight: '700' },
   sessionActionPrimary: { borderColor: paperSurfaces.accent, backgroundColor: paperSurfaces.accent },

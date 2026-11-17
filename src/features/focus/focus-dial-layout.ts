@@ -7,6 +7,16 @@ const DIAL_EDGE_RESERVE = 24;
 const PROGRESS_MARKS = FOCUS_PROGRESS_MARKS;
 const BASE_PRESETS = [10, 25, 45] as const;
 
+// Keep the clock artwork and readout side by side only when both have room.
+// Large text and narrow phones use a vertical composition instead of clipping.
+export function focusStageLayout(windowWidth: number, fontScale: number) {
+  const width = Number.isFinite(windowWidth) ? Math.max(0, windowWidth) : 0;
+  const scale = Number.isFinite(fontScale) ? Math.max(1, fontScale) : 1;
+  const stacked = width < 350 || scale > 1.2;
+  const artworkSize = stacked ? 144 : Math.max(128, Math.min(164, Math.floor((width - 72) * 0.43)));
+  return { stacked, artworkSize };
+}
+
 
 export function focusDialSize(windowWidth: number, horizontalPadding: number): number {
   if (!Number.isFinite(windowWidth) || !Number.isFinite(horizontalPadding)) {

@@ -26,6 +26,8 @@ export function createFocusSession(input: {
   breakMinutes: number;
   launchMode: FocusLaunchMode;
   timerMode?: FocusTimerMode;
+  freeFocus?: boolean;
+  breaksRemaining?: number;
   tinyStep: string;
   now?: number;
   id?: string;
@@ -46,6 +48,8 @@ export function createFocusSession(input: {
     phase: 'focus',
     launchMode: input.launchMode,
     timerMode: mode,
+    ...(input.freeFocus ? { freeFocus: true } : {}),
+    ...(mode === 'pomodoro' && input.breaksRemaining != null ? { breaksRemaining: Math.max(0, Math.min(8, Math.round(input.breaksRemaining))) } : {}),
     tinyStep: input.tinyStep.trim(),
     fullTargetMinutes,
     plannedFocusMinutes,
@@ -90,6 +94,40 @@ export function pauseFocusTimer(session: FocusSessionState, now = Date.now()): F
 export function resumeFocusTimer(session: FocusSessionState, now = Date.now()): FocusSessionState {
   if (session.runningSince !== null || timerIsComplete(session, now)) return session;
   return { ...session, runningSince: now };
+}
+
+/** Extend a timed focus block without losing paused or completed elapsed time. */
+export function extendFocusTimer(session: FocusSessionState, minutes = 5, now = Date.now()): FocusSessionState {
+  if (session.phase !== 'focus' || session.timerMode === 'stopwatch' || session.launchMode === 'five-minute') return session;
+  const increment = Math.max(0, Math.floor(minutes));
+  const target = Math.min(240, session.plannedFocusMinutes + increment);
+  if (target <= session.plannedFocusMinutes) return session;
+  if (timerIsComplete(session, now)) {
+    return { ...session, fullTargetMinutes: target, plannedFocusMinutes: target,
+      elapsedMs: phaseDurationMs(session), runningSince: now };
+  }
+  return { ...session, fullTargetMinutes: target, plannedFocusMinutes: target };
+}
+
+/** Suggestions are based on elapsed focus, and never start or pause a break themselves. */
+export function configureBreakReminders(session: FocusSessionState, intervalMinutes: number, count: number, now = Date.now()): FocusSessionState {
+  if (session.phase !== 'focus' || session.timerMode !== 'stopwatch' || !Number.isInteger(intervalMinutes) || intervalMinutes < 5 || intervalMinutes > 180 || !Number.isInteger(count) || count < 0 || count > 8) return session;
+  return { ...session, breakReminder: { intervalMinutes, remaining: count,
+    nextAtElapsedMs: Math.min(phaseDurationMs(session), timerElapsedMs(session, now)) + intervalMinutes * MINUTE } };
+}
+
+export function breakReminderDue(session: FocusSessionState, now = Date.now()) {
+  const reminder = session.breakReminder;
+  return session.phase === 'focus' && !!reminder && reminder.remaining > 0 && timerElapsedMs(session, now) >= reminder.nextAtElapsedMs;
+}
+
+export function acknowledgeBreakReminder(session: FocusSessionState, pause: boolean, now = Date.now()): FocusSessionState {
+  if (!breakReminderDue(session, now) || !session.breakReminder) return session;
+  const elapsed = Math.min(phaseDurationMs(session), timerElapsedMs(session, now));
+  const current = pause ? pauseFocusTimer(session, now) : session;
+  return { ...current, breakReminder: { ...session.breakReminder,
+    remaining: session.breakReminder.remaining - 1,
+    nextAtElapsedMs: elapsed + session.breakReminder.intervalMinutes * MINUTE } };
 }
 
 export function extendFiveMinuteLaunch(
@@ -155,8 +193,9 @@ export function beginBreak(
   actualMinutes: number,
   now = Date.now(),
 ): FocusSessionState {
+  const { breakReminder: _completedReminder, ...completedSession } = session;
   return {
-    ...session,
+    ...completedSession,
     phase: 'break',
     phaseStartedAt: now,
     elapsedMs: 0,

@@ -68,6 +68,8 @@ export type FocusOutcome = {
   status: 'started' | 'finished' | 'abandoned';
   plannedMinutes: number;
   timerMode?: 'countdown' | 'pomodoro' | 'stopwatch';
+  freeFocus?: boolean;
+  allocations?: { subject: string; topicId?: string; topicName?: string; minutes: number }[];
   minutes: number;
   launchMode: 'full' | 'five-minute';
   taskOnly: boolean;

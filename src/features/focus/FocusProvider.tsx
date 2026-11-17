@@ -22,6 +22,9 @@ import {
   breakActualMinutes,
   createFocusSession,
   extendFiveMinuteLaunch,
+  extendFocusTimer,
+  configureBreakReminders,
+  acknowledgeBreakReminder,
   focusActualMinutes,
   pauseFocusTimer,
   removeParkedDistraction,
@@ -29,6 +32,7 @@ import {
 } from './focus-engine';
 import { focusStorage } from './focus-storage';
 import { FocusLaunchMode, FocusSessionState, FocusTimerMode } from './types';
+import { FocusAllocation, validateFocusAllocations } from './focus-personalization';
 
 type StartInput = {
   topicId?: string;
@@ -37,6 +41,8 @@ type StartInput = {
   breakMinutes: number;
   launchMode: FocusLaunchMode;
   timerMode?: FocusTimerMode;
+  freeFocus?: boolean;
+  breaksRemaining?: number;
   tinyStep: string;
 };
 
@@ -49,9 +55,12 @@ type FocusContextValue = {
   resume: () => Promise<void>;
   startBreak: () => Promise<void>;
   extendLaunch: () => Promise<void>;
+  extendFocus: () => Promise<void>;
+  configureReminders: (intervalMinutes: number, count: number) => Promise<void>;
+  acknowledgeReminder: (pause: boolean) => Promise<void>;
   park: (text: string) => Promise<void>;
   removeParked: (id: string) => Promise<void>;
-  completeFocus: (effort: 1 | 2 | 3 | 4 | 5, now?: number) => Promise<void>;
+  completeFocus: (effort: 1 | 2 | 3 | 4 | 5, now?: number, allocations?: FocusAllocation[]) => Promise<void>;
   completeBreak: (now?: number) => Promise<void>;
   skipBreak: (now?: number) => Promise<void>;
   discard: () => Promise<void>;
@@ -127,7 +136,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
           const missingTask = stored.taskId
             ? !taskById(workspace, stored.taskId)
             : false;
-          if ((!stored.topicId && !stored.taskId) || missingTopic || missingTask) {
+          if ((!stored.topicId && !stored.taskId && !stored.freeFocus) || missingTopic || missingTask) {
             await focusStorage.clear(ownerKey);
             stored = null;
           }
@@ -159,7 +168,7 @@ export function FocusProvider({ children }: PropsWithChildren) {
     const missingTask = current.taskId
       ? !taskById(workspace, current.taskId)
       : false;
-    if (!missingTopic && !missingTask && (current.topicId || current.taskId)) return;
+    if (!missingTopic && !missingTask && (current.topicId || current.taskId || current.freeFocus)) return;
 
     void commitSession(null);
   }, [
@@ -184,17 +193,20 @@ export function FocusProvider({ children }: PropsWithChildren) {
       const topic =
         requestedTopic ??
         (task?.topicId ? findTopic(workspace, task.topicId) : null);
-      if (!topic && !task) return null;
+      if (!topic && !task && !input.freeFocus) return null;
+      if (input.freeFocus && (topic || task)) return null;
 
       const next = createFocusSession({
         ...(topic ? { topicId: topic.id } : {}),
         ...(task ? { taskId: task.id } : {}),
-        topicName: task?.title || topic!.name,
-        subject: task?.subject || topic?.subject || 'Study task',
+        topicName: task?.title || topic?.name || 'Free focus',
+        subject: task?.subject || topic?.subject || (input.freeFocus ? 'No subject yet' : 'Study task'),
         plannedMinutes: input.plannedMinutes,
         breakMinutes: input.breakMinutes,
         launchMode: input.launchMode,
         timerMode: input.timerMode,
+        freeFocus: input.freeFocus,
+        breaksRemaining: input.breaksRemaining,
         tinyStep: input.tinyStep,
       });
 
@@ -226,19 +238,36 @@ export function FocusProvider({ children }: PropsWithChildren) {
       resume: () => transform((current) => resumeFocusTimer(current)),
       startBreak: () => transform((current) => startSuggestedBreak(current)),
       extendLaunch: () => transform((current) => extendFiveMinuteLaunch(current)),
+      extendFocus: () => transform((current) => extendFocusTimer(current)),
+      configureReminders: (interval, count) => transform(current => configureBreakReminders(current, interval, count)),
+      acknowledgeReminder: (pause) => transform(current => acknowledgeBreakReminder(current, pause)),
       park: (text) => transform((current) => addParkedDistraction(current, text)),
       removeParked: (id) =>
         transform((current) => removeParkedDistraction(current, id)),
 
-      async completeFocus(effort, now = Date.now()) {
+      async completeFocus(effort, now = Date.now(), allocations = []) {
         const current = sessionRef.current;
-        if (!current || current.phase !== 'focus' || current.focusLogged) return;
+        const sessionOwner = ownerRef.current;
+        if (!current || current.phase !== 'focus' || current.focusLogged || !sessionOwner || sessionOwner !== ownerKey) {
+          throw new Error('This focus session is no longer available.');
+        }
 
         const actualMinutes = focusActualMinutes(current, now);
+        if (current.freeFocus) {
+          const issue = validateFocusAllocations(allocations, actualMinutes);
+          if (issue) throw new Error(issue);
+        } else if (allocations.length) throw new Error('Allocations are only available for free focus.');
 
         let completionApplied = false;
         const updated = updateWorkspace((draft) => {
           recordFocusOutcome(draft, current, 'finished', actualMinutes, now);
+          if (current.freeFocus) {
+            const outcome = (draft.focusOutcomes ?? []).find(item => item.id === current.id);
+            if (!outcome) return;
+            outcome.allocations = allocations.map(item => ({ ...item, subject: item.subject.trim() }));
+            completionApplied = true;
+            return;
+          }
           if (current.topicId) {
             const stableHistoryId = historyId(current.id);
             if (draft.history.some((entry) => entry.id === stableHistoryId)) {
@@ -307,18 +336,23 @@ export function FocusProvider({ children }: PropsWithChildren) {
             task.updatedAt = now;
             completionApplied = true;
           }
+        }, {
+          ownerKey: sessionOwner,
+          canApply: draft => current.freeFocus === true ||
+            (current.topicId ? Boolean(findTopic(draft, current.topicId)) : Boolean(current.taskId && taskById(draft, current.taskId))),
         });
 
         if (!updated || !completionApplied) {
-          await commitSession(null);
-          return;
+          throw new Error('The focus session could not be saved.');
         }
 
         // The durable workspace write must win before the recoverable focus
         // session advances to break. Topic sessions write history; standalone
         // task sessions update task minutes with an idempotency marker.
         await waitForSaves();
-        await commitSession(suggestBreak(current, actualMinutes, now));
+        if (ownerRef.current !== sessionOwner) throw new Error('The workspace changed while saving.');
+        await commitSession(current.timerMode === 'pomodoro' && current.breaksRemaining === 0
+          ? null : suggestBreak(current, actualMinutes, now));
         celebrate({ title: 'Focus complete!', detail: `${actualMinutes} focused minutes · ${current.topicName}` });
       },
 

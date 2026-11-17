@@ -23,6 +23,9 @@ export type FocusSessionState = {
   launchMode: FocusLaunchMode;
   timerMode?: FocusTimerMode;
   breakSuggested?: boolean;
+  freeFocus?: boolean;
+  breaksRemaining?: number;
+  breakReminder?: { intervalMinutes: number; remaining: number; nextAtElapsedMs: number };
   tinyStep: string;
   fullTargetMinutes: number;
   plannedFocusMinutes: number;

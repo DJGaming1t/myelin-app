@@ -37,9 +37,12 @@ import {
   timerIsComplete,
   timerRemainingMs,
   timerElapsedMs,
+  focusActualMinutes,
+  breakReminderDue,
 } from '@/src/features/focus/focus-engine';
 import { useFocus } from '@/src/features/focus/FocusProvider';
 import { FocusTimerMode } from '@/src/features/focus/types';
+import { FocusAllocation, suggestFocusInterval, validateFocusAllocations } from '@/src/features/focus/focus-personalization';
 import {
   focusDialMarkPosition,
   focusDialMarkState,
@@ -81,6 +84,8 @@ export default function FocusScreen() {
     taskId?: string | string[];
     minutes?: string | string[];
     breakMinutes?: string | string[];
+    free?: string | string[];
+    quick?: string | string[];
   }>();
 
   const { width: windowWidth } = useWindowDimensions();
@@ -96,6 +101,9 @@ export default function FocusScreen() {
     pause,
     resume,
     extendLaunch,
+    extendFocus,
+    configureReminders,
+    acknowledgeReminder,
     park,
     removeParked,
     completeFocus,
@@ -110,6 +118,7 @@ export default function FocusScreen() {
 
   const topicId = param(params.topicId);
   const taskId = param(params.taskId);
+  const freeFocus = param(params.free) === '1';
   const task = workspace && taskId ? workspace.tasks.find((item) => item.id === taskId) ?? null : null;
   const topic = workspace ? findTopic(workspace, task?.topicId || topicId) : null;
   const suggestedMinutes = Math.max(
@@ -123,6 +132,15 @@ export default function FocusScreen() {
 
   const [timerMode, setTimerMode] = useState<FocusTimerMode>('countdown');
   const pomodoroConfigured = useRef(false);
+  const autoStarted = useRef(false);
+  const [plannedBreaks, setPlannedBreaks] = useState(3);
+  const [showReminderSettings, setShowReminderSettings] = useState(false);
+  const [reminderInterval, setReminderInterval] = useState('25');
+  const [reminderCount, setReminderCount] = useState('3');
+  const [allocations, setAllocations] = useState<FocusAllocation[]>([]);
+  const [allocationSubject, setAllocationSubject] = useState('');
+  const [allocationMinutes, setAllocationMinutes] = useState('');
+  const [allocationTopic, setAllocationTopic] = useState<{ id: string; name: string } | null>(null);
   const [breakMinutes, setBreakMinutes] = useState(defaultBreakMinutes);
   const [customFocus, setCustomFocus] = useState('');
   const [customBreak, setCustomBreak] = useState('');
@@ -219,7 +237,7 @@ export default function FocusScreen() {
   const guideState: FocusGuideState = session
     ? session.phase === 'break' ? timerDone ? 'break-done' : 'break'
       : canExtend ? 'checkpoint' : finishing || timerDone ? 'finish' : 'active'
-    : activeReview ? 'review' : (!topic && !task) || task?.status === 'completed' ? 'empty' : 'setup';
+    : activeReview ? 'review' : ((!topic && !task && !freeFocus) || task?.status === 'completed') ? 'empty' : 'setup';
   const guideReady = ready && reviewReady && !!workspace && !savingFocus && !breakTransition;
   const guide = useFocusGuide(guideReady, ownerKey, guideState);
   const guideOffer = useGuideOffer('focus', ownerKey,
@@ -228,8 +246,18 @@ export default function FocusScreen() {
   const guideOverlay = guide.open ? <ScreenGuide key={guideState} title="Focus" steps={guide.steps}
     anchors={guide.anchors} revealAnchor={guide.revealAnchor} onClose={guide.close} /> : null;
 
+  const habitualInterval = useMemo(() => suggestFocusInterval(workspace?.focusOutcomes ?? [], Date.now()), [workspace?.focusOutcomes]);
+
+  useEffect(() => {
+    if (!freeFocus || param(params.quick) !== '1' || autoStarted.current || !ready || !reviewReady || !workspace || activeReview || session) return;
+    autoStarted.current = true;
+    void start({ freeFocus: true, timerMode: 'stopwatch', plannedMinutes: 240, breakMinutes: defaultBreakMinutes, launchMode: 'full', tinyStep: '' })
+      .then(next => { if (next) setNow(Date.now()); else setFocusError('Could not start focus. Please try again.'); })
+      .catch(() => setFocusError('Could not start focus. Please try again.'));
+  }, [freeFocus, params.quick, ready, reviewReady, workspace, activeReview, session, start, defaultBreakMinutes]);
+
   async function begin(launchMode: 'full' | 'five-minute', firstStep = tinyStep) {
-    if (!topic && !task) return;
+    if (!topic && !task && !freeFocus) return;
     setFocusError('');
     const typedFocus = customFocus.trim() ? Number(customFocus) : plannedMinutes;
     const typedBreak = customBreak.trim() ? Number(customBreak) : breakMinutes;
@@ -242,9 +270,11 @@ export default function FocusScreen() {
       const next = await start({
         ...(topic ? { topicId: topic.id } : {}),
         ...(task ? { taskId: task.id } : {}),
+        ...(freeFocus && !task && !topic ? { freeFocus: true } : {}),
         plannedMinutes: timerMode === 'stopwatch' ? (launchMode === 'five-minute' ? suggestedMinutes : 240) : typedFocus,
         breakMinutes: typedBreak,
         timerMode: launchMode === 'five-minute' ? 'countdown' : timerMode,
+        ...(timerMode === 'pomodoro' && launchMode === 'full' ? { breaksRemaining: plannedBreaks } : {}),
         launchMode,
         tinyStep: firstStep,
       });
@@ -267,6 +297,19 @@ export default function FocusScreen() {
     } catch {
       setFocusError('The thought could not be saved. Your text is still here; try again.');
     }
+  }
+
+  function addAllocation() {
+    if (!session?.freeFocus) return;
+    const entry: FocusAllocation = {
+      subject: allocationSubject.trim(),
+      minutes: Number(allocationMinutes),
+      ...(allocationTopic ? { topicId: allocationTopic.id, topicName: allocationTopic.name } : {}),
+    };
+    const issue = validateFocusAllocations([...allocations, entry], focusActualMinutes(session, Date.now()));
+    if (issue) { setFocusError(issue); return; }
+    setAllocations(previous => [...previous, entry]);
+    setAllocationSubject(''); setAllocationMinutes(''); setAllocationTopic(null); setFocusError('');
   }
 
   function requestFinishEarly() {
@@ -299,10 +342,24 @@ export default function FocusScreen() {
 
   async function finishFocus() {
     if (savingFocus) return;
+    let finalAllocations = allocations;
+    if (session?.freeFocus) {
+      if (allocationSubject.trim() || allocationMinutes.trim()) {
+        finalAllocations = [...allocations, {
+          subject: allocationSubject.trim(), minutes: Number(allocationMinutes),
+          ...(allocationTopic ? { topicId: allocationTopic.id, topicName: allocationTopic.name } : {}),
+        }];
+      }
+      const issue = validateFocusAllocations(finalAllocations, Math.round(Math.min(timerElapsedMs(session, Date.now()), 240 * 60_000) / 60_000));
+      if (issue) { setFocusError(issue); return; }
+    }
     setSavingFocus(true); setFocusError('');
     try {
-      await completeFocus(effort, Date.now());
+      const finishedPlan = session?.timerMode === 'pomodoro' && session.breaksRemaining === 0;
+      await completeFocus(effort, Date.now(), session?.freeFocus ? finalAllocations : []);
       setFinishing(false); setNow(Date.now());
+      setAllocations([]); setAllocationSubject(''); setAllocationMinutes(''); setAllocationTopic(null);
+      if (finishedPlan) router.replace('/(app)/today');
     } catch { setFocusError('Your session could not be saved. Tap Complete focus to retry.'); }
     finally { setSavingFocus(false); }
   }
@@ -325,9 +382,11 @@ export default function FocusScreen() {
         const next = await start({
           ...(previous.topicId ? { topicId: previous.topicId } : {}),
           ...(previous.taskId ? { taskId: previous.taskId } : {}),
+          ...(previous.freeFocus ? { freeFocus: true } : {}),
           plannedMinutes: previous.fullTargetMinutes,
           breakMinutes: previous.breakMinutes,
           launchMode: 'full', timerMode: 'pomodoro', tinyStep: previous.tinyStep,
+          ...(previous.breaksRemaining == null ? {} : { breaksRemaining: Math.max(0, previous.breaksRemaining - 1) }),
         });
         if (!next) {
           router.replace('/(app)/today');
@@ -403,7 +462,7 @@ export default function FocusScreen() {
   }
 
   if (!session) {
-    if ((!topic && !task) || (task && task.status !== 'open')) {
+    if ((!topic && !task && !freeFocus) || (task && task.status !== 'open')) {
       return (
         <SafeAreaView style={styles.safe}>
         <StatusBar style="light" />
@@ -449,10 +508,10 @@ export default function FocusScreen() {
                 <View style={styles.eyebrowRow}>
                   <View style={styles.eyebrowDot} />
                   <Text style={styles.eyebrow}>
-                    {(task?.subject || topic?.subject || 'STUDY TASK').toUpperCase()}
+                    {(task?.subject || topic?.subject || 'OPEN SESSION').toUpperCase()}
                   </Text>
                 </View>
-                <Text style={styles.setupTitle}>{task?.title || topic?.name}</Text>
+                <Text style={styles.setupTitle}>{task?.title || topic?.name || 'Free focus'}</Text>
                 {task ? (
                   <View style={styles.taskContextPill}>
                     <Text style={styles.taskContext}>
@@ -479,6 +538,11 @@ export default function FocusScreen() {
                   ))}
                 </View>
                 <Text style={styles.modeHint}>{timerMode === 'stopwatch' ? 'Count up at your own pace, up to 4 hours.' : timerMode === 'pomodoro' ? 'A focused block followed by an optional break.' : 'Choose a target and finish when you are ready.'}</Text>
+                {habitualInterval && timerMode !== 'stopwatch' ? (
+                  <Pressable accessibilityRole="button" onPress={() => { setSelectedMinutes(habitualInterval.minutes); setCustomFocus(''); }} style={styles.habitSuggestion}>
+                    <Text style={styles.habitSuggestionText}>Try {habitualInterval.minutes} min · based on {habitualInterval.samples} completed sessions</Text>
+                  </Pressable>
+                ) : null}
                 <View
                   ref={guide.anchors['focus.primary']}
                   collapsable={false}
@@ -523,6 +587,15 @@ export default function FocusScreen() {
                       value={customBreak} onChangeText={setCustomBreak} placeholder={String(breakMinutes)} placeholderTextColor={colors.subtle} style={styles.customTimeInput} />
                   </View>
                 </View>
+                {timerMode === 'pomodoro' ? <View style={styles.breakPlan}>
+                  <View style={styles.breakPlanCopy}>
+                    <Text style={styles.customTimeLabel}>Planned break suggestions</Text>
+                    <Text style={styles.breakPlanDetail}>{plannedBreaks + 1} focus blocks · one optional break after each block except the last.</Text>
+                  </View>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Fewer planned breaks" disabled={plannedBreaks <= 0} onPress={() => setPlannedBreaks(value => Math.max(0, value - 1))} style={styles.breakCountButton}><Text style={styles.breakCountGlyph}>−</Text></Pressable>
+                  <Text accessibilityLabel={`${plannedBreaks} planned breaks`} style={styles.breakCount}>{plannedBreaks}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="More planned breaks" disabled={plannedBreaks >= 8} onPress={() => setPlannedBreaks(value => Math.min(8, value + 1))} style={styles.breakCountButton}><Text style={styles.breakCountGlyph}>+</Text></Pressable>
+                </View> : null}
               </View>
             </Reveal>
 
@@ -817,7 +890,7 @@ export default function FocusScreen() {
             subject={session.subject}
             detail={session.timerMode === 'stopwatch' ? 'STOPWATCH · UP TO 4 HOURS' : session.launchMode === 'five-minute'
               ? `5 MIN LAUNCH · ${session.fullTargetMinutes} MIN TARGET`
-              : `${session.plannedFocusMinutes} MIN FOCUS · ${session.breakMinutes} MIN BREAK SUGGESTED`}
+              : `${session.plannedFocusMinutes} MIN FOCUS · ${session.breakMinutes} MIN BREAK SUGGESTED${session.breaksRemaining == null ? '' : ` · ${session.breaksRemaining} LEFT`}`}
             tinyStep={session.tinyStep}
             label={
               timerDone
@@ -899,6 +972,25 @@ export default function FocusScreen() {
                 How demanding did this block feel? This is about workload calibration, not judging
                 whether you studied “well.”
               </Text>
+              {session.freeFocus ? <View style={styles.allocationPanel}>
+                <Text style={styles.allocationTitle}>Where did your time go?</Text>
+                <Text style={styles.allocationHint}>{focusActualMinutes(session, now)} min recorded · {Math.max(0, focusActualMinutes(session, now) - allocations.reduce((sum, item) => sum + item.minutes, 0))} min unassigned. You can save any remainder without a subject.</Text>
+                {allocations.map((item, index) => <View key={`${index}-${item.subject}`} style={styles.allocationItem}>
+                  <Text style={styles.allocationItemText}>{item.topicName ? `${item.subject} · ${item.topicName}` : item.subject} · {item.minutes} min</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${item.subject} allocation`} onPress={() => setAllocations(previous => previous.filter((_, i) => i !== index))} style={styles.allocationRemove}><Text style={styles.allocationRemoveText}>Remove</Text></Pressable>
+                </View>)}
+                <View style={styles.allocationInputs}>
+                  <TextInput accessibilityLabel="Subject or topic search" value={allocationSubject} onChangeText={text => { setAllocationSubject(text); setAllocationTopic(null); }} placeholder="Subject, or search a topic" placeholderTextColor={colors.subtle} maxLength={120} style={[styles.customTimeInput, styles.allocationSubject]} />
+                  <TextInput accessibilityLabel="Minutes for this subject" value={allocationMinutes} onChangeText={setAllocationMinutes} placeholder="min" placeholderTextColor={colors.subtle} keyboardType="number-pad" maxLength={3} style={styles.allocationNumber} />
+                </View>
+                {allocationSubject.trim() && !allocationTopic ? workspace.topics.filter(item => `${item.name} ${item.subject}`.toLowerCase().includes(allocationSubject.trim().toLowerCase())).slice(0, 8).map(item => (
+                  <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Choose ${item.name}, ${item.subject}`} onPress={() => { setAllocationTopic({ id: item.id, name: item.name }); setAllocationSubject(item.subject || 'Study'); }} style={styles.topicOption}>
+                    <Text style={styles.topicOptionText}>{item.name} · {item.subject || 'Study'}</Text>
+                  </Pressable>
+                )) : null}
+                {allocationTopic ? <Text style={styles.allocationHint}>Topic: {allocationTopic.name}</Text> : null}
+                <Pressable accessibilityRole="button" onPress={addAllocation} style={styles.addAllocation}><Text style={styles.addAllocationText}>+ Add time split</Text></Pressable>
+              </View> : null}
               <View ref={guide.anchors['focus.primary']} collapsable={false} testID="guide-focus-primary" style={styles.effortRow}>
                 {([1, 2, 3, 4, 5] as const).map((value) => (
                   <SpringPressable
@@ -939,6 +1031,11 @@ export default function FocusScreen() {
                 </SpringPressable>
               </View>
               {focusError ? <Text accessibilityRole="alert" style={{ color: colors.danger, marginTop: 10 }}>{focusError}</Text> : null}
+              {timerDone && session.timerMode !== 'stopwatch' && session.launchMode === 'full' && session.plannedFocusMinutes < 240 ? (
+                <Pressable accessibilityRole="button" onPress={() => { setFinishing(false); void extendFocus(); }} style={styles.textButton}>
+                  <Text style={styles.textButtonText}>Add 5 minutes and continue</Text>
+                </Pressable>
+              ) : null}
               {!timerDone ? (
                 <SpringPressable
                   accessibilityRole="button"
@@ -975,7 +1072,41 @@ export default function FocusScreen() {
           )}
           </Reveal>
 
+          {!finishing && !timerDone && session.timerMode !== 'stopwatch' && session.launchMode === 'full' && session.plannedFocusMinutes < 240 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Add five minutes to this focus block" onPress={() => void extendFocus()} style={styles.extendControl}>
+              <Text style={styles.extendControlText}>+ 5 min</Text>
+            </Pressable>
+          ) : null}
+
           </Animated.View>
+
+          {session.timerMode === 'stopwatch' && !finishing && !timerDone ? <View style={styles.reminderPanel}>
+            {breakReminderDue(session, now) ? <View style={styles.reminderDue}>
+              <Text style={styles.reminderTitle}>Ready for a breather?</Text>
+              <Text style={styles.reminderCopy}>You have focused for {formatTimer(timerElapsedMs(session, now))}. Take a break if it feels right.</Text>
+              <View style={styles.reminderActions}>
+                <Pressable accessibilityRole="button" onPress={() => void acknowledgeReminder(true)} style={styles.reminderPrimary}><Text style={styles.reminderPrimaryText}>Pause for a break</Text></Pressable>
+                <Pressable accessibilityRole="button" onPress={() => void acknowledgeReminder(false)} style={styles.reminderQuiet}><Text style={styles.reminderQuietText}>Keep going</Text></Pressable>
+              </View>
+            </View> : null}
+            <Pressable accessibilityRole="button" accessibilityState={{ expanded: showReminderSettings }} onPress={() => setShowReminderSettings(value => !value)} style={styles.reminderToggle}>
+              <View style={styles.breakPlanCopy}><Text style={styles.reminderTitle}>Break suggestions</Text><Text style={styles.reminderCopy}>{session.breakReminder?.remaining ? `Every ${session.breakReminder.intervalMinutes} min · ${session.breakReminder.remaining} left` : 'Optional · set your own rhythm'}</Text></View>
+              <Text style={styles.reminderToggleMark}>{showReminderSettings ? '−' : '+'}</Text>
+            </Pressable>
+            {showReminderSettings ? <View style={styles.reminderSettings}>
+              <Text style={styles.reminderCopy}>Suggestions appear here while Focus is open. The stopwatch keeps running until you choose to pause it.</Text>
+              <View style={styles.customTimeRow}>
+                <View style={styles.customTimeField}><Text style={styles.customTimeLabel}>Every · minutes</Text><TextInput accessibilityLabel="Suggest a break every 5 to 180 focus minutes" value={reminderInterval} onChangeText={setReminderInterval} keyboardType="number-pad" maxLength={3} style={styles.customTimeInput} /></View>
+                <View style={styles.customTimeField}><Text style={styles.customTimeLabel}>How many · 0 to turn off</Text><TextInput accessibilityLabel="Number of break suggestions, zero to eight" value={reminderCount} onChangeText={setReminderCount} keyboardType="number-pad" maxLength={1} style={styles.customTimeInput} /></View>
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => {
+                const interval = Number(reminderInterval), count = Number(reminderCount);
+                if (!reminderInterval.trim() || !reminderCount.trim() || !Number.isInteger(interval) || interval < 5 || interval > 180 || !Number.isInteger(count) || count < 0 || count > 8) { setFocusError('Choose an interval from 5–180 minutes and 0–8 suggestions.'); return; }
+                setFocusError(''); void configureReminders(interval, count); setShowReminderSettings(false);
+              }} style={styles.addAllocation}><Text style={styles.addAllocationText}>Save suggestions</Text></Pressable>
+              {focusError ? <Text accessibilityRole="alert" style={styles.storageWarning}>{focusError}</Text> : null}
+            </View> : null}
+          </View> : null}
 
           <View style={styles.parkingShell}>
             <View ref={guide.anchors['focus.support']} collapsable={false} testID="guide-focus-support">
@@ -1134,7 +1265,7 @@ function FocusStopwatch({ value, label, progress, title, subject, detail, tinySt
     <View style={styles.stopwatchPanel}>
       <View style={styles.stopwatchHeader}>
         <Text style={styles.stopwatchKicker}>{subject.toUpperCase() || 'FOCUS SESSION'}</Text>
-        <Text style={styles.stopwatchCounter}>{label}</Text>
+        <View style={styles.stopwatchStatus}><View style={styles.stopwatchStatusDot} /><Text style={styles.stopwatchCounter}>{label}</Text></View>
       </View>
       <Text accessibilityRole="header" style={styles.stopwatchTitle}>{title}</Text>
       <Text style={styles.stopwatchDetail}>{detail}</Text>
@@ -1358,6 +1489,28 @@ const styles = StyleSheet.create({
   modeChoiceText: { color: colors.text, fontSize: 12, fontWeight: '700' },
   modeChoiceTextActive: { color: chalkTheme.onStage },
   modeHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 8, marginBottom: 12 },
+  habitSuggestion: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, backgroundColor: paperSurfaces.card, borderRadius: 12, marginBottom: 8 },
+  habitSuggestionText: { color: colors.textDim, fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  breakPlan: { marginTop: 16, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  breakPlanCopy: { flex: 1, minWidth: 0 },
+  breakPlanDetail: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  breakCountButton: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, borderColor: paperSurfaces.border, alignItems: 'center', justifyContent: 'center' },
+  breakCountGlyph: { color: colors.text, fontSize: 20 },
+  breakCount: { minWidth: 20, textAlign: 'center', color: colors.text, fontSize: 16, fontWeight: '700' },
+  allocationPanel: { marginTop: 18, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border },
+  allocationTitle: { color: colors.text, fontSize: 17, lineHeight: 23, fontWeight: '700' },
+  allocationHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 6 },
+  allocationInputs: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  allocationSubject: { flex: 1, minWidth: 0 },
+  allocationNumber: { width: 70, minHeight: 46, borderWidth: 1, borderColor: paperSurfaces.border, borderRadius: 12, paddingHorizontal: 10, backgroundColor: chalkTheme.paper, color: colors.text, fontSize: 16 },
+  allocationItem: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  allocationItemText: { flex: 1, color: colors.text, fontSize: 12, lineHeight: 18 },
+  allocationRemove: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  allocationRemoveText: { color: colors.accent, fontSize: 12, fontWeight: '700' },
+  topicOption: { minHeight: 44, justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border },
+  topicOptionText: { color: colors.text, fontSize: 12, lineHeight: 17 },
+  addAllocation: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 15 },
+  addAllocationText: { color: colors.accent, fontSize: 12, fontWeight: '700' },
   customTimeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14 },
   customTimeField: { flex: 1, minWidth: 120 },
   customTimeLabel: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginBottom: 6 },
@@ -1452,6 +1605,8 @@ const styles = StyleSheet.create({
   stopwatchStage: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', width: 200, height: 200, marginTop: 12 },
   stopwatchOrbit: { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(242,231,208,0.23)' },
   stopwatchHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  stopwatchStatus: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(242,231,208,0.28)', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 1 },
+  stopwatchStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D98A60' },
   stopwatchKicker: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '800', letterSpacing: 1.4, flexShrink: 1 },
   stopwatchCounter: { color: chalkTheme.mutedCream, fontSize: 10, fontWeight: '700', letterSpacing: .8, flexShrink: 1, textAlign: 'right' },
   stopwatchTitle: { color: chalkTheme.onStage, fontSize: 25, lineHeight: 31, letterSpacing: -.6, marginTop: 14, fontWeight: '600' },
@@ -1601,7 +1756,21 @@ const styles = StyleSheet.create({
   secondaryText: { color: colors.text, fontSize: 12, fontWeight: '700' },
   sessionActionPrimary: { borderColor: paperSurfaces.accent, backgroundColor: paperSurfaces.accent },
   sessionActionPrimaryText: { color: paperSurfaces.onAccent, fontSize: 12, fontWeight: '800' },
-  finishPanel: { width: '100%', maxWidth: 500, alignSelf: 'center', marginTop: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.panelGlass, padding: spacing.md },
+  extendControl: { minHeight: 44, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 18 },
+  extendControlText: { color: colors.accent, fontSize: 12, fontWeight: '700' },
+  reminderPanel: { marginTop: 18, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: paperSurfaces.border },
+  reminderToggle: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  reminderTitle: { color: colors.text, fontSize: 14, lineHeight: 19, fontWeight: '700' },
+  reminderCopy: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
+  reminderToggleMark: { color: colors.accent, fontSize: 22, paddingHorizontal: 6 },
+  reminderSettings: { paddingBottom: 12 },
+  reminderDue: { marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: paperSurfaces.card },
+  reminderActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  reminderPrimary: { minHeight: 44, borderRadius: 12, backgroundColor: paperSurfaces.accent, paddingHorizontal: 12, justifyContent: 'center' },
+  reminderPrimaryText: { color: paperSurfaces.onAccent, fontSize: 12, fontWeight: '700' },
+  reminderQuiet: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
+  reminderQuietText: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  finishPanel: { width: '100%', maxWidth: 500, alignSelf: 'center', marginTop: spacing.lg, borderRadius: radius.lg, backgroundColor: paperSurfaces.card, padding: spacing.md },
   finishTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
   finishText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 5 },
   effortRow: { flexDirection: 'row', gap: 7, marginTop: spacing.md },

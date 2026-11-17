@@ -27,6 +27,18 @@ export default function QuickAddScreen() {
           <Text style={styles.section}>What are you adding?</Text>
           <View style={styles.list}>
             <ActionRow
+              icon="stopwatch"
+              title="Start free focus"
+              detail="Start now; sort your study time afterward"
+              onPress={() => router.push({ pathname: '/(app)/focus', params: { free: '1', quick: '1' } })}
+            />
+            <ActionRow
+              icon="stopwatch"
+              title="Plan a focus session"
+              detail="Choose the timer and breaks before starting"
+              onPress={() => router.push({ pathname: '/(app)/focus', params: { free: '1' } })}
+            />
+            <ActionRow
               icon="library"
               title="Topic"
               detail="Something you are learning or revising"

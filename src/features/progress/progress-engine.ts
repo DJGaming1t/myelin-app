@@ -304,6 +304,17 @@ export function buildTopicTrends(
   const recentEnd = addLocalDays(today, 1);
   const previousStart = addLocalDays(recentStart, -7);
   const previousEnd = recentStart;
+  const recentAllocated = new Map<string, number>();
+  const previousAllocated = new Map<string, number>();
+  for (const outcome of workspace.focusOutcomes ?? []) {
+    if (!outcome.freeFocus || outcome.status !== 'finished') continue;
+    const bucket = outcome.endedAt >= recentStart && outcome.endedAt < recentEnd ? recentAllocated
+      : outcome.endedAt >= previousStart && outcome.endedAt < previousEnd ? previousAllocated : null;
+    if (!bucket) continue;
+    for (const allocation of outcome.allocations ?? []) {
+      if (allocation.topicId) bucket.set(allocation.topicId, (bucket.get(allocation.topicId) ?? 0) + allocation.minutes);
+    }
+  }
 
   return workspace.topics
     .map((topic) => {
@@ -312,8 +323,8 @@ export function buildTopicTrends(
       );
       const recent = sessionsInRange(topicSessions, recentStart, recentEnd);
       const previous = sessionsInRange(topicSessions, previousStart, previousEnd);
-      const recentMinutes = sumMinutes(recent);
-      const previousMinutes = sumMinutes(previous);
+      const recentMinutes = sumMinutes(recent) + (recentAllocated.get(topic.id) ?? 0);
+      const previousMinutes = sumMinutes(previous) + (previousAllocated.get(topic.id) ?? 0);
       const recentReviews = recent.filter(
         (session) => session.kind === 'review' && session.grade > 0,
       );

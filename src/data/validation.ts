@@ -95,11 +95,23 @@ function outcome(raw: unknown): FocusOutcome {
   const endedAt = number(o.endedAt, 'outcome end');
   const status = oneOf(o.status, ['started', 'finished', 'abandoned'] as const, 'outcome status');
   const plannedMinutes = number(o.plannedMinutes, 'outcome planned minutes', 5, 240);
+  const minutes = number(o.minutes, 'outcome minutes', 0, 240);
+  if (o.freeFocus === true && o.taskOnly !== true) throw new Error('Invalid free focus outcome.');
+  const allocations = o.allocations == null ? undefined : array(o.allocations, 'focus allocations', 20).map(raw => {
+    const entry = object(raw, 'focus allocation');
+    return { subject: nonEmpty(entry.subject, 'allocation subject', 120).trim(),
+      ...(entry.topicId == null ? {} : { topicId: id(entry.topicId) }),
+      ...(entry.topicName == null ? {} : { topicName: nonEmpty(entry.topicName, 'allocation topic', 500).trim() }),
+      minutes: integer(entry.minutes, 'allocation minutes', 1, 240) };
+  });
+  if (allocations && (o.freeFocus !== true || allocations.reduce((sum, item) => sum + item.minutes, 0) > minutes)) throw new Error('Invalid focus allocations.');
   if ((status === 'started' && endedAt !== 0) || (status !== 'started' && endedAt < startedAt)) throw new Error('Invalid outcome timing.');
   return { id: id(o.id), startedAt, endedAt, status,
     plannedMinutes,
     ...(o.timerMode == null ? {} : { timerMode: oneOf(o.timerMode, ['countdown', 'pomodoro', 'stopwatch'] as const, 'outcome timer mode') }),
-    minutes: number(o.minutes, 'outcome minutes', 0, 240),
+    ...(o.freeFocus === true ? { freeFocus: true } : {}),
+    ...(allocations ? { allocations } : {}),
+    minutes,
     launchMode: oneOf(o.launchMode, ['full', 'five-minute'] as const, 'outcome launch'),
     taskOnly: o.taskOnly === true, overdue: o.overdue === true };
 }

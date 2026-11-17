@@ -68,6 +68,10 @@ export function validateFocusSession(raw: unknown): FocusSessionState {
   if (session.breakSuggested != null && typeof session.breakSuggested !== 'boolean') {
     throw new Error('Invalid break suggestion state.');
   }
+  if (session.breaksRemaining != null && (typeof session.breaksRemaining !== 'number' || !Number.isInteger(session.breaksRemaining) || session.breaksRemaining < 0 || session.breaksRemaining > 8 || timerMode !== 'pomodoro')) throw new Error('Invalid planned breaks.');
+  const reminder = session.breakReminder == null ? undefined : object(session.breakReminder, 'break reminder');
+  if (reminder && (timerMode !== 'stopwatch' || phase !== 'focus')) throw new Error('Invalid break reminder state.');
+  if (reminder && (!Number.isInteger(reminder.intervalMinutes) || !Number.isInteger(reminder.remaining))) throw new Error('Invalid break reminder values.');
   if (session.breakSuggested === true &&
       (phase !== 'break' || session.runningSince !== null || session.focusLogged !== true || session.elapsedMs !== 0)) {
     throw new Error('Invalid pending break.');
@@ -80,7 +84,9 @@ export function validateFocusSession(raw: unknown): FocusSessionState {
 
   const topicId = session.topicId == null ? undefined : text(session.topicId, 'topic id', 120);
   const taskId = session.taskId == null ? undefined : text(session.taskId, 'task id', 120);
-  if (!topicId && !taskId) throw new Error('Focus session has no target.');
+  if (session.freeFocus != null && typeof session.freeFocus !== 'boolean') throw new Error('Invalid free focus state.');
+  if (session.freeFocus === true && (topicId || taskId)) throw new Error('Free focus cannot have a target.');
+  if (!topicId && !taskId && session.freeFocus !== true) throw new Error('Focus session has no target.');
 
   return {
     format: FOCUS_SESSION_FORMAT,
@@ -93,6 +99,13 @@ export function validateFocusSession(raw: unknown): FocusSessionState {
     phase,
     launchMode,
     timerMode,
+    ...(session.freeFocus === true ? { freeFocus: true } : {}),
+    ...(typeof session.breaksRemaining === 'number' ? { breaksRemaining: session.breaksRemaining } : {}),
+    ...(reminder ? { breakReminder: {
+      intervalMinutes: number(reminder.intervalMinutes, 'reminder interval', 5, 180),
+      remaining: number(reminder.remaining, 'reminders remaining', 0, 8),
+      nextAtElapsedMs: number(reminder.nextAtElapsedMs, 'next reminder', 0, 24 * 60 * 60 * 1000),
+    } } : {}),
     ...(session.breakSuggested === true ? { breakSuggested: true } : {}),
     tinyStep: text(session.tinyStep ?? '', 'tiny step', 500),
     fullTargetMinutes: number(session.fullTargetMinutes, 'full target', 5, 240),

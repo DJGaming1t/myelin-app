@@ -326,6 +326,12 @@ export function computeCompletedFocusMinutesForDay(
     if (!outcome.taskOnly) {
       continue;
     }
+    // Free-focus sessions have no task row to reconcile; count them once directly.
+    if (outcome.freeFocus) {
+      totalMinutes += outcome.minutes;
+      if (outcome.id) sessionMinutesById.set(outcome.id, outcome.minutes);
+      continue;
+    }
     // If a standalone task had focusMinutesForDay set without lastFocusSessionId, avoid double counting
     if (unaccountedStandaloneTotal >= outcome.minutes) {
       unaccountedStandaloneTotal -= outcome.minutes;

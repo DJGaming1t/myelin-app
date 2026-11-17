@@ -10,6 +10,7 @@ export function recordFocusOutcome(workspace: WorkspaceState, session: FocusSess
   const record: FocusOutcome = {
     id: session.id, startedAt: session.startedAt, endedAt: status === 'started' ? 0 : now, status,
     plannedMinutes: session.plannedFocusMinutes, timerMode: session.timerMode ?? 'countdown', minutes, launchMode: old?.launchMode ?? session.launchMode,
+    ...(session.freeFocus ? { freeFocus: true } : {}),
     taskOnly: !session.topicId, overdue: old?.overdue ?? Boolean(task?.dueAt && task.dueAt < session.startedAt),
   };
   workspace.focusOutcomes = [...all.filter(o => o.id !== session.id), record].sort((a, b) => a.startedAt - b.startedAt).slice(-2000);

@@ -152,6 +152,19 @@ export default function ProgressScreen() {
             current7Minutes={snapshot.study.last7Minutes}
           />
 
+          {(workspace.focusOutcomes ?? []).some(item => item.freeFocus && item.status === 'finished') ? <View style={styles.freeFocusBreakdown}>
+            <Text style={styles.freeFocusTitle}>Free focus</Text>
+            <Text style={styles.freeFocusCaption}>Your recent time splits, including any time left unassigned.</Text>
+            {[...(workspace.focusOutcomes ?? [])].filter(item => item.freeFocus && item.status === 'finished').sort((a, b) => b.endedAt - a.endedAt).slice(0, 5).map(item => {
+              const remainder = Math.max(0, item.minutes - (item.allocations ?? []).reduce((sum, entry) => sum + entry.minutes, 0));
+              return <View key={item.id} style={styles.freeFocusSession}>
+                <Text style={styles.freeFocusDate}>{new Date(item.endedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {item.minutes} min</Text>
+                {(item.allocations ?? []).map((entry, index) => <Text key={`${index}-${entry.subject}`} style={styles.freeFocusLine}>{entry.subject}{entry.topicName ? ` · ${entry.topicName}` : ''} · {entry.minutes} min</Text>)}
+                {remainder > 0 ? <Text style={styles.freeFocusLine}>Unassigned · {remainder} min</Text> : null}
+              </View>;
+            })}
+          </View> : null}
+
 
           <LearningInsights workspace={workspace} now={insightNow} insights={insights} onRefresh={() => setInsightRefreshAt(Date.now())} actionRef={guide.anchors['progress.practice']} />
           <NeuralMap workspace={workspace} now={now} anchorRef={guide.anchors['progress.map']} />
@@ -528,6 +541,12 @@ function Insufficient({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
+  freeFocusBreakdown: { marginTop: 24, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: chalkTheme.paperContour },
+  freeFocusTitle: { color: colors.text, fontSize: 18, fontWeight: '700', lineHeight: 24 },
+  freeFocusCaption: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  freeFocusSession: { marginTop: 14 },
+  freeFocusDate: { color: colors.text, fontSize: 12, fontWeight: '700', lineHeight: 18 },
+  freeFocusLine: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
   safe: { flex: 1, backgroundColor: colors.bg },
   graphiteSafe: { flex: 1, backgroundColor: chalkTheme.hero },
   page: { flex: 1 },
